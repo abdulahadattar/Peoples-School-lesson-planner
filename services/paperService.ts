@@ -9,7 +9,11 @@ function cleanAndParseJson(text: string): any {
   if (firstBrace !== -1 && lastBrace !== -1) {
     cleanText = cleanText.substring(firstBrace, lastBrace + 1);
   }
-  return JSON.parse(cleanText);
+  try {
+    return JSON.parse(cleanText);
+  } catch (error) {
+    throw new Error(`Failed to parse JSON response: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }
 
 const getGradeName = (gradeId: string): string => {
