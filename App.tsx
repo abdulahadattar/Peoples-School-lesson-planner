@@ -134,7 +134,7 @@ const App: React.FC = () => {
           onOpenSidebar={() => setIsSidebarOpen(true)}
         />
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
+        <div className="flex-1 overflow-y-auto custom-scrollbar relative">
           {view === 'home' && (
             <HomeView onNavigate={handleNavigate} />
           )}
@@ -178,19 +178,19 @@ const App: React.FC = () => {
               schoolName={schoolName}
             />
           )}
-
-          {(isLoading || error) && (
-            <GenerationStatusPanel
-              isLoading={isLoading}
-              isComplete={!!generatedPlans.length || !!generatedPapers.length}
-              logMessages={statusMessage ? [statusMessage] : []}
-              generationProgress={generationProgress || undefined}
-              onClose={clearResults}
-              onStop={clearResults}
-              onViewResults={() => setView('results')}
-            />
-          )}
         </div>
+
+        {(isLoading || error) && (
+          <GenerationStatusPanel
+            isLoading={isLoading}
+            isComplete={!!generatedPlans.length || !!generatedPapers.length}
+            logMessages={error ? [error] : (statusMessage ? [statusMessage] : [])}
+            generationProgress={generationProgress || undefined}
+            onClose={clearResults}
+            onStop={clearResults}
+            onViewResults={() => setView('results')}
+          />
+        )}
       </main>
     </div>
   );

@@ -51,10 +51,11 @@ export async function generateExamPaper(
   longQuestionCount: number,
   durationMinutes: number
 ): Promise<GeneratedPaper> {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+  const apiKey = import.meta.env.VITE_API_KEY as string | undefined;
+  const ai = new GoogleGenAI({ apiKey: apiKey || '' });
 
-  if (!process.env.API_KEY) {
-    throw new Error("API_KEY environment variable not set.");
+  if (!apiKey) {
+    throw new Error("API_KEY environment variable not set. Create a .env.local file with VITE_API_KEY=your_key");
   }
 
   const gradeName = getGradeName(gradeId);

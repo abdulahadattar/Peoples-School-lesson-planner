@@ -19,7 +19,10 @@ An intelligent lesson plan and exam paper generator for teachers, aligned with t
    ```
    npm install
    ```
-2. Set the `GEMINI_API_KEY` in `.env.local` to your Gemini API key
+2. Create a `.env.local` file in the project root with your Gemini API key:
+   ```
+   VITE_API_KEY=your_gemini_api_key_here
+   ```
 3. Run the app:
    ```
    npm run dev
