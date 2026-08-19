@@ -17,7 +17,7 @@ const ChevronDownIcon = () => (
 
 const MCQ_WEIGHT = 1;
 const SHORT_WEIGHT = 2;
-const LONG_WEIGHT = 3;
+const LONG_WEIGHT = 4;
 
 const clampNumber = (value: string, min: number, max: number): number => {
   const parsed = parseInt(value, 10);
