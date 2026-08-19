@@ -30,6 +30,7 @@ const App: React.FC = () => {
     generatedPlans,
     generatedPapers,
     error,
+    showStatusPanel,
     generateLessonPlan,
     generatePaper,
     exportPlan,
@@ -169,7 +170,7 @@ const App: React.FC = () => {
             />
           )}
 
-          {view === 'results' && hasResults && (
+          {view === 'results' && (
             <ResultsView
               lessonPlans={generatedPlans}
               papers={generatedPapers}
@@ -180,15 +181,16 @@ const App: React.FC = () => {
           )}
         </div>
 
-        {(isLoading || error) && (
+        {showStatusPanel && (
           <GenerationStatusPanel
             isLoading={isLoading}
-            isComplete={!!generatedPlans.length || !!generatedPapers.length}
+            isComplete={!!(generatedPlans.length || generatedPapers.length)}
             logMessages={error ? [error] : (statusMessage ? [statusMessage] : [])}
             generationProgress={generationProgress || undefined}
-            onClose={clearResults}
-            onStop={clearResults}
-            onViewResults={() => setView('results')}
+            onClose={() => { clearResults(); }}
+            onStop={() => { clearResults(); }}
+            onViewResults={() => { setShowStatusPanel(false); setView('results'); }}
+            error={error}
           />
         )}
       </main>

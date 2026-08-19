@@ -69,6 +69,10 @@ export async function generateExamPaper(
   const totalQuestionMarks = mcqMarks + shortMarks + longMarks;
 
   if (totalQuestionMarks !== totalMarks) {
+    throw new Error(`Mark distribution mismatch. Questions total ${totalQuestionMarks} marks but you selected ${totalMarks} marks. Adjust counts to match.`);
+  }
+
+  if (totalQuestionMarks !== totalMarks) {
     throw new Error(`Question marks total (${totalQuestionMarks}) does not match declared totalMarks (${totalMarks}).`);
   }
 
