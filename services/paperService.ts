@@ -67,6 +67,10 @@ export async function generateExamPaper(
   const longMarks = longQuestionCount * 4;
   const totalQuestionMarks = mcqMarks + shortMarks + longMarks;
 
+  if (totalQuestionMarks !== totalMarks) {
+    throw new Error(`Question marks total (${totalQuestionMarks}) does not match declared totalMarks (${totalMarks}).`);
+  }
+
   const systemInstruction = `You are an expert exam paper generator for ${subjectName}. Your task is to generate a well-structured exam paper as a JSON object. The paper should be aligned with the Sindh Textbook Board curriculum and the Student Learning Outcomes (SLOs) provided.
 
 **Critical Instructions:**
