@@ -84,10 +84,6 @@ const App: React.FC = () => {
     }
   };
 
-  const handleBackToSelection = () => {
-    setView(view === 'results' ? 'lesson' : 'home');
-  };
-
   const hasResults = generatedPlans.length > 0 || generatedPapers.length > 0;
 
   return (
