@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Theme } from './types';
+import { Theme, PaperConfig } from './types';
 import Header from './components/Header';
 import HomeView from './components/HomeView';
 import SubjectSelector from './components/SubjectSelector';
@@ -77,7 +77,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleGeneratePaper = async (config: any) => {
+  const handleGeneratePaper = async (config: PaperConfig) => {
     const paper = await generatePaper(config);
     if (paper) {
       setView('results');
