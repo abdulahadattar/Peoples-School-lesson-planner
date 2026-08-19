@@ -1,5 +1,0 @@
-{
-  "name": "Lesson Plan Generator raw GitHub ",
-  "description": "An intelligent lesson plan generator that uses Retrieval-Augmented Generation (RAG) with user-uploaded documents (PDF, TXT) to create highly relevant and grounded educational content.",
-  "requestFramePermissions": []
-}
