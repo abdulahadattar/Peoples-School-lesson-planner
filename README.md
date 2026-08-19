@@ -1,20 +1,40 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Lesson Planner - Peoples Higher Secondary School Jamshoro
 
-# Run and deploy your AI Studio app
+An intelligent lesson plan and exam paper generator for teachers, aligned with the Sindh Textbook Board (STBB) curriculum from ECCE to Class XII.
 
-This contains everything you need to run your app locally.
+## Features
 
-View your app in AI Studio: https://ai.studio/apps/drive/1tUwUGxfqoBYH3Mo-WRS6a1n_keyegifs
+- **General Lesson Planner** — Select any class, subject, and chapter to generate lesson plans
+- **4As Template** — Lesson plans follow the Activity, Analysis, Abstraction, Application framework
+- **Exam Paper Generator** — Create structured exam papers with MCQs, short, and long questions
+- **Mobile-First Design** — Optimized for phones and tablets
+- **PDF & DOCX Export** — Download lesson plans and papers in multiple formats
+- **AI-Powered** — Uses Google Gemini for content generation
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
-
+**Prerequisites:** Node.js
 
 1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+   ```
+   npm install
+   ```
+2. Set the `GEMINI_API_KEY` in `.env.local` to your Gemini API key
 3. Run the app:
-   `npm run dev`
+   ```
+   npm run dev
+   ```
+
+## Build
+
+```
+npm run build
+```
+
+## Tech Stack
+
+- React 19 + TypeScript
+- Vite
+- Tailwind CSS
+- Google Gemini AI
+- DOCX + PDF export
