@@ -172,6 +172,7 @@ export const useGeneralGeneration = () => {
     generatedPapers,
     error,
     showStatusPanel,
+    setShowStatusPanel,
     generateLessonPlan,
     generatePaper,
     exportPlan,
