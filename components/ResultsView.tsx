@@ -15,13 +15,21 @@ const ResultsView: React.FC<ResultsViewProps> = ({ lessonPlans, papers, onBack, 
   const [selectedPlanIndex, setSelectedPlanIndex] = useState(0);
 
   const handleExportPlan = async (plan: LessonPlan) => {
-    await exportAsDocx(plan, undefined, { name: teacherName, schoolName });
-    await exportAsPdf(plan, undefined, { name: teacherName, schoolName });
+    try {
+      await exportAsDocx(plan, undefined, { name: teacherName, schoolName });
+      await exportAsPdf(plan, undefined, { name: teacherName, schoolName });
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to export. Please try again.');
+    }
   };
 
   const handleExportPaper = async (paper: GeneratedPaper) => {
-    await exportPaperAsDocx(paper, { name: teacherName, schoolName });
-    await exportPaperAsPdf(paper, { name: teacherName, schoolName });
+    try {
+      await exportPaperAsDocx(paper, { name: teacherName, schoolName });
+      await exportPaperAsPdf(paper, { name: teacherName, schoolName });
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to export. Please try again.');
+    }
   };
 
   if (lessonPlans.length > 0) {

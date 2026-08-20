@@ -201,7 +201,11 @@ export const useLessonGeneration = (allSlos: SLO[], contextPdfs: ContextPdf[]) =
                     setLogMessages(prev => [...prev, `Exporting individual files...`]);
                     await exportAsDocx(plan, slo.SLO_ID);
                     await new Promise(resolve => setTimeout(resolve, 250));
-                    await exportAsPdf(plan, slo.SLO_ID);
+                    try {
+                      await exportAsPdf(plan, slo.SLO_ID);
+                    } catch (e) {
+                      setLogMessages(prev => [...prev, `WARN: Failed to export PDF for ${slo.SLO_ID}: ${e instanceof Error ? e.message : 'Unknown error'}`]);
+                    }
                     await new Promise(resolve => setTimeout(resolve, 250));
                 }
             }
@@ -256,7 +260,11 @@ export const useLessonGeneration = (allSlos: SLO[], contextPdfs: ContextPdf[]) =
                 if (generatedPlansForGroup.length > 0 && !wasCancelled) {
                     const fileName = formatFileName(groupName);
                     setLogMessages(prev => [...prev, `Combining and exporting ${fileName}.pdf...`]);
-                    await exportMultipleLessonsAsPdf(generatedPlansForGroup, fileName);
+                    try {
+                      await exportMultipleLessonsAsPdf(generatedPlansForGroup, fileName);
+                    } catch (e) {
+                      setLogMessages(prev => [...prev, `WARN: Failed to export combined PDF for ${fileName}: ${e instanceof Error ? e.message : 'Unknown error'}`]);
+                    }
                     await new Promise(resolve => setTimeout(resolve, 250));
                     
                     setLogMessages(prev => [...prev, `Combining and exporting ${fileName}.docx...`]);

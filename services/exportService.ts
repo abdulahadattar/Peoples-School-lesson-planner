@@ -213,6 +213,8 @@ export const exportAsPdf = async (lessonPlan: LessonPlan, sloId?: string, teache
   };
   if (typeof pdfMake !== 'undefined' && typeof pdfMake.createPdf === 'function') {
     pdfMake.createPdf(docDefinition).download(fileName);
+  } else {
+    throw new Error('PDF export is unavailable: pdfMake library has not loaded yet. Please try again in a moment.');
   }
 };
 
@@ -315,6 +317,8 @@ export const exportMultipleLessonsAsPdf = async (lessonPlans: LessonPlan[], file
 
     if (typeof pdfMake !== 'undefined' && typeof pdfMake.createPdf === 'function') {
       pdfMake.createPdf(docDefinition).download(`${fileName}.pdf`);
+    } else {
+      throw new Error('PDF export is unavailable: pdfMake library has not loaded yet. Please try again in a moment.');
     }
 };
 
@@ -497,5 +501,7 @@ export const exportPaperAsPdf = async (paper: GeneratedPaper, teacherInfo?: Teac
     };
     if (typeof pdfMake !== 'undefined' && typeof pdfMake.createPdf === 'function') {
       pdfMake.createPdf(docDefinition).download(fileName);
+    } else {
+      throw new Error('PDF export is unavailable: pdfMake library has not loaded yet. Please try again in a moment.');
     }
 };
