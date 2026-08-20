@@ -37,14 +37,15 @@ export async function generateLessonPlan(
     contextFileParts?: Part[],
     subjectName?: string
 ): Promise<LessonPlan> {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+  const apiKey = import.meta.env.VITE_API_KEY as string | undefined;
+  const ai = new GoogleGenAI({ apiKey: apiKey || '' });
 
-  if (!process.env.API_KEY) {
-    throw new Error("API_KEY environment variable not set.");
+  if (!apiKey) {
+    throw new Error("API_KEY environment variable not set. Create a .env.local file with VITE_API_KEY=your_key");
   }
 
-  const gradeNum = parseInt(slo.grade?.replace('Grade ', '') || '9', 10);
-  const gradeLevelContext = gradeNum <= 10 ? `${slo.grade} (Foundational)` : `${slo.grade} (Advanced)`;
+  const gradeNum = parseInt(slo.grade?.replace(/Grade\s+|Class\s+/i, '') || '9', 10);
+  const gradeLevelContext = isNaN(gradeNum) ? `${slo.grade}` : `${slo.grade} (${gradeNum <= 10 ? 'Foundational' : 'Advanced'})`;
   const subject = subjectName || 'General';
 
   const systemInstruction = `You are a ${subject} Teacher at Peoples Higher Secondary School Jamshoro, creating a detailed lesson plan for your own use and for school records. Your task is to generate a comprehensive 40-minute lesson plan as a JSON object using the 4As instructional model. The tone should be professional, direct, and suitable for a Pakistani secondary school context.

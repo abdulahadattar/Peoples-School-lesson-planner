@@ -98,6 +98,26 @@
       details > summary::-webkit-details-marker {
         display: none;
       }
+
+      /* Custom animations */
+      @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes slideUp {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fadeIn {
+        animation: fadeIn 0.5s ease-out forwards;
+      }
+      .animate-slideUp {
+        animation: slideUp 0.4s ease-out forwards;
+      }
     </style>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" integrity="sha384-KiWOvVjnN8qwZuNufXEypUHr/ROe9G7Akja23+cmPSUPoMinqKFSnbMyEWwKSbQN" crossorigin="anonymous">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js" integrity="sha384-hIoBPJpTadBaddGWMizjMVELfLIsvALcvYlLBRou2R9XpasssnUBlG/B2i7rQxNB" crossorigin="anonymous"></script>

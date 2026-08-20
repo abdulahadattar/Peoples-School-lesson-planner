@@ -30,6 +30,7 @@ const App: React.FC = () => {
     generatedPlans,
     generatedPapers,
     error,
+    showStatusPanel,
     generateLessonPlan,
     generatePaper,
     exportPlan,
@@ -134,7 +135,7 @@ const App: React.FC = () => {
           onOpenSidebar={() => setIsSidebarOpen(true)}
         />
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
+        <div className="flex-1 overflow-y-auto custom-scrollbar relative">
           {view === 'home' && (
             <HomeView onNavigate={handleNavigate} />
           )}
@@ -169,7 +170,7 @@ const App: React.FC = () => {
             />
           )}
 
-          {view === 'results' && hasResults && (
+          {view === 'results' && (
             <ResultsView
               lessonPlans={generatedPlans}
               papers={generatedPapers}
@@ -178,19 +179,20 @@ const App: React.FC = () => {
               schoolName={schoolName}
             />
           )}
-
-          {(isLoading || error) && (
-            <GenerationStatusPanel
-              isLoading={isLoading}
-              isComplete={!!generatedPlans.length || !!generatedPapers.length}
-              logMessages={statusMessage ? [statusMessage] : []}
-              generationProgress={generationProgress || undefined}
-              onClose={clearResults}
-              onStop={clearResults}
-              onViewResults={() => setView('results')}
-            />
-          )}
         </div>
+
+        {showStatusPanel && (
+          <GenerationStatusPanel
+            isLoading={isLoading}
+            isComplete={!!(generatedPlans.length || generatedPapers.length)}
+            logMessages={error ? [error] : (statusMessage ? [statusMessage] : [])}
+            generationProgress={generationProgress || undefined}
+            onClose={() => { clearResults(); }}
+            onStop={() => { clearResults(); }}
+            onViewResults={() => { setShowStatusPanel(false); setView('results'); }}
+            error={error}
+          />
+        )}
       </main>
     </div>
   );

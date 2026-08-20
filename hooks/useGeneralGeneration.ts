@@ -12,6 +12,7 @@ export const useGeneralGeneration = () => {
   const [generatedPlans, setGeneratedPlans] = useState<LessonPlan[]>([]);
   const [generatedPapers, setGeneratedPapers] = useState<GeneratedPaper[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [showStatusPanel, setShowStatusPanel] = useState(false);
 
   const generateLessonPlan = useCallback(async (
     classId: string,
@@ -26,11 +27,12 @@ export const useGeneralGeneration = () => {
     setGeneratedPapers([]);
     setGenerationProgress({ current: 0, total: 3 });
     setStatusMessage('Preparing lesson plan...');
+    setShowStatusPanel(true);
 
     try {
       const cls = curriculumData.classes.find(c => c.id === classId);
       const subject = getSubjectById(curriculumData.classes, classId, subjectId);
-      const chapter = chapterId ? getChapterById(cls!, subjectId, chapterId) : null;
+      const chapter = cls && chapterId ? getChapterById(cls, subjectId, chapterId) : null;
 
       if (!cls || !subject) {
         throw new Error('Invalid selection');
@@ -83,6 +85,7 @@ export const useGeneralGeneration = () => {
       setGeneratedPlans([plan]);
       setIsLoading(false);
       setGenerationProgress(null);
+      setShowStatusPanel(true);
       return plan;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to generate lesson plan';
@@ -90,6 +93,7 @@ export const useGeneralGeneration = () => {
       setIsLoading(false);
       setGenerationProgress(null);
       setStatusMessage('');
+      setShowStatusPanel(true);
       return null;
     }
   }, []);
@@ -101,6 +105,7 @@ export const useGeneralGeneration = () => {
     setGeneratedPapers([]);
     setGenerationProgress({ current: 0, total: 3 });
     setStatusMessage('Preparing exam paper...');
+    setShowStatusPanel(true);
 
     try {
       setGenerationProgress({ current: 1, total: 3 });
@@ -126,6 +131,7 @@ export const useGeneralGeneration = () => {
       setGeneratedPapers([paper]);
       setIsLoading(false);
       setGenerationProgress(null);
+      setShowStatusPanel(true);
       return paper;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to generate exam paper';
@@ -133,6 +139,7 @@ export const useGeneralGeneration = () => {
       setIsLoading(false);
       setGenerationProgress(null);
       setStatusMessage('');
+      setShowStatusPanel(true);
       return null;
     }
   }, []);
@@ -154,6 +161,7 @@ export const useGeneralGeneration = () => {
     setError(null);
     setGenerationProgress(null);
     setStatusMessage('');
+    setShowStatusPanel(false);
   }, []);
 
   return {
@@ -163,6 +171,7 @@ export const useGeneralGeneration = () => {
     generatedPlans,
     generatedPapers,
     error,
+    showStatusPanel,
     generateLessonPlan,
     generatePaper,
     exportPlan,

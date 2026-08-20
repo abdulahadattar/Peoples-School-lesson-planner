@@ -10,9 +10,10 @@ interface GenerationStatusPanelProps {
   onClose: () => void;
   onStop: () => void;
   onViewResults: () => void;
+  error?: string | null;
 }
 
-const GenerationStatusPanel: React.FC<GenerationStatusPanelProps> = ({ isLoading, isComplete, logMessages, generationProgress, onClose, onStop, onViewResults }) => {
+const GenerationStatusPanel: React.FC<GenerationStatusPanelProps> = ({ isLoading, isComplete, logMessages, generationProgress, onClose, onStop, onViewResults, error }) => {
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -21,18 +22,24 @@ const GenerationStatusPanel: React.FC<GenerationStatusPanelProps> = ({ isLoading
   
   return (
     <div className="absolute bottom-6 right-6 w-[400px] max-w-[90vw] bg-brand-surface/95 backdrop-blur-md border border-brand-border shadow-2xl rounded-2xl overflow-hidden z-50 flex flex-col animate-slideUp">
-      <div className="flex justify-between items-center p-4 border-b border-brand-border bg-brand-surface/50">
+        <div className="flex justify-between items-center p-4 border-b border-brand-border bg-brand-surface/50">
         <div className="flex items-center gap-3">
             {isLoading ? (
                 <div className="relative w-3 h-3">
                      <div className="absolute inset-0 rounded-full bg-brand-primary animate-ping opacity-75"></div>
                      <div className="absolute inset-0 rounded-full bg-brand-primary"></div>
                 </div>
+            ) : error ? (
+                <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center">
+                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
             ) : (
                 <CheckCircleIcon className="w-5 h-5 text-green-500" />
             )}
             <h2 className="font-bold text-brand-text-light text-sm">
-                {isComplete ? 'Generation Complete' : 'Generating Lesson Plans'}
+                {error ? 'Generation Failed' : isComplete ? 'Generation Complete' : 'Generating...'}
             </h2>
         </div>
         <div className="flex items-center gap-2">

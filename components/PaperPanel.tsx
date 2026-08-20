@@ -15,10 +15,6 @@ const ChevronDownIcon = () => (
   </svg>
 );
 
-const MCQ_WEIGHT = 1;
-const SHORT_WEIGHT = 2;
-const LONG_WEIGHT = 4;
-
 const clampNumber = (value: string, min: number, max: number): number => {
   const parsed = parseInt(value, 10);
   if (Number.isNaN(parsed)) return min;
@@ -62,25 +58,14 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
   );
 
   const markDistribution = useMemo(() => {
-    const weightSum =
-      mcqCount * MCQ_WEIGHT + shortQuestionCount * SHORT_WEIGHT + longQuestionCount * LONG_WEIGHT;
-    const total = totalMarks;
+    const MCQ_WEIGHT = 1;
+    const SHORT_WEIGHT = 2;
+    const LONG_WEIGHT = 4;
 
-    if (weightSum <= 0) {
-      return {
-        mcqMarks: 0,
-        shortMarks: 0,
-        longMarks: 0,
-        mcqPerQuestion: 0,
-        shortPerQuestion: 0,
-        longPerQuestion: 0,
-        weightSum: 0,
-      };
-    }
-
-    const mcqMarks = Math.floor((mcqCount * MCQ_WEIGHT / weightSum) * total);
-    const shortMarks = Math.floor((shortQuestionCount * SHORT_WEIGHT / weightSum) * total);
-    const longMarks = Math.max(0, total - mcqMarks - shortMarks);
+    const mcqMarks = mcqCount * MCQ_WEIGHT;
+    const shortMarks = shortQuestionCount * SHORT_WEIGHT;
+    const longMarks = longQuestionCount * LONG_WEIGHT;
+    const totalQuestionMarks = mcqMarks + shortMarks + longMarks;
 
     return {
       mcqMarks,
@@ -89,7 +74,8 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
       mcqPerQuestion: mcqCount > 0 ? mcqMarks / mcqCount : 0,
       shortPerQuestion: shortQuestionCount > 0 ? shortMarks / shortQuestionCount : 0,
       longPerQuestion: longQuestionCount > 0 ? longMarks / longQuestionCount : 0,
-      weightSum,
+      totalQuestionMarks,
+      weightSum: totalQuestionMarks,
     };
   }, [totalMarks, mcqCount, shortQuestionCount, longQuestionCount]);
 
@@ -123,8 +109,9 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
   };
 
   const canGenerate = Boolean(selectedClassId && selectedSubjectId && selectedChapterId);
+  const marksValid = markDistribution.totalQuestionMarks > 0 && markDistribution.totalQuestionMarks === totalMarks;
 
-  const isDisabled = isGenerating || !canGenerate;
+  const isDisabled = isGenerating || !canGenerate || !marksValid;
 
   return (
     <div className="w-full max-w-2xl mx-auto px-4 py-6 md:py-8">
@@ -388,6 +375,11 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
           )}
 
           {/* Generate button */}
+          {!marksValid && (
+            <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-600 dark:text-red-400 font-medium">
+              Mark distribution mismatch: questions total {markDistribution.totalQuestionMarks} marks, but you selected {totalMarks} marks. Adjust counts to match.
+            </div>
+          )}
           <button
             type="button"
             onClick={handleGenerate}

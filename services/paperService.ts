@@ -51,10 +51,11 @@ export async function generateExamPaper(
   longQuestionCount: number,
   durationMinutes: number
 ): Promise<GeneratedPaper> {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+  const apiKey = import.meta.env.VITE_API_KEY as string | undefined;
+  const ai = new GoogleGenAI({ apiKey: apiKey || '' });
 
-  if (!process.env.API_KEY) {
-    throw new Error("API_KEY environment variable not set.");
+  if (!apiKey) {
+    throw new Error("API_KEY environment variable not set. Create a .env.local file with VITE_API_KEY=your_key");
   }
 
   const gradeName = getGradeName(gradeId);
@@ -66,6 +67,10 @@ export async function generateExamPaper(
   const shortMarks = shortQuestionCount * 2;
   const longMarks = longQuestionCount * 4;
   const totalQuestionMarks = mcqMarks + shortMarks + longMarks;
+
+  if (totalQuestionMarks !== totalMarks) {
+    throw new Error(`Mark distribution mismatch. Questions total ${totalQuestionMarks} marks but you selected ${totalMarks} marks. Adjust counts to match.`);
+  }
 
   if (totalQuestionMarks !== totalMarks) {
     throw new Error(`Question marks total (${totalQuestionMarks}) does not match declared totalMarks (${totalMarks}).`);
