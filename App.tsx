@@ -97,30 +97,44 @@ const App: React.FC = () => {
   return (
     <div className="flex h-screen bg-brand-bg text-brand-text-light font-sans selection:bg-brand-primary selection:text-white">
       {isSidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 z-[90] md:hidden" onClick={() => setIsSidebarOpen(false)}></div>
+        <div className="fixed inset-0 bg-black/40 dark:bg-black/60 z-[90] md:hidden backdrop-blur-sm transition-opacity" onClick={() => setIsSidebarOpen(false)}></div>
       )}
-      
-      <aside className={`fixed md:relative z-[100] top-0 left-0 h-screen md:h-full bg-white dark:bg-slate-900 flex flex-col transition-transform duration-300 shadow-2xl md:shadow-none w-[280px] ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} border-r border-brand-border`}>
-        <div className="p-6 flex-grow flex flex-col h-full overflow-hidden">
-          <div className="flex items-center justify-between mb-8 md:hidden">
-            <span className="font-bold text-lg">Menu</span>
-            <button onClick={() => setIsSidebarOpen(false)} className="p-1 text-brand-text-medium hover:text-brand-text-light">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+
+      <aside className={`fixed md:relative z-[100] top-0 left-0 h-screen md:h-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl flex flex-col transition-transform duration-300 shadow-2xl md:shadow-none w-[260px] ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} border-r border-brand-border/60`}>
+        <div className="p-5 flex-grow flex flex-col h-full overflow-hidden">
+          <div className="flex items-center justify-between mb-6 md:hidden">
+            <span className="font-bold text-base text-brand-text-light">Menu</span>
+            <button onClick={() => setIsSidebarOpen(false)} className="p-2 text-brand-text-medium hover:text-brand-text-light hover:bg-brand-bg/60 rounded-lg transition-colors">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
             </button>
           </div>
 
-          <h3 className="text-xs font-bold text-brand-text-medium uppercase tracking-wider mb-4 pl-1">Navigation</h3>
-          <div className="space-y-2">
-            <button onClick={() => { setView('home'); clearResults(); }} className={`w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-colors ${view === 'home' ? 'bg-brand-primary text-white' : 'hover:bg-brand-bg text-brand-text-medium'}`}>
+          <div className="mb-6">
+            <div className="flex items-center gap-2.5 mb-1">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-primary to-indigo-500 flex items-center justify-center text-white shadow-md shadow-brand-primary/20">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.832 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-brand-text-light tracking-tight">Lesson Planner</h3>
+                <p className="text-[10px] text-brand-text-medium font-medium">AI-Powered</p>
+              </div>
+            </div>
+          </div>
+
+          <h3 className="text-[10px] font-bold text-brand-text-medium uppercase tracking-widest mb-3 pl-1">Navigation</h3>
+          <div className="space-y-1.5">
+            <button onClick={() => { setView('home'); clearResults(); }} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'home' ? 'bg-brand-primary text-white shadow-md shadow-brand-primary/20' : 'text-brand-text-medium hover:bg-brand-bg hover:text-brand-text-light'}`}>
               Home
             </button>
-            <button onClick={() => handleNavigate('lesson')} className={`w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-colors ${view === 'lesson' || view === 'results' ? 'bg-brand-primary text-white' : 'hover:bg-brand-bg text-brand-text-medium'}`}>
+            <button onClick={() => handleNavigate('lesson')} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'lesson' || view === 'results' ? 'bg-brand-primary text-white shadow-md shadow-brand-primary/20' : 'text-brand-text-medium hover:bg-brand-bg hover:text-brand-text-light'}`}>
               Lesson Plans
             </button>
-            <button onClick={() => handleNavigate('paper')} className={`w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-colors ${view === 'paper' ? 'bg-brand-primary text-white' : 'hover:bg-brand-bg text-brand-text-medium'}`}>
+            <button onClick={() => handleNavigate('paper')} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === 'paper' ? 'bg-brand-primary text-white shadow-md shadow-brand-primary/20' : 'text-brand-text-medium hover:bg-brand-bg hover:text-brand-text-light'}`}>
               Exam Papers
             </button>
           </div>
@@ -128,10 +142,10 @@ const App: React.FC = () => {
       </aside>
 
       <main className="flex-1 flex flex-col h-full overflow-hidden relative">
-        <Header 
+        <Header
           directoryName={null}
-          theme={theme} 
-          onToggleTheme={toggleTheme} 
+          theme={theme}
+          onToggleTheme={toggleTheme}
           onOpenSidebar={() => setIsSidebarOpen(true)}
         />
 

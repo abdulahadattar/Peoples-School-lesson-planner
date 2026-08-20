@@ -23,13 +23,13 @@ interface SubjectSelectorProps {
 
 const ChevronDownIcon = () => (
   <svg className="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
   </svg>
 );
 
 const ChevronUpIcon = () => (
   <svg className="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
   </svg>
 );
 
@@ -128,12 +128,14 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
   const hasSelection = selectedClassId || selectedSubjectId || selectedChapterId;
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
-      <div className="bg-brand-surface rounded-3xl shadow-xl shadow-brand-primary/5 border border-brand-border overflow-hidden">
-        <div className="p-5 sm:p-7 space-y-6">
+    <div className="w-full max-w-2xl mx-auto space-y-5">
+      {/* Main Card */}
+      <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-3xl shadow-card border border-brand-border/80 overflow-hidden">
+        <div className="p-6 sm:p-8 space-y-6">
+          {/* Header */}
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-brand-primary to-brand-primary/70 flex items-center justify-center shadow-lg shadow-brand-primary/25">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-brand-primary to-brand-primary/70 flex items-center justify-center shadow-lg shadow-brand-primary/20">
                 <div className="text-white">
                   <ClipboardListIcon />
                 </div>
@@ -142,29 +144,30 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
                 <h2 className="text-lg font-bold text-brand-text-light tracking-tight leading-tight">
                   Lesson Planner
                 </h2>
-                <p className="text-[11px] font-medium text-brand-text-medium mt-0.5">
+                <p className="text-[11px] font-semibold text-brand-text-medium mt-0.5">
                   Create structured lesson plans
                 </p>
               </div>
             </div>
-            <span className="hidden sm:inline-flex text-[10px] font-bold uppercase tracking-widest text-brand-primary bg-brand-primary/10 px-2.5 py-1.5 rounded-lg border border-brand-primary/20">
+            <span className="hidden sm:inline-flex text-[10px] font-bold uppercase tracking-widest text-brand-primary bg-brand-accent px-2.5 py-1.5 rounded-lg border border-brand-primary/15">
               Peoples Higher Secondary School Jamshoro
             </span>
           </div>
 
-          <div className="bg-gradient-to-br from-brand-bg to-brand-bg/80 rounded-2xl border border-brand-border overflow-hidden shadow-sm">
+          {/* Teacher Info Accordion */}
+          <div className="bg-brand-bg/60 dark:bg-slate-900/40 rounded-2xl border border-brand-border/60 overflow-hidden">
             <button
               type="button"
               onClick={() => setIsTeacherInfoOpen((prev) => !prev)}
-              className="w-full flex items-center justify-between p-4 sm:p-5 text-left hover:bg-brand-surface/50 active:bg-brand-surface transition-all duration-200 min-h-[52px] group"
+              className="w-full flex items-center justify-between p-4 text-left hover:bg-brand-surface/60 active:bg-brand-surface transition-all duration-200 min-h-[48px] group"
             >
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-brand-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-brand-primary/15 transition-colors duration-200">
+                <div className="w-8 h-8 rounded-xl bg-brand-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-brand-primary/15 transition-colors duration-200">
                   <svg className="w-4 h-4 text-brand-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                 </div>
-                <span className="text-sm font-bold text-brand-text-light">Teacher Information</span>
+                <span className="text-sm font-semibold text-brand-text-light">Teacher Information</span>
               </div>
               <span className={`text-brand-text-medium transition-all duration-300 ${isTeacherInfoOpen ? 'rotate-180' : ''}`}>
                 {isTeacherInfoOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
@@ -176,9 +179,9 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
                 isTeacherInfoOpen ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'
               }`}
             >
-              <div className="px-4 sm:px-5 pb-4 sm:pb-5 space-y-3">
+              <div className="px-4 pb-4 pt-1 space-y-3">
                 <div>
-                  <label className="flex items-center gap-1.5 text-xs font-bold text-brand-text-medium mb-2 uppercase tracking-wider">
+                  <label className="flex items-center gap-1.5 text-[11px] font-bold text-brand-text-medium mb-2 uppercase tracking-wider">
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
@@ -189,11 +192,11 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
                     value={teacherName}
                     onChange={(e) => onTeacherNameChange(e.target.value)}
                     placeholder="Enter teacher name"
-                    className="w-full h-12 px-4 bg-brand-surface border border-brand-border rounded-xl text-sm text-brand-text-light placeholder:text-brand-text-medium/50 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary focus:shadow-lg focus:shadow-brand-primary/10 transition-all duration-200"
+                    className="w-full h-12 px-4 bg-brand-surface border border-brand-border rounded-xl text-sm text-brand-text-light placeholder:text-brand-text-medium/40 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary focus:shadow-lg focus:shadow-brand-primary/10 transition-all duration-200"
                   />
                 </div>
                 <div>
-                  <label className="flex items-center gap-1.5 text-xs font-bold text-brand-text-medium mb-2 uppercase tracking-wider">
+                  <label className="flex items-center gap-1.5 text-[11px] font-bold text-brand-text-medium mb-2 uppercase tracking-wider">
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
@@ -204,16 +207,18 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
                     value={schoolName}
                     onChange={(e) => onSchoolNameChange(e.target.value)}
                     placeholder="Enter school name"
-                    className="w-full h-12 px-4 bg-brand-surface border border-brand-border rounded-xl text-sm text-brand-text-light placeholder:text-brand-text-medium/50 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary focus:shadow-lg focus:shadow-brand-primary/10 transition-all duration-200"
+                    className="w-full h-12 px-4 bg-brand-surface border border-brand-border rounded-xl text-sm text-brand-text-light placeholder:text-brand-text-medium/40 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary focus:shadow-lg focus:shadow-brand-primary/10 transition-all duration-200"
                   />
                 </div>
               </div>
             </div>
           </div>
 
+          {/* Selection Form */}
           <div className="space-y-4">
+            {/* Class Select */}
             <div>
-              <label htmlFor="class-select" className="flex items-center gap-1.5 text-xs font-bold text-brand-text-medium mb-2 uppercase tracking-wider">
+              <label htmlFor="class-select" className="flex items-center gap-1.5 text-[11px] font-bold text-brand-text-medium mb-2 uppercase tracking-wider">
                 <GraduationCapIcon />
                 Select Class
               </label>
@@ -222,7 +227,8 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
                   id="class-select"
                   value={selectedClassId}
                   onChange={handleClassChange}
-                  className="w-full h-14 px-4 pr-12 bg-brand-bg border-2 border-brand-border rounded-2xl text-sm text-brand-text-light appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary focus:shadow-lg focus:shadow-brand-primary/10 transition-all duration-200 hover:border-brand-text-medium/40"
+                  className="w-full h-12.5 px-4 pr-10 bg-brand-surface border-2 border-brand-border rounded-xl text-sm text-brand-text-light appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary focus:shadow-lg focus:shadow-brand-primary/10 transition-all duration-200 hover:border-brand-text-medium/30"
+                  style={{ minHeight: '48px' }}
                 >
                   <option value="">-- Choose a class --</option>
                   {classes.map((cls) => (
@@ -231,19 +237,20 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
                     </option>
                   ))}
                 </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-text-medium group-hover:text-brand-primary transition-colors duration-200">
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-text-medium group-hover:text-brand-primary transition-colors duration-200 pointer-events-none">
                   <ChevronDownIcon />
                 </div>
                 {selectedClassId && (
-                  <div className="absolute right-14 top-1/2 -translate-y-1/2 text-brand-primary">
+                  <div className="absolute right-12 top-1/2 -translate-y-1/2 text-brand-primary animate-scaleIn">
                     <CheckCircleIcon />
                   </div>
                 )}
               </div>
             </div>
 
+            {/* Subject Select */}
             <div>
-              <label htmlFor="subject-select" className="flex items-center gap-1.5 text-xs font-bold text-brand-text-medium mb-2 uppercase tracking-wider">
+              <label htmlFor="subject-select" className="flex items-center gap-1.5 text-[11px] font-bold text-brand-text-medium mb-2 uppercase tracking-wider">
                 <BookOpenIcon />
                 Select Subject
               </label>
@@ -253,7 +260,8 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
                   value={selectedSubjectId}
                   onChange={handleSubjectChange}
                   disabled={!selectedClassId}
-                  className="w-full h-14 px-4 pr-12 bg-brand-bg border-2 border-brand-border rounded-2xl text-sm text-brand-text-light appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary focus:shadow-lg focus:shadow-brand-primary/10 transition-all duration-200 hover:border-brand-text-medium/40 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-brand-border"
+                  className="w-full h-12.5 px-4 pr-10 bg-brand-surface border-2 border-brand-border rounded-xl text-sm text-brand-text-light appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary focus:shadow-lg focus:shadow-brand-primary/10 transition-all duration-200 hover:border-brand-text-medium/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-brand-border"
+                  style={{ minHeight: '48px' }}
                 >
                   <option value="">-- Choose a subject --</option>
                   {subjects.map((subject) => (
@@ -262,19 +270,20 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
                     </option>
                   ))}
                 </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-text-medium group-hover:text-brand-primary transition-colors duration-200">
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-text-medium group-hover:text-brand-primary transition-colors duration-200 pointer-events-none">
                   <ChevronDownIcon />
                 </div>
                 {selectedSubjectId && (
-                  <div className="absolute right-14 top-1/2 -translate-y-1/2 text-brand-primary">
+                  <div className="absolute right-12 top-1/2 -translate-y-1/2 text-brand-primary animate-scaleIn">
                     <CheckCircleIcon />
                   </div>
                 )}
               </div>
             </div>
 
+            {/* Chapter Select */}
             <div>
-              <label htmlFor="chapter-select" className="flex items-center gap-1.5 text-xs font-bold text-brand-text-medium mb-2 uppercase tracking-wider">
+              <label htmlFor="chapter-select" className="flex items-center gap-1.5 text-[11px] font-bold text-brand-text-medium mb-2 uppercase tracking-wider">
                 <ClipboardListIcon />
                 Select Chapter
               </label>
@@ -284,7 +293,8 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
                   value={selectedChapterId}
                   onChange={handleChapterChange}
                   disabled={!selectedSubjectId}
-                  className="w-full h-14 px-4 pr-12 bg-brand-bg border-2 border-brand-border rounded-2xl text-sm text-brand-text-light appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary focus:shadow-lg focus:shadow-brand-primary/10 transition-all duration-200 hover:border-brand-text-medium/40 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-brand-border"
+                  className="w-full h-12.5 px-4 pr-10 bg-brand-surface border-2 border-brand-border rounded-xl text-sm text-brand-text-light appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary focus:shadow-lg focus:shadow-brand-primary/10 transition-all duration-200 hover:border-brand-text-medium/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-brand-border"
+                  style={{ minHeight: '48px' }}
                 >
                   <option value="">-- Choose a chapter --</option>
                   {chapters.map((chapter) => (
@@ -293,29 +303,30 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
                     </option>
                   ))}
                 </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-text-medium group-hover:text-brand-primary transition-colors duration-200">
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-text-medium group-hover:text-brand-primary transition-colors duration-200 pointer-events-none">
                   <ChevronDownIcon />
                 </div>
                 {selectedChapterId && (
-                  <div className="absolute right-14 top-1/2 -translate-y-1/2 text-brand-primary">
+                  <div className="absolute right-12 top-1/2 -translate-y-1/2 text-brand-primary animate-scaleIn">
                     <CheckCircleIcon />
                   </div>
                 )}
               </div>
             </div>
 
+            {/* Generation Mode - iOS Segmented Control Style */}
             <div>
-              <label className="block text-xs font-bold text-brand-text-medium mb-2 uppercase tracking-wider">
+              <label className="block text-[11px] font-bold text-brand-text-medium mb-2 uppercase tracking-wider">
                 Generation Mode
               </label>
-              <div className="grid grid-cols-2 gap-2 p-1 bg-brand-bg rounded-xl border border-brand-border">
+              <div className="grid grid-cols-2 gap-2 p-1 bg-brand-bg/80 rounded-xl border border-brand-border/60">
                 <button
                   type="button"
                   onClick={() => onGenerationModeChange('chapter')}
                   className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 min-h-[44px] ${
                     generationMode === 'chapter'
-                      ? 'bg-brand-primary text-white shadow-sm'
-                      : 'bg-transparent text-brand-text-medium hover:text-brand-text-light hover:bg-brand-surface'
+                      ? 'bg-white dark:bg-slate-700 text-brand-text-light shadow-sm border border-brand-border/80'
+                      : 'bg-transparent text-brand-text-medium hover:text-brand-text-light hover:bg-brand-surface/50'
                   }`}
                 >
                   <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -328,8 +339,8 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
                   onClick={() => onGenerationModeChange('topic')}
                   className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 min-h-[44px] ${
                     generationMode === 'topic'
-                      ? 'bg-brand-primary text-white shadow-sm'
-                      : 'bg-transparent text-brand-text-medium hover:text-brand-text-light hover:bg-brand-surface'
+                      ? 'bg-white dark:bg-slate-700 text-brand-text-light shadow-sm border border-brand-border/80'
+                      : 'bg-transparent text-brand-text-medium hover:text-brand-text-light hover:bg-brand-surface/50'
                   }`}
                 >
                   <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -342,7 +353,7 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
 
             {generationMode === 'topic' && (
               <div className="animate-in fade-in slide-in-from-top-2 duration-200">
-                <label htmlFor="topic-input" className="block text-xs font-bold text-brand-text-medium mb-2 uppercase tracking-wider">
+                <label htmlFor="topic-input" className="block text-[11px] font-bold text-brand-text-medium mb-2 uppercase tracking-wider">
                   Topic or SLO
                 </label>
                 <input
@@ -351,26 +362,27 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
                   value={topicInput}
                   onChange={(e) => onTopicInputChange(e.target.value)}
                   placeholder="Enter the specific topic or SLO you want to teach..."
-                  className="w-full h-12 px-3.5 bg-brand-surface border border-brand-border rounded-xl text-sm text-brand-text-light placeholder:text-brand-text-medium/50 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary focus:shadow-lg focus:shadow-brand-primary/10 transition-all duration-200"
+                  className="w-full h-12 px-3.5 bg-brand-surface border border-brand-border rounded-xl text-sm text-brand-text-light placeholder:text-brand-text-medium/40 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary focus:shadow-lg focus:shadow-brand-primary/10 transition-all duration-200"
                 />
               </div>
             )}
           </div>
 
+          {/* Current Selection Summary */}
           {hasSelection && (
-            <div className="pt-2">
-              <div className="relative overflow-hidden bg-gradient-to-r from-brand-bg via-brand-bg to-brand-bg rounded-2xl p-4 border border-brand-border shadow-sm">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-brand-primary via-brand-primary/70 to-brand-primary/30" />
+            <div className="pt-1">
+              <div className="relative overflow-hidden bg-brand-bg/60 dark:bg-slate-900/30 rounded-2xl p-4 border border-brand-border/60">
+                <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-brand-primary via-brand-primary/60 to-transparent" />
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-brand-primary animate-pulse" />
-                    <span className="text-[11px] font-bold text-brand-text-medium uppercase tracking-wider">
+                    <div className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse" />
+                    <span className="text-[10px] font-bold text-brand-text-medium uppercase tracking-widest">
                       Current Selection
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     {selectedClass ? (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-primary/10 text-brand-primary rounded-lg font-bold border border-brand-primary/20">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-primary/8 dark:bg-brand-primary/15 text-brand-primary rounded-lg font-bold text-[11px] border border-brand-primary/15">
                         <GraduationCapIcon />
                         {selectedClass.name}
                       </span>
@@ -380,10 +392,10 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
                       </span>
                     )}
                     {selectedSubject && (
-                      <span className="text-brand-text-medium">/</span>
+                      <span className="text-brand-text-medium/60 text-xs font-bold">/</span>
                     )}
                     {selectedSubject ? (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-primary/10 text-brand-primary rounded-lg font-bold border border-brand-primary/20">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-primary/8 dark:bg-brand-primary/15 text-brand-primary rounded-lg font-bold text-[11px] border border-brand-primary/15">
                         <BookOpenIcon />
                         {selectedSubject.name}
                       </span>
@@ -398,11 +410,12 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
             </div>
           )}
 
+          {/* Generate Button */}
           <div className="pt-1">
             <button
               onClick={onGenerate}
               disabled={isGenerateDisabled}
-              className="w-full flex items-center justify-center gap-2.5 bg-brand-primary text-white font-bold py-3.5 px-5 rounded-xl hover:bg-brand-primary-hover transition-all duration-200 shadow-lg shadow-brand-primary/20 hover:scale-[1.01] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-h-[44px]"
+              className="w-full flex items-center justify-center gap-2.5 bg-brand-primary text-white font-bold py-3.5 px-5 rounded-xl hover:bg-brand-primary-hover transition-all duration-200 shadow-lg shadow-brand-primary/20 hover:shadow-xl hover:shadow-brand-primary/25 hover:scale-[1.01] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-lg min-h-[48px]"
             >
               {isGenerating ? (
                 <>

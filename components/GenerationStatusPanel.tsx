@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect } from 'react';
 import { CheckCircleIcon, CloseIcon, StopIcon } from './icons/MiscIcons';
 
@@ -19,32 +18,32 @@ const GenerationStatusPanel: React.FC<GenerationStatusPanelProps> = ({ isLoading
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logMessages]);
-  
+
   return (
-    <div className="absolute bottom-6 right-6 w-[400px] max-w-[90vw] bg-brand-surface/95 backdrop-blur-md border border-brand-border shadow-2xl rounded-2xl overflow-hidden z-50 flex flex-col animate-slideUp">
-        <div className="flex justify-between items-center p-4 border-b border-brand-border bg-brand-surface/50">
+    <div className="absolute bottom-6 right-6 w-[400px] max-w-[90vw] bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl border border-brand-border/80 shadow-elevated rounded-2xl overflow-hidden z-50 flex flex-col animate-slideUp">
+        <div className="flex justify-between items-center p-4 border-b border-brand-border/60 bg-brand-surface/40">
         <div className="flex items-center gap-3">
             {isLoading ? (
-                <div className="relative w-3 h-3">
+                <div className="relative w-2.5 h-2.5">
                      <div className="absolute inset-0 rounded-full bg-brand-primary animate-ping opacity-75"></div>
                      <div className="absolute inset-0 rounded-full bg-brand-primary"></div>
                 </div>
             ) : error ? (
-                <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center">
+                <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center shadow-lg shadow-red-500/20">
                   <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </div>
             ) : (
-                <CheckCircleIcon className="w-5 h-5 text-green-500" />
+                <CheckCircleIcon className="w-5 h-5 text-emerald-500" />
             )}
             <h2 className="font-bold text-brand-text-light text-sm">
                 {error ? 'Generation Failed' : isComplete ? 'Generation Complete' : 'Generating...'}
             </h2>
         </div>
-        <div className="flex items-center gap-2">
-           <button onClick={onClose} className="p-1 text-brand-text-medium hover:text-brand-text-light rounded-full hover:bg-brand-bg transition-colors">
-            <CloseIcon className="w-5 h-5" />
+        <div className="flex items-center gap-1">
+           <button onClick={onClose} className="p-1.5 text-brand-text-medium hover:text-brand-text-light rounded-lg hover:bg-brand-bg/60 transition-colors">
+            <CloseIcon className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -52,7 +51,7 @@ const GenerationStatusPanel: React.FC<GenerationStatusPanelProps> = ({ isLoading
       <div className="p-4 max-h-[300px] flex flex-col gap-3">
         {isLoading && generationProgress && (
           <div className="w-full">
-            <div className="flex justify-between text-xs text-brand-text-medium mb-1.5">
+            <div className="flex justify-between text-[11px] text-brand-text-medium mb-1.5 font-semibold">
                  <span>Progress</span>
                  <span className="font-mono">{generationProgress.current} / {generationProgress.total}</span>
             </div>
@@ -67,11 +66,11 @@ const GenerationStatusPanel: React.FC<GenerationStatusPanelProps> = ({ isLoading
           </div>
         )}
 
-        <div className="flex-grow overflow-y-auto custom-scrollbar bg-brand-bg/50 border border-brand-border/50 p-3 rounded-lg h-[150px] text-xs font-mono text-brand-text-medium">
+        <div className="flex-grow overflow-y-auto custom-scrollbar bg-brand-bg/40 border border-brand-border/40 p-3 rounded-xl text-xs font-mono text-brand-text-medium">
           {logMessages.map((msg, index) => (
             <div key={index} className="mb-1 last:mb-0">
-              <span className="text-brand-text-dark mr-2 opacity-50">{`>`}</span>
-              <span className={msg.startsWith('ERROR') ? 'text-red-400' : msg.startsWith('Successfully') ? 'text-green-500' : ''}>
+              <span className="text-brand-text-dark mr-2 opacity-40">{`>`}</span>
+              <span className={msg.startsWith('ERROR') ? 'text-red-400 font-semibold' : msg.startsWith('Successfully') ? 'text-emerald-500 font-medium' : ''}>
                 {msg}
               </span>
             </div>
@@ -81,9 +80,9 @@ const GenerationStatusPanel: React.FC<GenerationStatusPanelProps> = ({ isLoading
 
         <div className="flex gap-2 mt-1">
             {isLoading && (
-                 <button 
-                    onClick={onStop} 
-                    className="flex-1 flex items-center justify-center gap-2 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-lg text-sm font-semibold transition-colors"
+                 <button
+                    onClick={onStop}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-red-500/8 hover:bg-red-500/15 text-red-500 border border-red-500/15 rounded-xl text-sm font-semibold transition-colors"
                 >
                     <StopIcon className="w-4 h-4" />
                     Cancel
@@ -92,7 +91,7 @@ const GenerationStatusPanel: React.FC<GenerationStatusPanelProps> = ({ isLoading
             {isComplete && (
                 <button
                     onClick={onViewResults}
-                    className="flex-1 bg-brand-primary text-white font-bold py-2 rounded-lg hover:bg-brand-primary-hover transition-all shadow-lg shadow-brand-primary/20 text-sm"
+                    className="flex-1 bg-brand-primary text-white font-bold py-2.5 rounded-xl hover:bg-brand-primary-hover transition-all shadow-lg shadow-brand-primary/20 text-sm"
                 >
                     View Results
                 </button>

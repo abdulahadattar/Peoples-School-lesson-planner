@@ -114,8 +114,9 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
   const isDisabled = isGenerating || !canGenerate || !marksValid;
 
   return (
-    <div className="w-full max-w-2xl mx-auto px-4 py-6 md:py-8">
-      <div className="flex items-center gap-3 mb-6">
+    <div className="w-full max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-brand-primary/10 flex items-center justify-center flex-shrink-0 border border-brand-border">
           <DocumentTextIcon className="w-5 h-5 text-brand-primary" />
         </div>
@@ -129,23 +130,25 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
         </div>
       </div>
 
-      <div className="bg-brand-surface rounded-2xl border border-brand-border shadow-soft overflow-hidden">
-        <div className="p-4 sm:p-6 space-y-6">
+      {/* Main Card */}
+      <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-3xl shadow-card border border-brand-border/80 overflow-hidden">
+        <div className="p-5 sm:p-7 space-y-6">
           {/* Selectors */}
           <div className="space-y-4">
             <div>
               <label
                 htmlFor="class-select"
-                className="block text-xs font-semibold text-brand-text-medium mb-1.5 uppercase tracking-wider"
+                className="block text-[11px] font-bold text-brand-text-medium mb-2 uppercase tracking-wider"
               >
                 Select Class
               </label>
-              <div className="relative">
+              <div className="relative group">
                 <select
                   id="class-select"
                   value={selectedClassId}
                   onChange={handleClassChange}
-                  className="w-full h-12 px-3.5 pr-10 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text-light appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-all hover:border-brand-text-medium/40 min-h-[44px]"
+                  className="w-full h-12 px-3.5 pr-10 bg-brand-bg/60 border-2 border-brand-border rounded-xl text-sm text-brand-text-light appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all hover:border-brand-text-medium/30"
+                  style={{ minHeight: '48px' }}
                 >
                   <option value="">-- Choose a class --</option>
                   {classes.map((cls) => (
@@ -163,17 +166,18 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
             <div>
               <label
                 htmlFor="subject-select"
-                className="block text-xs font-semibold text-brand-text-medium mb-1.5 uppercase tracking-wider"
+                className="block text-[11px] font-bold text-brand-text-medium mb-2 uppercase tracking-wider"
               >
                 Select Subject
               </label>
-              <div className="relative">
+              <div className="relative group">
                 <select
                   id="subject-select"
                   value={selectedSubjectId}
                   onChange={handleSubjectChange}
                   disabled={!selectedClassId}
-                  className="w-full h-12 px-3.5 pr-10 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text-light appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-all hover:border-brand-text-medium/40 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+                  className="w-full h-12 px-3.5 pr-10 bg-brand-bg/60 border-2 border-brand-border rounded-xl text-sm text-brand-text-light appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all hover:border-brand-text-medium/30 disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ minHeight: '48px' }}
                 >
                   <option value="">-- Choose a subject --</option>
                   {subjects.map((subject) => (
@@ -191,17 +195,18 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
             <div>
               <label
                 htmlFor="chapter-select"
-                className="block text-xs font-semibold text-brand-text-medium mb-1.5 uppercase tracking-wider"
+                className="block text-[11px] font-bold text-brand-text-medium mb-2 uppercase tracking-wider"
               >
                 Select Chapter
               </label>
-              <div className="relative">
+              <div className="relative group">
                 <select
                   id="chapter-select"
                   value={selectedChapterId}
                   onChange={handleChapterChange}
                   disabled={!selectedSubjectId}
-                  className="w-full h-12 px-3.5 pr-10 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text-light appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-all hover:border-brand-text-medium/40 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+                  className="w-full h-12 px-3.5 pr-10 bg-brand-bg/60 border-2 border-brand-border rounded-xl text-sm text-brand-text-light appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all hover:border-brand-text-medium/30 disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ minHeight: '48px' }}
                 >
                   <option value="">-- Choose a chapter --</option>
                   {chapters.map((chapter) => (
@@ -217,136 +222,86 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
             </div>
           </div>
 
-          {/* Paper configuration */}
+          {/* Paper Configuration */}
           <div>
-            <h3 className="text-xs font-semibold text-brand-text-medium uppercase tracking-wider mb-3">
+            <h3 className="text-[11px] font-bold text-brand-text-medium uppercase tracking-wider mb-3">
               Paper Configuration
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="space-y-1.5">
-                <label className="block text-xs text-brand-text-medium font-medium">
-                  Total Marks
-                </label>
-                <input
-                  type="number"
-                  min={5}
-                  max={100}
-                  value={totalMarks}
-                  onChange={(e) => setTotalMarks(clampNumber(e.target.value, 5, 100))}
-                  className="w-full h-12 px-3.5 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text-light placeholder:text-brand-text-medium/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none min-h-[44px]"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs text-brand-text-medium font-medium">
-                  Duration (Minutes)
-                </label>
-                <input
-                  type="number"
-                  min={15}
-                  max={180}
-                  value={durationMinutes}
-                  onChange={(e) => setDurationMinutes(clampNumber(e.target.value, 15, 180))}
-                  className="w-full h-12 px-3.5 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text-light placeholder:text-brand-text-medium/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none min-h-[44px]"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs text-brand-text-medium font-medium">
-                  MCQ Count
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  max={50}
-                  value={mcqCount}
-                  onChange={(e) => setMcqCount(clampNumber(e.target.value, 0, 50))}
-                  className="w-full h-12 px-3.5 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text-light placeholder:text-brand-text-medium/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none min-h-[44px]"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs text-brand-text-medium font-medium">
-                  Short Questions Count
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  max={30}
-                  value={shortQuestionCount}
-                  onChange={(e) => setShortQuestionCount(clampNumber(e.target.value, 0, 30))}
-                  className="w-full h-12 px-3.5 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text-light placeholder:text-brand-text-medium/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none min-h-[44px]"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-xs text-brand-text-medium font-medium">
-                  Long Questions Count
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  max={20}
-                  value={longQuestionCount}
-                  onChange={(e) => setLongQuestionCount(clampNumber(e.target.value, 0, 20))}
-                  className="w-full h-12 px-3.5 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text-light placeholder:text-brand-text-medium/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none min-h-[44px]"
-                />
-              </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {[
+                { label: 'Total Marks', value: totalMarks, set: setTotalMarks, min: 5, max: 100 },
+                { label: 'Duration (mins)', value: durationMinutes, set: setDurationMinutes, min: 15, max: 180 },
+                { label: 'MCQ Count', value: mcqCount, set: setMcqCount, min: 0, max: 50 },
+                { label: 'Short Questions', value: shortQuestionCount, set: setShortQuestionCount, min: 0, max: 30 },
+                { label: 'Long Questions', value: longQuestionCount, set: setLongQuestionCount, min: 0, max: 20 },
+              ].map(({ label, value, set, min, max }) => (
+                <div key={label} className="space-y-1.5">
+                  <label className="block text-[11px] text-brand-text-medium font-semibold">
+                    {label}
+                  </label>
+                  <input
+                    type="number"
+                    min={min}
+                    max={max}
+                    value={value}
+                    onChange={(e) => set(clampNumber(e.target.value, min, max))}
+                    className="w-full h-11 px-3 bg-brand-bg/60 border border-brand-border rounded-xl text-sm text-brand-text-light placeholder:text-brand-text-medium/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all"
+                    style={{ minHeight: '44px' }}
+                  />
+                </div>
+              ))}
             </div>
           </div>
 
           {/* Live mark distribution summary */}
-          <div className="bg-brand-bg rounded-xl border border-brand-border p-4 min-h-[44px]">
+          <div className="bg-brand-bg/40 rounded-xl border border-brand-border/60 p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-semibold text-brand-text-medium uppercase tracking-wider">
+              <h3 className="text-[11px] font-bold text-brand-text-medium uppercase tracking-wider">
                 Mark Distribution
               </h3>
-              <span className="text-xs font-mono text-brand-text-medium">
+              <span className="text-[11px] font-mono text-brand-text-medium font-semibold">
                 Total: {totalMarks} marks
               </span>
             </div>
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-brand-text-light">MCQ Section</span>
+                <span className="text-sm text-brand-text-light font-medium">MCQ Section</span>
                 <span className="text-xs font-mono text-brand-text-medium">
                   {formatMark(markDistribution.mcqMarks)} marks
                   {mcqCount > 0 && (
-                    <span className="hidden sm:inline">
-                      {' '}
-                      ({formatMark(markDistribution.mcqPerQuestion)} x {mcqCount})
+                    <span className="hidden sm:inline text-brand-text-dark">
+                      {' '}({formatMark(markDistribution.mcqPerQuestion)} x {mcqCount})
                     </span>
                   )}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-brand-text-light">Short Answer Section</span>
+                <span className="text-sm text-brand-text-light font-medium">Short Answer Section</span>
                 <span className="text-xs font-mono text-brand-text-medium">
                   {formatMark(markDistribution.shortMarks)} marks
                   {shortQuestionCount > 0 && (
-                    <span className="hidden sm:inline">
-                      {' '}
-                      ({formatMark(markDistribution.shortPerQuestion)} x {shortQuestionCount})
+                    <span className="hidden sm:inline text-brand-text-dark">
+                      {' '}({formatMark(markDistribution.shortPerQuestion)} x {shortQuestionCount})
                     </span>
                   )}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-brand-text-light">Long Answer Section</span>
+                <span className="text-sm text-brand-text-light font-medium">Long Answer Section</span>
                 <span className="text-xs font-mono text-brand-text-medium">
                   {formatMark(markDistribution.longMarks)} marks
                   {longQuestionCount > 0 && (
-                    <span className="hidden sm:inline">
-                      {' '}
-                      ({formatMark(markDistribution.longPerQuestion)} x {longQuestionCount})
+                    <span className="hidden sm:inline text-brand-text-dark">
+                      {' '}({formatMark(markDistribution.longPerQuestion)} x {longQuestionCount})
                     </span>
                   )}
                 </span>
               </div>
-              <div className="border-t border-brand-border/50 pt-2 mt-2 flex items-center justify-between">
-                <span className="text-xs font-semibold text-brand-text-medium uppercase tracking-wider">
+              <div className="border-t border-brand-border/50 pt-2.5 mt-2 flex items-center justify-between">
+                <span className="text-[11px] font-bold text-brand-text-medium uppercase tracking-wider">
                   Duration
                 </span>
-                <span className="text-xs font-mono text-brand-text-light">
+                <span className="text-xs font-mono text-brand-text-light font-medium">
                   {durationMinutes} minutes
                 </span>
               </div>
@@ -357,17 +312,17 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
           {(selectedClass || selectedSubject || selectedChapter) && (
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono text-brand-text-medium">
               {selectedClass ? (
-                <span className="px-2 py-1 bg-brand-bg rounded-md border border-brand-border">
+                <span className="px-2.5 py-1.5 bg-brand-bg/60 rounded-lg border border-brand-border/60 font-medium">
                   Class: {selectedClass.shortName}
                 </span>
               ) : null}
               {selectedSubject ? (
-                <span className="px-2 py-1 bg-brand-bg rounded-md border border-brand-border">
+                <span className="px-2.5 py-1.5 bg-brand-bg/60 rounded-lg border border-brand-border/60 font-medium">
                   Subject: {selectedSubject.name}
                 </span>
               ) : null}
               {selectedChapter ? (
-                <span className="px-2 py-1 bg-brand-bg rounded-md border border-brand-border">
+                <span className="px-2.5 py-1.5 bg-brand-bg/60 rounded-lg border border-brand-border/60 font-medium">
                   Chapter: {selectedChapter.name}
                 </span>
               ) : null}
@@ -376,7 +331,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
 
           {/* Generate button */}
           {!marksValid && (
-            <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-600 dark:text-red-400 font-medium">
+            <div className="mb-3 p-3.5 bg-red-50/80 dark:bg-red-900/15 border border-red-200/80 dark:border-red-800/40 rounded-xl text-xs text-red-600 dark:text-red-400 font-medium">
               Mark distribution mismatch: questions total {markDistribution.totalQuestionMarks} marks, but you selected {totalMarks} marks. Adjust counts to match.
             </div>
           )}
@@ -384,7 +339,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
             type="button"
             onClick={handleGenerate}
             disabled={isDisabled}
-            className="w-full flex items-center justify-center gap-2.5 bg-brand-primary text-white font-bold py-3 px-5 rounded-xl hover:bg-brand-primary-hover transition-all duration-200 shadow-lg shadow-brand-primary/20 hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-h-[44px]"
+            className="w-full flex items-center justify-center gap-2.5 bg-brand-primary text-white font-bold py-3.5 px-5 rounded-xl hover:bg-brand-primary-hover transition-all duration-200 shadow-lg shadow-brand-primary/20 hover:shadow-xl hover:shadow-brand-primary/25 hover:scale-[1.01] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-h-[48px]"
           >
             {isGenerating ? (
               <>

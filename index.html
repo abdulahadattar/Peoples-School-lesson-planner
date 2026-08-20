@@ -16,7 +16,7 @@
         theme: {
           extend: {
             fontFamily: {
-              sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+              sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
             },
             colors: {
               'brand-primary': 'var(--primary-color)',
@@ -31,8 +31,18 @@
               'brand-accent': 'var(--accent-color)',
             },
             boxShadow: {
-              'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
-              'glow': '0 0 15px var(--primary-color)',
+              'soft': '0 2px 12px -2px rgba(0, 0, 0, 0.04)',
+              'card': '0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 6px 16px -4px rgba(0, 0, 0, 0.04)',
+              'elevated': '0 4px 6px -2px rgba(0, 0, 0, 0.03), 0 12px 24px -8px rgba(0, 0, 0, 0.06)',
+              'glow': '0 0 20px -4px var(--primary-color)',
+              'inner-glow': 'inset 0 0 0 1px rgba(255,255,255,0.05)',
+            },
+            borderRadius: {
+              '4xl': '2rem',
+            },
+            spacing: {
+              '18': '4.5rem',
+              '88': '22rem',
             }
           }
         }
@@ -40,58 +50,59 @@
     </script>
     <style>
       :root {
-        --bg-color: #f3f4f6; /* Gray 100 */
+        --bg-color: #f8fafc;
         --surface-color: #ffffff;
-        --panel-color: #e2e8f0; /* Slate 200 */
-        --text-light: #1e293b; /* Slate 800 */
-        --text-medium: #64748b; /* Slate 500 */
-        --text-dark: #94a3b8; /* Slate 400 */
-        --border-color: #e2e8f0; /* Slate 200 */
-        --primary-color: #3b82f6; /* Blue 500 */
-        --primary-hover: #2563eb; /* Blue 600 */
-        --accent-color: #f8fafc;
+        --panel-color: #f1f5f9;
+        --text-light: #0f172a;
+        --text-medium: #475569;
+        --text-dark: #94a3b8;
+        --border-color: #e2e8f0;
+        --primary-color: #6366f1;
+        --primary-hover: #4f46e5;
+        --accent-color: #eef2ff;
       }
 
       .dark {
-        --bg-color: #0f172a; /* Slate 900 */
-        --surface-color: #1e293b; /* Slate 800 */
-        --panel-color: #334155; /* Slate 700 */
-        --text-light: #f1f5f9; /* Slate 100 */
-        --text-medium: #94a3b8; /* Slate 400 */
-        --text-dark: #64748b; /* Slate 500 */
-        --border-color: #334155; /* Slate 700 */
-        --primary-color: #38bdf8; /* Sky 400 */
-        --primary-hover: #0ea5e9; /* Sky 500 */
-        --accent-color: #0f172a;
+        --bg-color: #0c0a1a;
+        --surface-color: #1a1b2e;
+        --panel-color: #232436;
+        --text-light: #f1f5f9;
+        --text-medium: #94a3b8;
+        --text-dark: #64748b;
+        --border-color: #2d2f45;
+        --primary-color: #818cf8;
+        --primary-hover: #6366f1;
+        --accent-color: #1e1b4b;
       }
 
       body {
-        transition: background-color 0.3s ease, color 0.3s ease;
+        transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
       }
 
       /* Custom Scrollbar for Webkit browsers */
       .custom-scrollbar::-webkit-scrollbar {
-        width: 6px;
+        width: 5px;
       }
       .custom-scrollbar::-webkit-scrollbar-track {
         background: transparent;
       }
       .custom-scrollbar::-webkit-scrollbar-thumb {
         background: var(--text-dark);
-        border-radius: 20px;
+        border-radius: 100px;
       }
       .custom-scrollbar::-webkit-scrollbar-thumb:hover {
         background: var(--text-medium);
       }
-      
+
       /* Style for the summary marker */
       summary {
-        list-style: none; /* Remove default marker */
+        list-style: none;
       }
       summary::-webkit-details-marker {
         display: none;
       }
-      /* Better details animation support */
       details > summary {
         list-style: none;
       }
@@ -101,7 +112,7 @@
 
       /* Custom animations */
       @keyframes fadeInUp {
-        from { opacity: 0; transform: translateY(20px); }
+        from { opacity: 0; transform: translateY(24px); }
         to { opacity: 1; transform: translateY(0); }
       }
       @keyframes fadeIn {
@@ -109,14 +120,37 @@
         to { opacity: 1; }
       }
       @keyframes slideUp {
-        from { opacity: 0; transform: translateY(30px); }
-        to { opacity: 1; transform: translateY(0); }
+        from { opacity: 0; transform: translateY(32px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+      }
+      @keyframes scaleIn {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+      }
+      @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
       }
       .animate-fadeIn {
         animation: fadeIn 0.5s ease-out forwards;
       }
       .animate-slideUp {
-        animation: slideUp 0.4s ease-out forwards;
+        animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      .animate-scaleIn {
+        animation: scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+
+      /* Smooth select styling */
+      select {
+        background-image: none;
+      }
+
+      /* Number input spinners */
+      input[type="number"]::-webkit-inner-spin-button,
+      input[type="number"]::-webkit-outer-spin-button {
+        opacity: 1;
+        height: 28px;
       }
     </style>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" integrity="sha384-KiWOvVjnN8qwZuNufXEypUHr/ROe9G7Akja23+cmPSUPoMinqKFSnbMyEWwKSbQN" crossorigin="anonymous">
