@@ -211,7 +211,7 @@ export const exportAsPdf = async (lessonPlan: LessonPlan, sloId?: string, teache
       },
       defaultStyle: { font: 'Roboto' }
   };
-  if (typeof pdfMake !== 'undefined') {
+  if (typeof pdfMake !== 'undefined' && typeof pdfMake.createPdf === 'function') {
     pdfMake.createPdf(docDefinition).download(fileName);
   }
 };
@@ -313,7 +313,7 @@ export const exportMultipleLessonsAsPdf = async (lessonPlans: LessonPlan[], file
         defaultStyle: { font: 'Roboto' }
     };
 
-    if (typeof pdfMake !== 'undefined') {
+    if (typeof pdfMake !== 'undefined' && typeof pdfMake.createPdf === 'function') {
       pdfMake.createPdf(docDefinition).download(`${fileName}.pdf`);
     }
 };
@@ -495,7 +495,7 @@ export const exportPaperAsPdf = async (paper: GeneratedPaper, teacherInfo?: Teac
         },
         defaultStyle: { font: 'Roboto', fontSize: 10, lineHeight: 1.3 }
     };
-    if (typeof pdfMake !== 'undefined') {
+    if (typeof pdfMake !== 'undefined' && typeof pdfMake.createPdf === 'function') {
       pdfMake.createPdf(docDefinition).download(fileName);
     }
 };
