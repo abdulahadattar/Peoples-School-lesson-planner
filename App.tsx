@@ -31,6 +31,7 @@ const App: React.FC = () => {
     generatedPapers,
     error,
     showStatusPanel,
+    setShowStatusPanel,
     generateLessonPlan,
     generatePaper,
     exportPlan,

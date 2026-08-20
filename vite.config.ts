@@ -18,6 +18,18 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
+      },
+      build: {
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              react: ['react', 'react-dom'],
+              genai: ['@google/genai'],
+              docx: ['docx', 'file-saver'],
+              vendor: ['idb-keyval', 'react-dropzone'],
+            },
+          },
+        },
       }
     };
 });
