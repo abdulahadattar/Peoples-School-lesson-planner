@@ -21,8 +21,8 @@ const GenerationStatusPanel: React.FC<GenerationStatusPanelProps> = ({ isLoading
   }, [logMessages]);
   
   return (
-    <div className="absolute bottom-6 right-6 w-[400px] max-w-[90vw] bg-brand-surface/95 backdrop-blur-md border border-brand-border shadow-2xl rounded-2xl overflow-hidden z-50 flex flex-col animate-slideUp">
-        <div className="flex justify-between items-center p-4 border-b border-brand-border bg-brand-surface/50">
+    <div className="absolute bottom-6 right-6 w-[400px] max-w-[90vw] bg-brand-surface border border-brand-border rounded-2xl overflow-hidden z-50 flex flex-col animate-slideUp">
+        <div className="flex justify-between items-center p-4 border-b border-brand-border">
         <div className="flex items-center gap-3">
             {isLoading ? (
                 <div className="relative w-3 h-3">
@@ -38,12 +38,12 @@ const GenerationStatusPanel: React.FC<GenerationStatusPanelProps> = ({ isLoading
             ) : (
                 <CheckCircleIcon className="w-5 h-5 text-green-500" />
             )}
-            <h2 className="font-bold text-brand-text-light text-sm">
+            <h2 className="font-bold text-brand-text-primary text-sm">
                 {error ? 'Generation Failed' : isComplete ? 'Generation Complete' : 'Generating...'}
             </h2>
         </div>
         <div className="flex items-center gap-2">
-           <button onClick={onClose} className="p-1 text-brand-text-medium hover:text-brand-text-light rounded-full hover:bg-brand-bg transition-colors">
+           <button onClick={onClose} className="p-1 text-brand-text-secondary hover:text-brand-text-primary rounded-full hover:bg-brand-bg transition-colors">
             <CloseIcon className="w-5 h-5" />
           </button>
         </div>
@@ -52,25 +52,24 @@ const GenerationStatusPanel: React.FC<GenerationStatusPanelProps> = ({ isLoading
       <div className="p-4 max-h-[300px] flex flex-col gap-3">
         {isLoading && generationProgress && (
           <div className="w-full">
-            <div className="flex justify-between text-xs text-brand-text-medium mb-1.5">
+            <div className="flex justify-between text-xs text-brand-text-secondary mb-1.5">
                  <span>Progress</span>
                  <span className="font-mono">{generationProgress.current} / {generationProgress.total}</span>
             </div>
             <div className="w-full bg-brand-bg rounded-full h-1.5 overflow-hidden">
               <div
-                className="bg-brand-primary h-1.5 rounded-full transition-all duration-300 ease-out relative"
+                className="bg-brand-primary h-1.5 rounded-full transition-all duration-300 ease-out"
                 style={{ width: `${(generationProgress.current / generationProgress.total) * 100}%` }}
               >
-                <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
               </div>
             </div>
           </div>
         )}
 
-        <div className="flex-grow overflow-y-auto custom-scrollbar bg-brand-bg/50 border border-brand-border/50 p-3 rounded-lg h-[150px] text-xs font-mono text-brand-text-medium">
+        <div className="flex-grow overflow-y-auto custom-scrollbar bg-brand-bg/50 border border-brand-border/50 p-3 rounded-lg h-[150px] text-xs font-mono text-brand-text-secondary">
           {logMessages.map((msg, index) => (
             <div key={index} className="mb-1 last:mb-0">
-              <span className="text-brand-text-dark mr-2 opacity-50">{`>`}</span>
+              <span className="text-brand-text-tertiary mr-2 opacity-50">{`>`}</span>
               <span className={msg.startsWith('ERROR') ? 'text-red-400' : msg.startsWith('Successfully') ? 'text-green-500' : ''}>
                 {msg}
               </span>
@@ -83,7 +82,7 @@ const GenerationStatusPanel: React.FC<GenerationStatusPanelProps> = ({ isLoading
             {isLoading && (
                  <button 
                     onClick={onStop} 
-                    className="flex-1 flex items-center justify-center gap-2 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-lg text-sm font-semibold transition-colors"
+                     className="flex-1 flex items-center justify-center gap-2 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-xl text-sm font-semibold transition-colors"
                 >
                     <StopIcon className="w-4 h-4" />
                     Cancel
@@ -92,7 +91,7 @@ const GenerationStatusPanel: React.FC<GenerationStatusPanelProps> = ({ isLoading
             {isComplete && (
                 <button
                     onClick={onViewResults}
-                    className="flex-1 bg-brand-primary text-white font-bold py-2 rounded-lg hover:bg-brand-primary-hover transition-all shadow-lg shadow-brand-primary/20 text-sm"
+                    className="flex-1 bg-brand-primary text-white font-bold py-2 rounded-xl hover:bg-brand-primary-hover transition-all text-sm"
                 >
                     View Results
                 </button>

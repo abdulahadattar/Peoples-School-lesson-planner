@@ -82,7 +82,7 @@ const InputPanel: React.FC<InputPanelProps> = ({
   return (
     <div className="flex flex-col gap-6">
         <div className="bg-brand-bg rounded-xl border border-brand-border p-4">
-            <p className="text-xs text-brand-text-medium mb-3 leading-relaxed">
+            <p className="text-xs text-brand-text-secondary mb-3 leading-relaxed">
               {directoryName === 'Online Textbooks' 
                   ? 'Currently using online textbook resources. To use local files, upload a folder containing PDFs.' 
                   : 'Grounds generation with content from provided textbooks.'
@@ -99,21 +99,21 @@ const InputPanel: React.FC<InputPanelProps> = ({
                 style={{ display: 'none' }}
              />
              
-             <button
-                  onClick={handleConnectClick}
-                  className="group w-full relative overflow-hidden bg-brand-surface border-2 border-dashed border-brand-border hover:border-brand-primary rounded-xl p-4 transition-all duration-300 hover:bg-brand-bg flex flex-col items-center justify-center gap-2"
-              >
-                <div className="p-2 bg-brand-bg rounded-full group-hover:scale-110 transition-transform duration-300">
+              <button
+                   onClick={handleConnectClick}
+                   className="group w-full relative overflow-hidden bg-brand-surface border border-brand-border hover:border-brand-primary rounded-lg p-4 transition-all hover:bg-brand-bg flex flex-col items-center justify-center gap-2"
+               >
+                <div className="p-2 bg-brand-bg rounded-full transition-transform">
                     <FolderIcon className="w-5 h-5 text-brand-primary" />
                 </div>
-                <span className="text-sm font-bold text-brand-text-light group-hover:text-brand-primary transition-colors">Upload Folder</span>
-                <span className="text-[10px] text-brand-text-medium text-center">Supports PDF curriculum files</span>
+                <span className="text-sm font-bold text-brand-text-primary group-hover:text-brand-primary transition-colors">Upload Folder</span>
+                <span className="text-[10px] text-brand-text-secondary text-center">Supports PDF curriculum files</span>
             </button>
         </div>
 
         {directoryName && (
             <div>
-                <h4 className="text-xs font-bold text-brand-text-medium uppercase tracking-wider mb-2 flex items-center justify-between">
+                <h4 className="text-xs font-bold text-brand-text-secondary uppercase tracking-wider mb-2 flex items-center justify-between">
                     <span>Active Context</span>
                     <span className="bg-brand-primary/10 text-brand-primary px-1.5 py-0.5 rounded text-[10px] font-mono">{contextPdfs.length}</span>
                 </h4>
@@ -123,9 +123,9 @@ const InputPanel: React.FC<InputPanelProps> = ({
                         <div className="divide-y divide-brand-border">
                             {contextPdfs.sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric: true})).map(pdf => (
                                 <div key={pdf.name} className="flex items-center gap-3 p-3 hover:bg-brand-surface transition-colors group">
-                                    <FileIcon className="w-4 h-4 text-brand-text-medium group-hover:text-brand-primary transition-colors flex-shrink-0" />
+                                    <FileIcon className="w-4 h-4 text-brand-text-secondary group-hover:text-brand-primary transition-colors flex-shrink-0" />
                                     <div className="flex-grow min-w-0">
-                                        <p className="text-xs text-brand-text-light truncate font-medium" title={pdf.name}>{pdf.name}</p>
+                                        <p className="text-xs text-brand-text-primary truncate font-medium" title={pdf.name}>{pdf.name}</p>
                                         <div className="flex items-center gap-1 mt-1">
                                             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${getGradeColorClasses(pdf.grade)}`}>{pdf.grade}</span>
                                             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${getUnitColorClasses(pdf.unit)}`}>Unit {pdf.unit}</span>
@@ -136,7 +136,7 @@ const InputPanel: React.FC<InputPanelProps> = ({
                         </div>
                     ) : (
                         <div className="text-center p-6">
-                            <p className="text-xs text-brand-text-medium">No valid Grade/Unit PDFs found.</p>
+                            <p className="text-xs text-brand-text-secondary">No valid Grade/Unit PDFs found.</p>
                         </div>
                     )}
                 </div>
