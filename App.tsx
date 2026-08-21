@@ -96,32 +96,43 @@ const App: React.FC = () => {
   const hasResults = generatedPlans.length > 0 || generatedPapers.length > 0;
 
   return (
-    <div className="flex h-screen bg-brand-bg text-brand-text-light font-sans selection:bg-brand-primary selection:text-white">
+    <div className="flex h-screen bg-brand-bg text-brand-text-light font-sans selection:bg-brand-primary selection:text-white antialiased">
       {isSidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 z-[90] md:hidden" onClick={() => setIsSidebarOpen(false)}></div>
+        <div className="fixed inset-0 bg-slate-900/20 dark:bg-black/40 z-[90] md:hidden backdrop-blur-sm transition-opacity" onClick={() => setIsSidebarOpen(false)}></div>
       )}
       
-      <aside className={`fixed md:relative z-[100] top-0 left-0 h-screen md:h-full bg-white dark:bg-slate-900 flex flex-col transition-transform duration-300 shadow-2xl md:shadow-none w-[280px] ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} border-r border-brand-border`}>
+      <aside className={`fixed md:relative z-[100] top-0 left-0 h-screen md:h-full bg-brand-surface/95 dark:bg-slate-900/95 backdrop-blur-xl flex flex-col transition-transform duration-300 md:transition-none md:shadow-none w-[280px] ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} border-r border-brand-border/60`}>
         <div className="p-6 flex-grow flex flex-col h-full overflow-hidden">
           <div className="flex items-center justify-between mb-8 md:hidden">
-            <span className="font-bold text-lg">Menu</span>
-            <button onClick={() => setIsSidebarOpen(false)} className="p-1 text-brand-text-medium hover:text-brand-text-light">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <span className="font-semibold text-base text-brand-text-light">Menu</span>
+            <button onClick={() => setIsSidebarOpen(false)} className="p-2 text-brand-text-medium hover:text-brand-text-light hover:bg-brand-bg rounded-xl transition-colors">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
             </button>
           </div>
 
-          <h3 className="text-xs font-bold text-brand-text-medium uppercase tracking-wider mb-4 pl-1">Navigation</h3>
-          <div className="space-y-2">
-            <button onClick={() => { setView('home'); clearResults(); }} className={`w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-colors ${view === 'home' ? 'bg-brand-primary text-white' : 'hover:bg-brand-bg text-brand-text-medium'}`}>
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-9 h-9 bg-brand-primary rounded-xl flex items-center justify-center text-white shadow-sm">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.832 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-brand-text-light tracking-tight">Navigation</h3>
+              <p className="text-[11px] text-brand-text-medium">Lesson Plan AI</p>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <button onClick={() => { setView('home'); clearResults(); }} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${view === 'home' ? 'bg-brand-primary text-white shadow-sm shadow-brand-primary/20' : 'text-brand-text-medium hover:bg-brand-bg hover:text-brand-text-light'}`}>
               Home
             </button>
-            <button onClick={() => handleNavigate('lesson')} className={`w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-colors ${view === 'lesson' || view === 'results' ? 'bg-brand-primary text-white' : 'hover:bg-brand-bg text-brand-text-medium'}`}>
+            <button onClick={() => handleNavigate('lesson')} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${view === 'lesson' || view === 'results' ? 'bg-brand-primary text-white shadow-sm shadow-brand-primary/20' : 'text-brand-text-medium hover:bg-brand-bg hover:text-brand-text-light'}`}>
               Lesson Plans
             </button>
-            <button onClick={() => handleNavigate('paper')} className={`w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-colors ${view === 'paper' ? 'bg-brand-primary text-white' : 'hover:bg-brand-bg text-brand-text-medium'}`}>
+            <button onClick={() => handleNavigate('paper')} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${view === 'paper' ? 'bg-brand-primary text-white shadow-sm shadow-brand-primary/20' : 'text-brand-text-medium hover:bg-brand-bg hover:text-brand-text-light'}`}>
               Exam Papers
             </button>
           </div>

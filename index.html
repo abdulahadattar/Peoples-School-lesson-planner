@@ -21,6 +21,7 @@
             colors: {
               'brand-primary': 'var(--primary-color)',
               'brand-primary-hover': 'var(--primary-hover)',
+              'brand-primary-soft': 'var(--primary-soft)',
               'brand-bg': 'var(--bg-color)',
               'brand-surface': 'var(--surface-color)',
               'brand-panel': 'var(--panel-color)',
@@ -31,8 +32,8 @@
               'brand-accent': 'var(--accent-color)',
             },
             boxShadow: {
-              'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
-              'glow': '0 0 15px var(--primary-color)',
+              'soft': '0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04)',
+              'card': '0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04), 0 4px 6px -2px rgb(0 0 0 / 0.02)',
             }
           }
         }
@@ -40,28 +41,30 @@
     </script>
     <style>
       :root {
-        --bg-color: #f3f4f6; /* Gray 100 */
+        --bg-color: #f8fafc; /* Slate 50 */
         --surface-color: #ffffff;
-        --panel-color: #e2e8f0; /* Slate 200 */
-        --text-light: #1e293b; /* Slate 800 */
-        --text-medium: #64748b; /* Slate 500 */
+        --panel-color: #f1f5f9; /* Slate 100 */
+        --text-light: #0f172a; /* Slate 900 */
+        --text-medium: #475569; /* Slate 600 */
         --text-dark: #94a3b8; /* Slate 400 */
         --border-color: #e2e8f0; /* Slate 200 */
-        --primary-color: #3b82f6; /* Blue 500 */
-        --primary-hover: #2563eb; /* Blue 600 */
+        --primary-color: #4f46e5; /* Indigo 600 */
+        --primary-hover: #4338ca; /* Indigo 700 */
+        --primary-soft: #eef2ff; /* Indigo 50 */
         --accent-color: #f8fafc;
       }
 
       .dark {
         --bg-color: #0f172a; /* Slate 900 */
         --surface-color: #1e293b; /* Slate 800 */
-        --panel-color: #334155; /* Slate 700 */
-        --text-light: #f1f5f9; /* Slate 100 */
+        --panel-color: #1e293b; /* Slate 800 */
+        --text-light: #f8fafc; /* Slate 50 */
         --text-medium: #94a3b8; /* Slate 400 */
         --text-dark: #64748b; /* Slate 500 */
         --border-color: #334155; /* Slate 700 */
-        --primary-color: #38bdf8; /* Sky 400 */
-        --primary-hover: #0ea5e9; /* Sky 500 */
+        --primary-color: #818cf8; /* Indigo 400 */
+        --primary-hover: #6366f1; /* Indigo 500 */
+        --primary-soft: #312e81; /* Indigo 950 */
         --accent-color: #0f172a;
       }
 

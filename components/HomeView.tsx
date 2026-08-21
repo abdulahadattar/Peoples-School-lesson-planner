@@ -9,48 +9,46 @@ const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 relative overflow-hidden">
       {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950 transition-colors duration-500" />
+      <div className="absolute inset-0 bg-brand-bg transition-colors duration-500" />
       <div
-        className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]"
+        className="absolute inset-0 opacity-[0.02] dark:opacity-[0.03]"
         style={{
           backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
-          backgroundSize: '40px 40px',
+          backgroundSize: '32px 32px',
         }}
       />
 
       {/* Content */}
-      <div className="w-full max-w-2xl relative z-10">
+      <div className="w-full max-w-lg relative z-10">
         {/* Hero Section */}
-        <div className="text-center mb-12 md:mb-16 opacity-0 animate-[fadeInUp_0.8s_ease-out_forwards]">
+        <div className="text-center mb-10 md:mb-12 opacity-0 animate-[fadeInUp_0.8s_ease-out_forwards]">
           {/* School Logo */}
-          <div className="w-24 h-24 md:w-28 md:h-28 mx-auto mb-6 rounded-full bg-gradient-to-br from-brand-primary to-indigo-600 dark:from-brand-primary dark:to-sky-400 flex items-center justify-center shadow-lg shadow-brand-primary/20 ring-4 ring-white dark:ring-slate-800 transition-transform duration-500 hover:scale-105">
-            <span className="text-3xl md:text-4xl font-bold text-white tracking-tight">PHSS</span>
+          <div className="w-20 h-20 md:w-24 md:h-24 mx-auto mb-5 rounded-2xl bg-brand-primary flex items-center justify-center text-white shadow-lg shadow-brand-primary/20">
+            <span className="text-2xl md:text-3xl font-bold tracking-tight">PHSS</span>
           </div>
 
-          <h1 className="text-3xl md:text-4xl font-extrabold text-brand-text-light tracking-tight mb-3">
+          <h1 className="text-2xl md:text-3xl font-bold text-brand-text-light tracking-tight mb-2">
             Lesson Planner
           </h1>
-          <p className="text-base md:text-lg text-brand-text-medium font-medium max-w-md mx-auto leading-relaxed">
-            Create lesson plans and exam papers with AI assistance
+          <p className="text-sm md:text-base text-brand-text-medium font-normal max-w-xs mx-auto leading-relaxed">
+            AI-powered lesson plans and exam papers for your classroom
           </p>
         </div>
 
         {/* Cards Grid */}
-        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 mb-10">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-8">
           {/* Lesson Plan Card */}
           <button
             onClick={() => onNavigate?.('lesson')}
-            className="group flex-1 relative overflow-hidden bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-3xl shadow-lg shadow-black/5 dark:shadow-black/20 border border-brand-border p-6 sm:p-8 text-center transition-all duration-300 hover:shadow-xl hover:shadow-brand-primary/10 dark:hover:shadow-brand-primary/20 hover:-translate-y-1 hover:border-brand-primary/30 active:scale-[0.98] opacity-0 animate-[fadeInUp_0.8s_ease-out_0.15s_forwards]"
+            className="group flex-1 relative overflow-hidden bg-brand-surface rounded-2xl border border-brand-border p-5 sm:p-6 text-left transition-all duration-200 hover:border-brand-primary/30 hover:shadow-card active:scale-[0.98] opacity-0 animate-[fadeInUp_0.8s_ease-out_0.15s_forwards]"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
             <div className="relative z-10">
-              <div className="w-14 h-14 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-brand-primary/10 to-indigo-100 dark:from-brand-primary/20 dark:to-indigo-900/50 flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
-                <BookOpenIcon className="w-7 h-7 text-brand-primary" />
+              <div className="w-10 h-10 mb-4 rounded-xl bg-brand-primary-soft flex items-center justify-center transition-all duration-200 group-hover:scale-105">
+                <BookOpenIcon className="w-5 h-5 text-brand-primary" />
               </div>
-              <h2 className="text-xl font-bold text-brand-text-light mb-2">Lesson Plan</h2>
-              <p className="text-sm text-brand-text-medium leading-relaxed">
-                Generate comprehensive lesson plans aligned with curriculum standards
+              <h2 className="text-base font-bold text-brand-text-light mb-1">Lesson Plan</h2>
+              <p className="text-xs text-brand-text-medium leading-relaxed">
+                Generate curriculum-aligned lesson plans
               </p>
             </div>
           </button>
@@ -58,17 +56,15 @@ const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
           {/* Exam Paper Card */}
           <button
             onClick={() => onNavigate?.('paper')}
-            className="group flex-1 relative overflow-hidden bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-3xl shadow-lg shadow-black/5 dark:shadow-black/20 border border-brand-border p-6 sm:p-8 text-center transition-all duration-300 hover:shadow-xl hover:shadow-brand-primary/10 dark:hover:shadow-brand-primary/20 hover:-translate-y-1 hover:border-brand-primary/30 active:scale-[0.98] opacity-0 animate-[fadeInUp_0.8s_ease-out_0.3s_forwards]"
+            className="group flex-1 relative overflow-hidden bg-brand-surface rounded-2xl border border-brand-border p-5 sm:p-6 text-left transition-all duration-200 hover:border-brand-primary/30 hover:shadow-card active:scale-[0.98] opacity-0 animate-[fadeInUp_0.8s_ease-out_0.3s_forwards]"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
             <div className="relative z-10">
-              <div className="w-14 h-14 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-brand-primary/10 to-indigo-100 dark:from-brand-primary/20 dark:to-indigo-900/50 flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
-                <DocumentTextIcon className="w-7 h-7 text-brand-primary" />
+              <div className="w-10 h-10 mb-4 rounded-xl bg-brand-primary-soft flex items-center justify-center transition-all duration-200 group-hover:scale-105">
+                <DocumentTextIcon className="w-5 h-5 text-brand-primary" />
               </div>
-              <h2 className="text-xl font-bold text-brand-text-light mb-2">Exam Paper</h2>
-              <p className="text-sm text-brand-text-medium leading-relaxed">
-                Create well-structured exam papers and assessments
+              <h2 className="text-base font-bold text-brand-text-light mb-1">Exam Paper</h2>
+              <p className="text-xs text-brand-text-medium leading-relaxed">
+                Create structured assessments
               </p>
             </div>
           </button>
@@ -76,7 +72,7 @@ const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
 
         {/* School Name */}
         <div className="text-center opacity-0 animate-[fadeInUp_0.8s_ease-out_0.45s_forwards]">
-          <p className="text-sm font-semibold text-brand-text-medium tracking-wide uppercase">
+          <p className="text-xs font-semibold text-brand-text-medium tracking-wide uppercase">
             Peoples Higher Secondary School Jamshoro
           </p>
         </div>
@@ -87,7 +83,7 @@ const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
         @keyframes fadeInUp {
           from {
             opacity: 0;
-            transform: translateY(20px);
+            transform: translateY(16px);
           }
           to {
             opacity: 1;
