@@ -21,18 +21,20 @@
             colors: {
               'brand-primary': 'var(--primary-color)',
               'brand-primary-hover': 'var(--primary-hover)',
+              'brand-primary-soft': 'var(--primary-soft)',
               'brand-bg': 'var(--bg-color)',
               'brand-surface': 'var(--surface-color)',
               'brand-panel': 'var(--panel-color)',
-              'brand-text-light': 'var(--text-light)',
-              'brand-text-medium': 'var(--text-medium)',
-              'brand-text-dark': 'var(--text-dark)',
+              'brand-text-primary': 'var(--text-primary)',
+              'brand-text-secondary': 'var(--text-secondary)',
+              'brand-text-tertiary': 'var(--text-tertiary)',
               'brand-border': 'var(--border-color)',
               'brand-accent': 'var(--accent-color)',
             },
             boxShadow: {
-              'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
-              'glow': '0 0 15px var(--primary-color)',
+              'soft': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+              'card': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)',
+              'card-hover': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)',
             }
           }
         }
@@ -40,33 +42,37 @@
     </script>
     <style>
       :root {
-        --bg-color: #f3f4f6; /* Gray 100 */
+        --bg-color: #f8fafc; /* Slate 50 */
         --surface-color: #ffffff;
-        --panel-color: #e2e8f0; /* Slate 200 */
-        --text-light: #1e293b; /* Slate 800 */
-        --text-medium: #64748b; /* Slate 500 */
-        --text-dark: #94a3b8; /* Slate 400 */
+        --panel-color: #f1f5f9; /* Slate 100 */
+        --text-primary: #0f172a; /* Slate 900 */
+        --text-secondary: #475569; /* Slate 600 */
+        --text-tertiary: #94a3b8; /* Slate 400 */
         --border-color: #e2e8f0; /* Slate 200 */
         --primary-color: #3b82f6; /* Blue 500 */
         --primary-hover: #2563eb; /* Blue 600 */
+        --primary-soft: #eff6ff; /* Blue 50 */
         --accent-color: #f8fafc;
       }
 
       .dark {
         --bg-color: #0f172a; /* Slate 900 */
         --surface-color: #1e293b; /* Slate 800 */
-        --panel-color: #334155; /* Slate 700 */
-        --text-light: #f1f5f9; /* Slate 100 */
-        --text-medium: #94a3b8; /* Slate 400 */
-        --text-dark: #64748b; /* Slate 500 */
+        --panel-color: #1e293b; /* Slate 800 */
+        --text-primary: #f8fafc; /* Slate 50 */
+        --text-secondary: #94a3b8; /* Slate 400 */
+        --text-tertiary: #64748b; /* Slate 500 */
         --border-color: #334155; /* Slate 700 */
-        --primary-color: #38bdf8; /* Sky 400 */
-        --primary-hover: #0ea5e9; /* Sky 500 */
+        --primary-color: #60a5fa; /* Blue 400 */
+        --primary-hover: #3b82f6; /* Blue 500 */
+        --primary-soft: #1e3a5f; /* Dark blue tint */
         --accent-color: #0f172a;
       }
 
       body {
         transition: background-color 0.3s ease, color 0.3s ease;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
       }
 
       /* Custom Scrollbar for Webkit browsers */

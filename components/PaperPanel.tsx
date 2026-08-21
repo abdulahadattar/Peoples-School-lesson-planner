@@ -114,29 +114,29 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
   const isDisabled = isGenerating || !canGenerate || !marksValid;
 
   return (
-    <div className="w-full max-w-2xl mx-auto px-4 py-6 md:py-8">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl bg-brand-primary/10 flex items-center justify-center flex-shrink-0 border border-brand-border">
-          <DocumentTextIcon className="w-5 h-5 text-brand-primary" />
-        </div>
+      <div className="w-full max-w-2xl mx-auto px-4 py-6 md:py-8">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-9 h-9 rounded-xl bg-brand-primary flex items-center justify-center flex-shrink-0">
+            <DocumentTextIcon className="w-5 h-5 text-white" />
+          </div>
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-brand-text-light tracking-tight">
+          <h1 className="text-lg md:text-xl font-bold text-brand-text-primary tracking-tight">
             Exam Paper Generator
           </h1>
-          <p className="text-sm text-brand-text-medium">
+          <p className="text-xs text-brand-text-secondary">
             Configure and generate an exam paper from the curriculum
           </p>
         </div>
       </div>
 
-      <div className="bg-brand-surface rounded-2xl border border-brand-border shadow-soft overflow-hidden">
-        <div className="p-4 sm:p-6 space-y-6">
+      <div className="bg-brand-surface rounded-2xl border border-brand-border overflow-hidden">
+        <div className="p-4 sm:p-5 space-y-5">
           {/* Selectors */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div>
               <label
                 htmlFor="class-select"
-                className="block text-xs font-semibold text-brand-text-medium mb-1.5 uppercase tracking-wider"
+                className="block text-[11px] font-semibold text-brand-text-secondary mb-1.5 uppercase tracking-wider"
               >
                 Select Class
               </label>
@@ -145,7 +145,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
                   id="class-select"
                   value={selectedClassId}
                   onChange={handleClassChange}
-                  className="w-full h-12 px-3.5 pr-10 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text-light appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-all hover:border-brand-text-medium/40 min-h-[44px]"
+                  className="w-full h-11 px-3.5 pr-10 bg-brand-bg border border-brand-border rounded-lg text-sm text-brand-text-primary appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all hover:border-brand-text-secondary/40"
                 >
                   <option value="">-- Choose a class --</option>
                   {classes.map((cls) => (
@@ -154,7 +154,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
                     </option>
                   ))}
                 </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-medium pointer-events-none">
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-secondary pointer-events-none">
                   <ChevronDownIcon />
                 </div>
               </div>
@@ -163,7 +163,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
             <div>
               <label
                 htmlFor="subject-select"
-                className="block text-xs font-semibold text-brand-text-medium mb-1.5 uppercase tracking-wider"
+                className="block text-[11px] font-semibold text-brand-text-secondary mb-1.5 uppercase tracking-wider"
               >
                 Select Subject
               </label>
@@ -173,7 +173,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
                   value={selectedSubjectId}
                   onChange={handleSubjectChange}
                   disabled={!selectedClassId}
-                  className="w-full h-12 px-3.5 pr-10 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text-light appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-all hover:border-brand-text-medium/40 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+                  className="w-full h-11 px-3.5 pr-10 bg-brand-bg border border-brand-border rounded-lg text-sm text-brand-text-primary appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all hover:border-brand-text-secondary/40 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <option value="">-- Choose a subject --</option>
                   {subjects.map((subject) => (
@@ -182,7 +182,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
                     </option>
                   ))}
                 </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-medium pointer-events-none">
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-secondary pointer-events-none">
                   <ChevronDownIcon />
                 </div>
               </div>
@@ -191,7 +191,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
             <div>
               <label
                 htmlFor="chapter-select"
-                className="block text-xs font-semibold text-brand-text-medium mb-1.5 uppercase tracking-wider"
+                className="block text-[11px] font-semibold text-brand-text-secondary mb-1.5 uppercase tracking-wider"
               >
                 Select Chapter
               </label>
@@ -201,7 +201,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
                   value={selectedChapterId}
                   onChange={handleChapterChange}
                   disabled={!selectedSubjectId}
-                  className="w-full h-12 px-3.5 pr-10 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text-light appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-all hover:border-brand-text-medium/40 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+                  className="w-full h-11 px-3.5 pr-10 bg-brand-bg border border-brand-border rounded-lg text-sm text-brand-text-primary appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all hover:border-brand-text-secondary/40 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <option value="">-- Choose a chapter --</option>
                   {chapters.map((chapter) => (
@@ -210,7 +210,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
                     </option>
                   ))}
                 </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-medium pointer-events-none">
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-secondary pointer-events-none">
                   <ChevronDownIcon />
                 </div>
               </div>
@@ -219,12 +219,12 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
 
           {/* Paper configuration */}
           <div>
-            <h3 className="text-xs font-semibold text-brand-text-medium uppercase tracking-wider mb-3">
+            <h3 className="text-[11px] font-semibold text-brand-text-secondary uppercase tracking-wider mb-3">
               Paper Configuration
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <div className="space-y-1.5">
-                <label className="block text-xs text-brand-text-medium font-medium">
+                <label className="block text-[11px] text-brand-text-secondary font-medium">
                   Total Marks
                 </label>
                 <input
@@ -233,12 +233,12 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
                   max={100}
                   value={totalMarks}
                   onChange={(e) => setTotalMarks(clampNumber(e.target.value, 5, 100))}
-                  className="w-full h-12 px-3.5 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text-light placeholder:text-brand-text-medium/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none min-h-[44px]"
+                   className="w-full h-11 px-3.5 bg-brand-bg border border-brand-border rounded-lg text-sm text-brand-text-primary placeholder:text-brand-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-xs text-brand-text-medium font-medium">
+                <label className="block text-[11px] text-brand-text-secondary font-medium">
                   Duration (Minutes)
                 </label>
                 <input
@@ -247,12 +247,12 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
                   max={180}
                   value={durationMinutes}
                   onChange={(e) => setDurationMinutes(clampNumber(e.target.value, 15, 180))}
-                  className="w-full h-12 px-3.5 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text-light placeholder:text-brand-text-medium/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none min-h-[44px]"
+                   className="w-full h-11 px-3.5 bg-brand-bg border border-brand-border rounded-lg text-sm text-brand-text-primary placeholder:text-brand-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-xs text-brand-text-medium font-medium">
+                <label className="block text-[11px] text-brand-text-secondary font-medium">
                   MCQ Count
                 </label>
                 <input
@@ -261,12 +261,12 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
                   max={50}
                   value={mcqCount}
                   onChange={(e) => setMcqCount(clampNumber(e.target.value, 0, 50))}
-                  className="w-full h-12 px-3.5 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text-light placeholder:text-brand-text-medium/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none min-h-[44px]"
+                   className="w-full h-11 px-3.5 bg-brand-bg border border-brand-border rounded-lg text-sm text-brand-text-primary placeholder:text-brand-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-xs text-brand-text-medium font-medium">
+                <label className="block text-[11px] text-brand-text-secondary font-medium">
                   Short Questions Count
                 </label>
                 <input
@@ -275,12 +275,12 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
                   max={30}
                   value={shortQuestionCount}
                   onChange={(e) => setShortQuestionCount(clampNumber(e.target.value, 0, 30))}
-                  className="w-full h-12 px-3.5 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text-light placeholder:text-brand-text-medium/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none min-h-[44px]"
+                   className="w-full h-11 px-3.5 bg-brand-bg border border-brand-border rounded-lg text-sm text-brand-text-primary placeholder:text-brand-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-xs text-brand-text-medium font-medium">
+                <label className="block text-[11px] text-brand-text-secondary font-medium">
                   Long Questions Count
                 </label>
                 <input
@@ -289,64 +289,61 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
                   max={20}
                   value={longQuestionCount}
                   onChange={(e) => setLongQuestionCount(clampNumber(e.target.value, 0, 20))}
-                  className="w-full h-12 px-3.5 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text-light placeholder:text-brand-text-medium/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none min-h-[44px]"
+                   className="w-full h-11 px-3.5 bg-brand-bg border border-brand-border rounded-lg text-sm text-brand-text-primary placeholder:text-brand-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </div>
             </div>
           </div>
 
           {/* Live mark distribution summary */}
-          <div className="bg-brand-bg rounded-xl border border-brand-border p-4 min-h-[44px]">
+          <div className="bg-brand-bg rounded-xl border border-brand-border/60 p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-semibold text-brand-text-medium uppercase tracking-wider">
+              <h3 className="text-[11px] font-semibold text-brand-text-secondary uppercase tracking-wider">
                 Mark Distribution
               </h3>
-              <span className="text-xs font-mono text-brand-text-medium">
+              <span className="text-[11px] font-mono text-brand-text-secondary">
                 Total: {totalMarks} marks
               </span>
             </div>
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-brand-text-light">MCQ Section</span>
-                <span className="text-xs font-mono text-brand-text-medium">
+                <span className="text-sm text-brand-text-primary">MCQ Section</span>
+                <span className="text-xs font-mono text-brand-text-secondary">
                   {formatMark(markDistribution.mcqMarks)} marks
                   {mcqCount > 0 && (
                     <span className="hidden sm:inline">
-                      {' '}
-                      ({formatMark(markDistribution.mcqPerQuestion)} x {mcqCount})
+                      {' '}({formatMark(markDistribution.mcqPerQuestion)} x {mcqCount})
                     </span>
                   )}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-brand-text-light">Short Answer Section</span>
-                <span className="text-xs font-mono text-brand-text-medium">
+                <span className="text-sm text-brand-text-primary">Short Answer Section</span>
+                <span className="text-xs font-mono text-brand-text-secondary">
                   {formatMark(markDistribution.shortMarks)} marks
                   {shortQuestionCount > 0 && (
                     <span className="hidden sm:inline">
-                      {' '}
-                      ({formatMark(markDistribution.shortPerQuestion)} x {shortQuestionCount})
+                      {' '}({formatMark(markDistribution.shortPerQuestion)} x {shortQuestionCount})
                     </span>
                   )}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-brand-text-light">Long Answer Section</span>
-                <span className="text-xs font-mono text-brand-text-medium">
+                <span className="text-sm text-brand-text-primary">Long Answer Section</span>
+                <span className="text-xs font-mono text-brand-text-secondary">
                   {formatMark(markDistribution.longMarks)} marks
                   {longQuestionCount > 0 && (
                     <span className="hidden sm:inline">
-                      {' '}
-                      ({formatMark(markDistribution.longPerQuestion)} x {longQuestionCount})
+                      {' '}({formatMark(markDistribution.longPerQuestion)} x {longQuestionCount})
                     </span>
                   )}
                 </span>
               </div>
-              <div className="border-t border-brand-border/50 pt-2 mt-2 flex items-center justify-between">
-                <span className="text-xs font-semibold text-brand-text-medium uppercase tracking-wider">
+              <div className="border-t border-brand-border/50 pt-2.5 mt-2 flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-brand-text-secondary uppercase tracking-wider">
                   Duration
                 </span>
-                <span className="text-xs font-mono text-brand-text-light">
+                <span className="text-xs font-mono text-brand-text-primary">
                   {durationMinutes} minutes
                 </span>
               </div>
@@ -355,19 +352,19 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
 
           {/* Selection summary */}
           {(selectedClass || selectedSubject || selectedChapter) && (
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono text-brand-text-medium">
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono text-brand-text-secondary">
               {selectedClass ? (
-                <span className="px-2 py-1 bg-brand-bg rounded-md border border-brand-border">
+                <span className="px-2 py-1 bg-brand-bg rounded-md border border-brand-border/60">
                   Class: {selectedClass.shortName}
                 </span>
               ) : null}
               {selectedSubject ? (
-                <span className="px-2 py-1 bg-brand-bg rounded-md border border-brand-border">
+                <span className="px-2 py-1 bg-brand-bg rounded-md border border-brand-border/60">
                   Subject: {selectedSubject.name}
                 </span>
               ) : null}
               {selectedChapter ? (
-                <span className="px-2 py-1 bg-brand-bg rounded-md border border-brand-border">
+                <span className="px-2 py-1 bg-brand-bg rounded-md border border-brand-border/60">
                   Chapter: {selectedChapter.name}
                 </span>
               ) : null}
@@ -384,12 +381,12 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
             type="button"
             onClick={handleGenerate}
             disabled={isDisabled}
-            className="w-full flex items-center justify-center gap-2.5 bg-brand-primary text-white font-bold py-3 px-5 rounded-xl hover:bg-brand-primary-hover transition-all duration-200 shadow-lg shadow-brand-primary/20 hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-h-[44px]"
+            className="w-full flex items-center justify-center gap-2.5 bg-brand-primary text-white font-bold py-2.5 px-5 rounded-xl hover:bg-brand-primary-hover transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-h-[44px]"
           >
             {isGenerating ? (
               <>
                 <svg
-                  className="animate-spin h-5 w-5 text-white"
+                  className="animate-spin h-4 w-4 text-white"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -409,12 +406,12 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   />
                 </svg>
-                <span>Generating Paper...</span>
+                <span className="text-sm">Generating Paper...</span>
               </>
             ) : (
               <>
-                <DocumentTextIcon className="w-5 h-5" />
-                <span>Generate Exam Paper</span>
+                <DocumentTextIcon className="w-4 h-4" />
+                <span className="text-sm">Generate Exam Paper</span>
               </>
             )}
           </button>

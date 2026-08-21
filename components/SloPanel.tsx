@@ -55,7 +55,7 @@ const UnitAccordion: React.FC<{
     }, [isIndeterminate]);
 
     return (
-        <div className="mb-4 bg-brand-surface rounded-2xl shadow-soft border border-brand-border overflow-hidden transition-all duration-200 hover:shadow-lg">
+        <div className="mb-4 bg-brand-surface rounded-xl border border-brand-border overflow-hidden transition-all duration-200">
             <div 
                 className={`p-4 flex items-center gap-4 cursor-pointer transition-colors ${isOpen ? 'bg-brand-bg/50' : 'hover:bg-brand-bg/50'}`}
                 onClick={(e) => {
@@ -73,12 +73,12 @@ const UnitAccordion: React.FC<{
                     aria-label={`Select all SLOs in ${unitName}`}
                 />
                 <div className="flex-grow flex items-center justify-between gap-4 min-w-0">
-                    <h4 className="font-bold text-brand-text-light text-sm md:text-base truncate" title={unitName}>{unitName}</h4>
+                    <h4 className="font-semibold text-brand-text-primary text-sm md:text-base truncate" title={unitName}>{unitName}</h4>
                     <div className="flex items-center gap-3 flex-shrink-0">
-                        <span className="text-xs font-medium px-2 py-1 bg-brand-bg rounded-full text-brand-text-medium">
+                        <span className="text-xs font-medium px-2 py-1 bg-brand-bg rounded-full text-brand-text-secondary">
                             {selectedCount}/{slos.length}
                         </span>
-                        <ChevronRightIcon className={`w-5 h-5 text-brand-text-dark transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} />
+                        <ChevronRightIcon className={`w-5 h-5 text-brand-text-tertiary transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} />
                     </div>
                 </div>
             </div>
@@ -104,7 +104,7 @@ const UnitAccordion: React.FC<{
                                         </div>
                                     )}
                                 </div>
-                                <p className="text-sm text-brand-text-medium group-hover:text-brand-text-light transition-colors leading-relaxed">
+                                <p className="text-sm text-brand-text-secondary group-hover:text-brand-text-primary transition-colors leading-relaxed">
                                     {slo.SLO_Text}
                                 </p>
                             </div>
@@ -180,7 +180,7 @@ const SloPanel: React.FC<SloPanelProps> = ({ unitsByGrade, selectedSloUniqueIds,
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <p className="text-brand-text-medium font-medium">Loading curriculum...</p>
+          <p className="text-brand-text-secondary font-medium">Loading curriculum...</p>
         </div>
       </div>
     );
@@ -193,8 +193,8 @@ const SloPanel: React.FC<SloPanelProps> = ({ unitsByGrade, selectedSloUniqueIds,
       <div className="flex-shrink-0 px-4 md:px-6 pt-6 pb-4 bg-brand-surface border-b border-brand-border z-10">
         <div className="flex justify-between items-end mb-4">
           <div>
-            <h2 className="text-2xl font-bold text-brand-text-light tracking-tight">Curriculum</h2>
-            <p className="text-sm text-brand-text-medium mt-1">Select outcomes to plan lessons for</p>
+            <h2 className="text-2xl font-bold text-brand-text-primary tracking-tight">Curriculum</h2>
+            <p className="text-sm text-brand-text-secondary mt-1">Select outcomes to plan lessons for</p>
           </div>
           {selectedSloUniqueIds.length > 0 && (
             <button
@@ -212,9 +212,9 @@ const SloPanel: React.FC<SloPanelProps> = ({ unitsByGrade, selectedSloUniqueIds,
                     placeholder="Search topics or IDs..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-brand-bg border border-brand-border rounded-xl focus:ring-2 focus:ring-brand-primary focus:border-brand-primary outline-none text-sm text-brand-text-light transition-all shadow-inner"
+                     className="w-full pl-10 pr-4 py-2.5 bg-brand-bg border border-brand-border rounded-xl focus:ring-2 focus:ring-brand-primary focus:border-brand-primary outline-none text-sm text-brand-text-primary transition-all"
                 />
-                <SearchIcon className="absolute left-3 top-3 w-4 h-4 text-brand-text-medium" />
+                <SearchIcon className="absolute left-3 top-3 w-4 h-4 text-brand-text-secondary" />
              </div>
         )}
       </div>
@@ -224,10 +224,10 @@ const SloPanel: React.FC<SloPanelProps> = ({ unitsByGrade, selectedSloUniqueIds,
             Object.entries(filteredUnitsByGrade)
             .sort(([gradeA], [gradeB]) => parseInt(gradeA.replace('Grade ', '')) - parseInt(gradeB.replace('Grade ', '')))
             .map(([grade, units]) => (
-                <div key={grade} className="animate-fadeIn">
-                     <div className="flex items-center gap-3 mb-4 ml-1">
+                 <div key={grade} className="">
+                      <div className="flex items-center gap-3 mb-4 ml-1">
                         <div className="h-px flex-1 bg-brand-border"></div>
-                        <h3 className="font-bold text-lg text-brand-text-medium uppercase tracking-wider">{grade}</h3>
+                        <h3 className="font-semibold text-lg text-brand-text-secondary uppercase tracking-wider">{grade}</h3>
                         <div className="h-px flex-1 bg-brand-border"></div>
                      </div>
                      
@@ -256,10 +256,10 @@ const SloPanel: React.FC<SloPanelProps> = ({ unitsByGrade, selectedSloUniqueIds,
         ) : (
           <div className="text-center py-20">
             <div className="bg-brand-bg w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
-                 <FileIcon className="w-8 h-8 text-brand-text-dark" />
+                 <FileIcon className="w-8 h-8 text-brand-text-tertiary" />
             </div>
-            <h3 className="font-semibold text-brand-text-light text-lg">No SLOs Loaded</h3>
-            <p className="text-brand-text-medium mt-2">Could not load curriculum files.</p>
+            <h3 className="font-semibold text-brand-text-primary text-lg">No SLOs Loaded</h3>
+            <p className="text-brand-text-secondary mt-2">Could not load curriculum files.</p>
           </div>
         )}
       </div>
