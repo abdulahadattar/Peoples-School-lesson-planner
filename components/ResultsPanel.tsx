@@ -37,8 +37,12 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({ lessonPlans, onBack }) => {
 
   const handleExport = async (type: 'pdf' | 'docx') => {
       if (!selectedPlan) return;
-      if (type === 'pdf') await exportAsPdf(selectedPlan);
-      else await exportAsDocx(selectedPlan);
+      try {
+          if (type === 'pdf') await exportAsPdf(selectedPlan);
+          else await exportAsDocx(selectedPlan);
+      } catch (error) {
+          alert(error instanceof Error ? error.message : 'Failed to export. Please try again.');
+      }
   };
 
   return (

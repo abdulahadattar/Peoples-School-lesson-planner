@@ -211,7 +211,11 @@ export const exportAsPdf = async (lessonPlan: LessonPlan, sloId?: string, teache
       },
       defaultStyle: { font: 'Roboto' }
   };
-  pdfMake.createPdf(docDefinition).download(fileName);
+  if (typeof pdfMake !== 'undefined' && typeof pdfMake.createPdf === 'function') {
+    pdfMake.createPdf(docDefinition).download(fileName);
+  } else {
+    throw new Error('PDF export is unavailable: pdfMake library has not loaded yet. Please try again in a moment.');
+  }
 };
 
 const createPdfContentForPlan = (lessonPlan: LessonPlan, teacherInfo?: TeacherInfo): any[] => {
@@ -311,7 +315,11 @@ export const exportMultipleLessonsAsPdf = async (lessonPlans: LessonPlan[], file
         defaultStyle: { font: 'Roboto' }
     };
 
-    pdfMake.createPdf(docDefinition).download(`${fileName}.pdf`);
+    if (typeof pdfMake !== 'undefined' && typeof pdfMake.createPdf === 'function') {
+      pdfMake.createPdf(docDefinition).download(`${fileName}.pdf`);
+    } else {
+      throw new Error('PDF export is unavailable: pdfMake library has not loaded yet. Please try again in a moment.');
+    }
 };
 
 const createPaperPdfContent = (paper: GeneratedPaper, teacherInfo?: TeacherInfo): any[] => {
@@ -491,5 +499,9 @@ export const exportPaperAsPdf = async (paper: GeneratedPaper, teacherInfo?: Teac
         },
         defaultStyle: { font: 'Roboto', fontSize: 10, lineHeight: 1.3 }
     };
-    pdfMake.createPdf(docDefinition).download(fileName);
+    if (typeof pdfMake !== 'undefined' && typeof pdfMake.createPdf === 'function') {
+      pdfMake.createPdf(docDefinition).download(fileName);
+    } else {
+      throw new Error('PDF export is unavailable: pdfMake library has not loaded yet. Please try again in a moment.');
+    }
 };

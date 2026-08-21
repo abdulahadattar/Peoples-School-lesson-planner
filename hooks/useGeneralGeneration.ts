@@ -145,14 +145,24 @@ export const useGeneralGeneration = () => {
   }, []);
 
   const exportPlan = useCallback(async (plan: LessonPlan, teacherInfo: TeacherInfo) => {
-    await exportAsDocx(plan, undefined, teacherInfo);
-    await exportAsPdf(plan, undefined, teacherInfo);
+    try {
+      await exportAsDocx(plan, undefined, teacherInfo);
+      await exportAsPdf(plan, undefined, teacherInfo);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to export plan';
+      setError(errorMsg);
+    }
   }, []);
 
   const exportPaper = useCallback(async (paper: GeneratedPaper, teacherInfo: TeacherInfo) => {
-    const { exportPaperAsDocx, exportPaperAsPdf } = await import('../services/exportService');
-    await exportPaperAsDocx(paper, teacherInfo);
-    await exportPaperAsPdf(paper, teacherInfo);
+    try {
+      const { exportPaperAsDocx, exportPaperAsPdf } = await import('../services/exportService');
+      await exportPaperAsDocx(paper, teacherInfo);
+      await exportPaperAsPdf(paper, teacherInfo);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to export paper';
+      setError(errorMsg);
+    }
   }, []);
 
   const clearResults = useCallback(() => {
