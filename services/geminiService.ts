@@ -1,5 +1,69 @@
 import { GoogleGenAI, Part, Type } from "@google/genai";
-import { LessonPlan, SLO } from '../types';
+import { LessonPlan, SLO, GeneratedPaper, PaperConfig } from "../types";
+
+/**
+ * Build the list of available API keys from the environment.
+ * Supports both a single VITE_API_KEY and a rotating pool via VITE_API_KEYS (comma-separated).
+ */
+function getApiKeyPool(): string[] {
+  const keys: string[] = [];
+
+  const single = import.meta.env.VITE_API_KEY;
+  if (single) {
+    keys.push(single);
+  }
+
+  const multi = import.meta.env.VITE_API_KEYS;
+  if (multi) {
+    keys.push(
+      ...multi
+        .split(",")
+        .map((k) => k.trim())
+        .filter(Boolean)
+    );
+  }
+
+  // Deduplicate while preserving order
+  return [...new Set(keys)];
+}
+
+// Module-level round-robin index across the key pool
+let keyPool: string[] = getApiKeyPool();
+let keyIndex = 0;
+
+/**
+ * Returns the next API key in round-robin order.
+ */
+export function getApiKey(): string {
+  if (keyPool.length === 0) {
+    keyPool = getApiKeyPool();
+  }
+  if (keyPool.length === 0) {
+    throw new Error(
+      "API key not set. Configure VITE_API_KEY or VITE_API_KEYS in your .env.local / Vercel env vars."
+    );
+  }
+  const key = keyPool[keyIndex % keyPool.length];
+  keyIndex = (keyIndex + 1) % keyPool.length;
+  return key;
+}
+
+/**
+ * Refreshes the key pool from the environment.
+ */
+export function refreshApiKeyPool(): void {
+  keyPool = getApiKeyPool();
+  keyIndex = 0;
+}
+
+/**
+ * Creates a GoogleGenAI instance using the provided key or the next key in the pool.
+ */
+export function createAiInstance(apiKey?: string): GoogleGenAI {
+  return new GoogleGenAI({ apiKey: apiKey || getApiKey() });
+}
+
+const DEFAULT_MODEL = "gemma-4-26b-a4b-it";
 
 function cleanAndParseJson(text: string): any {
   let cleanText = text.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
@@ -37,14 +101,7 @@ export async function generateLessonPlan(
     contextFileParts?: Part[],
     subjectName?: string
 ): Promise<LessonPlan> {
-  const apiKey = import.meta.env.VITE_API_KEY as string | undefined;
-  const ai = new GoogleGenAI({ apiKey: apiKey || '' });
-
-  if (!apiKey) {
-    throw new Error("API_KEY environment variable not set. Create a .env.local file with VITE_API_KEY=your_key");
-  }
-
-  const gradeNum = parseInt(slo.grade?.replace(/Grade\s+|Class\s+/i, '') || '9', 10);
+  const gradeNum = parseInt(slo.grade?.replace(/Grade\\s+|Class\\s+/i, '') || '9', 10);
   const gradeLevelContext = isNaN(gradeNum) ? `${slo.grade}` : `${slo.grade} (${gradeNum <= 10 ? 'Foundational' : 'Advanced'})`;
   const subject = subjectName || 'General';
 
@@ -137,15 +194,18 @@ Use the attached PDF(s) as the primary reference for content, examples, and acti
       parts.unshift(...contextFileParts);
     }
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-flash-lite-latest',
-      contents: { parts },
-      config: {
-        systemInstruction,
-        temperature: 0.2,
-        responseMimeType: "application/json",
-        responseSchema: lessonPlanSchema,
-      },
+    const response = await withKeyRotation(async (apiKey) => {
+      const ai = new GoogleGenAI({ apiKey });
+      return ai.models.generateContent({
+        model: DEFAULT_MODEL,
+        contents: { parts },
+        config: {
+          systemInstruction,
+          temperature: 0.2,
+          responseMimeType: "application/json",
+          responseSchema: lessonPlanSchema,
+        },
+      });
     });
 
     const lessonPlan = parseLessonPlanJson(response.text, gradeLevelContext, subject);
