@@ -241,6 +241,7 @@ Use the attached PDF(s) as the primary reference for content, examples, and acti
     }
 
     const response = await withKeyRotation(async (apiKey) => {
+      console.log("[geminiService] Using API key (length:", apiKey.length, ", prefix:", apiKey.slice(0, 7) + "...");
       const ai = new GoogleGenAI({ apiKey });
       return ai.models.generateContent({
         model: DEFAULT_MODEL,
