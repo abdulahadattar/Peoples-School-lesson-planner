@@ -1,5 +1,5 @@
 import { GoogleGenAI, Part, Type } from "@google/genai";
-import { LessonPlan, SLO, GeneratedPaper, PaperConfig } from "../types";
+import { LessonPlan, SLO } from "../types";
 
 /**
  * Build the list of available API keys from the environment.
@@ -61,6 +61,52 @@ export function refreshApiKeyPool(): void {
  */
 export function createAiInstance(apiKey?: string): GoogleGenAI {
   return new GoogleGenAI({ apiKey: apiKey || getApiKey() });
+}
+
+function isAuthOrQuotaError(error: unknown): boolean {
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    return (
+      message.includes('401') ||
+      message.includes('403') ||
+      message.includes('unauthenticated') ||
+      message.includes('permission denied') ||
+      message.includes('quota exceeded') ||
+      message.includes('rate limit') ||
+      message.includes('resource exhausted')
+    );
+  }
+  return false;
+}
+
+export async function withKeyRotation<T>(operation: (apiKey: string) => Promise<T>): Promise<T> {
+  if (keyPool.length === 0) {
+    keyPool = getApiKeyPool();
+  }
+  if (keyPool.length === 0) {
+    throw new Error(
+      "API key not set. Configure VITE_API_KEY or VITE_API_KEYS in your .env.local / Vercel env vars."
+    );
+  }
+
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < keyPool.length; attempt++) {
+    const currentKey = keyPool[keyIndex % keyPool.length];
+    keyIndex = (keyIndex + 1) % keyPool.length;
+
+    try {
+      return await operation(currentKey);
+    } catch (error) {
+      lastError = error;
+      if (!isAuthOrQuotaError(error)) {
+        throw error;
+      }
+      console.warn(`API key failed, rotating to next key: ${(error as Error).message}`);
+    }
+  }
+
+  throw lastError;
 }
 
 const DEFAULT_MODEL = "gemma-4-26b-a4b-it";
