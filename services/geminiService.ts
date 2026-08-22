@@ -109,7 +109,7 @@ export async function withKeyRotation<T>(operation: (apiKey: string) => Promise<
   throw lastError;
 }
 
-const DEFAULT_MODEL = "gemma-4-26b-a4b-it";
+export const DEFAULT_MODEL = "gemma-4-26b-a4b-it";
 
 function cleanAndParseJson(text: string): any {
   let cleanText = text.replace(/```json\s*/g, '').replace(/```\s*$/g, '');

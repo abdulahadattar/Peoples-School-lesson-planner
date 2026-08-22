@@ -1,44 +1,57 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { GeneratedPaper, PaperSection, PaperQuestion } from '../types';
-import { curriculumData } from '../curriculum';
+import { GeneratedPaper, PaperSection, PaperQuestion } from "../types";
+import { curriculumData } from "../curriculum";
+import { withKeyRotation, DEFAULT_MODEL } from "./geminiService";
 
 function cleanAndParseJson(text: string): any {
-  let cleanText = text.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
-  const firstBrace = cleanText.indexOf('{');
-  const lastBrace = cleanText.lastIndexOf('}');
+  let cleanText = text.replace(/```json\s*/g, "").replace(/```\s*$/g, "");
+  const firstBrace = cleanText.indexOf("{");
+  const lastBrace = cleanText.lastIndexOf("}");
   if (firstBrace !== -1 && lastBrace !== -1) {
     cleanText = cleanText.substring(firstBrace, lastBrace + 1);
   }
   try {
     return JSON.parse(cleanText);
   } catch (error) {
-    throw new Error(`Failed to parse JSON response: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `Failed to parse JSON response: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
   }
 }
 
 const getGradeName = (gradeId: string): string => {
-  const cls = curriculumData.classes.find(c => c.id === gradeId);
+  const cls = curriculumData.classes.find((c) => c.id === gradeId);
   return cls?.name || gradeId;
 };
 
 const getSubjectName = (gradeId: string, subjectId: string): string => {
-  const cls = curriculumData.classes.find(c => c.id === gradeId);
-  const subject = cls?.subjects.find(s => s.id === subjectId);
+  const cls = curriculumData.classes.find((c) => c.id === gradeId);
+  const subject = cls?.subjects.find((s) => s.id === subjectId);
   return subject?.name || subjectId;
 };
 
-const getChapterName = (gradeId: string, subjectId: string, chapterId: string): string => {
-  const cls = curriculumData.classes.find(c => c.id === gradeId);
-  const subject = cls?.subjects.find(s => s.id === subjectId);
-  const chapter = subject?.chapters.find(ch => ch.id === chapterId);
+const getChapterName = (
+  gradeId: string,
+  subjectId: string,
+  chapterId: string
+): string => {
+  const cls = curriculumData.classes.find((c) => c.id === gradeId);
+  const subject = cls?.subjects.find((s) => s.id === subjectId);
+  const chapter = subject?.chapters.find((ch) => ch.id === chapterId);
   return chapter?.name || chapterId;
 };
 
-const getChapterSLOs = (gradeId: string, subjectId: string, chapterId: string): string[] => {
-  const cls = curriculumData.classes.find(c => c.id === gradeId);
-  const subject = cls?.subjects.find(s => s.id === subjectId);
-  const chapter = subject?.chapters.find(ch => ch.id === chapterId);
-  return chapter?.slos.map(s => `${s.id}: ${s.text}`) || [];
+const getChapterSLOs = (
+  gradeId: string,
+  subjectId: string,
+  chapterId: string
+): string[] => {
+  const cls = curriculumData.classes.find((c) => c.id === gradeId);
+  const subject = cls?.subjects.find((s) => s.id === subjectId);
+  const chapter = subject?.chapters.find((ch) => ch.id === chapterId);
+  return chapter?.slos.map((s) => `${s.id}: ${s.text}`) || [];
 };
 
 export async function generateExamPaper(
@@ -51,13 +64,6 @@ export async function generateExamPaper(
   longQuestionCount: number,
   durationMinutes: number
 ): Promise<GeneratedPaper> {
-  const apiKey = import.meta.env.VITE_API_KEY as string | undefined;
-  const ai = new GoogleGenAI({ apiKey: apiKey || '' });
-
-  if (!apiKey) {
-    throw new Error("API_KEY environment variable not set. Create a .env.local file with VITE_API_KEY=your_key");
-  }
-
   const gradeName = getGradeName(gradeId);
   const subjectName = getSubjectName(gradeId, subjectId);
   const chapterName = getChapterName(gradeId, subjectId, chapterId);
@@ -69,11 +75,9 @@ export async function generateExamPaper(
   const totalQuestionMarks = mcqMarks + shortMarks + longMarks;
 
   if (totalQuestionMarks !== totalMarks) {
-    throw new Error(`Mark distribution mismatch. Questions total ${totalQuestionMarks} marks but you selected ${totalMarks} marks. Adjust counts to match.`);
-  }
-
-  if (totalQuestionMarks !== totalMarks) {
-    throw new Error(`Question marks total (${totalQuestionMarks}) does not match declared totalMarks (${totalMarks}).`);
+    throw new Error(
+      `Mark distribution mismatch. Questions total ${totalQuestionMarks} marks but you selected ${totalMarks} marks. Adjust counts to match.`
+    );
   }
 
   const systemInstruction = `You are an expert exam paper generator for ${subjectName}. Your task is to generate a well-structured exam paper as a JSON object. The paper should be aligned with the Sindh Textbook Board curriculum and the Student Learning Outcomes (SLOs) provided.
@@ -110,24 +114,33 @@ export async function generateExamPaper(
                 type: Type.OBJECT,
                 properties: {
                   id: { type: Type.STRING },
-                  type: { type: Type.STRING, enum: ['mcq', 'short', 'long'] },
+                  type: { type: Type.STRING, enum: ["mcq", "short", "long"] },
                   question: { type: Type.STRING },
                   options: { type: Type.ARRAY, items: { type: Type.STRING } },
                   marks: { type: Type.INTEGER },
                   topic: { type: Type.STRING },
                 },
-                required: ['id', 'type', 'question', 'marks'],
+                required: ["id", "type", "question", "marks"],
               },
             },
           },
-          required: ['title', 'instruction', 'questions'],
+          required: ["title", "instruction", "questions"],
         },
       },
     },
-    required: ['title', 'gradeLevel', 'subject', 'chapterName', 'totalMarks', 'durationMinutes', 'sections'],
+    required: [
+      "title",
+      "gradeLevel",
+      "subject",
+      "chapterName",
+      "totalMarks",
+      "durationMinutes",
+      "sections",
+    ],
   };
 
-  const sloText = slos.length > 0 ? slos.map(s => `- ${s}`).join('\n') : 'General chapter content';
+  const sloText =
+    slos.length > 0 ? slos.map((s) => `- ${s}`).join("\\n") : "General chapter content";
 
   const userPrompt = `Generate an exam paper for the following:
 
@@ -148,15 +161,18 @@ ${sloText}
 Ensure questions cover all major topics from the chapter and align with the SLOs provided. Make the difficulty appropriate for ${gradeName} students.`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-flash-lite-latest',
-      contents: { parts: [{ text: userPrompt }] },
-      config: {
-        systemInstruction,
-        temperature: 0.3,
-        responseMimeType: "application/json",
-        responseSchema: paperSchema,
-      },
+    const response = await withKeyRotation(async (apiKey) => {
+      const ai = new GoogleGenAI({ apiKey });
+      return await ai.models.generateContent({
+        model: DEFAULT_MODEL,
+        contents: { parts: [{ text: userPrompt }] },
+        config: {
+          systemInstruction,
+          temperature: 0.3,
+          responseMimeType: "application/json",
+          responseSchema: paperSchema,
+        },
+      });
     });
 
     const parsed = cleanAndParseJson(response.text);
