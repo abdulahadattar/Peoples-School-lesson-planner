@@ -367,7 +367,7 @@ export async function generateLessonPlan(
             description: { type: Type.STRING, description: "Detailed teacher instructions and expected student responses for this phase." },
             teacherActions: { type: Type.STRING, description: "Specific actions the teacher should take during this phase." },
           },
-          required: ['name', 'duration', 'description', 'teacherActions', 'studentResponses'],
+          required: ['name', 'duration', 'description', 'teacherActions'],
         },
       },
       homework: { type: Type.STRING, description: "A brief but meaningful homework assignment that reinforces the lesson's objective." }
