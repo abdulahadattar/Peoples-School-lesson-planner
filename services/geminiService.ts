@@ -77,7 +77,7 @@ export function refreshApiKeyPool(): void {
   badKeys.clear();
 }
 
-export const DEFAULT_MODEL = "gemma-4-26b-a4b-it";
+export const DEFAULT_MODEL = "gemini-3.5-flash-lite";
 
 function isAuthOrQuotaError(error: any): boolean {
   if (error?.message) {
