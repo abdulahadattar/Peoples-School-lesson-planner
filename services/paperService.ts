@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
 import { GeneratedPaper, PaperSection, PaperQuestion } from "../types";
 import { curriculumData } from "../curriculum";
 import { withKeyRotation, DEFAULT_MODEL } from "./geminiService";
@@ -53,6 +53,55 @@ const getChapterSLOs = (
   const chapter = subject?.chapters.find((ch) => ch.id === chapterId);
   return chapter?.slos.map((s) => `${s.id}: ${s.text}`) || [];
 };
+
+/**
+ * Direct REST API call to Gemini — bypasses the @google/genai SDK which has
+ * known timeout bugs with gemma-4-26b-a4b-it (see googleapis/js-genai#1277).
+ * Discovered: gemma-4-26b-a4b-it hangs when generationConfig has temperature
+ * but no responseSchema — the model waits for schema-based output indefinitely.
+ */
+async function callGeminiAPI(
+  apiKey: string,
+  model: string,
+  systemInstruction: string,
+  userPrompt: string,
+  schema: any,
+  temperature = 0.3
+): Promise<string> {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: userPrompt }] }],
+        systemInstruction: {
+          parts: [{ text: systemInstruction }],
+        },
+        generationConfig: {
+          temperature,
+          responseMimeType: "application/json",
+          responseSchema: schema,
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`HTTP ${response.status}: ${errorText}`);
+  }
+
+  const data = await response.json();
+  if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+    return data.candidates[0].content.parts[0].text;
+  }
+
+  throw new Error("No content in API response");
+}
 
 export async function generateExamPaper(
   gradeId: string,
@@ -140,7 +189,7 @@ export async function generateExamPaper(
   };
 
   const sloText =
-    slos.length > 0 ? slos.map((s) => `- ${s}`).join("\\n") : "General chapter content";
+    slos.length > 0 ? slos.map((s) => `- ${s}`).join("\n") : "General chapter content";
 
   const userPrompt = `Generate an exam paper for the following:
 
@@ -162,20 +211,18 @@ Ensure questions cover all major topics from the chapter and align with the SLOs
 
   try {
     const response = await withKeyRotation(async (apiKey) => {
-      const ai = new GoogleGenAI({ apiKey });
-      return await ai.models.generateContent({
-        model: DEFAULT_MODEL,
-        contents: { parts: [{ text: userPrompt }] },
-        config: {
-          systemInstruction,
-          temperature: 0.3,
-          responseMimeType: "application/json",
-          responseSchema: paperSchema,
-        },
-      });
+      console.log("[paperService] Using API key (length:", apiKey.length, ", prefix:", apiKey.slice(0, 7) + "...");
+      return callGeminiAPI(
+        apiKey,
+        DEFAULT_MODEL,
+        systemInstruction,
+        userPrompt,
+        paperSchema,
+        0.3
+      );
     });
 
-    const parsed = cleanAndParseJson(response.text);
+    const parsed = cleanAndParseJson(response);
     return parsed as GeneratedPaper;
   } catch (error) {
     console.error("Error generating exam paper:", error);
