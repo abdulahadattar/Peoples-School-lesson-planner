@@ -104,7 +104,7 @@ function isAuthOrQuotaError(error: any): boolean {
  * Examples: Google API key has been "suspended", "disabled", or is "invalid".
  */
 export function isKeyPermanentlyBlocked(error: unknown): boolean {
-  if (error?.message) {
+  if (error instanceof Error) {
     const message = error.message.toLowerCase();
     return (
       message.includes("suspended") ||
