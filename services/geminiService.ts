@@ -49,6 +49,7 @@ let keyIndex = 0;
 
 // Keys that have been permanently blocked (suspended, disabled, invalid) by Google.
 // Once a key lands here it is skipped in all subsequent rotations until the pool is refreshed.
+// Dont change model gemini-3.5-flash-lite
 const badKeys: Set<string> = new Set();
 
 /**
