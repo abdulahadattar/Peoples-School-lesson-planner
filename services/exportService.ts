@@ -159,13 +159,6 @@ export const createDocxContentForPlan = (lessonPlan: LessonPlan, teacherInfo?: T
               indent: { left: 200 }
           }));
       }
-      if (activity.studentResponses) {
-          children.push(new Paragraph({
-              children: [ new TextRun({ text: 'Student Responses: ', bold: true, size: 22 }), new TextRun({ text: activity.studentResponses, size: 22 })],
-              spacing: { after: 100 },
-              indent: { left: 200 }
-          }));
-      }
   });
   children.push(createSectionHeading('HOMEWORK ASSIGNMENT'));
   children.push(createRichParagraph(lessonPlan.homework));
@@ -258,10 +251,7 @@ const createPdfContentForPlan = (lessonPlan: LessonPlan, teacherInfo?: TeacherIn
                 { text: activity.description, style: 'body' },
             ];
             if (activity.teacherActions) {
-                parts.push({ text: `Teacher Actions: ${activity.teacherActions}`, style: 'body', margin: [0, 2, 0, 2] });
-            }
-            if (activity.studentResponses) {
-                parts.push({ text: `Student Responses: ${activity.studentResponses}`, style: 'body', margin: [0, 2, 0, 6] });
+                parts.push({ text: `Teacher Actions: ${activity.teacherActions}`, style: 'body', margin: [0, 2, 0, 6] });
             }
             return parts;
         }),

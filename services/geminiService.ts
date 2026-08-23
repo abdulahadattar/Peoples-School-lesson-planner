@@ -366,7 +366,6 @@ export async function generateLessonPlan(
             duration: { type: Type.INTEGER, description: "Duration of this activity in minutes." },
             description: { type: Type.STRING, description: "Detailed teacher instructions and expected student responses for this phase." },
             teacherActions: { type: Type.STRING, description: "Specific actions the teacher should take during this phase." },
-            studentResponses: { type: Type.STRING, description: "Expected student responses and engagement during this phase." },
           },
           required: ['name', 'duration', 'description', 'teacherActions', 'studentResponses'],
         },

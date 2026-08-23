@@ -80,12 +80,6 @@ const ResultsView: React.FC<ResultsViewProps> = ({ lessonPlans, papers, onBack, 
                           <p className="text-sm text-brand-text-primary leading-relaxed">{activity.teacherActions}</p>
                         </div>
                       )}
-                      {activity.studentResponses && (
-                        <div>
-                          <span className="text-xs font-bold text-brand-primary uppercase tracking-wider">Student Responses:</span>
-                          <p className="text-sm text-brand-text-primary leading-relaxed">{activity.studentResponses}</p>
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>

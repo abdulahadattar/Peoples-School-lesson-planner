@@ -3,7 +3,6 @@ export interface Activity {
   duration: number;
   description: string;
   teacherActions?: string;
-  studentResponses?: string;
 }
 
 export interface LessonPlan {
