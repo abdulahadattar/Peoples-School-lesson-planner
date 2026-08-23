@@ -9,10 +9,16 @@ export const useGeneralGeneration = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [generationProgress, setGenerationProgress] = useState<{ current: number; total: number } | null>(null);
   const [statusMessage, setStatusMessage] = useState<string>('');
+  const [logMessages, setLogMessages] = useState<string[]>([]);
   const [generatedPlans, setGeneratedPlans] = useState<LessonPlan[]>([]);
   const [generatedPapers, setGeneratedPapers] = useState<GeneratedPaper[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showStatusPanel, setShowStatusPanel] = useState(false);
+
+  const addLog = useCallback((msg: string) => {
+    console.log(`[useGeneralGeneration] ${msg}`);
+    setLogMessages(prev => [...prev, msg]);
+  }, []);
 
   const generateLessonPlan = useCallback(async (
     classId: string,
@@ -25,9 +31,11 @@ export const useGeneralGeneration = () => {
     setError(null);
     setGeneratedPlans([]);
     setGeneratedPapers([]);
+    setLogMessages([]);
     setGenerationProgress({ current: 0, total: 3 });
     setStatusMessage('Preparing lesson plan...');
     setShowStatusPanel(true);
+    addLog('Starting lesson plan generation...');
 
     try {
       const cls = curriculumData.classes.find(c => c.id === classId);
@@ -37,6 +45,7 @@ export const useGeneralGeneration = () => {
       if (!cls || !subject) {
         throw new Error('Invalid selection');
       }
+      addLog(`Selected class: ${cls.name} | Subject: ${subject.name}`);
 
       let sloText: string;
       let chapterName: string;
@@ -46,18 +55,21 @@ export const useGeneralGeneration = () => {
         sloText = topicOverride;
         chapterName = topicOverride;
         unitNumber = chapterId.replace('ch', '') || '1';
+        addLog(`Using custom topic: ${topicOverride}`);
       } else if (chapter) {
         sloText = chapter.slos.length > 0
           ? chapter.slos[0].text
           : `Learn about ${chapter.name} in ${subject.name}`;
         chapterName = chapter.name;
         unitNumber = chapterId.replace('ch', '');
+        addLog(`Selected chapter: ${chapterName} | SLOs in chapter: ${chapter.slos.length}`);
       } else {
         throw new Error('Invalid selection');
       }
 
       setGenerationProgress({ current: 1, total: 3 });
       setStatusMessage('Generating lesson plan with AI...');
+      addLog('Progress 1/3: Sending request to AI model...');
 
       const mockSlo = {
         SLO_ID: chapterId ? `CH-${chapterId}` : 'TOPIC',
@@ -70,17 +82,20 @@ export const useGeneralGeneration = () => {
         uniqueId: `${classId}_${subjectId}_${chapterId || 'topic'}_${Date.now()}`,
       };
 
-      const plan = await generateLessonPlanFromService(mockSlo, [], undefined, subject.name);
-      
+      const plan = await generateLessonPlanFromService(mockSlo, [], undefined, subject.name, addLog);
+
       setGenerationProgress({ current: 2, total: 3 });
       setStatusMessage('Formatting document...');
+      addLog('Progress 2/3: Formatting lesson plan document...');
 
       plan.gradeLevel = cls.name;
       plan.subject = subject.name;
       plan.chapterName = chapterName;
+      addLog(`Format applied: gradeLevel="${plan.gradeLevel}" subject="${plan.subject}"`);
 
       setGenerationProgress({ current: 3, total: 3 });
       setStatusMessage('Complete!');
+      addLog('Progress 3/3: Generation complete!');
 
       setGeneratedPlans([plan]);
       setIsLoading(false);
@@ -89,6 +104,8 @@ export const useGeneralGeneration = () => {
       return plan;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to generate lesson plan';
+      console.error(errorMsg);
+      addLog(`ERROR: ${errorMsg}`);
       setError(errorMsg);
       setIsLoading(false);
       setGenerationProgress(null);
@@ -96,20 +113,23 @@ export const useGeneralGeneration = () => {
       setShowStatusPanel(true);
       return null;
     }
-  }, []);
+  }, [addLog]);
 
   const generatePaper = useCallback(async (config: PaperConfig): Promise<GeneratedPaper | null> => {
     setIsLoading(true);
     setError(null);
     setGeneratedPlans([]);
     setGeneratedPapers([]);
+    setLogMessages([]);
     setGenerationProgress({ current: 0, total: 3 });
     setStatusMessage('Preparing exam paper...');
     setShowStatusPanel(true);
+    addLog('Starting exam paper generation...');
 
     try {
       setGenerationProgress({ current: 1, total: 3 });
       setStatusMessage('Generating questions with AI...');
+      addLog('Progress 1/3: Generating questions with AI model...');
 
       const paper = await generateExamPaper(
         config.gradeId,
@@ -124,9 +144,11 @@ export const useGeneralGeneration = () => {
 
       setGenerationProgress({ current: 2, total: 3 });
       setStatusMessage('Formatting document...');
+      addLog('Progress 2/3: Formatting exam paper document...');
 
       setGenerationProgress({ current: 3, total: 3 });
       setStatusMessage('Complete!');
+      addLog('Progress 3/3: Paper generation complete!');
 
       setGeneratedPapers([paper]);
       setIsLoading(false);
@@ -135,6 +157,8 @@ export const useGeneralGeneration = () => {
       return paper;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to generate exam paper';
+      console.error(errorMsg);
+      addLog(`ERROR: ${errorMsg}`);
       setError(errorMsg);
       setIsLoading(false);
       setGenerationProgress(null);
@@ -142,7 +166,7 @@ export const useGeneralGeneration = () => {
       setShowStatusPanel(true);
       return null;
     }
-  }, []);
+  }, [addLog]);
 
   const exportPlan = useCallback(async (plan: LessonPlan, teacherInfo: TeacherInfo) => {
     try {
@@ -169,6 +193,7 @@ export const useGeneralGeneration = () => {
     setGeneratedPlans([]);
     setGeneratedPapers([]);
     setError(null);
+    setLogMessages([]);
     setGenerationProgress(null);
     setStatusMessage('');
     setShowStatusPanel(false);
@@ -178,6 +203,7 @@ export const useGeneralGeneration = () => {
     isLoading,
     generationProgress,
     statusMessage,
+    logMessages,
     generatedPlans,
     generatedPapers,
     error,

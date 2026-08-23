@@ -6,6 +6,7 @@ interface GenerationStatusPanelProps {
   isLoading: boolean;
   isComplete: boolean;
   logMessages: string[];
+  statusMessage?: string;
   generationProgress: { current: number; total: number } | null;
   onClose: () => void;
   onStop: () => void;
@@ -13,7 +14,7 @@ interface GenerationStatusPanelProps {
   error?: string | null;
 }
 
-const GenerationStatusPanel: React.FC<GenerationStatusPanelProps> = ({ isLoading, isComplete, logMessages, generationProgress, onClose, onStop, onViewResults, error }) => {
+const GenerationStatusPanel: React.FC<GenerationStatusPanelProps> = ({ isLoading, isComplete, logMessages, statusMessage, generationProgress, onClose, onStop, onViewResults, error }) => {
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -41,6 +42,11 @@ const GenerationStatusPanel: React.FC<GenerationStatusPanelProps> = ({ isLoading
             <h2 className="font-bold text-brand-text-primary text-sm">
                 {error ? 'Generation Failed' : isComplete ? 'Generation Complete' : 'Generating...'}
             </h2>
+            {isLoading && statusMessage && (
+                <span className="text-xs text-brand-text-secondary">
+                    {statusMessage}
+                </span>
+            )}
         </div>
         <div className="flex items-center gap-2">
            <button onClick={onClose} className="p-1 text-brand-text-secondary hover:text-brand-text-primary rounded-full hover:bg-brand-bg transition-colors">

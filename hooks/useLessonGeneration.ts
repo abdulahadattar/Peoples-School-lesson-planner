@@ -157,7 +157,7 @@ export const useLessonGeneration = (allSlos: SLO[], contextPdfs: ContextPdf[]) =
                     }
                     
                     if (attempt === 0) setLogMessages(prev => [...prev, `Generating lesson plan content...`]);
-                    const plan = await generateLessonPlan(slo, unitContextSlos, contextFileParts);
+                     const plan = await generateLessonPlan(slo, unitContextSlos, contextFileParts, undefined, (msg) => setLogMessages(prev => [...prev, msg]));
                     
                     plan.unitNumber = slo.Unit_Number;
                     
@@ -167,7 +167,7 @@ export const useLessonGeneration = (allSlos: SLO[], contextPdfs: ContextPdf[]) =
                     const errorMsg = error instanceof Error ? error.message : String(error);
                     if (errorMsg.startsWith('PDF_CONTEXT_NOT_SUPPORTED:')) {
                         setLogMessages(prev => [...prev, `\nINFO: ${errorMsg}`]);
-                        const plan = await generateLessonPlan(slo, unitContextSlos, []);
+                         const plan = await generateLessonPlan(slo, unitContextSlos, [], undefined, (msg) => setLogMessages(prev => [...prev, msg]));
                         if (plan) {
                             plan.unitNumber = slo.Unit_Number;
                             setLogMessages(prev => [...prev, `Content received for "${plan.title}" (without PDF context)`]);

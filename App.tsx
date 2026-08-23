@@ -27,6 +27,7 @@ const App: React.FC = () => {
     isLoading,
     generationProgress,
     statusMessage,
+    logMessages,
     generatedPlans,
     generatedPapers,
     error,
@@ -197,7 +198,8 @@ const App: React.FC = () => {
           <GenerationStatusPanel
             isLoading={isLoading}
             isComplete={!!(generatedPlans.length || generatedPapers.length)}
-            logMessages={error ? [error] : (statusMessage ? [statusMessage] : [])}
+            logMessages={logMessages}
+            statusMessage={statusMessage}
             generationProgress={generationProgress || undefined}
             onClose={() => { clearResults(); }}
             onStop={() => { clearResults(); }}

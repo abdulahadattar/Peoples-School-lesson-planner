@@ -114,23 +114,25 @@ export async function withKeyRotation<T>(operation: (apiKey: string) => Promise<
     const currentKey = keyPool[keyIndex % keyPool.length];
     keyIndex = (keyIndex + 1) % keyPool.length;
 
-    try {
-      const result = await Promise.race([
-        operation(currentKey),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("API call timed out after 30 seconds")), 30000)
-        ),
-      ]);
-      return result;
-    } catch (error) {
-      lastError = error;
-      const msg = (error as Error)?.message || String(error);
-      if (msg.includes("timed out") || isAuthOrQuotaError(error)) {
-        console.warn(`API key failed, rotating to next key:`, msg.slice(0, 80));
-      } else {
-        throw error;
-      }
-    }
+     try {
+       const result = await Promise.race([
+         operation(currentKey),
+         new Promise<never>((_, reject) =>
+           setTimeout(() => reject(new Error("API call timed out after 30 seconds")), 30000)
+         ),
+       ]);
+       return result;
+     } catch (error) {
+       lastError = error;
+       const msg = (error as Error)?.message || String(error);
+       if (msg.includes("timed out")) {
+         console.warn(`[geminiService.withKeyRotation] Timeout on API key (prefix: ${currentKey.slice(0, 7)}...). Rotating to next key.`);
+       } else if (isAuthOrQuotaError(error)) {
+         console.warn(`[geminiService.withKeyRotation] API key failed (auth/quota), rotating to next key:`, msg.slice(0, 80));
+       } else {
+         throw error;
+       }
+     }
   }
 
   throw lastError;
@@ -145,40 +147,54 @@ async function callGeminiAPI(
   systemInstruction: string,
   userPrompt: string,
   schema: any,
-  temperature = 0.2
+  temperature = 0.2,
+  logCallback?: LogCallback
 ): Promise<string> {
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
+  const log = (msg: string) => {
+    console.log(`[geminiService.callGeminiAPI] ${msg}`);
+    logCallback?.(msg);
+  };
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  log(`Initiating fetch to: ${url}`);
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey,
+    },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: userPrompt }] }],
+      generationConfig: {
+        temperature,
+        responseMimeType: "application/json",
+        responseSchema: schema,
       },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: userPrompt }] }],
-        generationConfig: {
-          temperature,
-          responseMimeType: "application/json",
-          responseSchema: schema,
-        },
-        systemInstruction: {
-          parts: [{ text: systemInstruction }],
-        },
-      }),
-    }
-  );
+      systemInstruction: {
+        parts: [{ text: systemInstruction }],
+      },
+    }),
+  });
+
+  log(`Received HTTP response. Status: ${response.status} ${response.statusText}`);
 
   if (!response.ok) {
     const errorText = await response.text();
+    log(`ERROR: API request failed. Response body: ${errorText.slice(0, 200)}`);
     throw new Error(`HTTP ${response.status}: ${errorText}`);
   }
 
+  log("Parsing response JSON...");
   const data = await response.json();
+
   if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-    return data.candidates[0].content.parts[0].text;
+    const text = data.candidates[0].content.parts[0].text;
+    log(`Extracted content from response (${text.length} chars).`);
+    return text;
   }
-  
+
+  log("ERROR: No content found in API response candidates.");
   throw new Error("No content in API response");
 }
 
@@ -212,15 +228,25 @@ function parseLessonPlanJson(jsonText: string, gradeLevel: string, subject: stri
   }
 }
 
+export type LogCallback = (message: string) => void;
+
 export async function generateLessonPlan(
   slo: SLO,
   unitSlos: SLO[],
   contextFileParts?: Part[],
-  subjectName?: string
+  subjectName?: string,
+  logCallback?: LogCallback
 ): Promise<LessonPlan> {
+  const log = (msg: string) => {
+    console.log(`[geminiService] ${msg}`);
+    logCallback?.(msg);
+  };
+
   const gradeNum = parseInt(slo.grade?.replace(/Grade\s+|Class\s+/i, "") || "9", 10);
   const gradeLevelContext = isNaN(gradeNum) ? `${slo.grade}` : `${slo.grade} (${gradeNum <= 10 ? "Foundational" : "Advanced"})`;
   const subject = subjectName || "General";
+
+  log(`Generating lesson plan for SLO: ${slo.SLO_ID} | Subject: ${subject} | Grade: ${slo.grade}`);
 
   const systemInstruction = `You are a ${subject} Teacher at Peoples Higher Secondary School Jamshoro, creating a detailed lesson plan for your own use and for school records. Your task is to generate a comprehensive 40-minute lesson plan as a JSON object using the 4As instructional model. The tone should be professional, direct, and suitable for a Pakistani secondary school context.
 
@@ -304,17 +330,24 @@ ${contextText || "None"}
 
 Use the attached PDF(s) as the primary reference for content, examples, and activities.`;
 
+  const userPromptLength = userPrompt.length;
+  const contextPartCount = contextFileParts?.length ?? 0;
+  log(`Built user prompt (${userPromptLength} chars). Context PDF parts attached: ${contextPartCount}.`);
+
   try {
-    // Use direct REST API instead of SDK to avoid timeout bugs
+    log("Calling Gemini API via withKeyRotation...");
     const result = await withKeyRotation(async (apiKey) => {
-      console.log("[geminiService] Using API key (length:", apiKey.length, ", prefix:", apiKey.slice(0, 7) + "...");
-      return callGeminiAPI(apiKey, DEFAULT_MODEL, systemInstruction, userPrompt, lessonPlanSchema, 0.2);
+      log(`Sending request to model: ${DEFAULT_MODEL}`);
+      return callGeminiAPI(apiKey, DEFAULT_MODEL, systemInstruction, userPrompt, lessonPlanSchema, 0.2, log);
     });
 
+    log(`Received API response (${result.length} chars). Parsing JSON...`);
     const lessonPlan = parseLessonPlanJson(result, gradeLevelContext, subject);
+    log(`Successfully parsed lesson plan: "${lessonPlan.title}"`);
     return lessonPlan;
   } catch (error) {
     console.error("Error generating lesson plan:", error);
+    log(`ERROR: ${error instanceof Error ? error.message : String(error)}`);
     if (error instanceof Error) {
       if (error.message.includes("does not support pdf input") || error.message.includes("Cannot read ")) {
         throw new Error("PDF_CONTEXT_NOT_SUPPORTED: The current AI model does not support PDF file input.");
