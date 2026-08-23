@@ -157,11 +157,8 @@ export async function withKeyRotation<T>(operation: (apiKey: string) => Promise<
 
       if (msg.includes("timed out")) {
         console.warn(`[geminiService.withKeyRotation] Timeout on API key (prefix: ${currentKey.slice(0, 7)}...). Rotating to next key.`);
-      } else if (isKeyPermanentlyBlocked(error)) {
-        console.warn(`[geminiService.withKeyRotation] API key permanently blocked (suspended/disabled/invalid), removing from rotation:`, msg.slice(0, 80));
-        badKeys.add(currentKey);
-      } else if (isAuthOrQuotaError(error)) {
-        console.warn(`[geminiService.withKeyRotation] API key failed (auth/quota), rotating to next key:`, msg.slice(0, 80));
+      } else if (isAuthOrQuotaError(error) || isKeyPermanentlyBlocked(error)) {
+        console.warn(`[geminiService.withKeyRotation] API key failed (auth/quota/blocked), rotating to next key:`, msg.slice(0, 80));
       } else {
         throw error;
       }
