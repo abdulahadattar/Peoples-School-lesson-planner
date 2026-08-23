@@ -2,7 +2,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { GoogleGenAI, Part } from '@google/genai';
 import { LessonPlan, SLO, ContextPdf, ExportOption } from '../types';
-import { generateLessonPlan } from '../services/geminiService';
+import { generateLessonPlan, isKeyPermanentlyBlocked } from '../services/geminiService';
 import { exportAsDocx, exportAsPdf, exportMultipleLessonsAsDocx, exportMultipleLessonsAsPdf, formatFileName } from '../services/exportService';
 import { get, set } from 'idb-keyval';
 
@@ -178,6 +178,10 @@ export const useLessonGeneration = (allSlos: SLO[], contextPdfs: ContextPdf[]) =
                     const fullErrorMsg = `Failed for ${slo.SLO_ID} (Attempt ${attempt + 1}/${MAX_RETRIES + 1}): ${errorMsg}`;
                     console.error(fullErrorMsg);
                     setLogMessages(prev => [...prev, `ERROR: ${fullErrorMsg}`]);
+                    if (isKeyPermanentlyBlocked(error)) {
+                        setLogMessages(prev => [...prev, `ERROR: API key is suspended or invalid. Please check your Google API key configuration.`]);
+                        return null;
+                    }
                     if (attempt < MAX_RETRIES) {
                         await new Promise(resolve => setTimeout(resolve, 1000));
                     }
