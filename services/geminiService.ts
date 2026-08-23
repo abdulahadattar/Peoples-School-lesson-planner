@@ -253,6 +253,9 @@ Use the attached PDF(s) as the primary reference for content, examples, and acti
           responseSchema: lessonPlanSchema,
         },
       });
+    }).catch((err) => {
+      console.error("[geminiService] API call failed:", err?.message || err);
+      throw err;
     });
 
     const lessonPlan = parseLessonPlanJson(response.text, gradeLevelContext, subject);
