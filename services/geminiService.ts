@@ -145,6 +145,7 @@ export async function withKeyRotation<T>(operation: (apiKey: string) => Promise<
 
   let lastError: unknown;
   let attempts = 0;
+  let anyKeyAttempted = false;
 
   while (attempts < keyPool.length) {
     const currentKey = keyPool[keyIndex % keyPool.length];
@@ -154,6 +155,8 @@ export async function withKeyRotation<T>(operation: (apiKey: string) => Promise<
     if (isKeyInCooldown(currentKey)) {
       continue;
     }
+
+    anyKeyAttempted = true;
 
     try {
       const result = await Promise.race([
@@ -180,7 +183,7 @@ export async function withKeyRotation<T>(operation: (apiKey: string) => Promise<
     }
   }
 
-  if (cooldownKeys.size > 0) {
+  if (!anyKeyAttempted) {
     const soonest = Math.min(...cooldownKeys.values());
     const waitMs = Math.max(0, soonest - Date.now());
     const waitMin = Math.round(waitMs / 60000);
