@@ -1,5 +1,5 @@
 # Lesson Planner - Peoples Higher Secondary School Jamshoro
-
+keep updating documentions properly
 An intelligent lesson plan and exam paper generator for teachers, aligned with the Sindh Textbook Board (STBB) curriculum from ECCE to Class XII.
 
 ## Features
