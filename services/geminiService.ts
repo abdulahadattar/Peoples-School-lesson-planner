@@ -47,6 +47,10 @@ function getApiKeyPool(): string[] {
 let keyPool: string[] = getApiKeyPool();
 let keyIndex = 0;
 
+// Keys that have been permanently blocked (suspended, disabled, invalid) by Google.
+// Once a key lands here it is skipped in all subsequent rotations until the pool is refreshed.
+const badKeys: Set<string> = new Set();
+
 /**
  * Returns the next API key in round-robin order.
  */
@@ -70,6 +74,7 @@ export function getApiKey(): string {
 export function refreshApiKeyPool(): void {
   keyPool = getApiKeyPool();
   keyIndex = 0;
+  badKeys.clear();
 }
 
 export const DEFAULT_MODEL = "gemma-4-26b-a4b-it";
@@ -94,6 +99,23 @@ function isAuthOrQuotaError(error: any): boolean {
 }
 
 /**
+ * Detects API key errors that are permanent and will never succeed on retry.
+ * Examples: Google API key has been "suspended", "disabled", or is "invalid".
+ */
+export function isKeyPermanentlyBlocked(error: unknown): boolean {
+  if (error?.message) {
+    const message = error.message.toLowerCase();
+    return (
+      message.includes("suspended") ||
+      message.includes("disabled") ||
+      message.includes("invalid api key") ||
+      message.includes("api key has been")
+    );
+  }
+  return false;
+}
+
+/**
  * Calls the Gemini API directly via REST to avoid SDK timeout bugs.
  * Automatically rotates API keys on 401/403/quota errors.
  * Includes a 30-second timeout per attempt.
@@ -109,30 +131,49 @@ export async function withKeyRotation<T>(operation: (apiKey: string) => Promise<
   }
 
   let lastError: unknown;
+  let attempts = 0;
 
-  for (let attempt = 0; attempt < keyPool.length; attempt++) {
+  while (attempts < keyPool.length) {
     const currentKey = keyPool[keyIndex % keyPool.length];
     keyIndex = (keyIndex + 1) % keyPool.length;
+    attempts++;
 
-     try {
-       const result = await Promise.race([
-         operation(currentKey),
-         new Promise<never>((_, reject) =>
-           setTimeout(() => reject(new Error("API call timed out after 30 seconds")), 30000)
-         ),
-       ]);
-       return result;
-     } catch (error) {
-       lastError = error;
-       const msg = (error as Error)?.message || String(error);
-       if (msg.includes("timed out")) {
-         console.warn(`[geminiService.withKeyRotation] Timeout on API key (prefix: ${currentKey.slice(0, 7)}...). Rotating to next key.`);
-       } else if (isAuthOrQuotaError(error)) {
-         console.warn(`[geminiService.withKeyRotation] API key failed (auth/quota), rotating to next key:`, msg.slice(0, 80));
-       } else {
-         throw error;
-       }
-     }
+    if (badKeys.has(currentKey)) {
+      continue;
+    }
+
+    try {
+      const result = await Promise.race([
+        operation(currentKey),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("API call timed out after 30 seconds")), 30000)
+        ),
+      ]);
+      return result;
+    } catch (error) {
+      lastError = error;
+      const msg = (error as Error)?.message || String(error);
+
+      if (msg.includes("timed out")) {
+        console.warn(`[geminiService.withKeyRotation] Timeout on API key (prefix: ${currentKey.slice(0, 7)}...). Rotating to next key.`);
+      } else if (isKeyPermanentlyBlocked(error)) {
+        console.warn(`[geminiService.withKeyRotation] API key permanently blocked (suspended/disabled/invalid), removing from rotation:`, msg.slice(0, 80));
+        badKeys.add(currentKey);
+      } else if (isAuthOrQuotaError(error)) {
+        console.warn(`[geminiService.withKeyRotation] API key failed (auth/quota), rotating to next key:`, msg.slice(0, 80));
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  const remainingKeys = keyPool.filter((k) => !badKeys.has(k));
+  if (badKeys.size > 0 && remainingKeys.length === 0) {
+    throw new Error(
+      "All configured Google API keys have been suspended, disabled, or are invalid. " +
+      "Please verify your API keys at https://console.cloud.google.com/apis/credentials " +
+      "and ensure they are valid and the Gemini API is enabled."
+    );
   }
 
   throw lastError;
