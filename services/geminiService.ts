@@ -1,26 +1,42 @@
-import { GoogleGenAI, Part, Type } from "@google/genai";
+import { Part, Type } from "@google/genai";
 import { LessonPlan, SLO } from "../types";
+
+/**
+ * Google API keys follow the pattern AIzaSy followed by 33 chars.
+ * Invalid keys (e.g., AQ.Ab8R... format) hang or return errors.
+ */
+function isValidApiKey(key: string): boolean {
+  return /^AIzaSy[A-Za-z0-9_-]{33}$/.test(key);
+}
 
 /**
  * Build the list of available API keys from the environment.
  * Supports both a single VITE_API_KEY and a rotating pool via VITE_API_KEYS (comma-separated).
+ * Invalid/expired keys are filtered out to prevent hanging.
  */
 function getApiKeyPool(): string[] {
   const keys: string[] = [];
 
   const single = import.meta.env.VITE_API_KEY;
-  if (single) {
+  if (single && isValidApiKey(single)) {
     keys.push(single);
   }
 
   const multi = import.meta.env.VITE_API_KEYS;
   if (multi) {
-    keys.push(
-      ...multi
-        .split(",")
-        .map((k) => k.trim())
-        .filter(Boolean)
-    );
+    const allKeys = multi
+      .split(",")
+      .map((k) => k.trim())
+      .filter(Boolean);
+
+    const validKeys = allKeys.filter(isValidApiKey);
+    const invalidKeys = allKeys.filter((k) => !isValidApiKey(k));
+
+    if (invalidKeys.length > 0) {
+      console.warn("[geminiService] Skipping invalid/expired API keys:", invalidKeys.length, "keys");
+    }
+
+    keys.push(...validKeys);
   }
 
   // Deduplicate while preserving order
@@ -56,29 +72,32 @@ export function refreshApiKeyPool(): void {
   keyIndex = 0;
 }
 
-/**
- * Creates a GoogleGenAI instance using the provided key or the next key in the pool.
- */
-export function createAiInstance(apiKey?: string): GoogleGenAI {
-  return new GoogleGenAI({ apiKey: apiKey || getApiKey() });
-}
+export const DEFAULT_MODEL = "gemma-4-26b-a4b-it";
 
-function isAuthOrQuotaError(error: unknown): boolean {
-  if (error instanceof Error) {
+function isAuthOrQuotaError(error: any): boolean {
+  if (error?.message) {
     const message = error.message.toLowerCase();
     return (
-      message.includes('401') ||
-      message.includes('403') ||
-      message.includes('unauthenticated') ||
-      message.includes('permission denied') ||
-      message.includes('quota exceeded') ||
-      message.includes('rate limit') ||
-      message.includes('resource exhausted')
+      message.includes("401") ||
+      message.includes("403") ||
+      message.includes("unauthenticated") ||
+      message.includes("permission denied") ||
+      message.includes("quota exceeded") ||
+      message.includes("rate limit") ||
+      message.includes("resource exhausted")
     );
+  }
+  if (error?.code) {
+    return error.code === 401 || error.code === 403 || error.code === 429;
   }
   return false;
 }
 
+/**
+ * Calls the Gemini API directly via REST to avoid SDK timeout bugs.
+ * Automatically rotates API keys on 401/403/quota errors.
+ * Includes a 30-second timeout per attempt.
+ */
 export async function withKeyRotation<T>(operation: (apiKey: string) => Promise<T>): Promise<T> {
   if (keyPool.length === 0) {
     keyPool = getApiKeyPool();
@@ -96,25 +115,77 @@ export async function withKeyRotation<T>(operation: (apiKey: string) => Promise<
     keyIndex = (keyIndex + 1) % keyPool.length;
 
     try {
-      return await operation(currentKey);
+      const result = await Promise.race([
+        operation(currentKey),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("API call timed out after 30 seconds")), 30000)
+        ),
+      ]);
+      return result;
     } catch (error) {
       lastError = error;
-      if (!isAuthOrQuotaError(error)) {
+      const msg = (error as Error)?.message || String(error);
+      if (msg.includes("timed out") || isAuthOrQuotaError(error)) {
+        console.warn(`API key failed, rotating to next key:`, msg.slice(0, 80));
+      } else {
         throw error;
       }
-      console.warn(`API key failed, rotating to next key: ${(error as Error).message}`);
     }
   }
 
   throw lastError;
 }
 
-export const DEFAULT_MODEL = "gemma-4-26b-a4b-it";
+/**
+ * Direct REST API call to Gemini — bypasses the buggy @google/genai SDK.
+ */
+async function callGeminiAPI(
+  apiKey: string,
+  model: string,
+  systemInstruction: string,
+  userPrompt: string,
+  schema: any,
+  temperature = 0.2
+): Promise<string> {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: userPrompt }] }],
+        generationConfig: {
+          temperature,
+          responseMimeType: "application/json",
+          responseSchema: schema,
+        },
+        systemInstruction: {
+          parts: [{ text: systemInstruction }],
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`HTTP ${response.status}: ${errorText}`);
+  }
+
+  const data = await response.json();
+  if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+    return data.candidates[0].content.parts[0].text;
+  }
+  
+  throw new Error("No content in API response");
+}
 
 function cleanAndParseJson(text: string): any {
-  let cleanText = text.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
-  const firstBrace = cleanText.indexOf('{');
-  const lastBrace = cleanText.lastIndexOf('}');
+  let cleanText = text.replace(/```json\s*/g, "").replace(/```\s*$/g, "");
+  const firstBrace = cleanText.indexOf("{");
+  const lastBrace = cleanText.lastIndexOf("}");
   if (firstBrace !== -1 && lastBrace !== -1) {
     cleanText = cleanText.substring(firstBrace, lastBrace + 1);
   }
@@ -142,14 +213,14 @@ function parseLessonPlanJson(jsonText: string, gradeLevel: string, subject: stri
 }
 
 export async function generateLessonPlan(
-    slo: SLO,
-    unitSlos: SLO[],
-    contextFileParts?: Part[],
-    subjectName?: string
+  slo: SLO,
+  unitSlos: SLO[],
+  contextFileParts?: Part[],
+  subjectName?: string
 ): Promise<LessonPlan> {
-  const gradeNum = parseInt(slo.grade?.replace(/Grade\\s+|Class\\s+/i, '') || '9', 10);
-  const gradeLevelContext = isNaN(gradeNum) ? `${slo.grade}` : `${slo.grade} (${gradeNum <= 10 ? 'Foundational' : 'Advanced'})`;
-  const subject = subjectName || 'General';
+  const gradeNum = parseInt(slo.grade?.replace(/Grade\s+|Class\s+/i, "") || "9", 10);
+  const gradeLevelContext = isNaN(gradeNum) ? `${slo.grade}` : `${slo.grade} (${gradeNum <= 10 ? "Foundational" : "Advanced"})`;
+  const subject = subjectName || "General";
 
   const systemInstruction = `You are a ${subject} Teacher at Peoples Higher Secondary School Jamshoro, creating a detailed lesson plan for your own use and for school records. Your task is to generate a comprehensive 40-minute lesson plan as a JSON object using the 4As instructional model. The tone should be professional, direct, and suitable for a Pakistani secondary school context.
 
@@ -197,74 +268,56 @@ export async function generateLessonPlan(
   const lessonPlanSchema = {
     type: Type.OBJECT,
     properties: {
-        title: { type: Type.STRING, description: "A concise, specific topic for a 40-minute lesson derived from the main SLO." },
-        objective: { type: Type.STRING, description: "A clear restatement of the user's provided SLO, framed as a student learning objective." },
-        materials: { type: Type.ARRAY, description: "A list of necessary resources, including textbook pages if possible.", items: { type: Type.STRING } },
-        activities: {
-            type: Type.ARRAY,
-            description: "An array of four activities following the 4As framework: Activity (Activating Prior Knowledge), Analysis (Acquiring New Knowledge), Abstraction (Applying Knowledge/Generalization), and Application (Assessing Knowledge).",
-            items: {
-                type: Type.OBJECT,
-                properties: {
-                    name: { type: Type.STRING, enum: ['Activity', 'Analysis', 'Abstraction', 'Application'], description: "The 4As phase name. Must be exactly one of: Activity, Analysis, Abstraction, Application." },
-                    duration: { type: Type.INTEGER, description: "Duration of this activity in minutes." },
-                    description: { type: Type.STRING, description: "Detailed teacher instructions and expected student responses for this phase." },
-                    teacherActions: { type: Type.STRING, description: "Specific actions the teacher should take during this phase." },
-                    studentResponses: { type: Type.STRING, description: "Expected student responses and engagement during this phase." },
-                },
-                required: ['name', 'duration', 'description', 'teacherActions', 'studentResponses'],
-            },
+      title: { type: Type.STRING, description: "A concise, specific topic for a 40-minute lesson derived from the main SLO." },
+      objective: { type: Type.STRING, description: "A clear restatement of the user's provided SLO, framed as a student learning objective." },
+      materials: { type: Type.ARRAY, description: "A list of necessary resources, including textbook pages if possible.", items: { type: Type.STRING } },
+      activities: {
+        type: Type.ARRAY,
+        description: "An array of four activities following the 4As framework: Activity (Activating Prior Knowledge), Analysis (Acquiring New Knowledge), Abstraction (Applying Knowledge/Generalization), and Application (Assessing Knowledge).",
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            name: { type: Type.STRING, enum: ['Activity', 'Analysis', 'Abstraction', 'Application'], description: "The 4As phase name." },
+            duration: { type: Type.INTEGER, description: "Duration of this activity in minutes." },
+            description: { type: Type.STRING, description: "Detailed teacher instructions and expected student responses for this phase." },
+            teacherActions: { type: Type.STRING, description: "Specific actions the teacher should take during this phase." },
+            studentResponses: { type: Type.STRING, description: "Expected student responses and engagement during this phase." },
+          },
+          required: ['name', 'duration', 'description', 'teacherActions', 'studentResponses'],
         },
-        homework: { type: Type.STRING, description: "A brief but meaningful homework assignment that reinforces the lesson's objective." }
+      },
+      homework: { type: Type.STRING, description: "A brief but meaningful homework assignment that reinforces the lesson's objective." }
     },
     required: ['title', 'objective', 'materials', 'activities', 'homework'],
   };
 
   const contextText = unitSlos
-    .filter(s => s.uniqueId !== slo.uniqueId)
-    .map(s => `- ${s.SLO_ID}: ${s.SLO_Text}`)
-    .join('\n');
+    .filter((s) => s.uniqueId !== slo.uniqueId)
+    .map((s) => `- ${s.SLO_ID}: ${s.SLO_Text}`)
+    .join("\n");
 
   const userPrompt = `Generate a lesson plan for the following SLO in ${subject}:
 **${slo.SLO_ID}: ${slo.SLO_Text}**
 
 For context, here are other SLOs from the same unit:
-${contextText || 'None'}
+${contextText || "None"}
 
-Use the attached PDF(s) as the primary reference for content, examples, and activities.
-`;
+Use the attached PDF(s) as the primary reference for content, examples, and activities.`;
 
   try {
-    const parts: Part[] = [{ text: userPrompt }];
-    if (contextFileParts && contextFileParts.length > 0) {
-      parts.unshift(...contextFileParts);
-    }
-
-    const response = await withKeyRotation(async (apiKey) => {
+    // Use direct REST API instead of SDK to avoid timeout bugs
+    const result = await withKeyRotation(async (apiKey) => {
       console.log("[geminiService] Using API key (length:", apiKey.length, ", prefix:", apiKey.slice(0, 7) + "...");
-      const ai = new GoogleGenAI({ apiKey });
-      return ai.models.generateContent({
-        model: DEFAULT_MODEL,
-        contents: { parts },
-        config: {
-          systemInstruction,
-          temperature: 0.2,
-          responseMimeType: "application/json",
-          responseSchema: lessonPlanSchema,
-        },
-      });
-    }).catch((err) => {
-      console.error("[geminiService] API call failed:", err?.message || err);
-      throw err;
+      return callGeminiAPI(apiKey, DEFAULT_MODEL, systemInstruction, userPrompt, lessonPlanSchema, 0.2);
     });
 
-    const lessonPlan = parseLessonPlanJson(response.text, gradeLevelContext, subject);
+    const lessonPlan = parseLessonPlanJson(result, gradeLevelContext, subject);
     return lessonPlan;
   } catch (error) {
     console.error("Error generating lesson plan:", error);
     if (error instanceof Error) {
-      if (error.message.includes('does not support pdf input') || error.message.includes('Cannot read')) {
-        throw new Error("PDF_CONTEXT_NOT_SUPPORTED: The current AI model does not support PDF file input. The lesson plan will be generated using the AI's internal knowledge instead.");
+      if (error.message.includes("does not support pdf input") || error.message.includes("Cannot read ")) {
+        throw new Error("PDF_CONTEXT_NOT_SUPPORTED: The current AI model does not support PDF file input.");
       }
       throw error;
     }
