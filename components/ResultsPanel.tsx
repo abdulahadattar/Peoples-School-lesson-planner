@@ -215,8 +215,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({ lessonPlans, onBack }) => {
                     </div>
 
                 </div>
-            </div>
-          </>
+        </>
         )}
       </main>
     </div>
