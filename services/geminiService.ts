@@ -47,10 +47,22 @@ function getApiKeyPool(): string[] {
 let keyPool: string[] = getApiKeyPool();
 let keyIndex = 0;
 
-// Keys that have been permanently blocked (suspended, disabled, invalid) by Google.
-// Once a key lands here it is skipped in all subsequent rotations until the pool is refreshed.
-// Dont change model gemini-3.5-flash-lite
-const badKeys: Set<string> = new Set();
+const COOLDOWN_MS = 3 * 60 * 60 * 1000;
+const cooldownKeys: Map<string, number> = new Map();
+
+function isKeyInCooldown(key: string): boolean {
+  const expiry = cooldownKeys.get(key);
+  if (!expiry) return false;
+  if (Date.now() >= expiry) {
+    cooldownKeys.delete(key);
+    return false;
+  }
+  return true;
+}
+
+function addKeyToCooldown(key: string): void {
+  cooldownKeys.set(key, Date.now() + COOLDOWN_MS);
+}
 
 /**
  * Returns the next API key in round-robin order.
@@ -75,7 +87,7 @@ export function getApiKey(): string {
 export function refreshApiKeyPool(): void {
   keyPool = getApiKeyPool();
   keyIndex = 0;
-  badKeys.clear();
+  cooldownKeys.clear();
 }
 
 export const DEFAULT_MODEL = "gemini-3.5-flash-lite";
@@ -139,7 +151,7 @@ export async function withKeyRotation<T>(operation: (apiKey: string) => Promise<
     keyIndex = (keyIndex + 1) % keyPool.length;
     attempts++;
 
-    if (badKeys.has(currentKey)) {
+    if (isKeyInCooldown(currentKey)) {
       continue;
     }
 
@@ -158,8 +170,8 @@ export async function withKeyRotation<T>(operation: (apiKey: string) => Promise<
       if (msg.includes("timed out")) {
         console.warn(`[geminiService.withKeyRotation] Timeout on API key (prefix: ${currentKey.slice(0, 7)}...). Rotating to next key.`);
       } else if (isKeyPermanentlyBlocked(error)) {
-        console.warn(`[geminiService.withKeyRotation] API key permanently blocked (suspended/disabled/invalid), removing from rotation:`, msg.slice(0, 80));
-        badKeys.add(currentKey);
+        console.warn(`[geminiService.withKeyRotation] API key blocked (suspended/disabled/invalid), cooling down for 3h before retry:`, msg.slice(0, 80));
+        addKeyToCooldown(currentKey);
       } else if (isAuthOrQuotaError(error)) {
         console.warn(`[geminiService.withKeyRotation] API key failed (auth/quota), rotating to next key:`, msg.slice(0, 80));
       } else {
@@ -168,12 +180,14 @@ export async function withKeyRotation<T>(operation: (apiKey: string) => Promise<
     }
   }
 
-  const remainingKeys = keyPool.filter((k) => !badKeys.has(k));
-  if (badKeys.size > 0 && remainingKeys.length === 0) {
+  if (cooldownKeys.size > 0) {
+    const soonest = Math.min(...cooldownKeys.values());
+    const waitMs = Math.max(0, soonest - Date.now());
+    const waitMin = Math.round(waitMs / 60000);
     throw new Error(
-      "All configured Google API keys have been suspended, disabled, or are invalid. " +
-      "Please verify your API keys at https://console.cloud.google.com/apis/credentials " +
-      "and ensure they are valid and the Gemini API is enabled."
+      `All configured Google API keys are currently in cooldown (suspended/disabled). ` +
+      `Earliest retry in ~${waitMin} minutes. ` +
+      `Please verify your API keys at https://console.cloud.google.com/apis/credentials.`
     );
   }
 
