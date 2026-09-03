@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Theme, PaperConfig, Teacher } from './types';
+import { Theme, PaperConfig } from './types';
 import Header from './components/Header';
 import HomeView from './components/HomeView';
 import SubjectSelector from './components/SubjectSelector';
 import PaperPanel from './components/PaperPanel';
 import ResultsView from './components/ResultsView';
 import GenerationStatusPanel from './components/GenerationStatusPanel';
-import { useGeneralGeneration, GenerationMode, UiExportFormat } from './hooks/useGeneralGeneration';
+import { useGeneralGeneration } from './hooks/useGeneralGeneration';
 
 type View = 'home' | 'lesson' | 'paper' | 'results';
 
@@ -20,16 +20,8 @@ const App: React.FC = () => {
   const [selectedChapterId, setSelectedChapterId] = useState('');
   const [teacherName, setTeacherName] = useState('Abdul Ahad');
   const [schoolName, setSchoolName] = useState('Peoples Higher Secondary School Jamshoro');
-  const [generationMode, setGenerationMode] = useState<GenerationMode>('topic');
+  const [generationMode, setGenerationMode] = useState<'chapter' | 'topic'>('chapter');
   const [topicInput, setTopicInput] = useState('');
-  
-  // SLO and batch generation state
-  const [selectedSloIds, setSelectedSloIds] = useState<string[]>([]);
-  const [exportFormat, setExportFormat] = useState<UiExportFormat>('both');
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
-  const [chapterSlos, setChapterSlos] = useState<any[]>([]);
-  const [isLoadingSlos, setIsLoadingSlos] = useState(false);
 
   const {
     isLoading,
@@ -43,81 +35,10 @@ const App: React.FC = () => {
     setShowStatusPanel,
     generateLessonPlan,
     generatePaper,
-    revisePaper,
-    stopGeneration,
+    exportPlan,
+    exportPaper,
     clearResults,
   } = useGeneralGeneration();
-
-  // Load teachers from JSON
-  useEffect(() => {
-    fetch('/teachers.json')
-      .then(res => res.ok ? res.json() : { teachers: [] })
-      .then(data => {
-        setTeachers(data.teachers || []);
-        if (data.teachers?.length > 0) {
-          setSelectedTeacherId(data.teachers[0].id);
-          setTeacherName(data.teachers[0].name);
-          setSchoolName(data.teachers[0].schoolName);
-        }
-      })
-      .catch(err => {
-        console.error('Failed to load teachers:', err);
-        setTeachers([]);
-      });
-  }, []);
-
-  // Load chapter SLOs when chapter changes
-  useEffect(() => {
-    if (selectedClassId && selectedSubjectId && selectedChapterId) {
-      setIsLoadingSlos(true);
-      // Extract grade name from classId
-      const gradeNum = parseInt(selectedClassId.replace('class', ''), 10);
-      const gradeName = `Grade ${gradeNum}`;
-      
-      // Load SLOs from public SLO JSON files (public/ served at root -> no /public prefix)
-            fetch(`/curriculum/slos/${gradeName}/${selectedSubjectId}.json`)
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (!data) {
-            setChapterSlos([]);
-            return;
-          }
-          // Find chapter by number
-          const chapterNum = parseInt(selectedChapterId.split('ch')[1] || '1', 10);
-          const chapter = data.chapters?.find((ch: any) => ch.chapter_number === chapterNum);
-          if (chapter) {
-            const slos = (chapter.slos || []).map((slo: any, idx: number) => ({
-              uniqueId: slo.uniqueId || slo.id || `slo-${idx}`,
-              SLO_ID: slo.id || `SLO_${idx}`,
-              SLO_Text: slo.text || '',
-              Cognitive_Level_Code: slo.cognitiveLevel || 'U',
-            }));
-            setChapterSlos(slos);
-          } else {
-            setChapterSlos([]);
-          }
-        })
-        .catch(err => {
-          console.error('Failed to load chapter SLOs:', err);
-          setChapterSlos([]);
-        })
-        .finally(() => setIsLoadingSlos(false));
-    } else {
-      setChapterSlos([]);
-      setSelectedSloIds([]);
-    }
-  }, [selectedClassId, selectedSubjectId, selectedChapterId]);
-
-  // Update teacher info when teacher selection changes
-  useEffect(() => {
-    if (selectedTeacherId && teachers.length > 0) {
-      const teacher = teachers.find(t => t.id === selectedTeacherId);
-      if (teacher) {
-        setTeacherName(teacher.name);
-        setSchoolName(teacher.schoolName);
-      }
-    }
-  }, [selectedTeacherId, teachers]);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') as Theme;
@@ -140,14 +61,14 @@ const App: React.FC = () => {
   const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
 
   const handleNavigate = (target: 'lesson' | 'paper') => {
+    const isSwitching = view !== 'home' && view !== target;
     setView(target);
-    if (target !== view) {
+    if (isSwitching) {
       setSelectedClassId('');
       setSelectedSubjectId('');
       setSelectedChapterId('');
-      setSelectedSloIds([]);
-      setChapterSlos([]);
     }
+    clearResults();
   };
 
   const handleBackToHome = () => {
@@ -157,27 +78,14 @@ const App: React.FC = () => {
 
   const handleGenerateLesson = async () => {
     if (!selectedClassId || !selectedSubjectId) return;
-    if (generationMode === 'whole-chapter' && !selectedChapterId) return;
-    if (generationMode === 'single-slo' && (!selectedChapterId || selectedSloIds.length === 0)) return;
+    if (generationMode === 'chapter' && !selectedChapterId) return;
     if (generationMode === 'topic' && !topicInput.trim()) return;
-
     const topicOverride = generationMode === 'topic' ? topicInput.trim() : undefined;
-    
-    const plans = await generateLessonPlan(
-      selectedClassId,
-      selectedSubjectId,
-      selectedChapterId,
-      { name: teacherName, schoolName },
-      topicOverride,
-      {
-        mode: generationMode,
-        selectedSloIds,
-        exportFormat,
-        allChapterSlos: chapterSlos,
-      }
-    );
-    
-    if (plans && plans.length > 0) {
+    const plan = await generateLessonPlan(selectedClassId, selectedSubjectId, selectedChapterId, {
+      name: teacherName,
+      schoolName,
+    }, topicOverride);
+    if (plan) {
       setView('results');
     }
   };
@@ -192,7 +100,7 @@ const App: React.FC = () => {
   const hasResults = generatedPlans.length > 0 || generatedPapers.length > 0;
 
   return (
-    <div className="flex h-screen bg-brand-bg text-brand-text-primary font-sans selection:bg-brand-primary selection:text-white antialiased">
+    <div className="flex h-screen bg-brand-bg text-brand-text-light font-sans selection:bg-brand-primary selection:text-white antialiased">
       {isSidebarOpen && (
         <div className="fixed inset-0 bg-slate-900/20 dark:bg-black/40 z-[90] md:hidden transition-opacity" onClick={() => setIsSidebarOpen(false)}></div>
       )}
@@ -200,8 +108,8 @@ const App: React.FC = () => {
       <aside className={`fixed md:relative z-[100] top-0 left-0 h-screen md:h-full bg-brand-surface dark:bg-slate-900 flex flex-col transition-transform duration-300 md:transition-none md:shadow-none w-[280px] ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} border-r border-brand-border/60`}>
         <div className="p-6 flex-grow flex flex-col h-full overflow-hidden">
           <div className="flex items-center justify-between mb-8 md:hidden">
-            <span className="font-semibold text-base text-brand-text-primary">Menu</span>
-            <button onClick={() => setIsSidebarOpen(false)} className="p-2 text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg rounded-xl transition-colors">
+            <span className="font-semibold text-base text-brand-text-light">Menu</span>
+            <button onClick={() => setIsSidebarOpen(false)} className="p-2 text-brand-text-medium hover:text-brand-text-light hover:bg-brand-bg rounded-xl transition-colors">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
@@ -216,19 +124,19 @@ const App: React.FC = () => {
               </svg>
             </div>
             <div>
-              <h3 className="text-sm font-bold text-brand-text-primary tracking-tight">Navigation</h3>
-              <p className="text-[11px] text-brand-text-secondary">Lesson Plan AI</p>
+              <h3 className="text-sm font-bold text-brand-text-light tracking-tight">Navigation</h3>
+              <p className="text-[11px] text-brand-text-medium">Lesson Plan AI</p>
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <button onClick={() => { setView('home'); clearResults(); }} className={`w-full text-left px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${view === 'home' ? 'bg-brand-primary text-white' : 'text-brand-text-secondary hover:bg-brand-bg hover:text-brand-text-primary'}`}>
+            <button onClick={() => { setView('home'); clearResults(); }} className={`w-full text-left px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${view === 'home' ? 'bg-brand-primary text-white' : 'text-brand-text-medium hover:bg-brand-bg hover:text-brand-text-light'}`}>
               Home
             </button>
-            <button onClick={() => handleNavigate('lesson')} className={`w-full text-left px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${view === 'lesson' || view === 'results' ? 'bg-brand-primary text-white' : 'text-brand-text-secondary hover:bg-brand-bg hover:text-brand-text-primary'}`}>
+            <button onClick={() => handleNavigate('lesson')} className={`w-full text-left px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${view === 'lesson' || view === 'results' ? 'bg-brand-primary text-white' : 'text-brand-text-medium hover:bg-brand-bg hover:text-brand-text-light'}`}>
               Lesson Plans
             </button>
-            <button onClick={() => handleNavigate('paper')} className={`w-full text-left px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${view === 'paper' ? 'bg-brand-primary text-white' : 'text-brand-text-secondary hover:bg-brand-bg hover:text-brand-text-primary'}`}>
+            <button onClick={() => handleNavigate('paper')} className={`w-full text-left px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${view === 'paper' ? 'bg-brand-primary text-white' : 'text-brand-text-medium hover:bg-brand-bg hover:text-brand-text-light'}`}>
               Exam Papers
             </button>
           </div>
@@ -265,15 +173,6 @@ const App: React.FC = () => {
                 onGenerationModeChange={setGenerationMode}
                 topicInput={topicInput}
                 onTopicInputChange={setTopicInput}
-                selectedSloIds={selectedSloIds}
-                onSelectedSloIdsChange={setSelectedSloIds}
-                exportFormat={exportFormat}
-                onExportFormatChange={setExportFormat}
-                selectedTeacherId={selectedTeacherId}
-                onSelectedTeacherIdChange={setSelectedTeacherId}
-                teachers={teachers}
-                chapterSlos={chapterSlos}
-                isLoadingSlos={isLoadingSlos}
                 onGenerate={handleGenerateLesson}
                 isGenerating={isLoading}
               />
@@ -284,11 +183,6 @@ const App: React.FC = () => {
             <PaperPanel
               onGeneratePaper={handleGeneratePaper}
               isGenerating={isLoading}
-              teachers={teachers}
-              selectedTeacherId={selectedTeacherId}
-              onSelectedTeacherIdChange={setSelectedTeacherId}
-              onTeacherNameChange={setTeacherName}
-              onSchoolNameChange={setSchoolName}
             />
           )}
 
@@ -299,9 +193,6 @@ const App: React.FC = () => {
               onBack={handleBackToHome}
               teacherName={teacherName}
               schoolName={schoolName}
-              exportFormat={exportFormat}
-              onRevisePaper={revisePaper}
-              isRevising={isLoading}
             />
           )}
         </div>
@@ -314,7 +205,7 @@ const App: React.FC = () => {
             statusMessage={statusMessage}
             generationProgress={generationProgress || undefined}
             onClose={() => { clearResults(); }}
-            onStop={stopGeneration}
+            onStop={() => { clearResults(); }}
             onViewResults={() => { setShowStatusPanel(false); setView('results'); }}
             error={error}
           />
