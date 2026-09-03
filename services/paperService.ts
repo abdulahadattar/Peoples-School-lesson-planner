@@ -2,74 +2,7 @@ import { Part, Type } from "@google/genai";
 import { GeneratedPaper, PaperSection, PaperQuestion } from "../types";
 import { curriculumData } from "../curriculum";
 import { withKeyRotation, DEFAULT_MODEL, downloadPdfAsPart, LogCallback } from "./geminiService";
-
-/**
- * Fix control characters inside JSON string values.
- * Walks the string tracking whether we're inside quotes, and escapes
- * any literal newlines/tabs/carriage returns found inside strings.
- */
-function fixJsonControlChars(json: string): string {
-  const result: string[] = [];
-  let inString = false;
-  let escaped = false;
-
-  for (let i = 0; i < json.length; i++) {
-    const ch = json[i];
-
-    if (escaped) {
-      result.push(ch);
-      escaped = false;
-      continue;
-    }
-
-    if (ch === '\\' && inString) {
-      result.push(ch);
-      escaped = true;
-      continue;
-    }
-
-    if (ch === '"') {
-      inString = !inString;
-      result.push(ch);
-      continue;
-    }
-
-    if (inString) {
-      if (ch === '\n') { result.push('\\n'); continue; }
-      if (ch === '\r') { result.push('\\r'); continue; }
-      if (ch === '\t') { result.push('\\t'); continue; }
-      // Replace other control characters (U+0000 to U+001F)
-      if (ch.charCodeAt(0) < 0x20) { result.push(' '); continue; }
-    }
-
-    result.push(ch);
-  }
-
-  return result.join('');
-}
-
-function cleanAndParseJson(text: string): any {
-  let cleanText = text.replace(/```json\s*/g, "").replace(/```\s*$/g, "");
-  const firstBrace = cleanText.indexOf("{");
-  const lastBrace = cleanText.lastIndexOf("}");
-  if (firstBrace !== -1 && lastBrace !== -1) {
-    cleanText = cleanText.substring(firstBrace, lastBrace + 1);
-  }
-  // Fix control characters: replace literal newlines/tabs INSIDE string values
-  // Strategy: walk the string and track whether we're inside a JSON string
-  cleanText = fixJsonControlChars(cleanText);
-  try {
-    return JSON.parse(cleanText);
-  } catch (error) {
-    // Log first 200 chars for debugging
-    const preview = cleanText.substring(0, 200).replace(/[\x00-\x1f]/g, c => c === '\n' ? '\\n' : c === '\r' ? '\\r' : c === '\t' ? '\\t' : '?');
-    throw new Error(
-      `Failed to parse JSON response: ${
-        error instanceof Error ? error.message : "Unknown error"
-      } [preview: ${preview}]`
-    );
-  }
-}
+import { cleanAndParseJson } from './jsonHelpers';
 
 const getGradeName = (gradeId: string): string => {
   const cls = curriculumData.classes.find((c) => c.id === gradeId);

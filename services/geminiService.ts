@@ -1,5 +1,6 @@
 import { Part, Type } from "@google/genai";
 import { LessonPlan, SLO } from "../types";
+import { cleanAndParseJson } from './jsonHelpers';
 
 /**
  * Google API keys follow the pattern AIzaSy followed by 33 chars.
@@ -270,56 +271,6 @@ async function callGeminiAPI(
  * Walks the string tracking whether we're inside quotes, and escapes
  * any literal newlines/tabs/carriage returns found inside strings.
  */
-function fixJsonControlChars(json: string): string {
-  const result: string[] = [];
-  let inString = false;
-  let escaped = false;
-
-  for (let i = 0; i < json.length; i++) {
-    const ch = json[i];
-
-    if (escaped) {
-      result.push(ch);
-      escaped = false;
-      continue;
-    }
-
-    if (ch === '\\' && inString) {
-      result.push(ch);
-      escaped = true;
-      continue;
-    }
-
-    if (ch === '"') {
-      inString = !inString;
-      result.push(ch);
-      continue;
-    }
-
-    if (inString) {
-      if (ch === '\n') { result.push('\\n'); continue; }
-      if (ch === '\r') { result.push('\\r'); continue; }
-      if (ch === '\t') { result.push('\\t'); continue; }
-      if (ch.charCodeAt(0) < 0x20) { result.push(' '); continue; }
-    }
-
-    result.push(ch);
-  }
-
-  return result.join('');
-}
-
-function cleanAndParseJson(text: string): any {
-  let cleanText = text.replace(/```json\s*/g, "").replace(/```\s*$/g, "");
-  const firstBrace = cleanText.indexOf("{");
-  const lastBrace = cleanText.lastIndexOf("}");
-  if (firstBrace !== -1 && lastBrace !== -1) {
-    cleanText = cleanText.substring(firstBrace, lastBrace + 1);
-  }
-  cleanText = fixJsonControlChars(cleanText);
-  return JSON.parse(cleanText);
-}
-
 function parseLessonPlanJson(jsonText: string, gradeLevel: string, subject: string): LessonPlan {
   try {
     const parsed = cleanAndParseJson(jsonText);

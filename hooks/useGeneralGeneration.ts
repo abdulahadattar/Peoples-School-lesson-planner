@@ -233,21 +233,21 @@ export const useGeneralGeneration = () => {
           allGeneratedPlans.push(plan);
           addLog(`✓ Done: "${plan.title}"`);
 
-          // Export based on format
-          if (isIndividualExport) {
+          // Export based on format (skip if cancelled)
+          if (isIndividualExport && !isCancelledRef.current) {
             addLog('Exporting DOCX and PDF...');
             try {
               await exportAsDocx(plan, slo.SLO_ID, teacherInfo);
+              if (isCancelledRef.current) break;
               await new Promise(resolve => setTimeout(resolve, 250));
               await exportAsPdf(plan, slo.SLO_ID, teacherInfo);
-              await new Promise(resolve => setTimeout(resolve, 250));
             } catch (exportError) {
               addLog(`WARN: Export failed for ${slo.SLO_ID}: ${exportError instanceof Error ? exportError.message : 'Unknown error'}`);
             }
           }
 
-          // Delay between requests (except for last one)
-          if (i < totalSlos - 1) {
+          // Delay between requests (except for last one, skip if cancelled)
+          if (i < totalSlos - 1 && !isCancelledRef.current) {
             addLog('Waiting 2 seconds before next request...');
             await new Promise(resolve => setTimeout(resolve, 2000));
           }
@@ -264,8 +264,8 @@ export const useGeneralGeneration = () => {
         }
       }
 
-      // Batch export if not individual
-      if (exportOption !== 'individual' && allGeneratedPlans.length > 0) {
+      // Batch export if not individual (skip if cancelled)
+      if (exportOption !== 'individual' && allGeneratedPlans.length > 0 && !isCancelledRef.current) {
         const fileName = formatFileName(`${cls.name} ${subject.name} ${chapterName}`);
         addLog(`\nExporting ${allGeneratedPlans.length} plans...`);
         
@@ -380,6 +380,15 @@ export const useGeneralGeneration = () => {
     }
   }, []);
 
+  const stopGeneration = useCallback(() => {
+    isCancelledRef.current = true;
+    setIsLoading(false);
+    setError('Generation cancelled by user.');
+    addLog('Generation cancelled by user.');
+    setGenerationProgress(null);
+    setStatusMessage('Cancelled');
+  }, [addLog]);
+
   const clearResults = useCallback(() => {
     isCancelledRef.current = true;
     setGeneratedPlans([]);
@@ -436,6 +445,7 @@ export const useGeneralGeneration = () => {
     exportPlan,
     exportPaper,
     revisePaper,
+    stopGeneration,
     clearResults,
   };
 };

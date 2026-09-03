@@ -14,14 +14,20 @@ interface KaTeXTextProps {
 
 /**
  * Renders text with inline KaTeX equation support.
- * Detects $...$ and $$...$$ delimiters and renders them as proper math.
+ * Uses imperative textContent + renderMathInElement to avoid React stale text node issues.
  */
 const KaTeXText: React.FC<KaTeXTextProps> = ({ text, className = '', as: Tag = 'span' }) => {
   const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    if (ref.current && window.renderMathInElement) {
-      window.renderMathInElement(ref.current, {
+    const el = ref.current;
+    if (!el) return;
+
+    // Set text imperatively so React doesn't retain replaced nodes
+    el.textContent = text;
+
+    if (window.renderMathInElement) {
+      window.renderMathInElement(el, {
         delimiters: [
           { left: '$$', right: '$$', display: true },
           { left: '$', right: '$', display: false },
@@ -31,11 +37,7 @@ const KaTeXText: React.FC<KaTeXTextProps> = ({ text, className = '', as: Tag = '
     }
   }, [text]);
 
-  return (
-    <Tag ref={ref as any} className={className}>
-      {text}
-    </Tag>
-  );
+  return <Tag ref={ref as any} className={className} />;
 };
 
 export default KaTeXText;

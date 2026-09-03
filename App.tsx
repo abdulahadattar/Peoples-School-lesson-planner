@@ -46,6 +46,7 @@ const App: React.FC = () => {
     exportPlan,
     exportPaper,
     revisePaper,
+    stopGeneration,
     clearResults,
   } = useGeneralGeneration();
 
@@ -319,7 +320,7 @@ const App: React.FC = () => {
             statusMessage={statusMessage}
             generationProgress={generationProgress || undefined}
             onClose={() => { clearResults(); }}
-            onStop={() => { clearResults(); }}
+            onStop={stopGeneration}
             onViewResults={() => { setShowStatusPanel(false); setView('results'); }}
             error={error}
           />

@@ -74,7 +74,6 @@ export interface GeneratedPaper {
   chapterName: string;
   totalMarks: number;
   durationMinutes: number;
-  questions: PaperQuestion[];
   sections: PaperSection[];
 }
 

@@ -33,10 +33,26 @@ const blob2b64 = (blob) => blob.arrayBuffer().then(ab => Buffer.from(ab).toStrin
 async function getKeys() {
   const fs = await import('fs');
   let env = '';
-  try { env = fs.readFileSync('.env.local', 'utf-8'); } catch { return []; }
-  const m = env.match(/VITE_API_KEYS=(.+)/) || env.match(/VITE_API_KEY=(.+)/);
-  if (!m) return [];
-  return m[1].split(',').map(k => k.trim()).filter(k => /^AIzaSy[A-Za-z0-9_-]{33}$/.test(k));
+  try {
+    env = fs.readFileSync('.env.local', 'utf-8');
+  } catch (err) {
+    if (err.code === 'ENOENT') return [];
+    throw err;
+  }
+  const validPattern = /^AIzaSy[A-Za-z0-9_-]{33}$/;
+  // Try VITE_API_KEYS (plural) first
+  const keysMatch = env.match(/VITE_API_KEYS=(.+)/);
+  if (keysMatch) {
+    const keys = keysMatch[1].split(',').map(k => k.trim()).filter(k => validPattern.test(k));
+    if (keys.length > 0) return keys;
+  }
+  // Fallback to VITE_API_KEY (singular)
+  const singleMatch = env.match(/VITE_API_KEY=(.+)/);
+  if (singleMatch) {
+    const key = singleMatch[1].trim();
+    if (validPattern.test(key)) return [key];
+  }
+  return [];
 }
 
 // ─── PHASE 1: Infrastructure + Data ────────────────────────────
