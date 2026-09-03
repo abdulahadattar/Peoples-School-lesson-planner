@@ -222,23 +222,43 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
       onSubjectChange('');
       onChapterChange('');
 
-      // Auto-select class if teacher teaches only one class
+      // Auto-select class and subject
       const teacherClasses = teacher.classIds || [];
       const newClassId = teacherClasses.length === 1 ? teacherClasses[0] : '';
-      if (newClassId) {
-        onClassChange(newClassId);
-      }
 
       // Auto-select subject if teacher teaches only one subject
+      // Search all teacher's classes to find the matching curriculum subject
+      let autoSelectedSubject = '';
       if (teacher.subjects.length === 1) {
-        const classId = newClassId || selectedClassId;
-        const classObj = classes.find(c => c.id === classId);
-        if (classObj) {
-          const matchSubject = classObj.subjects.find(s => subjectMatchesTeacher(teacher.subjects[0], s));
-          if (matchSubject) {
-            onSubjectChange(matchSubject.id);
+        const classIds = teacherClasses.length > 0 ? teacherClasses : (selectedClassId ? [selectedClassId] : []);
+        for (const cid of classIds) {
+          const classObj = classes.find(c => c.id === cid);
+          if (classObj) {
+            const matchSubject = classObj.subjects.find(s => subjectMatchesTeacher(teacher.subjects[0], s));
+            if (matchSubject) {
+              autoSelectedSubject = matchSubject.id;
+              break;
+            }
           }
         }
+      }
+
+      // Apply: if we found an auto-selected subject, also auto-select its class
+      // so the subject dropdown is enabled and shows the correct value
+      if (autoSelectedSubject) {
+        // Find which class has this subject for the teacher
+        const classForSubject = teacherClasses.find(cid => {
+          const classObj = classes.find(c => c.id === cid);
+          return classObj?.subjects.some(s => s.id === autoSelectedSubject);
+        });
+        if (classForSubject) {
+          onClassChange(classForSubject);
+        } else if (newClassId) {
+          onClassChange(newClassId);
+        }
+        onSubjectChange(autoSelectedSubject);
+      } else if (newClassId) {
+        onClassChange(newClassId);
       }
     } else {
       onTeacherNameChange('');

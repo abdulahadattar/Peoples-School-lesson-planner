@@ -169,31 +169,40 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating, 
       onTeacherNameChange(teacher.name);
       onSchoolNameChange(teacher.schoolName);
 
-      // Auto-select class if teacher teaches only one class
+      // Auto-select class and subject
       const teacherClasses = teacher.classIds || [];
-      if (teacherClasses.length === 1) {
-        setSelectedClassId(teacherClasses[0]);
-        setSelectedSubjectId('');
-        setSelectedChapterId('');
-      }
+      setSelectedChapterId('');
 
       // Auto-select subject if teacher teaches only one subject
+      let autoSelectedSubject = '';
       if (teacher.subjects.length === 1) {
-        const classId = teacherClasses.length === 1 ? teacherClasses[0] : selectedClassId;
-        const classObj = classes.find(c => c.id === classId);
-        if (classObj) {
-          const tSubj = teacher.subjects[0].toLowerCase();
-          const matchSubject = classObj.subjects.find(s =>
-            s.name.toLowerCase() === tSubj ||
-            s.id.toLowerCase() === tSubj ||
-            s.name.toLowerCase().includes(tSubj) ||
-            tSubj.includes(s.name.toLowerCase()) ||
-            tSubj.includes(s.id.toLowerCase().replace('_', ' '))
-          );
-          if (matchSubject) {
-            setSelectedSubjectId(matchSubject.id);
+        const classIds = teacherClasses.length > 0 ? teacherClasses : (selectedClassId ? [selectedClassId] : []);
+        for (const cid of classIds) {
+          const classObj = classes.find(c => c.id === cid);
+          if (classObj) {
+            const matchSubject = classObj.subjects.find(s => subjectMatches(teacher.subjects[0], s));
+            if (matchSubject) {
+              autoSelectedSubject = matchSubject.id;
+              break;
+            }
           }
         }
+      }
+
+      if (autoSelectedSubject) {
+        const classForSubject = teacherClasses.find(cid => {
+          const classObj = classes.find(c => c.id === cid);
+          return classObj?.subjects.some(s => s.id === autoSelectedSubject);
+        });
+        if (classForSubject) {
+          setSelectedClassId(classForSubject);
+        } else if (teacherClasses.length === 1) {
+          setSelectedClassId(teacherClasses[0]);
+        }
+        setSelectedSubjectId(autoSelectedSubject);
+      } else if (teacherClasses.length === 1) {
+        setSelectedClassId(teacherClasses[0]);
+        setSelectedSubjectId('');
       }
     } else {
       onTeacherNameChange('');
