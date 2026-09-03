@@ -265,6 +265,50 @@ async function callGeminiAPI(
   throw new Error("No content in API response");
 }
 
+/**
+ * Fix control characters inside JSON string values.
+ * Walks the string tracking whether we're inside quotes, and escapes
+ * any literal newlines/tabs/carriage returns found inside strings.
+ */
+function fixJsonControlChars(json: string): string {
+  const result: string[] = [];
+  let inString = false;
+  let escaped = false;
+
+  for (let i = 0; i < json.length; i++) {
+    const ch = json[i];
+
+    if (escaped) {
+      result.push(ch);
+      escaped = false;
+      continue;
+    }
+
+    if (ch === '\\' && inString) {
+      result.push(ch);
+      escaped = true;
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = !inString;
+      result.push(ch);
+      continue;
+    }
+
+    if (inString) {
+      if (ch === '\n') { result.push('\\n'); continue; }
+      if (ch === '\r') { result.push('\\r'); continue; }
+      if (ch === '\t') { result.push('\\t'); continue; }
+      if (ch.charCodeAt(0) < 0x20) { result.push(' '); continue; }
+    }
+
+    result.push(ch);
+  }
+
+  return result.join('');
+}
+
 function cleanAndParseJson(text: string): any {
   let cleanText = text.replace(/```json\s*/g, "").replace(/```\s*$/g, "");
   const firstBrace = cleanText.indexOf("{");
@@ -272,11 +316,7 @@ function cleanAndParseJson(text: string): any {
   if (firstBrace !== -1 && lastBrace !== -1) {
     cleanText = cleanText.substring(firstBrace, lastBrace + 1);
   }
-  // Fix control characters that break JSON parsing:
-  // Replace literal newlines/tabs inside string values with escaped versions
-  cleanText = cleanText.replace(/([^\\])\n/g, '$1\\n');
-  cleanText = cleanText.replace(/([^\\])\r/g, '$1\\r');
-  cleanText = cleanText.replace(/([^\\])\t/g, '$1\\t');
+  cleanText = fixJsonControlChars(cleanText);
   return JSON.parse(cleanText);
 }
 
