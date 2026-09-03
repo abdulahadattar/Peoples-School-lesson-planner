@@ -389,33 +389,6 @@ export const useGeneralGeneration = () => {
     }
   }, [addLog]);
 
-  const exportPlan = useCallback(async (plan: LessonPlan, teacherInfo: TeacherInfo, exportFormatOption?: ExportOption) => {
-    try {
-      if (exportFormatOption === 'individual') {
-        await exportAsDocx(plan, undefined, teacherInfo);
-        await new Promise(resolve => setTimeout(resolve, 250));
-        await exportAsPdf(plan, undefined, teacherInfo);
-      } else if (exportFormatOption === 'all' || exportFormatOption === 'byUnit' || exportFormatOption === 'byGrade') {
-        // Batch export handled in generation
-      }
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Failed to export plan';
-      setError(errorMsg);
-      throw error;
-    }
-  }, []);
-
-  const exportPaper = useCallback(async (paper: GeneratedPaper, teacherInfo: TeacherInfo) => {
-    try {
-      const { exportPaperAsDocx, exportPaperAsPdf } = await import('../services/exportService');
-      await exportPaperAsDocx(paper, teacherInfo);
-      await exportPaperAsPdf(paper, teacherInfo);
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Failed to export paper';
-      setError(errorMsg);
-    }
-  }, []);
-
   const stopGeneration = useCallback(() => {
     isCancelledRef.current = true;
     setIsLoading(false);
@@ -478,8 +451,6 @@ export const useGeneralGeneration = () => {
     setShowStatusPanel,
     generateLessonPlan,
     generatePaper,
-    exportPlan,
-    exportPaper,
     revisePaper,
     stopGeneration,
     clearResults,

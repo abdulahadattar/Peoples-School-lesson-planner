@@ -10,7 +10,6 @@ interface ResultsViewProps {
   onBack: () => void;
   teacherName: string;
   schoolName: string;
-  onExportPlan?: (plan: LessonPlan) => void;
   exportFormat?: ExportFormat;
   onRevisePaper?: (prompt: string) => Promise<GeneratedPaper | null>;
   isRevising?: boolean;
@@ -22,7 +21,6 @@ const ResultsView: React.FC<ResultsViewProps> = ({
   onBack, 
   teacherName, 
   schoolName,
-  onExportPlan,
   exportFormat = 'both',
   onRevisePaper,
   isRevising = false,
@@ -50,8 +48,15 @@ const ResultsView: React.FC<ResultsViewProps> = ({
 
   const handleExportPaper = async (paper: GeneratedPaper) => {
     try {
-      await exportPaperAsDocx(paper, { name: teacherName, schoolName });
-      await exportPaperAsPdf(paper, { name: teacherName, schoolName });
+      if (exportFormat === 'docx' || !exportFormat) {
+        await exportPaperAsDocx(paper, { name: teacherName, schoolName });
+      } else if (exportFormat === 'pdf') {
+        await exportPaperAsPdf(paper, { name: teacherName, schoolName });
+      } else {
+        await exportPaperAsDocx(paper, { name: teacherName, schoolName });
+        await new Promise(resolve => setTimeout(resolve, 250));
+        await exportPaperAsPdf(paper, { name: teacherName, schoolName });
+      }
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Failed to export. Please try again.');
     }
