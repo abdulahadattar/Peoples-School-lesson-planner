@@ -32,7 +32,9 @@ const blob2b64 = (blob) => blob.arrayBuffer().then(ab => Buffer.from(ab).toStrin
 
 async function getKeys() {
   const fs = await import('fs');
-  const m = fs.readFileSync('.env.local', 'utf-8').match(/VITE_API_KEYS=(.+)/);
+  let env = '';
+  try { env = fs.readFileSync('.env.local', 'utf-8'); } catch { return []; }
+  const m = env.match(/VITE_API_KEYS=(.+)/) || env.match(/VITE_API_KEY=(.+)/);
   if (!m) return [];
   return m[1].split(',').map(k => k.trim()).filter(k => /^AIzaSy[A-Za-z0-9_-]{33}$/.test(k));
 }
