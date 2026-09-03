@@ -113,7 +113,7 @@ const parseMarkdownRuns = (text: string): TextRun[] => {
 
 const createRichParagraph = async (text: string): Promise<Paragraph> => new Paragraph({
   children: await parseTextForDocx(text),
-  spacing: { after: 100 },
+  spacing: { after: 60 },
   alignment: AlignmentType.JUSTIFIED,
 });
 
@@ -123,20 +123,20 @@ const createBulletList = async (items: string[]): Promise<Paragraph[]> => {
     paragraphs.push(new Paragraph({
       children: await parseTextForDocx(item),
       bullet: { level: 0 },
-      spacing: { after: 50 },
+      spacing: { after: 30 },
     }));
   }
   return paragraphs;
 };
 
 const createSectionHeading = (title: string): Paragraph => new Paragraph({
-  children: [new TextRun({ text: title, bold: true, size: 28, color: "1F4E79" })],
-  spacing: { before: 300, after: 100 },
+  children: [new TextRun({ text: title, bold: true, size: 24, color: "1F4E79" })],
+  spacing: { before: 150, after: 60 },
   alignment: AlignmentType.LEFT,
-  border: { bottom: { color: "1F4E79", space: 4, style: "single", size: 6 } }
+  border: { bottom: { color: "1F4E79", space: 4, style: "single", size: 4 } }
 });
 
-const createHeaderRun = (text: string, bold: boolean = false, size: number = 20): TextRun => new TextRun({
+const createHeaderRun = (text: string, bold: boolean = false, size: number = 18): TextRun => new TextRun({
   text, bold, size, font: "Calibri",
 });
 
@@ -198,24 +198,10 @@ export const createDocxContentForPlan = async (lessonPlan: LessonPlan, teacherIn
   children.push(createSectionHeading('LESSON PROCEDURE & TIMINGS'));
   for (const activity of lessonPlan.activities) {
       children.push(new Paragraph({
-          children: [ new TextRun({ text: `${activity.name.toUpperCase()} (${activity.duration} mins)`, bold: true, size: 24 })],
-          spacing: { before: 200, after: 100 }
+          children: [ new TextRun({ text: `${activity.name.toUpperCase()} (${activity.duration} mins)`, bold: true, size: 22 })],
+          spacing: { before: 120, after: 60 }
       }));
       children.push(await createRichParagraph(activity.description));
-      if (activity.teacherActions) {
-          children.push(new Paragraph({
-              children: [ new TextRun({ text: 'Teacher Actions: ', bold: true, size: 22 }), new TextRun({ text: activity.teacherActions, size: 22 })],
-              spacing: { after: 50 },
-              indent: { left: 200 }
-          }));
-      }
-      if (activity.studentResponses) {
-          children.push(new Paragraph({
-              children: [ new TextRun({ text: 'Student Responses: ', bold: true, size: 22 }), new TextRun({ text: activity.studentResponses, size: 22 })],
-              spacing: { after: 100 },
-              indent: { left: 200 }
-          }));
-      }
   }
   children.push(createSectionHeading('HOMEWORK ASSIGNMENT'));
   children.push(await createRichParagraph(lessonPlan.homework));
@@ -253,11 +239,11 @@ export const exportAsPdf = async (lessonPlan: LessonPlan, sloId?: string, teache
       pageMargins: [PDF_MARGIN, PDF_MARGIN, PDF_MARGIN, PDF_MARGIN],
       content: content,
       styles: {
-          headerTableTitle: { fontSize: 14, bold: true, alignment: 'center', margin: [0, 2, 0, 2] },
-          headerTableSub: { fontSize: 9, alignment: 'left' },
-          headerTableBody: { fontSize: 9, alignment: 'left' },
-          sectionHeader: { fontSize: 12, bold: true, color: '#1F4E79', margin: [0, 15, 0, 5], decoration: 'underline', decorationColor: '#1F4E79' },
-          body: { fontSize: 10, lineHeight: 1.2, alignment: 'justify' },
+          headerTableTitle: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 1, 0, 1] },
+          headerTableSub: { fontSize: 8, alignment: 'left' },
+          headerTableBody: { fontSize: 8, alignment: 'left' },
+          sectionHeader: { fontSize: 10, bold: true, color: '#1F4E79', margin: [0, 8, 0, 3], decoration: 'underline', decorationColor: '#1F4E79' },
+          body: { fontSize: 9, lineHeight: 1.15, alignment: 'justify' },
       },
       defaultStyle: { font: 'Roboto' }
   };
@@ -308,15 +294,7 @@ const createPdfContentForPlan = async (lessonPlan: LessonPlan, teacherInfo?: Tea
             { text: `${activity.name.toUpperCase()} (${activity.duration} mins)`, bold: true, margin: [0, 8, 0, 4] },
         );
         const descItems = await renderPdfRichText(activity.description, 'body');
-        procedureSection.push(...descItems.map((item: any) => ({ ...item, margin: item.margin || [0, 0, 0, 2] })));
-        if (activity.teacherActions) {
-            const taItems = await renderPdfRichText(`Teacher Actions: ${activity.teacherActions}`, 'body');
-            procedureSection.push(...taItems.map((item: any) => ({ ...item, margin: item.margin || [0, 2, 0, 2] })));
-        }
-        if (activity.studentResponses) {
-            const srItems = await renderPdfRichText(`Student Responses: ${activity.studentResponses}`, 'body');
-            procedureSection.push(...srItems.map((item: any) => ({ ...item, margin: item.margin || [0, 2, 0, 6] })));
-        }
+        procedureSection.push(...descItems.map((item: any) => ({ ...item, margin: item.margin || [0, 0, 0, 4] })));
     }
 
     const hwItems = await renderPdfRichText(lessonPlan.homework, 'body');

@@ -2,8 +2,6 @@ export interface Activity {
   name: string;
   duration: number;
   description: string;
-  teacherActions?: string;
-  studentResponses?: string;
 }
 
 export interface LessonPlan {

@@ -441,11 +441,9 @@ export async function generateLessonPlan(
           properties: {
             name: { type: Type.STRING, enum: ['Activity', 'Analysis', 'Abstraction', 'Application'], description: "The 4As phase name." },
             duration: { type: Type.INTEGER, description: "Duration of this activity in minutes." },
-            description: { type: Type.STRING, description: "Detailed teacher instructions and expected student responses for this phase." },
-            teacherActions: { type: Type.STRING, description: "Specific actions the teacher should take during this phase." },
-            studentResponses: { type: Type.STRING, description: "Expected student responses and engagement during this phase." },
+            description: { type: Type.STRING, description: "Concise explanation of this phase in 2-4 sentences. Include formulas with variable breakdowns, worked examples, and diagrams/tables described in text. Written in third person." },
           },
-          required: ['name', 'duration', 'description', 'teacherActions', 'studentResponses'],
+          required: ['name', 'duration', 'description'],
         },
       },
       homework: { type: Type.STRING, description: "A brief but meaningful homework assignment that reinforces the lesson's objective." }

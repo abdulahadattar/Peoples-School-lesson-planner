@@ -202,8 +202,30 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
     if (teacher) {
       onTeacherNameChange(teacher.name);
       onSchoolNameChange(teacher.schoolName);
-      // If no class selected yet, don't force one
-      // If class is selected but teacher doesn't teach it, keep it (user's choice)
+
+      // Auto-select class if teacher teaches only one class
+      const teacherClasses = teacher.classIds || [];
+      if (teacherClasses.length === 1) {
+        onClassChange(teacherClasses[0]);
+        onSubjectChange('');
+        onChapterChange('');
+      }
+
+      // Auto-select subject if teacher teaches only one subject
+      // (do this after class is set so availableSubjects filters correctly)
+      if (teacher.subjects.length === 1) {
+        // Find the matching curriculum subject ID for the teacher's single subject
+        const classObj = teacherClasses.length === 1 ? classes.find(c => c.id === teacherClasses[0]) : classes.find(c => c.id === selectedClassId);
+        if (classObj) {
+          const matchSubject = classObj.subjects.find(s =>
+            s.name.toLowerCase() === teacher.subjects[0].toLowerCase() ||
+            s.id.toLowerCase() === teacher.subjects[0].toLowerCase()
+          );
+          if (matchSubject) {
+            onSubjectChange(matchSubject.id);
+          }
+        }
+      }
     } else {
       onTeacherNameChange('');
     }

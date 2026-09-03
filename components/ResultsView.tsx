@@ -130,19 +130,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
                       <h3 className="font-bold text-brand-text-primary text-sm">{activity.name}</h3>
                       <span className="text-xs text-brand-text-secondary bg-brand-bg px-2 py-0.5 rounded-md">{activity.duration} mins</span>
                     </div>
-                    <KaTeXText text={activity.description} className="text-sm text-brand-text-secondary leading-relaxed mb-2" as="p" />
-                    {activity.teacherActions && (
-                      <div className="mb-1.5">
-                        <span className="text-xs font-bold text-brand-primary uppercase tracking-wider">Teacher Actions:</span>
-                        <KaTeXText text={activity.teacherActions} className="text-sm text-brand-text-primary leading-relaxed" as="p" />
-                      </div>
-                    )}
-                    {activity.studentResponses && (
-                      <div>
-                        <span className="text-xs font-bold text-brand-primary uppercase tracking-wider">Student Responses:</span>
-                        <KaTeXText text={activity.studentResponses} className="text-sm text-brand-text-primary leading-relaxed" as="p" />
-                      </div>
-                    )}
+                    <KaTeXText text={activity.description} className="text-sm text-brand-text-secondary leading-relaxed" as="p" />
                   </div>
                 ))}
               </div>

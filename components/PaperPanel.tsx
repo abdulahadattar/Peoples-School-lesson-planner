@@ -154,6 +154,28 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating, 
     if (teacher) {
       onTeacherNameChange(teacher.name);
       onSchoolNameChange(teacher.schoolName);
+
+      // Auto-select class if teacher teaches only one class
+      const teacherClasses = teacher.classIds || [];
+      if (teacherClasses.length === 1) {
+        setSelectedClassId(teacherClasses[0]);
+        setSelectedSubjectId('');
+        setSelectedChapterId('');
+      }
+
+      // Auto-select subject if teacher teaches only one subject
+      if (teacher.subjects.length === 1) {
+        const classObj = teacherClasses.length === 1 ? classes.find(c => c.id === teacherClasses[0]) : classes.find(c => c.id === selectedClassId);
+        if (classObj) {
+          const matchSubject = classObj.subjects.find(s =>
+            s.name.toLowerCase() === teacher.subjects[0].toLowerCase() ||
+            s.id.toLowerCase() === teacher.subjects[0].toLowerCase()
+          );
+          if (matchSubject) {
+            setSelectedSubjectId(matchSubject.id);
+          }
+        }
+      }
     } else {
       onTeacherNameChange('');
     }
