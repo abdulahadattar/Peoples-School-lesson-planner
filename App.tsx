@@ -6,7 +6,7 @@ import SubjectSelector from './components/SubjectSelector';
 import PaperPanel from './components/PaperPanel';
 import ResultsView from './components/ResultsView';
 import GenerationStatusPanel from './components/GenerationStatusPanel';
-import { useGeneralGeneration, GenerationMode } from './hooks/useGeneralGeneration';
+import { useGeneralGeneration, GenerationMode, UiExportFormat } from './hooks/useGeneralGeneration';
 
 type View = 'home' | 'lesson' | 'paper' | 'results';
 
@@ -25,7 +25,7 @@ const App: React.FC = () => {
   
   // SLO and batch generation state
   const [selectedSloIds, setSelectedSloIds] = useState<string[]>([]);
-  const [exportFormat, setExportFormat] = useState<'docx' | 'pdf' | 'both'>('both');
+  const [exportFormat, setExportFormat] = useState<UiExportFormat>('both');
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
   const [chapterSlos, setChapterSlos] = useState<any[]>([]);
@@ -43,8 +43,6 @@ const App: React.FC = () => {
     setShowStatusPanel,
     generateLessonPlan,
     generatePaper,
-    exportPlan,
-    exportPaper,
     revisePaper,
     stopGeneration,
     clearResults,
@@ -193,14 +191,6 @@ const App: React.FC = () => {
 
   const hasResults = generatedPlans.length > 0 || generatedPapers.length > 0;
 
-  const handleExportPlan = async (plan: any) => {
-    try {
-      await exportPlan(plan, { name: teacherName, schoolName }, exportFormat);
-    } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to export. Please try again.');
-    }
-  };
-
   return (
     <div className="flex h-screen bg-brand-bg text-brand-text-primary font-sans selection:bg-brand-primary selection:text-white antialiased">
       {isSidebarOpen && (
@@ -309,7 +299,6 @@ const App: React.FC = () => {
               onBack={handleBackToHome}
               teacherName={teacherName}
               schoolName={schoolName}
-              onExportPlan={handleExportPlan}
               exportFormat={exportFormat}
               onRevisePaper={revisePaper}
               isRevising={isLoading}

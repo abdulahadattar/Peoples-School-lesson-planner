@@ -10,7 +10,6 @@ interface ResultsViewProps {
   onBack: () => void;
   teacherName: string;
   schoolName: string;
-  onExportPlan?: (plan: LessonPlan) => void;
   exportFormat?: ExportFormat;
   onRevisePaper?: (prompt: string) => Promise<GeneratedPaper | null>;
   isRevising?: boolean;
@@ -22,7 +21,6 @@ const ResultsView: React.FC<ResultsViewProps> = ({
   onBack, 
   teacherName, 
   schoolName,
-  onExportPlan,
   exportFormat = 'both',
   onRevisePaper,
   isRevising = false,
@@ -50,8 +48,17 @@ const ResultsView: React.FC<ResultsViewProps> = ({
 
   const handleExportPaper = async (paper: GeneratedPaper) => {
     try {
-      await exportPaperAsDocx(paper, { name: teacherName, schoolName });
-      await exportPaperAsPdf(paper, { name: teacherName, schoolName });
+      const teacherInfo = { name: teacherName, schoolName };
+      if (exportFormat === 'pdf') {
+        await exportPaperAsPdf(paper, teacherInfo);
+      } else if (exportFormat === 'docx') {
+        await exportPaperAsDocx(paper, teacherInfo);
+      } else {
+        // Both
+        await exportPaperAsDocx(paper, teacherInfo);
+        await new Promise(resolve => setTimeout(resolve, 250));
+        await exportPaperAsPdf(paper, teacherInfo);
+      }
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Failed to export. Please try again.');
     }
@@ -169,7 +176,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
           </button>
             <button onClick={() => handleExportPaper(paper)} className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-surface hover:bg-brand-bg border border-brand-border rounded-lg text-xs font-semibold text-brand-text-primary transition-all">
             <DownloadIcon className="w-3.5 h-3.5" />
-            Export
+            Export {exportFormat === 'both' ? 'DOCX + PDF' : exportFormat.toUpperCase()}
           </button>
         </div>
 
