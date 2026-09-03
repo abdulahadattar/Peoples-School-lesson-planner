@@ -272,6 +272,11 @@ function cleanAndParseJson(text: string): any {
   if (firstBrace !== -1 && lastBrace !== -1) {
     cleanText = cleanText.substring(firstBrace, lastBrace + 1);
   }
+  // Fix control characters that break JSON parsing:
+  // Replace literal newlines/tabs inside string values with escaped versions
+  cleanText = cleanText.replace(/([^\\])\n/g, '$1\\n');
+  cleanText = cleanText.replace(/([^\\])\r/g, '$1\\r');
+  cleanText = cleanText.replace(/([^\\])\t/g, '$1\\t');
   return JSON.parse(cleanText);
 }
 
@@ -480,26 +485,49 @@ Generate a single 40-minute lesson plan focused ONLY on the target SLO above.`;
   const contextPartCount = contextFileParts?.length ?? 0;
   log(`Built user prompt (${userPromptLength} chars). Context PDF parts attached: ${contextPartCount}.`);
 
-  try {
-    log("Calling Gemini API via withKeyRotation...");
-    const result = await withKeyRotation(async (apiKey) => {
-      log(`Sending request to model: ${DEFAULT_MODEL}`);
-      return callGeminiAPI(apiKey, DEFAULT_MODEL, systemInstruction, userPrompt, lessonPlanSchema, 0.2, log, contextFileParts);
-    });
+  const MAX_RETRIES = 2;
+  let lastError: Error | null = null;
 
-    log(`Received API response (${result.length} chars). Parsing JSON...`);
-    const lessonPlan = parseLessonPlanJson(result, gradeLevelContext, subject);
-    log(`Successfully parsed lesson plan: "${lessonPlan.title}"`);
-    return lessonPlan;
-  } catch (error) {
-    console.error("Error generating lesson plan:", error);
-    log(`ERROR: ${error instanceof Error ? error.message : String(error)}`);
-    if (error instanceof Error) {
-      if (error.message.includes("does not support pdf input") || error.message.includes("Cannot read ")) {
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      if (attempt > 0) {
+        log(`Retrying (attempt ${attempt + 1}/${MAX_RETRIES + 1})...`);
+      } else {
+        log("Calling Gemini API via withKeyRotation...");
+      }
+      const result = await withKeyRotation(async (apiKey) => {
+        log(`Sending request to model: ${DEFAULT_MODEL}`);
+        return callGeminiAPI(apiKey, DEFAULT_MODEL, systemInstruction, userPrompt, lessonPlanSchema, 0.2, log, contextFileParts);
+      });
+
+      log(`Received API response (${result.length} chars). Parsing JSON...`);
+      const lessonPlan = parseLessonPlanJson(result, gradeLevelContext, subject);
+      log(`Successfully parsed lesson plan: "${lessonPlan.title}"`);
+      return lessonPlan;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      console.error(`Error generating lesson plan (attempt ${attempt + 1}):`, error);
+      log(`ERROR (attempt ${attempt + 1}): ${lastError.message}`);
+
+      // Check for non-retryable errors
+      if (lastError.message.includes("does not support pdf input") || lastError.message.includes("Cannot read ")) {
         throw new Error("PDF_CONTEXT_NOT_SUPPORTED: The current AI model does not support PDF file input.");
       }
-      throw error;
+
+      // If this was a parse error, retry (AI might return valid JSON next time)
+      if (lastError.message.includes("parse") || lastError.message.includes("JSON") || lastError.message.includes("Unexpected")) {
+        if (attempt < MAX_RETRIES) {
+          log("Response was malformed, requesting new response...");
+          continue;
+        }
+      }
+
+      // For other errors on last attempt, throw
+      if (attempt === MAX_RETRIES) {
+        throw lastError;
+      }
     }
-    throw new Error("Unknown error during generation.");
   }
+
+  throw lastError || new Error("Unknown error during generation.");
 }

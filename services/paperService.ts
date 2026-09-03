@@ -10,6 +10,10 @@ function cleanAndParseJson(text: string): any {
   if (firstBrace !== -1 && lastBrace !== -1) {
     cleanText = cleanText.substring(firstBrace, lastBrace + 1);
   }
+  // Fix control characters that break JSON parsing
+  cleanText = cleanText.replace(/([^\\])\n/g, '$1\\n');
+  cleanText = cleanText.replace(/([^\\])\r/g, '$1\\r');
+  cleanText = cleanText.replace(/([^\\])\t/g, '$1\\t');
   try {
     return JSON.parse(cleanText);
   } catch (error) {
@@ -270,30 +274,48 @@ Ensure questions cover all major topics from the chapter and align with the SLOs
     log(`Error loading PDF context: ${err instanceof Error ? err.message : String(err)}`);
   }
 
-  try {
-    const response = await withKeyRotation(async (apiKey) => {
-      log(`Calling Gemini API with model: ${DEFAULT_MODEL}`);
-      return callGeminiAPI(
-        apiKey,
-        DEFAULT_MODEL,
-        systemInstruction,
-        userPrompt,
-        paperSchema,
-        0.3,
-        contextParts.length > 0 ? contextParts : undefined,
-        logCallback
-      );
-    });
+  const MAX_RETRIES = 2;
+  let lastError: Error | null = null;
 
-    const parsed = cleanAndParseJson(response);
-    return parsed as GeneratedPaper;
-  } catch (error) {
-    console.error("Error generating exam paper:", error);
-    if (error instanceof Error) {
-      throw new Error(`Failed to generate exam paper: ${error.message}`);
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      if (attempt > 0) {
+        log(`Retrying (attempt ${attempt + 1}/${MAX_RETRIES + 1})...`);
+      }
+      const response = await withKeyRotation(async (apiKey) => {
+        log(`Calling Gemini API with model: ${DEFAULT_MODEL}`);
+        return callGeminiAPI(
+          apiKey,
+          DEFAULT_MODEL,
+          systemInstruction,
+          userPrompt,
+          paperSchema,
+          0.3,
+          contextParts.length > 0 ? contextParts : undefined,
+          logCallback
+        );
+      });
+
+      const parsed = cleanAndParseJson(response);
+      return parsed as GeneratedPaper;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      console.error(`Error generating exam paper (attempt ${attempt + 1}):`, error);
+      log(`ERROR (attempt ${attempt + 1}): ${lastError.message}`);
+
+      // Retry on parse errors
+      if ((lastError.message.includes("parse") || lastError.message.includes("JSON") || lastError.message.includes("Unexpected")) && attempt < MAX_RETRIES) {
+        log("Response was malformed, requesting new response...");
+        continue;
+      }
+
+      if (attempt === MAX_RETRIES) {
+        throw new Error(`Failed to generate exam paper: ${lastError.message}`);
+      }
     }
-    throw new Error("Unknown error during paper generation.");
   }
+
+  throw new Error(`Failed to generate exam paper: ${lastError?.message || 'Unknown error'}`);
 }
 
 /**
@@ -373,30 +395,46 @@ ${revisionPrompt}
 
 Please return the complete revised exam paper as a JSON object.`;
 
-  try {
-    log('Sending revision request to AI...');
-    const response = await withKeyRotation(async (apiKey) => {
-      log(`Calling Gemini API with model: ${DEFAULT_MODEL}`);
-      return callGeminiAPI(
-        apiKey,
-        DEFAULT_MODEL,
-        systemInstruction,
-        userPrompt,
-        paperSchema,
-        0.3,
-        undefined,
-        logCallback
-      );
-    });
+  const MAX_RETRIES = 2;
+  let lastError: Error | null = null;
 
-    const parsed = cleanAndParseJson(response);
-    log(`Revised paper received: ${parsed.sections?.length || 0} sections`);
-    return parsed as GeneratedPaper;
-  } catch (error) {
-    console.error('Error revising exam paper:', error);
-    if (error instanceof Error) {
-      throw new Error(`Failed to revise exam paper: ${error.message}`);
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      if (attempt > 0) log(`Retrying revision (attempt ${attempt + 1}/${MAX_RETRIES + 1})...`);
+      else log('Sending revision request to AI...');
+
+      const response = await withKeyRotation(async (apiKey) => {
+        log(`Calling Gemini API with model: ${DEFAULT_MODEL}`);
+        return callGeminiAPI(
+          apiKey,
+          DEFAULT_MODEL,
+          systemInstruction,
+          userPrompt,
+          paperSchema,
+          0.3,
+          undefined,
+          logCallback
+        );
+      });
+
+      const parsed = cleanAndParseJson(response);
+      log(`Revised paper received: ${parsed.sections?.length || 0} sections`);
+      return parsed as GeneratedPaper;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      console.error(`Error revising exam paper (attempt ${attempt + 1}):`, error);
+      log(`ERROR (attempt ${attempt + 1}): ${lastError.message}`);
+
+      if ((lastError.message.includes('parse') || lastError.message.includes('JSON') || lastError.message.includes('Unexpected')) && attempt < MAX_RETRIES) {
+        log('Response was malformed, requesting new response...');
+        continue;
+      }
+
+      if (attempt === MAX_RETRIES) {
+        throw new Error(`Failed to revise exam paper: ${lastError.message}`);
+      }
     }
-    throw new Error('Unknown error during revision.');
   }
+
+  throw new Error(`Failed to revise exam paper: ${lastError?.message || 'Unknown error'}`);
 }
