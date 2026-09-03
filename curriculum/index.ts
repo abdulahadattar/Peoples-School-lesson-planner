@@ -59,7 +59,11 @@ export function mergeCurriculums(): CurriculumClass[] {
     });
   });
 
-  return Array.from(classMap.values()).sort((a, b) => a.id.localeCompare(b.id));
+  return Array.from(classMap.values()).sort((a, b) => {
+    const numA = parseInt(a.id.replace('class', ''), 10);
+    const numB = parseInt(b.id.replace('class', ''), 10);
+    return numA - numB;
+  });
 }
 
 export const curriculumData: CurriculumData = {

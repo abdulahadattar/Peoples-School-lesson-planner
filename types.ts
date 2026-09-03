@@ -98,6 +98,8 @@ export interface Teacher {
   designation?: string;
   subjects: string[];
   grades: string[];
+  classIds?: string[];
+  sectionLabels?: Record<string, string[]>;
 }
 
 export type View = 'home' | 'lesson' | 'paper' | 'results';

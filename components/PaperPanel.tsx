@@ -1,12 +1,17 @@
 import React, { useState, useMemo } from 'react';
 import { curriculumData } from '../curriculum';
-import { CurriculumClass } from '../types';
+import { CurriculumClass, Teacher } from '../types';
 import { DocumentTextIcon } from './icons/MiscIcons';
 import { PaperConfig } from '../types';
 
 interface PaperPanelProps {
   onGeneratePaper: (config: PaperConfig) => void;
   isGenerating: boolean;
+  teachers: Teacher[];
+  selectedTeacherId: string;
+  onSelectedTeacherIdChange: (id: string) => void;
+  onTeacherNameChange: (name: string) => void;
+  onSchoolNameChange: (name: string) => void;
 }
 
 const ChevronDownIcon = () => (
@@ -26,7 +31,7 @@ const formatMark = (value: number): string => {
   return value.toFixed(1);
 };
 
-const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }) => {
+const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating, teachers, selectedTeacherId, onSelectedTeacherIdChange, onTeacherNameChange, onSchoolNameChange }) => {
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
   const [selectedChapterId, setSelectedChapterId] = useState<string>('');
@@ -36,12 +41,52 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
   const [longQuestionCount, setLongQuestionCount] = useState<number>(2);
   const [durationMinutes, setDurationMinutes] = useState<number>(60);
 
-  const classes: CurriculumClass[] = useMemo(() => curriculumData.classes, []);
+  // Sort classes numerically
+  const classes: CurriculumClass[] = useMemo(() =>
+    [...curriculumData.classes].sort((a, b) => {
+      const numA = parseInt(a.id.replace('class', ''), 10);
+      const numB = parseInt(b.id.replace('class', ''), 10);
+      return numA - numB;
+    }),
+    []
+  );
+
+  const selectedTeacher = useMemo(
+    () => teachers.find(t => t.id === selectedTeacherId) || null,
+    [teachers, selectedTeacherId]
+  );
+
+  // Filtered teachers by class + subject
+  const filteredTeachers = useMemo(() => {
+    let list = teachers;
+    if (selectedClassId) list = list.filter(t => t.classIds?.includes(selectedClassId));
+    if (selectedSubjectId) list = list.filter(t => t.subjects.some(s => s.toLowerCase() === selectedSubjectId.toLowerCase()));
+    return list;
+  }, [teachers, selectedClassId, selectedSubjectId]);
+
+  // Available classes filtered by teacher
+  const availableClasses = useMemo(() => {
+    if (selectedTeacher?.classIds && selectedTeacher.classIds.length > 0) {
+      return classes.filter(c => selectedTeacher.classIds!.includes(c.id));
+    }
+    return classes;
+  }, [classes, selectedTeacher]);
 
   const selectedClass = useMemo(
     () => classes.find((c) => c.id === selectedClassId) || null,
     [classes, selectedClassId]
   );
+
+  // Available subjects filtered by teacher + class
+  const availableSubjects = useMemo(() => {
+    const classSubjects = selectedClass?.subjects || [];
+    if (selectedTeacher) {
+      return classSubjects.filter(s =>
+        selectedTeacher.subjects.some(ts => ts.toLowerCase() === s.id.toLowerCase() || ts.toLowerCase() === s.name.toLowerCase())
+      );
+    }
+    return classSubjects;
+  }, [selectedClass, selectedTeacher]);
 
   const subjects = useMemo(() => selectedClass?.subjects || [], [selectedClass]);
 
@@ -80,14 +125,38 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
   }, [totalMarks, mcqCount, shortQuestionCount, longQuestionCount]);
 
   const handleClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedClassId(e.target.value);
+    const newClassId = e.target.value;
+    setSelectedClassId(newClassId);
     setSelectedSubjectId('');
     setSelectedChapterId('');
+    // If teacher doesn't teach this class, deselect
+    if (selectedTeacher && newClassId && !selectedTeacher.classIds?.includes(newClassId)) {
+      onSelectedTeacherIdChange('');
+      onTeacherNameChange('');
+    }
   };
 
   const handleSubjectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedSubjectId(e.target.value);
+    const newSubjectId = e.target.value;
+    setSelectedSubjectId(newSubjectId);
     setSelectedChapterId('');
+    // If teacher doesn't teach this subject, deselect
+    if (selectedTeacher && newSubjectId && !selectedTeacher.subjects.some(s => s.toLowerCase() === newSubjectId.toLowerCase())) {
+      onSelectedTeacherIdChange('');
+      onTeacherNameChange('');
+    }
+  };
+
+  const handleTeacherChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const teacherId = e.target.value;
+    onSelectedTeacherIdChange(teacherId);
+    const teacher = teachers.find(t => t.id === teacherId);
+    if (teacher) {
+      onTeacherNameChange(teacher.name);
+      onSchoolNameChange(teacher.schoolName);
+    } else {
+      onTeacherNameChange('');
+    }
   };
 
   const handleChapterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -133,6 +202,46 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
         <div className="p-4 sm:p-5 space-y-5">
           {/* Selectors */}
           <div className="space-y-3">
+            {/* Teacher Dropdown */}
+            <div>
+              <label className="block text-[11px] font-semibold text-brand-text-secondary mb-1.5 uppercase tracking-wider">
+                Select Teacher
+              </label>
+              <div className="relative">
+                <select
+                  value={selectedTeacherId}
+                  onChange={handleTeacherChange}
+                  className="w-full h-11 px-3.5 pr-10 bg-brand-bg border border-brand-border rounded-lg text-sm text-brand-text-primary appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all hover:border-brand-text-secondary/40"
+                >
+                  <option value="">-- Choose a teacher --</option>
+                  {filteredTeachers.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} — {t.subjects.join(', ')}
+                    </option>
+                  ))}
+                  {filteredTeachers.length === 0 && teachers.length > 0 && (
+                    <option value="" disabled>No teachers match current filters</option>
+                  )}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-secondary pointer-events-none">
+                  <ChevronDownIcon />
+                </div>
+              </div>
+              {selectedTeacher && (
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {selectedTeacher.classIds?.map(cid => {
+                    const cls = classes.find(c => c.id === cid);
+                    const labels = selectedTeacher.sectionLabels?.[cid];
+                    return labels?.map(label => (
+                      <span key={`${cid}-${label}`} className="text-[10px] font-medium text-brand-primary bg-brand-primary/10 px-1.5 py-0.5 rounded border border-brand-primary/15">
+                        {label}
+                      </span>
+                    ));
+                  })}
+                </div>
+              )}
+            </div>
+
             <div>
               <label
                 htmlFor="class-select"
@@ -148,7 +257,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
                   className="w-full h-11 px-3.5 pr-10 bg-brand-bg border border-brand-border rounded-lg text-sm text-brand-text-primary appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all hover:border-brand-text-secondary/40"
                 >
                   <option value="">-- Choose a class --</option>
-                  {classes.map((cls) => (
+                  {(selectedTeacher ? availableClasses : classes).map((cls) => (
                     <option key={cls.id} value={cls.id}>
                       {cls.name}
                     </option>
@@ -176,7 +285,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating }
                   className="w-full h-11 px-3.5 pr-10 bg-brand-bg border border-brand-border rounded-lg text-sm text-brand-text-primary appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all hover:border-brand-text-secondary/40 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <option value="">-- Choose a subject --</option>
-                  {subjects.map((subject) => (
+                  {availableSubjects.map((subject) => (
                     <option key={subject.id} value={subject.id}>
                       {subject.name}
                     </option>

@@ -82,20 +82,77 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
   onGenerate,
   isGenerating,
 }) => {
-  const [isTeacherInfoOpen, setIsTeacherInfoOpen] = useState(false);
+  const [isTeacherInfoOpen, setIsTeacherInfoOpen] = useState(true);
 
-  const classes = curriculumData.classes;
+  // Sort classes numerically (class1, class2, ..., class12)
+  const classes = useMemo(() =>
+    [...curriculumData.classes].sort((a, b) => {
+      const numA = parseInt(a.id.replace('class', ''), 10);
+      const numB = parseInt(b.id.replace('class', ''), 10);
+      return numA - numB;
+    }),
+    []
+  );
 
   const selectedClass = useMemo(
     () => classes.find((c) => c.id === selectedClassId) || null,
     [classes, selectedClassId]
   );
 
-  // Load subjects from curriculum data based on selected class
+  const selectedTeacher = useMemo(
+    () => teachers.find(t => t.id === selectedTeacherId) || null,
+    [teachers, selectedTeacherId]
+  );
+
+  // --- Smart bidirectional filtering ---
+
+  // Teachers filtered by selected class (if any)
+  const teachersForClass = useMemo(() => {
+    if (!selectedClassId) return teachers;
+    return teachers.filter(t => t.classIds?.includes(selectedClassId));
+  }, [teachers, selectedClassId]);
+
+  // Teachers filtered by selected subject (if any)
+  const teachersForSubject = useMemo(() => {
+    if (!selectedSubjectId) return teachers;
+    return teachers.filter(t => t.subjects.some(s => s.toLowerCase() === selectedSubjectId.toLowerCase()));
+  }, [teachers, selectedSubjectId]);
+
+  // Combined filtered teachers (intersection of class + subject filters)
+  const filteredTeachers = useMemo(() => {
+    let list = teachers;
+    if (selectedClassId) list = list.filter(t => t.classIds?.includes(selectedClassId));
+    if (selectedSubjectId) list = list.filter(t => t.subjects.some(s => s.toLowerCase() === selectedSubjectId.toLowerCase()));
+    return list;
+  }, [teachers, selectedClassId, selectedSubjectId]);
+
+  // Auto-select teacher if only one matches current filters
+  // (We don't auto-select to avoid surprises, but we filter the dropdown)
+
+  // Available subjects: if teacher selected, show only their subjects; otherwise show class subjects
   const availableSubjects = useMemo(() => {
+    if (selectedTeacher) {
+      // Show curriculum subjects that match teacher's subjects
+      const classSubjects = selectedClass?.subjects || [];
+      if (classSubjects.length > 0) {
+        return classSubjects.filter(s =>
+          selectedTeacher.subjects.some(ts => ts.toLowerCase() === s.id.toLowerCase() || ts.toLowerCase() === s.name.toLowerCase())
+        );
+      }
+      // Fallback: return all class subjects
+      return classSubjects;
+    }
     if (!selectedClassId) return [];
     return selectedClass?.subjects || [];
-  }, [selectedClassId, selectedClass]);
+  }, [selectedClassId, selectedClass, selectedTeacher]);
+
+  // Available classes: if teacher selected, show only their classes
+  const availableClasses = useMemo(() => {
+    if (selectedTeacher?.classIds && selectedTeacher.classIds.length > 0) {
+      return classes.filter(c => selectedTeacher.classIds!.includes(c.id));
+    }
+    return classes;
+  }, [classes, selectedTeacher]);
 
   // Load chapters from selected subject's curriculum data
   const availableChapters = useMemo(() => {
@@ -114,17 +171,42 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
     [availableChapters, selectedChapterId]
   );
 
-  const selectedTeacher = useMemo(
-    () => teachers.find(t => t.id === selectedTeacherId) || null,
-    [teachers, selectedTeacherId]
-  );
-
   const handleClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    onClassChange(e.target.value);
+    const newClassId = e.target.value;
+    onClassChange(newClassId);
+    // If selected teacher doesn't teach this class, deselect them
+    if (selectedTeacher && newClassId && !selectedTeacher.classIds?.includes(newClassId)) {
+      onSelectedTeacherIdChange('');
+      onTeacherNameChange('');
+    }
+    // Reset dependent selections
+    onSubjectChange('');
+    onChapterChange('');
   };
 
   const handleSubjectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    onSubjectChange(e.target.value);
+    const newSubjectId = e.target.value;
+    onSubjectChange(newSubjectId);
+    // If selected teacher doesn't teach this subject, deselect them
+    if (selectedTeacher && newSubjectId && !selectedTeacher.subjects.some(s => s.toLowerCase() === newSubjectId.toLowerCase())) {
+      onSelectedTeacherIdChange('');
+      onTeacherNameChange('');
+    }
+    onChapterChange('');
+  };
+
+  const handleTeacherChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const teacherId = e.target.value;
+    onSelectedTeacherIdChange(teacherId);
+    const teacher = teachers.find(t => t.id === teacherId);
+    if (teacher) {
+      onTeacherNameChange(teacher.name);
+      onSchoolNameChange(teacher.schoolName);
+      // If no class selected yet, don't force one
+      // If class is selected but teacher doesn't teach it, keep it (user's choice)
+    } else {
+      onTeacherNameChange('');
+    }
   };
 
   const handleChapterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -181,7 +263,7 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
             </span>
           </div>
 
-          {/* Teacher Info Accordion */}
+          {/* Teacher Selection */}
           <div className="bg-brand-bg rounded-xl border border-brand-border overflow-hidden">
             <button
               type="button"
@@ -194,7 +276,14 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                 </div>
-                <span className="text-sm font-semibold text-brand-text-primary">Teacher Information</span>
+                <span className="text-sm font-semibold text-brand-text-primary">
+                  {selectedTeacher ? selectedTeacher.name : 'Select Teacher'}
+                </span>
+                {selectedTeacher && (
+                  <span className="text-[10px] font-medium text-brand-primary bg-brand-primary/10 px-2 py-0.5 rounded-full">
+                    {selectedTeacher.subjects.join(', ')}
+                  </span>
+                )}
               </div>
               <span className={`text-brand-text-secondary transition-transform duration-300 ${isTeacherInfoOpen ? 'rotate-180' : ''}`}>
                 <ChevronDownIcon />
@@ -203,10 +292,11 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
 
             <div
               className={`transition-all duration-300 ease-in-out ${
-                isTeacherInfoOpen ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'
+                isTeacherInfoOpen ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'
               }`}
             >
               <div className="px-4 pb-4 space-y-3">
+                {/* Teacher Dropdown */}
                 <div>
                   <label className="flex items-center gap-1.5 text-[11px] font-semibold text-brand-text-secondary mb-2 uppercase tracking-wide">
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -214,14 +304,42 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
                     </svg>
                     Teacher Name
                   </label>
-                  <input
-                    type="text"
-                    value={teacherName}
-                    onChange={(e) => onTeacherNameChange(e.target.value)}
-                    placeholder="Enter teacher name"
-                    className="w-full h-11 px-4 bg-brand-surface border border-brand-border rounded-xl text-sm text-brand-text-primary placeholder:text-brand-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all duration-200"
-                  />
+                  <div className="relative">
+                    <select
+                      value={selectedTeacherId}
+                      onChange={handleTeacherChange}
+                      className="w-full h-11 px-4 pr-11 bg-brand-surface border border-brand-border rounded-xl text-sm text-brand-text-primary appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all duration-200"
+                    >
+                      <option value="">Choose a teacher...</option>
+                      {filteredTeachers.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name} — {t.subjects.join(', ')}
+                        </option>
+                      ))}
+                      {filteredTeachers.length === 0 && teachers.length > 0 && (
+                        <option value="" disabled>No teachers match current filters</option>
+                      )}
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-text-secondary pointer-events-none">
+                      <ChevronDownIcon />
+                    </div>
+                  </div>
+                  {selectedTeacher && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {selectedTeacher.classIds?.map(cid => {
+                        const cls = classes.find(c => c.id === cid);
+                        const labels = selectedTeacher.sectionLabels?.[cid];
+                        return labels?.map(label => (
+                          <span key={`${cid}-${label}`} className="text-[10px] font-medium text-brand-primary bg-brand-primary/10 px-2 py-0.5 rounded-md border border-brand-primary/15">
+                            {label}
+                          </span>
+                        ));
+                      })}
+                    </div>
+                  )}
                 </div>
+
+                {/* School Name (auto-filled) */}
                 <div>
                   <label className="flex items-center gap-1.5 text-[11px] font-semibold text-brand-text-secondary mb-2 uppercase tracking-wide">
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -255,7 +373,7 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
                   className="w-full h-12 px-4 pr-11 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text-primary appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all hover:border-brand-text-secondary/40"
                 >
                   <option value="">Choose a class</option>
-                  {classes.map((cls) => (
+                  {(selectedTeacher ? availableClasses : classes).map((cls) => (
                     <option key={cls.id} value={cls.id}>
                       {cls.name}
                     </option>

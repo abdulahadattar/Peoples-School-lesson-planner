@@ -294,6 +294,11 @@ const App: React.FC = () => {
             <PaperPanel
               onGeneratePaper={handleGeneratePaper}
               isGenerating={isLoading}
+              teachers={teachers}
+              selectedTeacherId={selectedTeacherId}
+              onSelectedTeacherIdChange={setSelectedTeacherId}
+              onTeacherNameChange={setTeacherName}
+              onSchoolNameChange={setSchoolName}
             />
           )}
 
