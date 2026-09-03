@@ -45,6 +45,7 @@ const App: React.FC = () => {
     generatePaper,
     exportPlan,
     exportPaper,
+    revisePaper,
     clearResults,
   } = useGeneralGeneration();
 
@@ -303,6 +304,8 @@ const App: React.FC = () => {
               schoolName={schoolName}
               onExportPlan={handleExportPlan}
               exportFormat={exportFormat}
+              onRevisePaper={revisePaper}
+              isRevising={isLoading}
             />
           )}
         </div>

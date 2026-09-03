@@ -295,3 +295,108 @@ Ensure questions cover all major topics from the chapter and align with the SLOs
     throw new Error("Unknown error during paper generation.");
   }
 }
+
+/**
+ * Revise an existing exam paper based on teacher feedback.
+ * The teacher can ask to add, remove, or modify questions.
+ */
+export async function reviseExamPaper(
+  currentPaper: GeneratedPaper,
+  revisionPrompt: string,
+  logCallback?: LogCallback
+): Promise<GeneratedPaper> {
+  const log = (msg: string) => {
+    console.log(`[paperService.revise] ${msg}`);
+    logCallback?.(msg);
+  };
+
+  // Serialize the current paper as context
+  const currentPaperJson = JSON.stringify(currentPaper, null, 2);
+
+  const systemInstruction = `You are an expert exam paper editor for ${currentPaper.subject}. A teacher has provided feedback to revise an existing exam paper. Your task is to modify the paper according to the teacher's instructions while keeping it well-structured and balanced.
+
+**Critical Instructions:**
+1. Follow the teacher's revision instructions exactly.
+2. Maintain proper question numbering across all sections.
+3. Keep the total marks consistent (or update if the teacher changes the structure).
+4. Ensure questions are properly formatted with MCQ options where applicable.
+5. **EQUATIONS:** Wrap ALL mathematical equations in LaTeX delimiters: $...$ for inline, $$...$$ for display.
+6. **MANDATORY JSON OUTPUT:** Output ONLY valid JSON matching the schema. No extra text or markdown.`;
+
+  const paperSchema = {
+    type: Type.OBJECT,
+    properties: {
+      title: { type: Type.STRING },
+      gradeLevel: { type: Type.STRING },
+      subject: { type: Type.STRING },
+      chapterName: { type: Type.STRING },
+      totalMarks: { type: Type.INTEGER },
+      durationMinutes: { type: Type.INTEGER },
+      sections: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            instruction: { type: Type.STRING },
+            questions: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  id: { type: Type.STRING },
+                  type: { type: Type.STRING, enum: ['mcq', 'short', 'long'] },
+                  question: { type: Type.STRING },
+                  options: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  marks: { type: Type.INTEGER },
+                  topic: { type: Type.STRING },
+                },
+                required: ['id', 'type', 'question', 'marks'],
+              },
+            },
+          },
+          required: ['title', 'instruction', 'questions'],
+        },
+      },
+    },
+    required: ['title', 'gradeLevel', 'subject', 'chapterName', 'totalMarks', 'durationMinutes', 'sections'],
+  };
+
+  const userPrompt = `Here is the current exam paper:
+
+${currentPaperJson}
+
+---
+
+**Teacher's revision instructions:**
+${revisionPrompt}
+
+Please return the complete revised exam paper as a JSON object.`;
+
+  try {
+    log('Sending revision request to AI...');
+    const response = await withKeyRotation(async (apiKey) => {
+      log(`Calling Gemini API with model: ${DEFAULT_MODEL}`);
+      return callGeminiAPI(
+        apiKey,
+        DEFAULT_MODEL,
+        systemInstruction,
+        userPrompt,
+        paperSchema,
+        0.3,
+        undefined,
+        logCallback
+      );
+    });
+
+    const parsed = cleanAndParseJson(response);
+    log(`Revised paper received: ${parsed.sections?.length || 0} sections`);
+    return parsed as GeneratedPaper;
+  } catch (error) {
+    console.error('Error revising exam paper:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to revise exam paper: ${error.message}`);
+    }
+    throw new Error('Unknown error during revision.');
+  }
+}

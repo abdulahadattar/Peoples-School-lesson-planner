@@ -85,23 +85,21 @@ async function htmlToDataUrl(html: string, fontSize: number = 16): Promise<strin
 
     // Use foreignObject to render HTML in canvas
     const svgNs = 'http://www.w3.org/2000/svg';
-    const data = new XMLSerializer().serializeToString(
-      Object.assign(document.createElementNS(svgNs, 'svg'), {
-        width: canvas.width,
-        height: canvas.height,
-        innerHTML: `<foreignObject width="100%" height="100%">
-          <div xmlns="http://www.w3.org/1999/xhtml" style="
-            transform: scale(${scale});
-            transform-origin: top left;
-            font-size: ${fontSize}px;
-            line-height: 1;
-            white-space: nowrap;
-            font-family: 'KaTeX_Main', 'Times New Roman', serif;
-            display: inline-block;
-          ">${html}</div>
-        </foreignObject>`,
-      })
-    );
+    const svg = document.createElementNS(svgNs, 'svg');
+    svg.setAttribute('width', String(canvas.width));
+    svg.setAttribute('height', String(canvas.height));
+    svg.innerHTML = `<foreignObject width="100%" height="100%">
+      <div xmlns="http://www.w3.org/1999/xhtml" style="
+        transform: scale(${scale});
+        transform-origin: top left;
+        font-size: ${fontSize}px;
+        line-height: 1;
+        white-space: nowrap;
+        font-family: 'KaTeX_Main', 'Times New Roman', serif;
+        display: inline-block;
+      ">${html}</div>
+    </foreignObject>`;
+    const data = new XMLSerializer().serializeToString(svg);
 
     const img = new Image();
     const blob = new Blob([data], { type: 'image/svg+xml;charset=utf-8' });

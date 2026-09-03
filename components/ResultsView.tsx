@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { LessonPlan, GeneratedPaper, TeacherInfo, ExportFormat } from '../types';
 import { ArrowLeftIcon, DownloadIcon, ChevronLeftIcon, ChevronRightIcon } from './icons/MiscIcons';
 import { exportAsDocx, exportAsPdf, exportPaperAsDocx, exportPaperAsPdf } from '../services/exportService';
+import KaTeXText from './KaTeXText';
 
 interface ResultsViewProps {
   lessonPlans: LessonPlan[];
@@ -11,6 +12,8 @@ interface ResultsViewProps {
   schoolName: string;
   onExportPlan?: (plan: LessonPlan) => void;
   exportFormat?: ExportFormat;
+  onRevisePaper?: (prompt: string) => Promise<GeneratedPaper | null>;
+  isRevising?: boolean;
 }
 
 const ResultsView: React.FC<ResultsViewProps> = ({ 
@@ -20,9 +23,13 @@ const ResultsView: React.FC<ResultsViewProps> = ({
   teacherName, 
   schoolName,
   onExportPlan,
-  exportFormat = 'both'
+  exportFormat = 'both',
+  onRevisePaper,
+  isRevising = false,
 }) => {
   const [selectedPlanIndex, setSelectedPlanIndex] = useState(0);
+  const [revisionPrompt, setRevisionPrompt] = useState('');
+  const [showRevision, setShowRevision] = useState(false);
 
   const handleExportPlan = async (plan: LessonPlan) => {
     try {
@@ -111,7 +118,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
 
             <div className="bg-brand-surface rounded-xl border border-brand-border p-4">
               <h2 className="text-sm font-bold text-brand-primary uppercase tracking-widest mb-2">Objective</h2>
-              <p className="text-brand-text-primary leading-relaxed">{selectedPlan.objective}</p>
+              <KaTeXText text={selectedPlan.objective} className="text-brand-text-primary leading-relaxed" as="p" />
             </div>
 
             <div className="bg-brand-surface rounded-xl border border-brand-border p-4">
@@ -123,17 +130,17 @@ const ResultsView: React.FC<ResultsViewProps> = ({
                       <h3 className="font-bold text-brand-text-primary text-sm">{activity.name}</h3>
                       <span className="text-xs text-brand-text-secondary bg-brand-bg px-2 py-0.5 rounded-md">{activity.duration} mins</span>
                     </div>
-                    <p className="text-sm text-brand-text-secondary leading-relaxed mb-2">{activity.description}</p>
+                    <KaTeXText text={activity.description} className="text-sm text-brand-text-secondary leading-relaxed mb-2" as="p" />
                     {activity.teacherActions && (
                       <div className="mb-1.5">
                         <span className="text-xs font-bold text-brand-primary uppercase tracking-wider">Teacher Actions:</span>
-                        <p className="text-sm text-brand-text-primary leading-relaxed">{activity.teacherActions}</p>
+                        <KaTeXText text={activity.teacherActions} className="text-sm text-brand-text-primary leading-relaxed" as="p" />
                       </div>
                     )}
                     {activity.studentResponses && (
                       <div>
                         <span className="text-xs font-bold text-brand-primary uppercase tracking-wider">Student Responses:</span>
-                        <p className="text-sm text-brand-text-primary leading-relaxed">{activity.studentResponses}</p>
+                        <KaTeXText text={activity.studentResponses} className="text-sm text-brand-text-primary leading-relaxed" as="p" />
                       </div>
                     )}
                   </div>
@@ -147,7 +154,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
                 {selectedPlan.materials.map((item, i) => (
                   <li key={i} className="text-sm text-brand-text-secondary flex items-start gap-2">
                     <span className="text-brand-primary mt-1">•</span>
-                    {item}
+                    <KaTeXText text={item} />
                   </li>
                 ))}
               </ul>
@@ -155,7 +162,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
 
             <div className="bg-brand-surface rounded-xl border border-brand-border p-4">
               <h2 className="text-sm font-bold text-brand-primary uppercase tracking-widest mb-2">Homework</h2>
-              <p className="text-sm text-brand-text-secondary leading-relaxed">{selectedPlan.homework}</p>
+              <KaTeXText text={selectedPlan.homework} className="text-sm text-brand-text-secondary leading-relaxed" as="p" />
             </div>
           </div>
         </div>
@@ -199,11 +206,11 @@ const ResultsView: React.FC<ResultsViewProps> = ({
                   {section.questions.map((q) => (
                     <div key={q.id} className="text-sm text-brand-text-primary">
                       <span className="font-semibold mr-1">{q.id}.</span>
-                      {q.question}
+                      <KaTeXText text={q.question} />
                       {q.options && q.options.length > 0 && (
                         <ul className="mt-2 ml-4 space-y-1">
                           {q.options.map((opt, oIdx) => (
-                            <li key={oIdx} className="text-brand-text-secondary">({String.fromCharCode(65 + oIdx)}) {opt}</li>
+                            <li key={oIdx} className="text-brand-text-secondary">({String.fromCharCode(65 + oIdx)}) <KaTeXText text={opt} /></li>
                           ))}
                         </ul>
                       )}
@@ -213,6 +220,57 @@ const ResultsView: React.FC<ResultsViewProps> = ({
               </div>
             ))}
           </div>
+
+          {/* Revision Panel */}
+          {onRevisePaper && (
+            <div className="bg-brand-surface rounded-xl border border-brand-border p-4 mb-4">
+              <button
+                onClick={() => setShowRevision(!showRevision)}
+                className="flex items-center gap-2 w-full text-left"
+              >
+                <span className="text-sm font-bold text-brand-primary uppercase tracking-widest">
+                  Revise Paper
+                </span>
+                <svg className={`w-4 h-4 text-brand-text-secondary transition-transform ${showRevision ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {showRevision && (
+                <div className="mt-4">
+                  <p className="text-xs text-brand-text-secondary mb-2">
+                    Tell the AI what to change — add questions, remove questions, modify difficulty, change topics, etc.
+                  </p>
+                  <p className="text-xs text-brand-text-secondary mb-3">
+                    Examples: "Add 2 more MCQs about thermodynamics" / "Remove q3, replace with a harder question" / "Make all long questions 6 marks instead of 4"
+                  </p>
+                  <textarea
+                    value={revisionPrompt}
+                    onChange={(e) => setRevisionPrompt(e.target.value)}
+                    placeholder="e.g. Add 3 more MCQs about kinetic energy, remove question 5, make long questions worth 6 marks each..."
+                    className="w-full h-24 px-3 py-2 bg-brand-bg border border-brand-border rounded-lg text-sm text-brand-text-primary placeholder:text-brand-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 resize-none"
+                    disabled={isRevising}
+                  />
+                  <div className="flex justify-end mt-2">
+                    <button
+                      onClick={async () => {
+                        if (!revisionPrompt.trim()) return;
+                        const result = await onRevisePaper(revisionPrompt);
+                        if (result) {
+                          setRevisionPrompt('');
+                          setShowRevision(false);
+                        }
+                      }}
+                      disabled={isRevising || !revisionPrompt.trim()}
+                      className="px-4 py-2 bg-brand-primary text-white text-sm font-semibold rounded-lg hover:bg-brand-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    >
+                      {isRevising ? 'Revising...' : 'Apply Revision'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     );

@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { Part } from '@google/genai';
 import { LessonPlan, GeneratedPaper, PaperConfig, TeacherInfo, ExportOption, SLO } from '../types';
 import { generateLessonPlan as generateGeminiLessonPlan, downloadPdfAsPart } from '../services/geminiService';
-import { generateExamPaper } from '../services/paperService';
+import { generateExamPaper, reviseExamPaper } from '../services/paperService';
 import { exportAsDocx, exportAsPdf, exportMultipleLessonsAsDocx, exportMultipleLessonsAsPdf, formatFileName } from '../services/exportService';
 import { curriculumData, getSubjectById, getChapterById } from '../curriculum';
 
@@ -391,6 +391,36 @@ export const useGeneralGeneration = () => {
     setShowStatusPanel(false);
   }, []);
 
+  const revisePaper = useCallback(async (revisionPrompt: string): Promise<GeneratedPaper | null> => {
+    if (generatedPapers.length === 0) {
+      setError('No paper to revise. Generate a paper first.');
+      return null;
+    }
+
+    const currentPaper = generatedPapers[0];
+    setIsLoading(true);
+    isCancelledRef.current = false;
+    setError(null);
+    setLogMessages([]);
+    setShowStatusPanel(true);
+    addLog('Starting paper revision...');
+
+    try {
+      addLog(`Revision instructions: "${revisionPrompt}"`);
+      const revised = await reviseExamPaper(currentPaper, revisionPrompt, addLog);
+      setGeneratedPapers([revised]);
+      addLog('\n✓ Paper revised successfully!');
+      setIsLoading(false);
+      return revised;
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to revise paper';
+      addLog(`ERROR: ${errorMsg}`);
+      setError(errorMsg);
+      setIsLoading(false);
+      return null;
+    }
+  }, [generatedPapers, addLog]);
+
   return {
     isLoading,
     generationProgress,
@@ -405,6 +435,7 @@ export const useGeneralGeneration = () => {
     generatePaper,
     exportPlan,
     exportPaper,
+    revisePaper,
     clearResults,
   };
 };
