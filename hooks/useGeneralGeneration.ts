@@ -237,15 +237,21 @@ export const useGeneralGeneration = () => {
           if (isIndividualExport && !isCancelledRef.current) {
             addLog('Exporting DOCX and PDF...');
             try {
+              let docxTimeoutId: ReturnType<typeof setTimeout>;
               await Promise.race([
-                exportAsDocx(plan, slo.SLO_ID, teacherInfo),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('DOCX export timed out')), 30000))
+                exportAsDocx(plan, slo.SLO_ID, teacherInfo).finally(() => clearTimeout(docxTimeoutId)),
+                new Promise((_, reject) => {
+                  docxTimeoutId = setTimeout(() => reject(new Error('DOCX export timed out')), 30000);
+                })
               ]);
               if (isCancelledRef.current) break;
               await new Promise(resolve => setTimeout(resolve, 250));
+              let pdfTimeoutId: ReturnType<typeof setTimeout>;
               await Promise.race([
-                exportAsPdf(plan, slo.SLO_ID, teacherInfo),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('PDF export timed out')), 30000))
+                exportAsPdf(plan, slo.SLO_ID, teacherInfo).finally(() => clearTimeout(pdfTimeoutId)),
+                new Promise((_, reject) => {
+                  pdfTimeoutId = setTimeout(() => reject(new Error('PDF export timed out')), 30000);
+                })
               ]);
             } catch (exportError) {
               addLog(`WARN: Export failed for ${slo.SLO_ID}: ${exportError instanceof Error ? exportError.message : 'Unknown error'}`);
@@ -278,20 +284,30 @@ export const useGeneralGeneration = () => {
         try {
           if (!isCancelledRef.current) {
             addLog('Generating DOCX...');
+            let batchDocxTimeoutId: ReturnType<typeof setTimeout>;
             await Promise.race([
-              exportMultipleLessonsAsDocx(allGeneratedPlans, fileName, teacherInfo),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('DOCX export timed out after 60s')), 60000))
+              exportMultipleLessonsAsDocx(allGeneratedPlans, fileName, teacherInfo).finally(() => clearTimeout(batchDocxTimeoutId)),
+              new Promise((_, reject) => {
+                batchDocxTimeoutId = setTimeout(() => reject(new Error('DOCX export timed out after 60s')), 60000);
+              })
             ]);
-            addLog('✓ DOCX exported');
+            if (!isCancelledRef.current) {
+              addLog('✓ DOCX exported');
+            }
           }
           if (!isCancelledRef.current) {
             await new Promise(resolve => setTimeout(resolve, 250));
             addLog('Generating PDF...');
+            let batchPdfTimeoutId: ReturnType<typeof setTimeout>;
             await Promise.race([
-              exportMultipleLessonsAsPdf(allGeneratedPlans, fileName, teacherInfo),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('PDF export timed out after 60s')), 60000))
+              exportMultipleLessonsAsPdf(allGeneratedPlans, fileName, teacherInfo).finally(() => clearTimeout(batchPdfTimeoutId)),
+              new Promise((_, reject) => {
+                batchPdfTimeoutId = setTimeout(() => reject(new Error('PDF export timed out after 60s')), 60000);
+              })
             ]);
-            addLog('✓ PDF exported');
+            if (!isCancelledRef.current) {
+              addLog('✓ PDF exported');
+            }
           }
         } catch (batchError) {
           addLog(`WARN: Batch export failed: ${batchError instanceof Error ? batchError.message : 'Unknown error'}`);
