@@ -1,7 +1,6 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { curriculumData, getSubjectById, getChapterById } from '../curriculum';
+import React, { useState, useMemo } from 'react';
+import { curriculumData } from '../curriculum';
 import { CurriculumClass, Teacher } from '../types';
-import { loadChaptersForSubject, getSubjectsForGrade, loadSloData } from '../curriculum/sloLoader';
 
 interface SubjectSelectorProps {
   selectedClassId: string;
@@ -106,6 +105,15 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
 
   // --- Smart bidirectional filtering ---
 
+  const subjectMatchesTeacher = (teacherSubject: string, curriculumSubject: { id: string; name: string }): boolean => {
+    const ts = teacherSubject.toLowerCase();
+    const csName = curriculumSubject.name.toLowerCase();
+    const csId = curriculumSubject.id.toLowerCase();
+    return ts === csName || ts === csId ||
+      csName.includes(ts) || ts.includes(csName) ||
+      ts.includes(csId.replace('_', ' '));
+  };
+
   // Teachers filtered by selected class (if any)
   const teachersForClass = useMemo(() => {
     if (!selectedClassId) return teachers;
@@ -137,15 +145,6 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
   // (We don't auto-select to avoid surprises, but we filter the dropdown)
 
   // Available subjects: if teacher selected, show only their subjects; otherwise show class subjects
-  const subjectMatchesTeacher = (teacherSubject: string, curriculumSubject: { id: string; name: string }): boolean => {
-    const ts = teacherSubject.toLowerCase();
-    const csName = curriculumSubject.name.toLowerCase();
-    const csId = curriculumSubject.id.toLowerCase();
-    return ts === csName || ts === csId ||
-      csName.includes(ts) || ts.includes(csName) ||
-      ts.includes(csId.replace('_', ' '));
-  };
-
   const availableSubjects = useMemo(() => {
     if (selectedTeacher) {
       const classSubjects = selectedClass?.subjects || [];
@@ -192,6 +191,7 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
     if (selectedTeacher && newClassId && !selectedTeacher.classIds?.includes(newClassId)) {
       onSelectedTeacherIdChange('');
       onTeacherNameChange('');
+      onSchoolNameChange('');
     }
     // Reset dependent selections
     onSubjectChange('');
@@ -205,6 +205,7 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
     if (selectedTeacher && newSubjectId && !selectedTeacher.subjects.some(s => s.toLowerCase() === newSubjectId.toLowerCase())) {
       onSelectedTeacherIdChange('');
       onTeacherNameChange('');
+      onSchoolNameChange('');
     }
     onChapterChange('');
   };
@@ -241,6 +242,7 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
       }
     } else {
       onTeacherNameChange('');
+      onSchoolNameChange('');
     }
   };
 

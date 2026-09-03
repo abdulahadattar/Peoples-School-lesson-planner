@@ -233,18 +233,19 @@ export const useGeneralGeneration = () => {
           allGeneratedPlans.push(plan);
           addLog(`✓ Done: "${plan.title}"`);
 
-          // Export based on format (skip if cancelled)
-          if (isIndividualExport && !isCancelledRef.current) {
-            addLog('Exporting DOCX and PDF...');
-            try {
-              await withTimeout(exportAsDocx(plan, slo.SLO_ID, teacherInfo), 30000, 'DOCX export timed out');
-              if (isCancelledRef.current) break;
-              await new Promise(resolve => setTimeout(resolve, 250));
-              await withTimeout(exportAsPdf(plan, slo.SLO_ID, teacherInfo), 30000, 'PDF export timed out');
-            } catch (exportError) {
-              addLog(`WARN: Export failed for ${slo.SLO_ID}: ${exportError instanceof Error ? exportError.message : 'Unknown error'}`);
-            }
-          }
+           // Export based on format (skip if cancelled)
+           if (isIndividualExport && !isCancelledRef.current) {
+             addLog(`Exporting (${uiExportFormat})...`);
+             try {
+               if (uiExportFormat === 'docx') {
+                 await withTimeout(exportAsDocx(plan, slo.SLO_ID, teacherInfo), 30000, 'DOCX export timed out');
+               } else if (uiExportFormat === 'pdf') {
+                 await withTimeout(exportAsPdf(plan, slo.SLO_ID, teacherInfo), 30000, 'PDF export timed out');
+               }
+             } catch (exportError) {
+               addLog(`WARN: Export failed for ${slo.SLO_ID}: ${exportError instanceof Error ? exportError.message : 'Unknown error'}`);
+             }
+           }
 
           // Delay between requests (except for last one, skip if cancelled)
           if (i < totalSlos - 1 && !isCancelledRef.current) {
@@ -378,14 +379,18 @@ export const useGeneralGeneration = () => {
     }
   }, [addLog]);
 
-  const exportPlan = useCallback(async (plan: LessonPlan, teacherInfo: TeacherInfo, exportFormatOption?: ExportOption) => {
+   const exportPlan = useCallback(async (plan: LessonPlan, teacherInfo: TeacherInfo, exportFormatOption?: UiExportFormat) => {
     try {
-      if (exportFormatOption === 'individual') {
+      const fmt = exportFormatOption || 'both';
+      if (fmt === 'docx') {
+        await exportAsDocx(plan, undefined, teacherInfo);
+      } else if (fmt === 'pdf') {
+        await exportAsPdf(plan, undefined, teacherInfo);
+      } else {
+        // both
         await exportAsDocx(plan, undefined, teacherInfo);
         await new Promise(resolve => setTimeout(resolve, 250));
         await exportAsPdf(plan, undefined, teacherInfo);
-      } else if (exportFormatOption === 'all' || exportFormatOption === 'byUnit' || exportFormatOption === 'byGrade') {
-        // Batch export handled in generation
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to export plan';
