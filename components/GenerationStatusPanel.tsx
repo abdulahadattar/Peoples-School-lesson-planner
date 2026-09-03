@@ -22,7 +22,7 @@ const GenerationStatusPanel: React.FC<GenerationStatusPanelProps> = ({ isLoading
   }, [logMessages]);
   
   return (
-    <div className="absolute bottom-6 right-6 w-[400px] max-w-[90vw] bg-brand-surface border border-brand-border rounded-2xl overflow-hidden z-50 flex flex-col animate-slideUp">
+    <div className="fixed bottom-6 right-6 w-[400px] max-w-[90vw] bg-brand-surface border border-brand-border rounded-2xl overflow-hidden z-50 flex flex-col animate-slideUp shadow-2xl">
         <div className="flex justify-between items-center p-4 border-b border-brand-border">
         <div className="flex items-center gap-3">
             {isLoading ? (

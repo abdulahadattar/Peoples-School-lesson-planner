@@ -142,12 +142,13 @@ const App: React.FC = () => {
 
   const handleNavigate = (target: 'lesson' | 'paper') => {
     setView(target);
+    // Don't clear results or cancel generation — let it keep running
+    // Only reset form selections so the user can pick new ones
     setSelectedClassId('');
     setSelectedSubjectId('');
     setSelectedChapterId('');
     setSelectedSloIds([]);
     setChapterSlos([]);
-    clearResults();
   };
 
   const handleBackToHome = () => {
