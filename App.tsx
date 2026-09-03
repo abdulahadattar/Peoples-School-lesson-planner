@@ -61,10 +61,13 @@ const App: React.FC = () => {
   const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
 
   const handleNavigate = (target: 'lesson' | 'paper') => {
+    const isSwitching = view !== 'home' && view !== target;
     setView(target);
-    setSelectedClassId('');
-    setSelectedSubjectId('');
-    setSelectedChapterId('');
+    if (isSwitching) {
+      setSelectedClassId('');
+      setSelectedSubjectId('');
+      setSelectedChapterId('');
+    }
     clearResults();
   };
 
