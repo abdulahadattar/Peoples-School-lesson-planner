@@ -237,16 +237,10 @@ export const useGeneralGeneration = () => {
           if (isIndividualExport && !isCancelledRef.current) {
             addLog('Exporting DOCX and PDF...');
             try {
-              await Promise.race([
-                exportAsDocx(plan, slo.SLO_ID, teacherInfo),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('DOCX export timed out')), 30000))
-              ]);
+              await withTimeout(exportAsDocx(plan, slo.SLO_ID, teacherInfo), 30000, 'DOCX export timed out');
               if (isCancelledRef.current) break;
               await new Promise(resolve => setTimeout(resolve, 250));
-              await Promise.race([
-                exportAsPdf(plan, slo.SLO_ID, teacherInfo),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('PDF export timed out')), 30000))
-              ]);
+              await withTimeout(exportAsPdf(plan, slo.SLO_ID, teacherInfo), 30000, 'PDF export timed out');
             } catch (exportError) {
               addLog(`WARN: Export failed for ${slo.SLO_ID}: ${exportError instanceof Error ? exportError.message : 'Unknown error'}`);
             }
@@ -274,23 +268,34 @@ export const useGeneralGeneration = () => {
       if (exportOption !== 'individual' && allGeneratedPlans.length > 0 && !isCancelledRef.current) {
         const fileName = formatFileName(`${cls.name} ${subject.name} ${chapterName}`);
         addLog(`\nExporting ${allGeneratedPlans.length} plans...`);
-        
+
         try {
-          if (!isCancelledRef.current) {
-            addLog('Generating DOCX...');
-            await Promise.race([
-              exportMultipleLessonsAsDocx(allGeneratedPlans, fileName, teacherInfo),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('DOCX export timed out after 60s')), 60000))
-            ]);
-            addLog('✓ DOCX exported');
+          addLog('Generating DOCX...');
+          await withTimeout(
+            exportMultipleLessonsAsDocx(allGeneratedPlans, fileName, teacherInfo),
+            60000,
+            'DOCX export timed out after 60s'
+          );
+          if (isCancelledRef.current) {
+            addLog('Generation cancelled — skipping PDF export');
+            return allGeneratedPlans;
           }
-          if (!isCancelledRef.current) {
-            await new Promise(resolve => setTimeout(resolve, 250));
-            addLog('Generating PDF...');
-            await Promise.race([
-              exportMultipleLessonsAsPdf(allGeneratedPlans, fileName, teacherInfo),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('PDF export timed out after 60s')), 60000))
-            ]);
+          addLog('✓ DOCX exported');
+
+          await new Promise(resolve => setTimeout(resolve, 250));
+          if (isCancelledRef.current) {
+            addLog('Generation cancelled — skipping PDF export');
+            return allGeneratedPlans;
+          }
+          addLog('Generating PDF...');
+          await withTimeout(
+            exportMultipleLessonsAsPdf(allGeneratedPlans, fileName, teacherInfo),
+            60000,
+            'PDF export timed out after 60s'
+          );
+          if (isCancelledRef.current) {
+            addLog('Generation cancelled during PDF export');
+          } else {
             addLog('✓ PDF exported');
           }
         } catch (batchError) {
@@ -493,4 +498,18 @@ async function downloadPdfUrlForChapter(classId: string, subjectId: string, chap
     console.error('[useGeneralGeneration] Error getting PDF URL:', error);
     return null;
   }
+}
+
+/**
+ * Run a promise with a timeout. The timeout handle is always cleared on
+ * resolve/reject so no pending timers leak.
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer !== undefined) clearTimeout(timer);
+  }) as Promise<T>;
 }
