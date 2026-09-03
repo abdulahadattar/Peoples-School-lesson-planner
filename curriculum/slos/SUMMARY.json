@@ -1,0 +1,88 @@
+{
+  "metadata": {
+    "source": "STBB-BOOKS GitHub Repository (abdulahadattar/STBB-BOOKS)",
+    "extracted_date": "2026-08-26",
+    "extraction_method": "Based on STBB curriculum PDF chapter structure and educational standards",
+    "note": "SLOs organized by Grade -> Subject -> Chapter. Each SLO has unique ID, text, and cognitive level."
+  },
+  "grades": {
+    "Grade 9": {
+      "biology": {
+        "chapters": 9,
+        "slos": 52,
+        "file": "slos/Grade 9/biology.json"
+      },
+      "chemistry": {
+        "chapters": 8,
+        "slos": 35,
+        "file": "slos/Grade 9/chemistry.json"
+      },
+      "mathematics": {
+        "chapters": 15,
+        "slos": 94,
+        "file": "slos/Grade 9/mathematics.json"
+      },
+      "physics": {
+        "chapters": 8,
+        "slos": 66,
+        "file": "slos/Grade 9/physics.json"
+      }
+    },
+    "Grade 10": {
+      "biology": {
+        "chapters": 8,
+        "slos": 51,
+        "file": "slos/Grade 10/biology.json"
+      }
+    },
+    "Grade 11": {
+      "biology": {
+        "chapters": 14,
+        "slos": 61,
+        "file": "slos/Grade 11/biology.json"
+      },
+      "chemistry": {
+        "chapters": 8,
+        "slos": 45,
+        "file": "slos/Grade 11/chemistry.json"
+      },
+      "english": {
+        "chapters": 10,
+        "slos": 32,
+        "file": "slos/Grade 11/english.json"
+      },
+      "mathematics": {
+        "chapters": 12,
+        "slos": 55,
+        "file": "slos/Grade 11/mathematics.json"
+      },
+      "physics": {
+        "chapters": 14,
+        "slos": 70,
+        "file": "slos/Grade 11/physics.json"
+      }
+    },
+    "Grade 12": {
+      "biology": {
+        "chapters": 13,
+        "slos": 67,
+        "file": "slos/Grade 12/biology.json"
+      },
+      "chemistry": {
+        "chapters": 13,
+        "slos": 62,
+        "file": "slos/Grade 12/chemistry.json"
+      },
+      "mathematics": {
+        "chapters": 10,
+        "slos": 54,
+        "file": "slos/Grade 12/mathematics.json"
+      },
+      "physics": {
+        "chapters": 14,
+        "slos": 76,
+        "file": "slos/Grade 12/physics.json"
+      }
+    }
+  }
+}

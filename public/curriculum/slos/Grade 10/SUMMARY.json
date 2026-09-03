@@ -1,0 +1,10 @@
+{
+  "grade": "Grade 10",
+  "grades": {
+    "Grade 10": {
+      "biology": {
+        "file": "biology.json"
+      }
+    }
+  }
+}

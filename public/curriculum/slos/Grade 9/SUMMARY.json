@@ -1,0 +1,19 @@
+{
+  "grade": "Grade 9",
+  "grades": {
+    "Grade 9": {
+      "biology": {
+        "file": "biology.json"
+      },
+      "chemistry": {
+        "file": "chemistry.json"
+      },
+      "mathematics": {
+        "file": "mathematics.json"
+      },
+      "physics": {
+        "file": "physics.json"
+      }
+    }
+  }
+}

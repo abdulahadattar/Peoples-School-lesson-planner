@@ -1,0 +1,28 @@
+{
+  "teachers": [
+    {
+      "id": "teacher-1",
+      "name": "Abdul Ahad",
+      "schoolName": "Peoples Higher Secondary School Jamshoro",
+      "designation": "Subject Specialist",
+      "subjects": ["Physics", "Mathematics"],
+      "grades": ["Grade 9", "Grade 10", "Grade 11", "Grade 12"]
+    },
+    {
+      "id": "teacher-2",
+      "name": "Teacher Name",
+      "schoolName": "Peoples Higher Secondary School Jamshoro",
+      "designation": "Class Teacher",
+      "subjects": ["Biology", "Chemistry"],
+      "grades": ["Grade 9", "Grade 10"]
+    },
+    {
+      "id": "teacher-3",
+      "name": "Another Teacher",
+      "schoolName": "Peoples Higher Secondary School Jamshoro",
+      "designation": "Subject Specialist",
+      "subjects": ["English", "Urdu"],
+      "grades": ["Grade 9", "Grade 10", "Grade 11"]
+    }
+  ]
+}

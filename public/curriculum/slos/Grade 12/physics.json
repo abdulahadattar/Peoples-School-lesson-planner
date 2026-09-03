@@ -1,0 +1,485 @@
+{
+  "subject": "Physics",
+  "grade": "Grade 12",
+  "total_chapters": 14,
+  "chapters": [
+    {
+      "chapter_number": 1,
+      "chapter_name": "Molecular Theory of Gases",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Physics/Chapter%2015%20-%20Molecular%20Theory%20of%20Gases.pdf",
+      "slos": [
+        {
+          "id": "phy12_ch1_1",
+          "text": "Explain the kinetic molecular theory of ideal gases",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch1_2",
+          "text": "Derive the gas pressure equation from kinetic theory",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy12_ch1_3",
+          "text": "Relate temperature to average kinetic energy of gas molecules",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch1_4",
+          "text": "Explain Maxwell-Boltzmann distribution of molecular speeds",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch1_5",
+          "text": "Calculate root-mean-square speed of gas molecules",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 2,
+      "chapter_name": "First Law of Thermodynamics",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Physics/Chapter%2016%20-%20First%20Law%20of%20Thermodynamics.pdf",
+      "slos": [
+        {
+          "id": "phy12_ch2_1",
+          "text": "State and explain the first law of thermodynamics",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy12_ch2_2",
+          "text": "Define internal energy, heat, and work",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy12_ch2_3",
+          "text": "Apply first law to isothermal, adiabatic, isobaric, and isochoric processes",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy12_ch2_4",
+          "text": "Calculate work done in thermodynamic processes",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy12_ch2_5",
+          "text": "Describe heat engines and their efficiency",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 3,
+      "chapter_name": "Second Law of Thermodynamics",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Physics/Chapter%2017%20-%20Second%20Law%20of%20Thermodynamics.pdf",
+      "slos": [
+        {
+          "id": "phy12_ch3_1",
+          "text": "State and explain the second law of thermodynamics (Kelvin-Planck and Clausius statements)",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy12_ch3_2",
+          "text": "Define entropy and explain its significance",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch3_3",
+          "text": "Calculate entropy changes in reversible and irreversible processes",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy12_ch3_4",
+          "text": "Explain Carnot cycle and Carnot efficiency",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch3_5",
+          "text": "Describe heat pumps and refrigerators",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 4,
+      "chapter_name": "Magnetic Fields",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Physics/Chapter%2018%20-%20Magnetic%20Fields.pdf",
+      "slos": [
+        {
+          "id": "phy12_ch4_1",
+          "text": "Describe magnetic field and magnetic field lines",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch4_2",
+          "text": "Calculate magnetic force on moving charges (Lorentz force)",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy12_ch4_3",
+          "text": "Explain motion of charged particles in magnetic fields",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch4_4",
+          "text": "Describe magnetic force on current-carrying conductors",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch4_5",
+          "text": "Explain torque on a current loop in magnetic field",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy12_ch4_6",
+          "text": "Describe Hall effect and its applications",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 5,
+      "chapter_name": "Electromagnetic Induction",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Physics/Chapter%2019%20-%20Electromagnetic%20Induction.pdf",
+      "slos": [
+        {
+          "id": "phy12_ch5_1",
+          "text": "State and apply Faraday's law of electromagnetic induction",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy12_ch5_2",
+          "text": "Explain Lenz's law and its significance",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch5_3",
+          "text": "Describe motional emf and its applications",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch5_4",
+          "text": "Explain self-inductance and mutual inductance",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch5_5",
+          "text": "Calculate energy stored in an inductor",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy12_ch5_6",
+          "text": "Describe eddy currents and their applications",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 6,
+      "chapter_name": "Alternating Current",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Physics/Chapter%2020%20-%20Alternating%20Current.pdf",
+      "slos": [
+        {
+          "id": "phy12_ch6_1",
+          "text": "Describe AC voltage and current (peak, rms values)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch6_2",
+          "text": "Analyze AC circuits with resistors, capacitors, and inductors",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy12_ch6_3",
+          "text": "Explain phasor diagrams and impedance",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch6_4",
+          "text": "Describe resonance in RLC circuits",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch6_5",
+          "text": "Calculate power in AC circuits (real, reactive, apparent)",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy12_ch6_6",
+          "text": "Explain transformer operation and applications",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 7,
+      "chapter_name": "Physics of Solids",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Physics/Chapter%2021%20-%20Physics%20of%20Solids.pdf",
+      "slos": [
+        {
+          "id": "phy12_ch7_1",
+          "text": "Classify solids (crystalline, amorphous, polycrystalline)",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy12_ch7_2",
+          "text": "Describe crystal structures (SC, BCC, FCC, HCP)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch7_3",
+          "text": "Explain Miller indices and crystal planes",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy12_ch7_4",
+          "text": "Describe X-ray diffraction and Bragg's law",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch7_5",
+          "text": "Explain mechanical properties of solids (stress, strain, Young's modulus)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch7_6",
+          "text": "Describe elastic and plastic deformation",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 8,
+      "chapter_name": "Solid State Electronics",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Physics/Chapter%2022%20-%20Solid%20State%20Electronics.pdf",
+      "slos": [
+        {
+          "id": "phy12_ch8_1",
+          "text": "Explain band theory of solids (conductors, insulators, semiconductors)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch8_2",
+          "text": "Describe intrinsic and extrinsic semiconductors (n-type, p-type)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch8_3",
+          "text": "Explain p-n junction formation and its characteristics",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch8_4",
+          "text": "Describe diode characteristics and applications (rectifier, LED, photodiode)",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy12_ch8_5",
+          "text": "Explain Zener diode and voltage regulation",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 9,
+      "chapter_name": "Digital Electronics",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Physics/Chapter%2023%20-%20Digital%20Electronics.pdf",
+      "slos": [
+        {
+          "id": "phy12_ch9_1",
+          "text": "Define binary number system and convert between binary and decimal",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy12_ch9_2",
+          "text": "Describe logic gates (AND, OR, NOT, NAND, NOR, XOR)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch9_3",
+          "text": "Apply Boolean algebra to simplify logic expressions",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy12_ch9_4",
+          "text": "Design combinational logic circuits",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy12_ch9_5",
+          "text": "Describe flip-flops and sequential circuits",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 10,
+      "chapter_name": "Relativity",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Physics/Chapter%2024%20-%20Relativity.pdf",
+      "slos": [
+        {
+          "id": "phy12_ch10_1",
+          "text": "Explain the postulates of special relativity",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch10_2",
+          "text": "Describe time dilation and length contraction",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch10_3",
+          "text": "Explain relativistic mass, energy, and momentum",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch10_4",
+          "text": "Apply Einstein's mass-energy equivalence (E = mc\u00b2)",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy12_ch10_5",
+          "text": "Describe the concept of spacetime",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 11,
+      "chapter_name": "Quantum Physics",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Physics/Chapter%2025%20-%20Quantum%20Physics.pdf",
+      "slos": [
+        {
+          "id": "phy12_ch11_1",
+          "text": "Explain blackbody radiation and Planck's quantum hypothesis",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch11_2",
+          "text": "Describe photoelectric effect and Einstein's explanation",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch11_3",
+          "text": "Explain Compton effect",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch11_4",
+          "text": "Describe wave-particle duality and de Broglie wavelength",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch11_5",
+          "text": "Explain Heisenberg uncertainty principle",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch11_6",
+          "text": "Describe Schr\u00f6dinger equation and its significance",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 12,
+      "chapter_name": "Atomic Physics",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Physics/Chapter%2026%20-%20Atomic%20Physics.pdf",
+      "slos": [
+        {
+          "id": "phy12_ch12_1",
+          "text": "Describe Bohr model of hydrogen atom and its limitations",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch12_2",
+          "text": "Explain quantum numbers and electron configuration",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch12_3",
+          "text": "Describe atomic spectra and spectral series (Lyman, Balmer, Paschen)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch12_4",
+          "text": "Explain X-ray production and characteristic X-rays",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch12_5",
+          "text": "Describe laser principles and applications",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 13,
+      "chapter_name": "Nuclear Physics",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Physics/Chapter%2027%20-%20Nuclear%20Physics.pdf",
+      "slos": [
+        {
+          "id": "phy12_ch13_1",
+          "text": "Describe nuclear structure (protons, neutrons, isotopes)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch13_2",
+          "text": "Explain nuclear forces and binding energy",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch13_3",
+          "text": "Describe radioactive decay (alpha, beta, gamma) and decay law",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch13_4",
+          "text": "Calculate half-life and activity of radioactive samples",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy12_ch13_5",
+          "text": "Explain nuclear fission and fusion",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch13_6",
+          "text": "Describe nuclear reactors and their components",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 14,
+      "chapter_name": "Particle Physics",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Physics/Chapter%2028%20-%20Particle%20Physics.pdf",
+      "slos": [
+        {
+          "id": "phy12_ch14_1",
+          "text": "Classify elementary particles (leptons, quarks, gauge bosons)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch14_2",
+          "text": "Describe the standard model of particle physics",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch14_3",
+          "text": "Explain conservation laws in particle interactions",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch14_4",
+          "text": "Describe particle accelerators and detectors",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy12_ch14_5",
+          "text": "Explain the Higgs mechanism and Higgs boson",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "grade": "Grade 11",
+  "grades": {
+    "Grade 11": {
+      "biology": {
+        "file": "biology.json"
+      },
+      "chemistry": {
+        "file": "chemistry.json"
+      },
+      "english": {
+        "file": "english.json"
+      },
+      "mathematics": {
+        "file": "mathematics.json"
+      },
+      "physics": {
+        "file": "physics.json"
+      }
+    }
+  }
+}

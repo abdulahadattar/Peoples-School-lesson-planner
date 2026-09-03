@@ -1,0 +1,433 @@
+{
+  "subject": "Biology",
+  "grade": "Grade 12",
+  "total_chapters": 13,
+  "chapters": [
+    {
+      "chapter_number": 1,
+      "chapter_name": "Homeostasis",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Biology/Chapter%2015%20-%20Homeostasis.pdf",
+      "slos": [
+        {
+          "id": "bio12_ch1_1",
+          "text": "Define homeostasis and explain its importance in living organisms",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "bio12_ch1_2",
+          "text": "Describe osmoregulation and thermoregulation mechanisms",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch1_3",
+          "text": "Explain the structure and function of the kidney and nephron",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch1_4",
+          "text": "Describe the hormonal control of water balance (ADH, aldosterone)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch1_5",
+          "text": "Analyze the role of skin, hypothalamus, and hormones in temperature regulation",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "bio12_ch1_6",
+          "text": "Describe kidney disorders and dialysis",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 2,
+      "chapter_name": "Support and Movement",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Biology/Chapter%2016%20-%20Support%20and%20Movement.pdf",
+      "slos": [
+        {
+          "id": "bio12_ch2_1",
+          "text": "Describe the human skeletal system and types of bones",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch2_2",
+          "text": "Explain the structure and function of joints",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch2_3",
+          "text": "Describe the muscular system and types of muscle tissue",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch2_4",
+          "text": "Explain the sliding filament theory of muscle contraction",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch2_5",
+          "text": "Analyze the role of calcium and ATP in muscle contraction",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "bio12_ch2_6",
+          "text": "Describe disorders of the skeletal and muscular systems",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 3,
+      "chapter_name": "Nervous Coordination",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Biology/Chapter%2017%20-%20Nervous%20Coordination.pdf",
+      "slos": [
+        {
+          "id": "bio12_ch3_1",
+          "text": "Describe the structure and function of neurons and glial cells",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch3_2",
+          "text": "Explain the generation and propagation of nerve impulses",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch3_3",
+          "text": "Describe synaptic transmission and neurotransmitters",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch3_4",
+          "text": "Explain the structure and function of the central nervous system",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch3_5",
+          "text": "Describe the peripheral nervous system (somatic and autonomic)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch3_6",
+          "text": "Analyze the reflex arc and its significance",
+          "cognitive_level": "Analysis"
+        }
+      ]
+    },
+    {
+      "chapter_number": 4,
+      "chapter_name": "Chemical Coordination",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Biology/Chapter%2018%20-%20Chemical%20Coordination.pdf",
+      "slos": [
+        {
+          "id": "bio12_ch4_1",
+          "text": "Define hormones and explain their chemical nature",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "bio12_ch4_2",
+          "text": "Describe the endocrine glands and their hormones",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch4_3",
+          "text": "Explain the mechanism of hormone action (steroid vs peptide hormones)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch4_4",
+          "text": "Describe the hypothalamic-pituitary axis and its regulation",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch4_5",
+          "text": "Explain feedback mechanisms in hormonal regulation",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "bio12_ch4_6",
+          "text": "Describe common endocrine disorders (diabetes, thyroid disorders)",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 5,
+      "chapter_name": "Animal Behaviour",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Biology/Chapter%2019%20-%20Animal%20Behaviour.pdf",
+      "slos": [
+        {
+          "id": "bio12_ch5_1",
+          "text": "Define animal behaviour and its types (innate, learned)",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "bio12_ch5_2",
+          "text": "Describe instinct, reflexes, and fixed action patterns",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch5_3",
+          "text": "Explain types of learning (habituation, conditioning, imprinting, insight)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch5_4",
+          "text": "Analyze social behaviour (aggression, territoriality, altruism)",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "bio12_ch5_5",
+          "text": "Describe communication methods in animals",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 6,
+      "chapter_name": "Reproduction",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Biology/Chapter%2020%20-%20Reproduction.pdf",
+      "slos": [
+        {
+          "id": "bio12_ch6_1",
+          "text": "Describe gametogenesis (spermatogenesis and oogenesis)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch6_2",
+          "text": "Explain the menstrual cycle and its hormonal control",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch6_3",
+          "text": "Describe fertilization, implantation, and early embryonic development",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch6_4",
+          "text": "Explain the structure and function of placenta",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch6_5",
+          "text": "Describe parturition and lactation",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch6_6",
+          "text": "Analyze reproductive technologies (IVF, contraception)",
+          "cognitive_level": "Analysis"
+        }
+      ]
+    },
+    {
+      "chapter_number": 7,
+      "chapter_name": "Development and Aging",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Biology/Chapter%2021%20-%20Development%20and%20Aging.pdf",
+      "slos": [
+        {
+          "id": "bio12_ch7_1",
+          "text": "Describe the stages of embryonic development (cleavage, gastrulation, organogenesis)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch7_2",
+          "text": "Explain cell differentiation and morphogenesis",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch7_3",
+          "text": "Describe aging processes and theories of aging",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch7_4",
+          "text": "Analyze factors affecting development and aging",
+          "cognitive_level": "Analysis"
+        }
+      ]
+    },
+    {
+      "chapter_number": 8,
+      "chapter_name": "Chromosome and DNA",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Biology/Chapter%2022%20-%20Chromosome%20and%20DNA.pdf",
+      "slos": [
+        {
+          "id": "bio12_ch8_1",
+          "text": "Describe the structure of chromosomes and chromatin",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch8_2",
+          "text": "Explain DNA structure, replication, and the central dogma",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch8_3",
+          "text": "Describe the genetic code and protein synthesis",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch8_4",
+          "text": "Explain gene regulation in prokaryotes and eukaryotes",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch8_5",
+          "text": "Analyze mutations and their types",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "bio12_ch8_6",
+          "text": "Describe DNA repair mechanisms",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 9,
+      "chapter_name": "Inheritance",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Biology/Chapter%2023%20-%20Inheritance.pdf",
+      "slos": [
+        {
+          "id": "bio12_ch9_1",
+          "text": "Extend Mendelian genetics (multiple alleles, gene linkage, crossing over)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch9_2",
+          "text": "Explain polygenic inheritance and quantitative traits",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch9_3",
+          "text": "Describe epistasis and gene interactions",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch9_4",
+          "text": "Analyze pedigree charts for inheritance patterns",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "bio12_ch9_5",
+          "text": "Describe mitochondrial inheritance",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 10,
+      "chapter_name": "Evolution",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Biology/Chapter%2024%20-%20Evolution.pdf",
+      "slos": [
+        {
+          "id": "bio12_ch10_1",
+          "text": "Explain the modern synthesis of evolution",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch10_2",
+          "text": "Describe Hardy-Weinberg equilibrium and its applications",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "bio12_ch10_3",
+          "text": "Analyze mechanisms of evolution (mutation, gene flow, genetic drift, selection)",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "bio12_ch10_4",
+          "text": "Describe speciation and its types",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch10_5",
+          "text": "Explain the evidence for evolution (molecular, fossil, biogeographical)",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 11,
+      "chapter_name": "Man and His Environment",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Biology/Chapter%2025%20-%20Man%20and%20his%20Environment.pdf",
+      "slos": [
+        {
+          "id": "bio12_ch11_1",
+          "text": "Analyze human impact on ecosystems",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "bio12_ch11_2",
+          "text": "Describe biodiversity loss and conservation strategies",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch11_3",
+          "text": "Explain climate change and its biological consequences",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch11_4",
+          "text": "Describe sustainable development and resource management",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 12,
+      "chapter_name": "Biotechnology",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Biology/Chapter%2026%20-%20Biotechnology.pdf",
+      "slos": [
+        {
+          "id": "bio12_ch12_1",
+          "text": "Describe advanced genetic engineering techniques (PCR, CRISPR, gene therapy)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch12_2",
+          "text": "Explain transgenic organisms and their applications",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch12_3",
+          "text": "Analyze ethical, legal, and social issues in biotechnology",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "bio12_ch12_4",
+          "text": "Describe applications in medicine, agriculture, and industry",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 13,
+      "chapter_name": "Biology and Human Welfare",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Biology/Chapter%2027%20-%20Biology%20and%20Human%20Welfare.pdf",
+      "slos": [
+        {
+          "id": "bio12_ch13_1",
+          "text": "Describe the role of biology in disease control and public health",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch13_2",
+          "text": "Explain immunization and vaccine development",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio12_ch13_3",
+          "text": "Analyze the role of microorganisms in human welfare",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "bio12_ch13_4",
+          "text": "Describe biological control and integrated pest management",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    }
+  ]
+}

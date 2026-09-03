@@ -1,0 +1,288 @@
+{
+  "subject": "Chemistry",
+  "grade": "Grade 11",
+  "total_chapters": 8,
+  "chapters": [
+    {
+      "chapter_number": 1,
+      "chapter_name": "Stoichiometry",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Chemistry/Chapter%2001%20-%20Stoichiometry.pdf",
+      "slos": [
+        {
+          "id": "chem11_ch1_1",
+          "text": "Define mole and Avogadro's number",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "chem11_ch1_2",
+          "text": "Calculate number of moles, particles, and mass",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "chem11_ch1_3",
+          "text": "Explain empirical and molecular formulas",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem11_ch1_4",
+          "text": "Calculate empirical and molecular formulas from composition",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "chem11_ch1_5",
+          "text": "Define and calculate molarity, molality, and mole fraction",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "chem11_ch1_6",
+          "text": "Solve stoichiometric problems using balanced equations",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "chem11_ch1_7",
+          "text": "Define and calculate percentage yield",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 2,
+      "chapter_name": "Atomic Structure",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Chemistry/Chapter%2002%20-%20Atomic%20Structure.pdf",
+      "slos": [
+        {
+          "id": "chem11_ch2_1",
+          "text": "Describe the discovery of subatomic particles",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "chem11_ch2_2",
+          "text": "Explain quantum numbers and electronic configuration",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem11_ch2_3",
+          "text": "Apply Pauli exclusion principle and Hund's rule",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "chem11_ch2_4",
+          "text": "Explain the concept of orbitals and their shapes",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem11_ch2_5",
+          "text": "Describe the Bohr model and its limitations",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem11_ch2_6",
+          "text": "Explain the wave-particle duality and Heisenberg uncertainty principle",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 3,
+      "chapter_name": "Theories of Covalent Bonding & Shapes of Molecules",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Chemistry/Chapter%2003%20-%20Theories%20of%20Covalent%20Bonding%20%26%20Shapes%20of%20Molecules.pdf",
+      "slos": [
+        {
+          "id": "chem11_ch3_1",
+          "text": "Explain valence bond theory and hybridization (sp, sp\u00b2, sp\u00b3)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem11_ch3_2",
+          "text": "Predict molecular geometry using VSEPR theory",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "chem11_ch3_3",
+          "text": "Describe sigma and pi bonds",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem11_ch3_4",
+          "text": "Explain molecular orbital theory for diatomic molecules",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem11_ch3_5",
+          "text": "Differentiate between polar and non-polar covalent bonds",
+          "cognitive_level": "Analysis"
+        }
+      ]
+    },
+    {
+      "chapter_number": 4,
+      "chapter_name": "States of Matter",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Chemistry/Chapter%2004%20-%20States%20of%20Matter.pdf",
+      "slos": [
+        {
+          "id": "chem11_ch4_1",
+          "text": "Explain kinetic molecular theory of gases",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem11_ch4_2",
+          "text": "Describe ideal gas behavior and gas laws",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem11_ch4_3",
+          "text": "Apply ideal gas equation PV = nRT",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "chem11_ch4_4",
+          "text": "Explain deviations from ideal behavior (van der Waals equation)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem11_ch4_5",
+          "text": "Describe liquid state properties (surface tension, viscosity, vapor pressure)",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 5,
+      "chapter_name": "Thermochemistry",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Chemistry/Chapter%2005%20-%20Thermochemistry.pdf",
+      "slos": [
+        {
+          "id": "chem11_ch5_1",
+          "text": "Define system, surroundings, and state functions",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "chem11_ch5_2",
+          "text": "Explain first law of thermodynamics and enthalpy",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem11_ch5_3",
+          "text": "Calculate enthalpy changes using Hess's law",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "chem11_ch5_4",
+          "text": "Define standard enthalpy of formation, combustion, and neutralization",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "chem11_ch5_5",
+          "text": "Explain calorimetry and heat capacity",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 6,
+      "chapter_name": "Chemical Equilibrium",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Chemistry/Chapter%2006%20-%20Chemical%20Equilibrium.pdf",
+      "slos": [
+        {
+          "id": "chem11_ch6_1",
+          "text": "Define chemical equilibrium and dynamic nature",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "chem11_ch6_2",
+          "text": "Derive and apply equilibrium constant expressions (Kc, Kp)",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "chem11_ch6_3",
+          "text": "Explain Le Chatelier's principle and its applications",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem11_ch6_4",
+          "text": "Calculate equilibrium concentrations from initial conditions",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "chem11_ch6_5",
+          "text": "Explain factors affecting equilibrium (concentration, pressure, temperature, catalyst)",
+          "cognitive_level": "Analysis"
+        }
+      ]
+    },
+    {
+      "chapter_number": 7,
+      "chapter_name": "Electrochemistry",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Chemistry/Chapter%2007%20-%20Electrochemistry.pdf",
+      "slos": [
+        {
+          "id": "chem11_ch7_1",
+          "text": "Explain oxidation and reduction in terms of electron transfer",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem11_ch7_2",
+          "text": "Describe electrochemical cells (galvanic and electrolytic)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem11_ch7_3",
+          "text": "Calculate standard cell potential (E\u00b0cell)",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "chem11_ch7_4",
+          "text": "Explain Nernst equation and its applications",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "chem11_ch7_5",
+          "text": "Describe electrochemical series and its importance",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem11_ch7_6",
+          "text": "Explain corrosion and its prevention",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 8,
+      "chapter_name": "Reaction Kinetics",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Chemistry/Chapter%2008%20-%20Reaction%20Kinetics.pdf",
+      "slos": [
+        {
+          "id": "chem11_ch8_1",
+          "text": "Define rate of reaction and factors affecting it",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "chem11_ch8_2",
+          "text": "Explain rate law, order, and molecularity of reaction",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem11_ch8_3",
+          "text": "Derive integrated rate equations for zero, first, and second order reactions",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "chem11_ch8_4",
+          "text": "Explain half-life of reactions",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem11_ch8_5",
+          "text": "Describe Arrhenius equation and activation energy",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem11_ch8_6",
+          "text": "Explain catalysis and its types",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    }
+  ]
+}

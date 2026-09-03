@@ -6,9 +6,9 @@ export interface RemotePdf {
     url: string;
 }
 
-// Using corsproxy.io to bypass GitHub Releases CORS restriction
+// Using Vite dev server proxy to bypass CORS for GitHub Releases
 // Target: https://github.com/abdulahadattar/STBB-BOOKS/releases/download/STBB/
-const BASE_URL = 'https://corsproxy.io/?https://github.com/abdulahadattar/STBB-BOOKS/releases/download/STBB/';
+const BASE_URL = '/pdf-proxy/abdulahadattar/STBB-BOOKS/releases/download/STBB/';
 
 const fileNames = [
     // Grade 9

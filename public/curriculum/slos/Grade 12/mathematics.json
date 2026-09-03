@@ -1,0 +1,347 @@
+{
+  "subject": "Mathematics",
+  "grade": "Grade 12",
+  "total_chapters": 10,
+  "chapters": [
+    {
+      "chapter_number": 1,
+      "chapter_name": "Functions and Limits",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Mathematics/Chapter%2017%20-%20Sets%20and%20Functions.pdf",
+      "slos": [
+        {
+          "id": "math12_ch1_1",
+          "text": "Define function and identify domain, range, and co-domain",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math12_ch1_2",
+          "text": "Classify functions (polynomial, rational, exponential, logarithmic, trigonometric)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "math12_ch1_3",
+          "text": "Define and evaluate limits of functions",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch1_4",
+          "text": "Apply limit laws and theorems",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch1_5",
+          "text": "Evaluate limits at infinity and infinite limits",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch1_6",
+          "text": "Determine continuity of functions",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 2,
+      "chapter_name": "Differentiation",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Mathematics/Chapter%2028%20-%20Derivatives.pdf",
+      "slos": [
+        {
+          "id": "math12_ch2_1",
+          "text": "Define derivative as limit of difference quotient",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math12_ch2_2",
+          "text": "Differentiate algebraic, trigonometric, exponential, and logarithmic functions",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch2_3",
+          "text": "Apply differentiation rules (sum, product, quotient, chain rule)",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch2_4",
+          "text": "Differentiate implicit functions",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch2_5",
+          "text": "Find derivatives of inverse trigonometric functions",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch2_6",
+          "text": "Apply differentiation to find tangent/normal lines",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 3,
+      "chapter_name": "Higher Order Derivatives and Applications",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Mathematics/Chapter%2028%20-%20Derivatives.pdf",
+      "slos": [
+        {
+          "id": "math12_ch3_1",
+          "text": "Find second and higher order derivatives",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch3_2",
+          "text": "Apply derivatives to find maxima and minima",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch3_3",
+          "text": "Use second derivative test for concavity and inflection points",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch3_4",
+          "text": "Solve optimization problems using derivatives",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch3_5",
+          "text": "Apply derivatives to related rates problems",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch3_6",
+          "text": "Use L'H\u00f4pital's rule for indeterminate forms",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 4,
+      "chapter_name": "Integration",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Mathematics/Chapter%2029%20-%20Integration.pdf",
+      "slos": [
+        {
+          "id": "math12_ch4_1",
+          "text": "Define indefinite integral and find antiderivatives",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math12_ch4_2",
+          "text": "Apply basic integration formulas and rules",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch4_3",
+          "text": "Use integration by substitution",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch4_4",
+          "text": "Use integration by parts",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch4_5",
+          "text": "Integrate rational functions using partial fractions",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch4_6",
+          "text": "Evaluate definite integrals and apply Fundamental Theorem of Calculus",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch4_7",
+          "text": "Calculate area under curves using definite integrals",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 5,
+      "chapter_name": "Plane Analytic Geometry",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Mathematics/Chapter%2020%20-%20Analytic%20Geometry.pdf",
+      "slos": [
+        {
+          "id": "math12_ch5_1",
+          "text": "Describe Cartesian coordinate system and distance formula",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math12_ch5_2",
+          "text": "Find equation of line in various forms (point-slope, slope-intercept, standard)",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch5_3",
+          "text": "Determine conditions for parallel and perpendicular lines",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch5_4",
+          "text": "Find distance from point to line",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch5_5",
+          "text": "Describe angle between two lines",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 6,
+      "chapter_name": "Circle",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Mathematics/Chapter%2020%20-%20Analytic%20Geometry.pdf",
+      "slos": [
+        {
+          "id": "math12_ch6_1",
+          "text": "Define circle and find its standard and general equations",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math12_ch6_2",
+          "text": "Find center and radius from general equation of circle",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch6_3",
+          "text": "Find equation of circle given conditions (center, radius, points)",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch6_4",
+          "text": "Determine intersection of line and circle",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch6_5",
+          "text": "Find equation of tangent to a circle",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 7,
+      "chapter_name": "Parabola, Ellipse and Hyperbola",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Mathematics/Chapter%2022%20-%20Conics.pdf",
+      "slos": [
+        {
+          "id": "math12_ch7_1",
+          "text": "Define conic sections and their standard equations",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math12_ch7_2",
+          "text": "Describe parabola (focus, directrix, vertex, axis) and find its equation",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "math12_ch7_3",
+          "text": "Describe ellipse (foci, major/minor axes, eccentricity) and find its equation",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "math12_ch7_4",
+          "text": "Describe hyperbola (foci, transverse/conjugate axes, asymptotes) and find its equation",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "math12_ch7_5",
+          "text": "Identify conics from general second-degree equation",
+          "cognitive_level": "Analysis"
+        }
+      ]
+    },
+    {
+      "chapter_number": 8,
+      "chapter_name": "Differential Equations",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Mathematics/Chapter%2030%20-%20Differential%20Equations.pdf",
+      "slos": [
+        {
+          "id": "math12_ch8_1",
+          "text": "Define differential equation, order, and degree",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math12_ch8_2",
+          "text": "Solve first-order separable differential equations",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch8_3",
+          "text": "Solve first-order linear differential equations",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch8_4",
+          "text": "Solve homogeneous differential equations",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch8_5",
+          "text": "Solve exact differential equations",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch8_6",
+          "text": "Apply differential equations to model real-world problems",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 9,
+      "chapter_name": "Partial Differentiation",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Mathematics/Chapter%2020%20-%20Analytic%20Geometry.pdf",
+      "slos": [
+        {
+          "id": "math12_ch9_1",
+          "text": "Define partial derivatives for functions of two variables",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math12_ch9_2",
+          "text": "Compute first and second partial derivatives",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch9_3",
+          "text": "Explain chain rule for partial differentiation",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "math12_ch9_4",
+          "text": "Find extrema of functions of two variables",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 10,
+      "chapter_name": "Introduction to Numerical Methods",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Mathematics/Chapter%2022%20-%20Conics.pdf",
+      "slos": [
+        {
+          "id": "math12_ch10_1",
+          "text": "Define numerical methods and sources of error",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math12_ch10_2",
+          "text": "Find roots of equations using bisection method",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch10_3",
+          "text": "Apply Newton-Raphson method for root finding",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math12_ch10_4",
+          "text": "Use trapezoidal and Simpson's rule for numerical integration",
+          "cognitive_level": "Application"
+        }
+      ]
+    }
+  ]
+}

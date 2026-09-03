@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { LessonPlan, GeneratedPaper } from '../types';
-import { ArrowLeftIcon, DownloadIcon } from './icons/MiscIcons';
+import { LessonPlan, GeneratedPaper, TeacherInfo, ExportFormat } from '../types';
+import { ArrowLeftIcon, DownloadIcon, ChevronLeftIcon, ChevronRightIcon } from './icons/MiscIcons';
 import { exportAsDocx, exportAsPdf, exportPaperAsDocx, exportPaperAsPdf } from '../services/exportService';
 
 interface ResultsViewProps {
@@ -9,15 +9,33 @@ interface ResultsViewProps {
   onBack: () => void;
   teacherName: string;
   schoolName: string;
+  onExportPlan?: (plan: LessonPlan) => void;
+  exportFormat?: ExportFormat;
 }
 
-const ResultsView: React.FC<ResultsViewProps> = ({ lessonPlans, papers, onBack, teacherName, schoolName }) => {
+const ResultsView: React.FC<ResultsViewProps> = ({ 
+  lessonPlans, 
+  papers, 
+  onBack, 
+  teacherName, 
+  schoolName,
+  onExportPlan,
+  exportFormat = 'both'
+}) => {
   const [selectedPlanIndex, setSelectedPlanIndex] = useState(0);
 
   const handleExportPlan = async (plan: LessonPlan) => {
     try {
-      await exportAsDocx(plan, undefined, { name: teacherName, schoolName });
-      await exportAsPdf(plan, undefined, { name: teacherName, schoolName });
+      if (exportFormat === 'pdf' || !exportFormat) {
+        await exportAsPdf(plan, undefined, { name: teacherName, schoolName });
+      } else if (exportFormat === 'docx') {
+        await exportAsDocx(plan, undefined, { name: teacherName, schoolName });
+      } else {
+        // Both
+        await exportAsDocx(plan, undefined, { name: teacherName, schoolName });
+        await new Promise(resolve => setTimeout(resolve, 250));
+        await exportAsPdf(plan, undefined, { name: teacherName, schoolName });
+      }
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Failed to export. Please try again.');
     }
@@ -34,6 +52,8 @@ const ResultsView: React.FC<ResultsViewProps> = ({ lessonPlans, papers, onBack, 
 
   if (lessonPlans.length > 0) {
     const selectedPlan = lessonPlans[selectedPlanIndex];
+    const hasMultiple = lessonPlans.length > 1;
+    
     return (
       <div className="h-full flex flex-col bg-brand-bg">
         <div className="flex-shrink-0 px-4 py-3 bg-brand-surface border-b border-brand-border flex items-center justify-between sticky top-0 z-10">
@@ -41,10 +61,32 @@ const ResultsView: React.FC<ResultsViewProps> = ({ lessonPlans, papers, onBack, 
             <ArrowLeftIcon className="w-4 h-4" />
             Back
           </button>
-          <div className="flex gap-2">
+          
+          <div className="flex items-center gap-2">
+            {hasMultiple && (
+              <div className="flex items-center gap-1 mr-2">
+                <button 
+                  onClick={() => setSelectedPlanIndex(prev => Math.max(0, prev - 1))}
+                  disabled={selectedPlanIndex === 0}
+                  className="p-1.5 rounded-lg border border-brand-border hover:bg-brand-bg disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                >
+                  <ChevronLeftIcon className="w-4 h-4" />
+                </button>
+                <span className="text-xs font-semibold text-brand-text-secondary px-2">
+                  {selectedPlanIndex + 1} / {lessonPlans.length}
+                </span>
+                <button 
+                  onClick={() => setSelectedPlanIndex(prev => Math.min(lessonPlans.length - 1, prev + 1))}
+                  disabled={selectedPlanIndex === lessonPlans.length - 1}
+                  className="p-1.5 rounded-lg border border-brand-border hover:bg-brand-bg disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                >
+                  <ChevronRightIcon className="w-4 h-4" />
+                </button>
+              </div>
+            )}
             <button onClick={() => handleExportPlan(selectedPlan)} className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-surface hover:bg-brand-bg border border-brand-border rounded-lg text-xs font-semibold text-brand-text-primary transition-all">
               <DownloadIcon className="w-3.5 h-3.5" />
-              Export
+              Export {exportFormat === 'both' ? 'DOCX + PDF' : exportFormat.toUpperCase()}
             </button>
           </div>
         </div>
@@ -56,6 +98,14 @@ const ResultsView: React.FC<ResultsViewProps> = ({ lessonPlans, papers, onBack, 
               <div className="flex flex-wrap gap-2 text-xs text-brand-text-secondary">
                 <span className="px-2 py-1 bg-brand-bg rounded-md border border-brand-border">{selectedPlan.gradeLevel}</span>
                 <span className="px-2 py-1 bg-brand-bg rounded-md border border-brand-border">{selectedPlan.subject}</span>
+                {selectedPlan.chapterName && (
+                  <span className="px-2 py-1 bg-brand-bg rounded-md border border-brand-border">{selectedPlan.chapterName}</span>
+                )}
+                {hasMultiple && (
+                  <span className="px-2 py-1 bg-brand-primary/10 text-brand-primary rounded-md border border-brand-primary/15 font-semibold">
+                    Plan {selectedPlanIndex + 1} of {lessonPlans.length}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -64,32 +114,32 @@ const ResultsView: React.FC<ResultsViewProps> = ({ lessonPlans, papers, onBack, 
               <p className="text-brand-text-primary leading-relaxed">{selectedPlan.objective}</p>
             </div>
 
-              <div className="bg-brand-surface rounded-xl border border-brand-border p-4">
-                <h2 className="text-sm font-bold text-brand-primary uppercase tracking-widest mb-4">Lesson Procedure</h2>
-                <div className="space-y-4">
-                  {selectedPlan.activities.map((activity, i) => (
-                    <div key={i} className="border-l-2 border-brand-primary pl-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-bold text-brand-text-primary text-sm">{activity.name}</h3>
-                        <span className="text-xs text-brand-text-secondary bg-brand-bg px-2 py-0.5 rounded-md">{activity.duration} mins</span>
-                      </div>
-                      <p className="text-sm text-brand-text-secondary leading-relaxed mb-2">{activity.description}</p>
-                      {activity.teacherActions && (
-                        <div className="mb-1.5">
-                          <span className="text-xs font-bold text-brand-primary uppercase tracking-wider">Teacher Actions:</span>
-                          <p className="text-sm text-brand-text-primary leading-relaxed">{activity.teacherActions}</p>
-                        </div>
-                      )}
-                      {activity.studentResponses && (
-                        <div>
-                          <span className="text-xs font-bold text-brand-primary uppercase tracking-wider">Student Responses:</span>
-                          <p className="text-sm text-brand-text-primary leading-relaxed">{activity.studentResponses}</p>
-                        </div>
-                      )}
+            <div className="bg-brand-surface rounded-xl border border-brand-border p-4">
+              <h2 className="text-sm font-bold text-brand-primary uppercase tracking-widest mb-4">Lesson Procedure</h2>
+              <div className="space-y-4">
+                {selectedPlan.activities.map((activity, i) => (
+                  <div key={i} className="border-l-2 border-brand-primary pl-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h3 className="font-bold text-brand-text-primary text-sm">{activity.name}</h3>
+                      <span className="text-xs text-brand-text-secondary bg-brand-bg px-2 py-0.5 rounded-md">{activity.duration} mins</span>
                     </div>
-                  ))}
-                </div>
+                    <p className="text-sm text-brand-text-secondary leading-relaxed mb-2">{activity.description}</p>
+                    {activity.teacherActions && (
+                      <div className="mb-1.5">
+                        <span className="text-xs font-bold text-brand-primary uppercase tracking-wider">Teacher Actions:</span>
+                        <p className="text-sm text-brand-text-primary leading-relaxed">{activity.teacherActions}</p>
+                      </div>
+                    )}
+                    {activity.studentResponses && (
+                      <div>
+                        <span className="text-xs font-bold text-brand-primary uppercase tracking-wider">Student Responses:</span>
+                        <p className="text-sm text-brand-text-primary leading-relaxed">{activity.studentResponses}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
+            </div>
 
             <div className="bg-brand-surface rounded-xl border border-brand-border p-4">
               <h2 className="text-sm font-bold text-brand-primary uppercase tracking-widest mb-2">Resources</h2>

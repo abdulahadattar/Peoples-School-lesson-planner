@@ -88,6 +88,17 @@ export interface TeacherInfo {
   name: string;
   schoolName: string;
   designation?: string;
+  subjects?: string[];
+  grades?: string[];
+}
+
+export interface Teacher {
+  id: string;
+  name: string;
+  schoolName: string;
+  designation?: string;
+  subjects: string[];
+  grades: string[];
 }
 
 export type View = 'home' | 'lesson' | 'paper' | 'results';
@@ -102,6 +113,7 @@ export interface SLO {
   Unit_Number: string;
   Cognitive_Level_Code: string;
   uniqueId?: string;
+  chapterId?: string;
 }
 
 export type GroupedSlos = Record<string, SLO[]>;
@@ -119,3 +131,4 @@ export interface ContextPdf {
 }
 
 export type ExportOption = 'individual' | 'byUnit' | 'byGrade' | 'all';
+export type ExportFormat = 'docx' | 'pdf' | 'both';

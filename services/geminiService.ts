@@ -116,16 +116,13 @@ function isAuthOrQuotaError(error: any): boolean {
  * Examples: Google API key has been "suspended", "disabled", or is "invalid".
  */
 export function isKeyPermanentlyBlocked(error: unknown): boolean {
-  if (error?.message) {
-    const message = error.message.toLowerCase();
-    return (
-      message.includes("suspended") ||
-      message.includes("disabled") ||
-      message.includes("invalid api key") ||
-      message.includes("api key has been")
-    );
-  }
-  return false;
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  return (
+    message.includes("suspended") ||
+    message.includes("disabled") ||
+    message.includes("invalid api key") ||
+    message.includes("api key has been")
+  );
 }
 
 /**
@@ -207,7 +204,8 @@ async function callGeminiAPI(
   userPrompt: string,
   schema: any,
   temperature = 0.2,
-  logCallback?: LogCallback
+  logCallback?: LogCallback,
+  contextParts?: Part[]
 ): Promise<string> {
   const log = (msg: string) => {
     console.log(`[geminiService.callGeminiAPI] ${msg}`);
@@ -217,6 +215,16 @@ async function callGeminiAPI(
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
   log(`Initiating fetch to: ${url}`);
 
+  // Build parts: context files (PDFs) first, then the text prompt
+  const parts: any[] = [];
+  if (contextParts && contextParts.length > 0) {
+    for (const part of contextParts) {
+      parts.push(part);
+    }
+    log(`Attached ${contextParts.length} context PDF part(s) to request.`);
+  }
+  parts.push({ text: userPrompt });
+
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -224,7 +232,7 @@ async function callGeminiAPI(
       "x-goog-api-key": apiKey,
     },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: userPrompt }] }],
+      contents: [{ parts }],
       generationConfig: {
         temperature,
         responseMimeType: "application/json",
@@ -288,6 +296,74 @@ function parseLessonPlanJson(jsonText: string, gradeLevel: string, subject: stri
 }
 
 export type LogCallback = (message: string) => void;
+
+// Helper function to load chapter PDF URL from SLO JSON structure
+export async function loadChapterPdfUrl(grade: string, subject: string, chapterNum: number): Promise<string | null> {
+  try {
+    const path = `/curriculum/slos/${grade}/${subject.toLowerCase()}.json`;
+    const response = await fetch(path);
+    if (!response.ok) return null;
+    const data = await response.json();
+    const chapter = data.chapters?.find((c: any) => c.chapter_number === chapterNum);
+    return chapter?.pdf_url || null;
+  } catch {
+    return null;
+  }
+}
+
+// Helper function to download PDF and convert to Part
+export async function downloadPdfAsPart(url: string): Promise<Part | null> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    
+    // Use Vite dev server proxy for GitHub raw URLs (bypasses CORS)
+    let fetchUrl = url;
+    if (url.includes('github.com') && !url.startsWith('/pdf-proxy')) {
+      // Strip https://raw.githubusercontent.com/ and proxy through local server
+      const ghMatch = url.match(/raw\.githubusercontent\.com\/(.+)/);
+      if (ghMatch) {
+        fetchUrl = `/pdf-proxy/${ghMatch[1]}`;
+      } else {
+        fetchUrl = `/pdf-proxy/${url}`;
+      }
+    }
+    
+    const response = await fetch(fetchUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      console.warn(`[geminiService] PDF download failed: HTTP ${response.status} for ${url}`);
+      return null;
+    }
+    
+    const blob = await response.blob();
+    
+    // Verify it's a PDF by checking magic bytes (first 5 bytes: %PDF-)
+    const header = await blob.slice(0, 5).text();
+    if (!header.startsWith('%PDF')) {
+      // Also accept if content-type says PDF (some proxies strip magic bytes)
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('pdf')) {
+        console.warn(`[geminiService] Downloaded file is not a PDF (header: ${header.slice(0, 10)}). URL: ${url}`);
+        return null;
+      }
+    }
+    
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(blob);
+      reader.onload = () => resolve((reader.result as string).split(',')[1]);
+      reader.onerror = reject;
+    });
+    
+    console.log(`[geminiService] PDF downloaded successfully: ${(base64.length * 0.75 / 1024).toFixed(0)}KB from ${url}`);
+    return { inlineData: { mimeType: 'application/pdf', data: base64 } };
+  } catch (err) {
+    console.error(`[geminiService] PDF download error for ${url}:`, err);
+    return null;
+  }
+}
 
 export async function generateLessonPlan(
   slo: SLO,
@@ -381,13 +457,19 @@ export async function generateLessonPlan(
     .map((s) => `- ${s.SLO_ID}: ${s.SLO_Text}`)
     .join("\n");
 
-  const userPrompt = `Generate a lesson plan for the following SLO in ${subject}:
-**${slo.SLO_ID}: ${slo.SLO_Text}**
+  const hasPdf = contextFileParts && contextFileParts.length > 0;
 
-For context, here are other SLOs from the same unit:
+  const userPrompt = `You are generating EXACTLY ONE lesson plan for EXACTLY ONE Student Learning Outcome (SLO). Do NOT create lesson plans for any other SLOs.
+
+**TARGET SLO (the ONLY one to plan for):**
+${slo.SLO_ID}: ${slo.SLO_Text}
+
+${hasPdf ? `The attached PDF is the ${subject} textbook chapter for ${slo.grade}. Use its content as the GROUND TRUTH for this lesson plan — base examples, definitions, and activities on what the textbook actually covers for this specific topic.` : `Use your knowledge of the ${subject} curriculum for ${slo.grade} as per STBB standards.`}
+
+For awareness of what else exists in this chapter (DO NOT plan for these, just know they exist):
 ${contextText || "None"}
 
-Use the attached PDF(s) as the primary reference for content, examples, and activities.`;
+Generate a single 40-minute lesson plan focused ONLY on the target SLO above.`;
 
   const userPromptLength = userPrompt.length;
   const contextPartCount = contextFileParts?.length ?? 0;
@@ -397,7 +479,7 @@ Use the attached PDF(s) as the primary reference for content, examples, and acti
     log("Calling Gemini API via withKeyRotation...");
     const result = await withKeyRotation(async (apiKey) => {
       log(`Sending request to model: ${DEFAULT_MODEL}`);
-      return callGeminiAPI(apiKey, DEFAULT_MODEL, systemInstruction, userPrompt, lessonPlanSchema, 0.2, log);
+      return callGeminiAPI(apiKey, DEFAULT_MODEL, systemInstruction, userPrompt, lessonPlanSchema, 0.2, log, contextFileParts);
     });
 
     log(`Received API response (${result.length} chars). Parsing JSON...`);

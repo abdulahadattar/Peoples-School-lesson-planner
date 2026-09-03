@@ -1,0 +1,393 @@
+{
+  "subject": "Physics",
+  "grade": "Grade 9",
+  "total_chapters": 8,
+  "chapters": [
+    {
+      "chapter_number": 1,
+      "chapter_name": "Physical Quantities and Measurement",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Physics/Chapter%2001%20-%20PHYSICAL%20QUANTITIES%20AND%20MEASUREMENT.pdf",
+      "slos": [
+        {
+          "id": "phy9_ch1_1",
+          "text": "Define physics and describe its scope and importance in daily life",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy9_ch1_2",
+          "text": "Differentiate between physical quantities (base and derived quantities)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy9_ch1_3",
+          "text": "Explain the International System of Units (SI units)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy9_ch1_4",
+          "text": "List the seven base quantities and their SI units",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy9_ch1_5",
+          "text": "Define and use prefixes (kilo, mega, milli, micro, nano)",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy9_ch1_6",
+          "text": "Explain scientific notation and use it to express very large and small numbers",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy9_ch1_7",
+          "text": "Describe measuring instruments (meter rule, vernier calipers, screw gauge)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy9_ch1_8",
+          "text": "Calculate least count of measuring instruments",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy9_ch1_9",
+          "text": "Explain significant figures and rules for determining them",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy9_ch1_10",
+          "text": "Round off numbers to appropriate significant figures",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 2,
+      "chapter_name": "Kinematics",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Physics/Chapter%2002%20-%20KINEMATICS.pdf",
+      "slos": [
+        {
+          "id": "phy9_ch2_1",
+          "text": "Define rest and motion and differentiate between them",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy9_ch2_2",
+          "text": "Explain the concept of position, distance, and displacement",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy9_ch2_3",
+          "text": "Differentiate between distance and displacement",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "phy9_ch2_4",
+          "text": "Define speed and velocity and differentiate between them",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy9_ch2_5",
+          "text": "Calculate speed and velocity using the formula v = d/t",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy9_ch2_6",
+          "text": "Define uniform and variable speed/velocity",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy9_ch2_7",
+          "text": "Explain acceleration and its types (positive, negative, zero)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy9_ch2_8",
+          "text": "Use equations of motion to solve numerical problems",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy9_ch2_9",
+          "text": "Interpret distance-time and velocity-time graphs",
+          "cognitive_level": "Analysis"
+        }
+      ]
+    },
+    {
+      "chapter_number": 3,
+      "chapter_name": "Dynamics",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Physics/Chapter%2003%20-%20DYNAMICS.pdf",
+      "slos": [
+        {
+          "id": "phy9_ch3_1",
+          "text": "Define force and describe its effects on objects",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy9_ch3_2",
+          "text": "State and explain Newton's laws of motion",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy9_ch3_3",
+          "text": "Explain Newton's first law of motion (law of inertia)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy9_ch3_4",
+          "text": "Apply Newton's second law of motion (F = ma) to solve problems",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy9_ch3_5",
+          "text": "Explain Newton's third law of motion with examples",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy9_ch3_6",
+          "text": "Define momentum and explain its conservation",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy9_ch3_7",
+          "text": "Calculate momentum using the formula p = mv",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy9_ch3_8",
+          "text": "Explain friction and its types (static, kinetic, rolling)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy9_ch3_9",
+          "text": "Describe methods to reduce and increase friction",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 4,
+      "chapter_name": "Turning Effect of Forces",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Physics/Chapter%2004%20-%20TURNING%20EFFECT%20OF%20FORCES.pdf",
+      "slos": [
+        {
+          "id": "phy9_ch4_1",
+          "text": "Define like and unlike parallel forces",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy9_ch4_2",
+          "text": "Explain the concept of head-to-tail rule for vector addition",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy9_ch4_3",
+          "text": "Define torque (moment of force) and its unit",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy9_ch4_4",
+          "text": "Calculate torque using the formula \u03c4 = r \u00d7 F",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy9_ch4_5",
+          "text": "Explain the principle of moments",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy9_ch4_6",
+          "text": "Define center of gravity and its importance",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy9_ch4_7",
+          "text": "Explain equilibrium and its conditions",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy9_ch4_8",
+          "text": "Differentiate between stable, unstable, and neutral equilibrium",
+          "cognitive_level": "Analysis"
+        }
+      ]
+    },
+    {
+      "chapter_number": 5,
+      "chapter_name": "Gravitation",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Physics/Chapter%2006%20-%20GRAVITATION.pdf",
+      "slos": [
+        {
+          "id": "phy9_ch5_1",
+          "text": "Explain the law of gravitation and its mathematical form",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy9_ch5_2",
+          "text": "Calculate gravitational force between two masses",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy9_ch5_3",
+          "text": "Define gravitational field and gravitational field strength",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy9_ch5_4",
+          "text": "Explain mass and weight and differentiate between them",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "phy9_ch5_5",
+          "text": "Calculate weight using the formula W = mg",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy9_ch5_6",
+          "text": "Explain artificial satellites and orbital velocity",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy9_ch5_7",
+          "text": "Describe the importance of satellites in communication",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 6,
+      "chapter_name": "Properties of Matter",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Physics/Chapter%2007%20-%20PROPERTIES%20OF%20MATTER.pdf",
+      "slos": [
+        {
+          "id": "phy9_ch6_1",
+          "text": "Define density and its formula (\u03c1 = m/V)",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy9_ch6_2",
+          "text": "Calculate density of different substances",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy9_ch6_3",
+          "text": "Explain pressure in fluids and Pascal's law",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy9_ch6_4",
+          "text": "Describe Archimedes' principle and its applications",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy9_ch6_5",
+          "text": "Explain the principle of floatation",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy9_ch6_6",
+          "text": "Define elasticity and elastic constants (Young's modulus)",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy9_ch6_7",
+          "text": "Explain stress and strain and their relationship",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 7,
+      "chapter_name": "Work, Power and Energy",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Physics/Chapter%2008%20-%20ENERGY%20SOURCES%20AND%20TRANSFER%20OF%20ENERGY.pdf",
+      "slos": [
+        {
+          "id": "phy9_ch7_1",
+          "text": "Define work and its unit (joule)",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy9_ch7_2",
+          "text": "Calculate work done using the formula W = Fd cos \u03b8",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy9_ch7_3",
+          "text": "Define energy and its different forms",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy9_ch7_4",
+          "text": "Explain kinetic energy and calculate using KE = \u00bdmv\u00b2",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy9_ch7_5",
+          "text": "Explain potential energy and calculate using PE = mgh",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy9_ch7_6",
+          "text": "State and apply the law of conservation of energy",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy9_ch7_7",
+          "text": "Define power and calculate using P = W/t",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy9_ch7_8",
+          "text": "Describe energy sources (renewable and non-renewable)",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 8,
+      "chapter_name": "Thermal Properties of Matter",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Physics/Chapter%2009%20-%20THERMAL%20PROPERTIES%20OF%20MATTER.pdf",
+      "slos": [
+        {
+          "id": "phy9_ch8_1",
+          "text": "Define temperature and distinguish between heat and temperature",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy9_ch8_2",
+          "text": "Explain thermometers and temperature scales (Celsius, Fahrenheit, Kelvin)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy9_ch8_3",
+          "text": "Convert temperature between different scales",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy9_ch8_4",
+          "text": "Define specific heat capacity and its unit",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy9_ch8_5",
+          "text": "Calculate heat capacity using Q = mc\u0394T",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy9_ch8_6",
+          "text": "Explain change of state (fusion, vaporization, sublimation)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy9_ch8_7",
+          "text": "Define latent heat of fusion and vaporization",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy9_ch8_8",
+          "text": "Explain thermal expansion in solids, liquids, and gases",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,410 @@
+{
+  "subject": "Biology",
+  "grade": "Grade 11",
+  "total_chapters": 14,
+  "chapters": [
+    {
+      "chapter_number": 1,
+      "chapter_name": "Biological Molecules",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Biology/Chapter%2001%20-%20Biological%20Molecules.pdf",
+      "slos": [
+        {
+          "id": "bio11_ch1_1",
+          "text": "Describe the structure and function of water as a biological molecule",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch1_2",
+          "text": "Explain the structure, properties, and functions of carbohydrates",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch1_3",
+          "text": "Describe the structure and function of lipids",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch1_4",
+          "text": "Explain the structure and function of proteins (primary to quaternary structure)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch1_5",
+          "text": "Describe nucleic acids (DNA and RNA) structure and function",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch1_6",
+          "text": "Differentiate between DNA and RNA",
+          "cognitive_level": "Analysis"
+        }
+      ]
+    },
+    {
+      "chapter_number": 2,
+      "chapter_name": "Enzymes",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Biology/Chapter%2002%20-%20Enzymes.pdf",
+      "slos": [
+        {
+          "id": "bio11_ch2_1",
+          "text": "Explain the structure and mechanism of enzyme action",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch2_2",
+          "text": "Describe the lock and key and induced fit models",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch2_3",
+          "text": "Explain factors affecting enzyme activity (temperature, pH, substrate concentration)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch2_4",
+          "text": "Describe enzyme inhibition (competitive and non-competitive)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch2_5",
+          "text": "Explain allosteric regulation of enzymes",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 3,
+      "chapter_name": "Cell Structure and Function",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Biology/Chapter%2003%20-%20Cell%20Structure%20and%20Function.pdf",
+      "slos": [
+        {
+          "id": "bio11_ch3_1",
+          "text": "Compare prokaryotic and eukaryotic cell structure",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "bio11_ch3_2",
+          "text": "Describe the structure and function of nucleus, nucleolus, and nuclear envelope",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch3_3",
+          "text": "Explain the endomembrane system (ER, Golgi, lysosomes, vesicles)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch3_4",
+          "text": "Describe the structure and function of mitochondria and chloroplasts",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch3_5",
+          "text": "Explain the cytoskeleton and cell motility",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch3_6",
+          "text": "Describe cell junctions and cell communication",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 4,
+      "chapter_name": "Bioenergetics",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Biology/Chapter%2004%20-%20Bioenergetics.pdf",
+      "slos": [
+        {
+          "id": "bio11_ch4_1",
+          "text": "Describe the stages of photosynthesis (light reactions, Calvin cycle)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch4_2",
+          "text": "Explain electron transport chain and ATP synthesis in photosynthesis",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch4_3",
+          "text": "Describe cellular respiration (glycolysis, Krebs cycle, oxidative phosphorylation)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch4_4",
+          "text": "Compare aerobic and anaerobic respiration",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "bio11_ch4_5",
+          "text": "Calculate ATP yield from glucose oxidation",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 5,
+      "chapter_name": "Acellular Life",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Biology/Chapter%2005%20-%20Acellular%20Life.pdf",
+      "slos": [
+        {
+          "id": "bio11_ch5_1",
+          "text": "Describe the structure and classification of viruses",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch5_2",
+          "text": "Explain viral replication cycles (lytic and lysogenic)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch5_3",
+          "text": "Describe prions and viroids as infectious agents",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch5_4",
+          "text": "Explain the role of viruses in disease and biotechnology",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 6,
+      "chapter_name": "Prokaryotes",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Biology/Chapter%2006%20-%20Prokaryotes.pdf",
+      "slos": [
+        {
+          "id": "bio11_ch6_1",
+          "text": "Describe the structure and diversity of bacteria",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch6_2",
+          "text": "Explain bacterial nutrition, growth, and reproduction",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch6_3",
+          "text": "Describe cyanobacteria and their ecological importance",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch6_4",
+          "text": "Explain the role of bacteria in disease and biotechnology",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 7,
+      "chapter_name": "Protoctists and Fungi",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Biology/Chapter%2007%20-%20Protoctists%20and%20Fungi.pdf",
+      "slos": [
+        {
+          "id": "bio11_ch7_1",
+          "text": "Describe the diversity and classification of protoctists",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch7_2",
+          "text": "Explain the structure, nutrition, and reproduction of fungi",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch7_3",
+          "text": "Describe the ecological and economic importance of fungi",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 8,
+      "chapter_name": "Diversity Among Plants",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Biology/Chapter%2008%20-%20Diversity%20Among%20Plants.pdf",
+      "slos": [
+        {
+          "id": "bio11_ch8_1",
+          "text": "Describe the classification and diversity of plants",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch8_2",
+          "text": "Explain the alternation of generations in plants",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch8_3",
+          "text": "Describe bryophytes, pteridophytes, gymnosperms, and angiosperms",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 9,
+      "chapter_name": "Diversity Among Animals",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Biology/Chapter%2009%20-%20Diversity%20Among%20Animals.pdf",
+      "slos": [
+        {
+          "id": "bio11_ch9_1",
+          "text": "Describe the classification and diversity of animals",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch9_2",
+          "text": "Explain the major phyla (Porifera to Chordata)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch9_3",
+          "text": "Compare body plans and symmetry in animals",
+          "cognitive_level": "Analysis"
+        }
+      ]
+    },
+    {
+      "chapter_number": 10,
+      "chapter_name": "Forms and Functions in Plants",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Biology/Chapter%2010%20-%20Forms%20and%20Functions%20in%20Plant.pdf",
+      "slos": [
+        {
+          "id": "bio11_ch10_1",
+          "text": "Describe plant tissues and their functions",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch10_2",
+          "text": "Explain water and mineral transport in plants (transpiration, cohesion-tension)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch10_3",
+          "text": "Describe translocation of organic substances (phloem transport)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch10_4",
+          "text": "Explain plant growth and development (hormones, tropisms)",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 11,
+      "chapter_name": "Holozoic Nutrition",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Biology/Chapter%2011%20-%20Holozoic%20Nutrition.pdf",
+      "slos": [
+        {
+          "id": "bio11_ch11_1",
+          "text": "Describe the digestive system of humans",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch11_2",
+          "text": "Explain mechanical and chemical digestion",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch11_3",
+          "text": "Describe absorption and assimilation of nutrients",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch11_4",
+          "text": "Explain digestive disorders and their prevention",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 12,
+      "chapter_name": "Circulation",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Biology/Chapter%2012%20-%20Circulation.pdf",
+      "slos": [
+        {
+          "id": "bio11_ch12_1",
+          "text": "Describe the structure and function of the human heart",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch12_2",
+          "text": "Explain the cardiac cycle and its regulation",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch12_3",
+          "text": "Describe the structure and function of blood vessels",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch12_4",
+          "text": "Explain blood composition, blood groups, and disorders",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch12_5",
+          "text": "Describe lymphatic system and its functions",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 13,
+      "chapter_name": "Immunity",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Biology/Chapter%2013%20-%20Immunity.pdf",
+      "slos": [
+        {
+          "id": "bio11_ch13_1",
+          "text": "Define immunity and differentiate between innate and adaptive immunity",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch13_2",
+          "text": "Describe humoral and cell-mediated immunity",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch13_3",
+          "text": "Explain antigen-antibody interactions and immunological memory",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch13_4",
+          "text": "Describe vaccination and its types",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "bio11_ch13_5",
+          "text": "Explain autoimmune diseases and allergies",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 14,
+      "chapter_name": "Gaseous Exchange",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Biology/Chapter%2014%20-%20Gaseous%20Exchange.pdf",
+      "slos": [
+        {
+          "id": "bio11_ch14_1",
+          "text": "Describe the respiratory system and mechanism of breathing",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch14_2",
+          "text": "Explain gas exchange in alveoli and transport of respiratory gases",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch14_3",
+          "text": "Describe respiratory regulation and disorders",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio11_ch14_4",
+          "text": "Explain gaseous exchange in plants",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    }
+  ]
+}

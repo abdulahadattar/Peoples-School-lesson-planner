@@ -1,0 +1,455 @@
+{
+  "subject": "Physics",
+  "grade": "Grade 11",
+  "total_chapters": 14,
+  "chapters": [
+    {
+      "chapter_number": 1,
+      "chapter_name": "Measurements",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2002%20-%20Chapter%201%20-%20Physics%20and%20Measurements.pdf",
+      "slos": [
+        {
+          "id": "phy11_ch1_1",
+          "text": "Define physics and describe its branches",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy11_ch1_2",
+          "text": "Explain physical quantities (base and derived) and SI units",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch1_3",
+          "text": "Describe measurement uncertainties (systematic and random errors)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch1_4",
+          "text": "Calculate uncertainty in measurements",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy11_ch1_5",
+          "text": "Explain significant figures and scientific notation",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy11_ch1_6",
+          "text": "Describe dimensional analysis and its applications",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 2,
+      "chapter_name": "Kinematics",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2003%20-%20Chapter%202%20-%20Kinematics.pdf",
+      "slos": [
+        {
+          "id": "phy11_ch2_1",
+          "text": "Explain motion in one dimension (displacement, velocity, acceleration)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch2_2",
+          "text": "Derive and apply equations of motion for constant acceleration",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy11_ch2_3",
+          "text": "Analyze motion graphs (displacement-time, velocity-time, acceleration-time)",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "phy11_ch2_4",
+          "text": "Explain projectile motion in two dimensions",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch2_5",
+          "text": "Calculate range, maximum height, and time of flight for projectiles",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 3,
+      "chapter_name": "Dynamics",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2004%20-%20Chapter%203%20-%20Dynamics.pdf",
+      "slos": [
+        {
+          "id": "phy11_ch3_1",
+          "text": "State and apply Newton's laws of motion",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy11_ch3_2",
+          "text": "Define linear momentum and impulse",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy11_ch3_3",
+          "text": "Explain conservation of linear momentum",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch3_4",
+          "text": "Solve collision problems (elastic and inelastic)",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy11_ch3_5",
+          "text": "Explain friction and its types",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 4,
+      "chapter_name": "Rotational and Circular Motion",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2005%20-%20Chapter%204%20-%20Rotational%20and%20Circular%20Motion.pdf",
+      "slos": [
+        {
+          "id": "phy11_ch4_1",
+          "text": "Define angular displacement, velocity, and acceleration",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy11_ch4_2",
+          "text": "Explain relationship between linear and angular quantities",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch4_3",
+          "text": "Describe centripetal force and centripetal acceleration",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch4_4",
+          "text": "Define torque and angular momentum",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy11_ch4_5",
+          "text": "Explain conservation of angular momentum",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch4_6",
+          "text": "Calculate moment of inertia for simple objects",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 5,
+      "chapter_name": "Work, Energy and Power",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2006%20-%20Chapter%205%20-%20Work%2C%20Energy%20and%20Power.pdf",
+      "slos": [
+        {
+          "id": "phy11_ch5_1",
+          "text": "Define work done by constant and variable forces",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy11_ch5_2",
+          "text": "Explain work-energy theorem",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch5_3",
+          "text": "Describe kinetic and potential energy",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch5_4",
+          "text": "Explain conservation of mechanical energy",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch5_5",
+          "text": "Define power and calculate power output",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy11_ch5_6",
+          "text": "Explain conservative and non-conservative forces",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 6,
+      "chapter_name": "Fluid Statics",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2007%20-%20Chapter%206%20-%20Fluid%20Statics.pdf",
+      "slos": [
+        {
+          "id": "phy11_ch6_1",
+          "text": "Define pressure in fluids and Pascal's principle",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy11_ch6_2",
+          "text": "Calculate pressure at depth in a fluid",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy11_ch6_3",
+          "text": "Explain Archimedes' principle and buoyancy",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch6_4",
+          "text": "Describe applications of fluid statics (hydraulic systems)",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 7,
+      "chapter_name": "Fluid Dynamics",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2008%20-%20Chapter%207%20-%20Fluid%20Dynamics.pdf",
+      "slos": [
+        {
+          "id": "phy11_ch7_1",
+          "text": "Explain streamline and turbulent flow",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch7_2",
+          "text": "Describe equation of continuity",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch7_3",
+          "text": "Explain Bernoulli's equation and its applications",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch7_4",
+          "text": "Describe viscosity and its measurement",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 8,
+      "chapter_name": "Electric Fields",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2009%20-%20Chapter%208%20-%20Electric%20Fields.pdf",
+      "slos": [
+        {
+          "id": "phy11_ch8_1",
+          "text": "Define electric charge and Coulomb's law",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy11_ch8_2",
+          "text": "Explain electric field and field lines",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch8_3",
+          "text": "Calculate electric field due to point charges",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy11_ch8_4",
+          "text": "Define electric potential and potential difference",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy11_ch8_5",
+          "text": "Explain electric potential energy",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 9,
+      "chapter_name": "Capacitors",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2010%20-%20Chapter%209%20-%20Capacitors.pdf",
+      "slos": [
+        {
+          "id": "phy11_ch9_1",
+          "text": "Define capacitance and its unit (farad)",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy11_ch9_2",
+          "text": "Calculate capacitance of parallel plate capacitor",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy11_ch9_3",
+          "text": "Explain energy stored in a capacitor",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch9_4",
+          "text": "Describe combination of capacitors (series and parallel)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch9_5",
+          "text": "Describe charging and discharging of capacitors",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 10,
+      "chapter_name": "D.C Circuits",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2011%20-%20Chapter%2010%20-%20D.C%20Circuits.pdf",
+      "slos": [
+        {
+          "id": "phy11_ch10_1",
+          "text": "Define electric current, resistance, and Ohm's law",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy11_ch10_2",
+          "text": "Calculate resistance and resistivity",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy11_ch10_3",
+          "text": "Explain combination of resistors (series and parallel)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch10_4",
+          "text": "Apply Kirchhoff's laws to solve circuits",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy11_ch10_5",
+          "text": "Describe potentiometer and its applications",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 11,
+      "chapter_name": "Oscillations",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2012%20-%20Chapter%2011%20-%20Oscillations.pdf",
+      "slos": [
+        {
+          "id": "phy11_ch11_1",
+          "text": "Define simple harmonic motion (SHM) and its characteristics",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy11_ch11_2",
+          "text": "Derive equations for SHM (displacement, velocity, acceleration)",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy11_ch11_3",
+          "text": "Explain energy in SHM",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch11_4",
+          "text": "Describe simple pendulum and mass-spring system",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch11_5",
+          "text": "Explain damped and forced oscillations",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 12,
+      "chapter_name": "Acoustics",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2013%20-%20Chapter%2012%20-%20Acoustics.pdf",
+      "slos": [
+        {
+          "id": "phy11_ch12_1",
+          "text": "Describe the nature of sound waves",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy11_ch12_2",
+          "text": "Explain speed of sound in different media",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch12_3",
+          "text": "Define intensity and loudness of sound",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy11_ch12_4",
+          "text": "Explain Doppler effect and its applications",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch12_5",
+          "text": "Describe standing waves and resonance",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 13,
+      "chapter_name": "Physical Optics",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2014%20-%20Chapter%2013%20-%20Physical%20Optics.pdf",
+      "slos": [
+        {
+          "id": "phy11_ch13_1",
+          "text": "Explain wave nature of light (interference, diffraction, polarization)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch13_2",
+          "text": "Describe Young's double-slit experiment",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch13_3",
+          "text": "Explain diffraction grating and its applications",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch13_4",
+          "text": "Describe polarization and Malus's law",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch13_5",
+          "text": "Explain thin film interference",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 14,
+      "chapter_name": "Communication",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2015%20-%20Chapter%2014%20-%20Communication.pdf",
+      "slos": [
+        {
+          "id": "phy11_ch14_1",
+          "text": "Describe communication system components (transmitter, channel, receiver)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch14_2",
+          "text": "Explain modulation (AM, FM) and demodulation",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch14_3",
+          "text": "Describe satellite communication",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy11_ch14_4",
+          "text": "Explain optical fiber communication",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    }
+  ]
+}

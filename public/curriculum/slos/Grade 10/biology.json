@@ -1,0 +1,318 @@
+{
+  "subject": "Biology",
+  "grade": "Grade 10",
+  "total_chapters": 8,
+  "chapters": [
+    {
+      "chapter_number": 1,
+      "chapter_name": "Gaseous Exchange",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2010/Biology/Chapter%2001%20-%20GASEOUS%20EXCHANGE.pdf",
+      "slos": [
+        {
+          "id": "bio10_ch1_1",
+          "text": "Define gaseous exchange and explain its importance",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "bio10_ch1_2",
+          "text": "Describe the human respiratory system and its parts",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch1_3",
+          "text": "Explain the mechanism of breathing (inspiration and expiration)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch1_4",
+          "text": "Describe gaseous exchange in alveoli",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch1_5",
+          "text": "Explain transport of gases (O\u2082 and CO\u2082) in blood",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch1_6",
+          "text": "Describe respiratory disorders and their prevention",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "bio10_ch1_7",
+          "text": "Compare respiratory systems in plants and animals",
+          "cognitive_level": "Analysis"
+        }
+      ]
+    },
+    {
+      "chapter_number": 2,
+      "chapter_name": "Homeostasis",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2010/Biology/Chapter%2002%20-%20HOMEOSTASIS.pdf",
+      "slos": [
+        {
+          "id": "bio10_ch2_1",
+          "text": "Define homeostasis and explain its significance",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "bio10_ch2_2",
+          "text": "Describe the components of homeostasis (receptors, control center, effectors)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch2_3",
+          "text": "Explain osmoregulation in humans (kidney structure and function)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch2_4",
+          "text": "Describe the structure and function of nephron",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch2_5",
+          "text": "Explain thermoregulation in humans",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch2_6",
+          "text": "Describe the role of skin in temperature regulation",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch2_7",
+          "text": "Explain excretory system and its disorders",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 3,
+      "chapter_name": "Coordination",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2010/Biology/Chapter%2003%20-%20COORDINATION.pdf",
+      "slos": [
+        {
+          "id": "bio10_ch3_1",
+          "text": "Define coordination and explain types (nervous and chemical)",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "bio10_ch3_2",
+          "text": "Describe the structure and function of neuron",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch3_3",
+          "text": "Explain nerve impulse transmission",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch3_4",
+          "text": "Describe the central nervous system (brain and spinal cord)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch3_5",
+          "text": "Explain reflex action and reflex arc",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch3_6",
+          "text": "Describe endocrine glands and their hormones",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch3_7",
+          "text": "Explain feedback mechanism in hormone regulation",
+          "cognitive_level": "Analysis"
+        }
+      ]
+    },
+    {
+      "chapter_number": 4,
+      "chapter_name": "Reproduction",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2010/Biology/Chapter%2004%20-%20REPRODUCTION.pdf",
+      "slos": [
+        {
+          "id": "bio10_ch4_1",
+          "text": "Define reproduction and differentiate between asexual and sexual reproduction",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch4_2",
+          "text": "Describe types of asexual reproduction in plants and animals",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch4_3",
+          "text": "Explain the structure and function of flower in sexual reproduction",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch4_4",
+          "text": "Describe the process of pollination and fertilization in plants",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch4_5",
+          "text": "Explain human male and female reproductive systems",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch4_6",
+          "text": "Describe the menstrual cycle and its hormonal control",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch4_7",
+          "text": "Explain embryonic development and gestation",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 5,
+      "chapter_name": "Inheritance",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2010/Biology/Chapter%2005%20-%20INHERITANCE.pdf",
+      "slos": [
+        {
+          "id": "bio10_ch5_1",
+          "text": "Define genetics, gene, allele, and genotype/phenotype",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "bio10_ch5_2",
+          "text": "Explain Mendel's laws of inheritance (dominance, segregation, independent assortment)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch5_3",
+          "text": "Solve monohybrid and dihybrid cross problems",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "bio10_ch5_4",
+          "text": "Explain incomplete dominance and co-dominance",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch5_5",
+          "text": "Describe multiple alleles (ABO blood group system)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch5_6",
+          "text": "Explain sex determination in humans",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch5_7",
+          "text": "Describe sex-linked inheritance and genetic disorders",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 6,
+      "chapter_name": "Evolution",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2010/Biology/Chapter%2006%20-%20EVOLUTION.pdf",
+      "slos": [
+        {
+          "id": "bio10_ch6_1",
+          "text": "Define evolution and explain its significance",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "bio10_ch6_2",
+          "text": "Describe Darwin's theory of natural selection",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch6_3",
+          "text": "Explain evidences of evolution (fossils, homologous/analogous organs, embryology)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch6_4",
+          "text": "Explain artificial selection and its applications",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "bio10_ch6_5",
+          "text": "Describe the mechanism of speciation",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 7,
+      "chapter_name": "Man and His Environment",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2010/Biology/Chapter%2007%20-%20MAN%20AND%20HIS%20ENVIRONMENT.pdf",
+      "slos": [
+        {
+          "id": "bio10_ch7_1",
+          "text": "Define ecology and explain levels of organization (individual, population, community, ecosystem)",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "bio10_ch7_2",
+          "text": "Explain energy flow in ecosystems (food chains, food webs, trophic levels)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch7_3",
+          "text": "Describe biogeochemical cycles (carbon, nitrogen, water cycles)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch7_4",
+          "text": "Explain population dynamics and factors affecting population growth",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch7_5",
+          "text": "Describe environmental problems (pollution, deforestation, climate change)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch7_6",
+          "text": "Explain conservation strategies for sustainable development",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 8,
+      "chapter_name": "Biotechnology",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2010/Biology/Chapter%2008%20-%20BIOTECHNOLOGY.pdf",
+      "slos": [
+        {
+          "id": "bio10_ch8_1",
+          "text": "Define biotechnology and its scope",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "bio10_ch8_2",
+          "text": "Explain genetic engineering and recombinant DNA technology",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch8_3",
+          "text": "Describe the steps of genetic engineering (isolation, insertion, transformation, expression)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio10_ch8_4",
+          "text": "Explain applications of biotechnology in medicine, agriculture, and industry",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "bio10_ch8_5",
+          "text": "Describe ethical and social concerns of genetic engineering",
+          "cognitive_level": "Analysis"
+        }
+      ]
+    }
+  ]
+}

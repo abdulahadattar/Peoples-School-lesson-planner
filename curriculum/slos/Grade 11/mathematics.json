@@ -1,0 +1,366 @@
+{
+  "subject": "Mathematics",
+  "grade": "Grade 11",
+  "total_chapters": 12,
+  "chapters": [
+    {
+      "chapter_number": 1,
+      "chapter_name": "Complex Numbers",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Mathematics/Chapter%2001%20-%20Complex%20Numbers.pdf",
+      "slos": [
+        {
+          "id": "math11_ch1_1",
+          "text": "Define complex numbers and represent in a + bi form",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math11_ch1_2",
+          "text": "Perform operations (addition, subtraction, multiplication, division) on complex numbers",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch1_3",
+          "text": "Find conjugate, modulus, and argument of complex numbers",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch1_4",
+          "text": "Represent complex numbers on Argand diagram",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch1_5",
+          "text": "Express complex numbers in polar form",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch1_6",
+          "text": "Apply De Moivre's theorem",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 2,
+      "chapter_name": "Matrices and Determinants",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Mathematics/Chapter%2002%20-%20Matrices%20%26%20Determinants.pdf",
+      "slos": [
+        {
+          "id": "math11_ch2_1",
+          "text": "Define matrix and identify its order",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math11_ch2_2",
+          "text": "Perform matrix addition, subtraction, and multiplication",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch2_3",
+          "text": "Find determinant of 2x2 and 3x3 matrices",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch2_4",
+          "text": "Find inverse of a matrix using adjoint method",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch2_5",
+          "text": "Solve system of linear equations using matrices",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch2_6",
+          "text": "Apply Cramer's rule",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 3,
+      "chapter_name": "Vectors",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Mathematics/Chapter%2003%20-%20Vectors.pdf",
+      "slos": [
+        {
+          "id": "math11_ch3_1",
+          "text": "Define vector and scalar quantities",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math11_ch3_2",
+          "text": "Represent vectors in 2D and 3D",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch3_3",
+          "text": "Perform vector addition, subtraction, and scalar multiplication",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch3_4",
+          "text": "Calculate dot product and its applications",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch3_5",
+          "text": "Calculate cross product and its applications",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch3_6",
+          "text": "Solve problems involving vectors",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 4,
+      "chapter_name": "Sequences and Series",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Mathematics/Chapter%2004%20-%20Sequences%20and%20Series.pdf",
+      "slos": [
+        {
+          "id": "math11_ch4_1",
+          "text": "Define arithmetic and geometric sequences",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math11_ch4_2",
+          "text": "Find nth term and sum of arithmetic series",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch4_3",
+          "text": "Find nth term and sum of geometric series",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch4_4",
+          "text": "Solve problems involving arithmetic and geometric progressions",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch4_5",
+          "text": "Define and find sum of infinite geometric series",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 5,
+      "chapter_name": "Miscellaneous Series",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Mathematics/Chapter%2005%20-%20Miscellaneous%20Series.pdf",
+      "slos": [
+        {
+          "id": "math11_ch5_1",
+          "text": "Find sum of series using method of differences",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch5_2",
+          "text": "Use sigma notation for series",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch5_3",
+          "text": "Evaluate standard series (sum of n, n\u00b2, n\u00b3)",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 6,
+      "chapter_name": "Permutation, Combination and Probability",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Mathematics/Chapter%2006%20-%20Permutation%2C%20Combination%20and%20Probability.pdf",
+      "slos": [
+        {
+          "id": "math11_ch6_1",
+          "text": "Define factorial notation and its properties",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math11_ch6_2",
+          "text": "Calculate permutations (nPr) and combinations (nCr)",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch6_3",
+          "text": "Solve problems involving permutations and combinations",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch6_4",
+          "text": "Define probability and calculate probability of events",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch6_5",
+          "text": "Apply addition and multiplication laws of probability",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch6_6",
+          "text": "Explain conditional probability and independent events",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 7,
+      "chapter_name": "Mathematical Induction and Binomial Theorem",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Mathematics/Chapter%2007%20-%20Mathematical%20Induction%20and%20Binomial%20Theorem.pdf",
+      "slos": [
+        {
+          "id": "math11_ch7_1",
+          "text": "Explain the principle of mathematical induction",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "math11_ch7_2",
+          "text": "Prove statements using mathematical induction",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch7_3",
+          "text": "State and apply binomial theorem for positive integral index",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch7_4",
+          "text": "Find general term and middle term in binomial expansion",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 8,
+      "chapter_name": "Functions and Graphs",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Mathematics/Chapter%2008%20-%20Functions%20and%20Graphs.pdf",
+      "slos": [
+        {
+          "id": "math11_ch8_1",
+          "text": "Define function, domain, range, and co-domain",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math11_ch8_2",
+          "text": "Identify types of functions (polynomial, rational, exponential, logarithmic)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "math11_ch8_3",
+          "text": "Sketch graphs of basic functions",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch8_4",
+          "text": "Define and find inverse functions",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch8_5",
+          "text": "Describe composite functions",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 9,
+      "chapter_name": "Linear Programming",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Mathematics/Chapter%2009%20-%20Linear%20Programming.pdf",
+      "slos": [
+        {
+          "id": "math11_ch9_1",
+          "text": "Define linear programming and its terminology",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math11_ch9_2",
+          "text": "Formulate linear programming problems",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch9_3",
+          "text": "Solve linear programming problems graphically",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch9_4",
+          "text": "Identify feasible region and optimal solution",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 10,
+      "chapter_name": "Trigonometric Identities",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Mathematics/Chapter%2010%20-%20Trigonometric%20Identities.pdf",
+      "slos": [
+        {
+          "id": "math11_ch10_1",
+          "text": "State and prove fundamental trigonometric identities",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "math11_ch10_2",
+          "text": "Derive and apply sum and difference formulas",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch10_3",
+          "text": "Derive and apply double and half-angle formulas",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch10_4",
+          "text": "Solve trigonometric equations",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 11,
+      "chapter_name": "Application of Trigonometry",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Mathematics/Chapter%2011%20-%20Application%20of%20Trigonometry.pdf",
+      "slos": [
+        {
+          "id": "math11_ch11_1",
+          "text": "Solve problems involving heights and distances",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch11_2",
+          "text": "Apply law of sines and law of cosines",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch11_3",
+          "text": "Calculate area of triangles using trigonometry",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 12,
+      "chapter_name": "Graphs of Trigonometric Functions",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Mathematics/Chapter%2012%20-%20Graphs%20of%20Trigonometric%20Functions.pdf",
+      "slos": [
+        {
+          "id": "math11_ch12_1",
+          "text": "Sketch graphs of sin, cos, tan functions",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math11_ch12_2",
+          "text": "Describe amplitude, period, and phase shift",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "math11_ch12_3",
+          "text": "Sketch graphs of transformed trigonometric functions",
+          "cognitive_level": "Application"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,237 @@
+{
+  "subject": "English",
+  "grade": "Grade 11",
+  "total_chapters": 10,
+  "chapters": [
+    {
+      "chapter_number": 1,
+      "chapter_name": "Democratic Citizenship",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/English/Chapter%2001%20-%20Democratic%20Citizenship.pdf",
+      "slos": [
+        {
+          "id": "eng11_ch1_1",
+          "text": "Define democracy and explain its principles",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "eng11_ch1_2",
+          "text": "Describe the rights and responsibilities of citizens",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "eng11_ch1_3",
+          "text": "Analyze the role of active citizenship in society",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "eng11_ch1_4",
+          "text": "Write an essay on democratic values",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 2,
+      "chapter_name": "Preservation of Nature",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/English/Chapter%2002%20-%20Preservation%20of%20Nature.pdf",
+      "slos": [
+        {
+          "id": "eng11_ch2_1",
+          "text": "Describe the importance of environmental conservation",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "eng11_ch2_2",
+          "text": "Analyze human impact on natural ecosystems",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "eng11_ch2_3",
+          "text": "Write a persuasive text on environmental protection",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 3,
+      "chapter_name": "Managing Change",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/English/Chapter%2003%20-%20Managing%20Change.pdf",
+      "slos": [
+        {
+          "id": "eng11_ch3_1",
+          "text": "Describe strategies for adapting to change",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "eng11_ch3_2",
+          "text": "Analyze the psychological impact of change",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "eng11_ch3_3",
+          "text": "Write a personal narrative about managing change",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 4,
+      "chapter_name": "Technology Smart & Tech-Savvy",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/English/Chapter%2004%20-%20Technology%20Smart%20%26%20Tech-Savvy.pdf",
+      "slos": [
+        {
+          "id": "eng11_ch4_1",
+          "text": "Analyze the impact of technology on society",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "eng11_ch4_2",
+          "text": "Evaluate the benefits and challenges of digital technology",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "eng11_ch4_3",
+          "text": "Write an argumentative essay on technology ethics",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 5,
+      "chapter_name": "Civic Sense and Civic Activities",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/English/Chapter%2005%20-%20Civic%20Sense%20and%20Civic%20Activities.pdf",
+      "slos": [
+        {
+          "id": "eng11_ch5_1",
+          "text": "Explain the concept of civic sense",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "eng11_ch5_2",
+          "text": "Describe community participation and volunteerism",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "eng11_ch5_3",
+          "text": "Plan a civic engagement activity",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 6,
+      "chapter_name": "A Nation's Resolve",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/English/Chapter%2006%20-%20A%20Nation's%20Resolve.pdf",
+      "slos": [
+        {
+          "id": "eng11_ch6_1",
+          "text": "Analyze texts about national identity and unity",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "eng11_ch6_2",
+          "text": "Evaluate historical events that shaped the nation",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "eng11_ch6_3",
+          "text": "Write a reflective piece on patriotism",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 7,
+      "chapter_name": "Digital Footprints",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/English/Chapter%2007%20-%20Digital%20Footprints.pdf",
+      "slos": [
+        {
+          "id": "eng11_ch7_1",
+          "text": "Define digital footprint and its implications",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "eng11_ch7_2",
+          "text": "Analyze online privacy and security concerns",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "eng11_ch7_3",
+          "text": "Create guidelines for responsible digital citizenship",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 8,
+      "chapter_name": "Ethics of Care",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/English/Chapter%2008%20-%20Ethics%20of%20Care.pdf",
+      "slos": [
+        {
+          "id": "eng11_ch8_1",
+          "text": "Explain the concept of ethics of care",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "eng11_ch8_2",
+          "text": "Analyze care ethics in personal and professional contexts",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "eng11_ch8_3",
+          "text": "Write a case study applying care ethics",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 9,
+      "chapter_name": "Climate Action",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/English/Chapter%2009%20-%20Climate%20Action.pdf",
+      "slos": [
+        {
+          "id": "eng11_ch9_1",
+          "text": "Analyze causes and effects of climate change",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "eng11_ch9_2",
+          "text": "Evaluate climate action strategies",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "eng11_ch9_3",
+          "text": "Write a proposal for climate action project",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 10,
+      "chapter_name": "Global Citizenship",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/English/Chapter%2010%20-%20Global%20Citizenship.pdf",
+      "slos": [
+        {
+          "id": "eng11_ch10_1",
+          "text": "Define global citizenship and its principles",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "eng11_ch10_2",
+          "text": "Analyze global issues and interdependence",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "eng11_ch10_3",
+          "text": "Describe the role of international organizations",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "eng11_ch10_4",
+          "text": "Write a position paper on a global issue",
+          "cognitive_level": "Application"
+        }
+      ]
+    }
+  ]
+}

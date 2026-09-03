@@ -1,7 +1,7 @@
-import { Type } from "@google/genai";
+import { Part, Type } from "@google/genai";
 import { GeneratedPaper, PaperSection, PaperQuestion } from "../types";
 import { curriculumData } from "../curriculum";
-import { withKeyRotation, DEFAULT_MODEL } from "./geminiService";
+import { withKeyRotation, DEFAULT_MODEL, downloadPdfAsPart, LogCallback } from "./geminiService";
 
 function cleanAndParseJson(text: string): any {
   let cleanText = text.replace(/```json\s*/g, "").replace(/```\s*$/g, "");
@@ -66,8 +66,26 @@ async function callGeminiAPI(
   systemInstruction: string,
   userPrompt: string,
   schema: any,
-  temperature = 0.3
+  temperature = 0.3,
+  contextParts?: Part[],
+  logCallback?: LogCallback
 ): Promise<string> {
+  const log = (msg: string) => {
+    console.log(`[paperService.callGeminiAPI] ${msg}`);
+    logCallback?.(msg);
+  };
+  // Build parts: context files (PDFs) first, then the text prompt
+  const parts: any[] = [];
+  if (contextParts && contextParts.length > 0) {
+    for (const part of contextParts) {
+      parts.push(part);
+    }
+    log(`Attached ${contextParts.length} context PDF part(s) to request.`);
+  } else {
+    log(`No PDF context attached to this request.`);
+  }
+  parts.push({ text: userPrompt });
+
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
@@ -77,7 +95,7 @@ async function callGeminiAPI(
         "x-goog-api-key": apiKey,
       },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: userPrompt }] }],
+        contents: [{ parts }],
         systemInstruction: {
           parts: [{ text: systemInstruction }],
         },
@@ -111,8 +129,13 @@ export async function generateExamPaper(
   mcqCount: number,
   shortQuestionCount: number,
   longQuestionCount: number,
-  durationMinutes: number
+  durationMinutes: number,
+  logCallback?: LogCallback
 ): Promise<GeneratedPaper> {
+  const log = (msg: string) => {
+    console.log(`[paperService] ${msg}`);
+    logCallback?.(msg);
+  };
   const gradeName = getGradeName(gradeId);
   const subjectName = getSubjectName(gradeId, subjectId);
   const chapterName = getChapterName(gradeId, subjectId, chapterId);
@@ -209,16 +232,51 @@ ${sloText}
 
 Ensure questions cover all major topics from the chapter and align with the SLOs provided. Make the difficulty appropriate for ${gradeName} students.`;
 
+  // Download chapter PDF for grounding
+  let contextParts: Part[] = [];
+  try {
+    const gradeNum = gradeId.replace('class', '');
+    const grade = `Grade ${parseInt(gradeNum, 10)}`;
+    const chapterNum = parseInt(chapterId.replace('ch', ''), 10);
+    const sloPath = `/curriculum/slos/${grade}/${subjectId.toLowerCase()}.json`;
+    log(`Fetching SLO data from: ${sloPath}`);
+    const sloResponse = await fetch(sloPath);
+    log(`SLO response status: ${sloResponse.status}`);
+    if (sloResponse.ok) {
+      const sloData = await sloResponse.json();
+      const chapter = sloData.chapters?.find((c: any) => c.chapter_number === chapterNum);
+      log(`Found chapter: ${chapter ? chapter.chapter_name : 'null'}, pdf_url: ${chapter?.pdf_url || 'none'}`);
+      if (chapter?.pdf_url) {
+        log(`Downloading chapter PDF: ${chapter.pdf_url}`);
+        const pdfPart = await downloadPdfAsPart(chapter.pdf_url);
+        if (pdfPart) {
+          contextParts = [pdfPart];
+          log(`✓ PDF context loaded (${((pdfPart.inlineData?.data?.length || 0) * 0.75 / 1024).toFixed(0)}KB) — will be sent with API request`);
+        } else {
+          log(`✗ Could not download PDF, proceeding without book context.`);
+        }
+      } else {
+        log(`No PDF URL found for chapter ${chapterNum} in SLO data`);
+      }
+    } else {
+      log(`SLO data not found at ${sloPath} (status ${sloResponse.status})`);
+    }
+  } catch (err) {
+    log(`Error loading PDF context: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
   try {
     const response = await withKeyRotation(async (apiKey) => {
-      console.log("[paperService] Using API key (length:", apiKey.length, ", prefix:", apiKey.slice(0, 7) + "...");
+      log(`Calling Gemini API with model: ${DEFAULT_MODEL}`);
       return callGeminiAPI(
         apiKey,
         DEFAULT_MODEL,
         systemInstruction,
         userPrompt,
         paperSchema,
-        0.3
+        0.3,
+        contextParts.length > 0 ? contextParts : undefined,
+        logCallback
       );
     });
 
