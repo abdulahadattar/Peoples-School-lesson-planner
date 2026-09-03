@@ -35,8 +35,8 @@ const App: React.FC = () => {
     setShowStatusPanel,
     generateLessonPlan,
     generatePaper,
-    exportPlan,
-    exportPaper,
+    revisePaper,
+    stopGeneration,
     clearResults,
   } = useGeneralGeneration();
 

@@ -379,48 +379,7 @@ export const useGeneralGeneration = () => {
     }
   }, [addLog]);
 
-   const exportPlan = useCallback(async (plan: LessonPlan, teacherInfo: TeacherInfo, exportFormatOption?: UiExportFormat) => {
-    try {
-      const fmt = exportFormatOption || 'both';
-      if (fmt === 'docx') {
-        await exportAsDocx(plan, undefined, teacherInfo);
-      } else if (fmt === 'pdf') {
-        await exportAsPdf(plan, undefined, teacherInfo);
-      } else {
-        // both
-        await exportAsDocx(plan, undefined, teacherInfo);
-        await new Promise(resolve => setTimeout(resolve, 250));
-        await exportAsPdf(plan, undefined, teacherInfo);
-      }
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Failed to export plan';
-      setError(errorMsg);
-      throw error;
-    }
-  }, []);
-
-  const exportPaper = useCallback(async (paper: GeneratedPaper, teacherInfo: TeacherInfo, exportFormatOption?: UiExportFormat) => {
-    try {
-      const { exportPaperAsDocx, exportPaperAsPdf } = await import('../services/exportService');
-      const fmt = exportFormatOption || 'both';
-      if (fmt === 'docx') {
-        await exportPaperAsDocx(paper, teacherInfo);
-      } else if (fmt === 'pdf') {
-        await exportPaperAsPdf(paper, teacherInfo);
-      } else {
-        // both
-        await exportPaperAsDocx(paper, teacherInfo);
-        await new Promise(resolve => setTimeout(resolve, 250));
-        await exportPaperAsPdf(paper, teacherInfo);
-      }
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Failed to export paper';
-      setError(errorMsg);
-      throw error;
-    }
-  }, []);
-
-  const stopGeneration = useCallback(() => {
+   const stopGeneration = useCallback(() => {
     isCancelledRef.current = true;
     setIsLoading(false);
     setError('Generation cancelled by user.');
@@ -482,8 +441,6 @@ export const useGeneralGeneration = () => {
     setShowStatusPanel,
     generateLessonPlan,
     generatePaper,
-    exportPlan,
-    exportPaper,
     revisePaper,
     stopGeneration,
     clearResults,
