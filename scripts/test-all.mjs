@@ -177,10 +177,16 @@ async function testAll() {
           if (!r.ok) continue;
           const d = await r.json();
           const p = JSON.parse(d.candidates?.[0]?.content?.parts?.[0]?.text || '{}');
-          if (p.title && p.activities?.length === 4) {
+          if (p.title && p.activities?.length === 4 && pdfPart) {
             const mins = p.activities.reduce((s, a) => s + (a.duration || 0), 0);
-            pass('Lesson plan', `"${p.title}" ${mins}min PDF=${!!pdfPart} ${elapsed(t0)}s`);
-          } else fail('Lesson plan', 'bad structure');
+            if (mins === 40) {
+              pass('Lesson plan', `"${p.title}" 40min PDF=${!!pdfPart} ${elapsed(t0)}s`);
+            } else {
+              fail('Lesson plan', `bad duration: ${mins}min`);
+            }
+          } else {
+            fail('Lesson plan', 'bad structure');
+          }
           return;
         } catch {}
       }
@@ -218,7 +224,12 @@ async function testAll() {
           const d = await r.json();
           const p = JSON.parse(d.candidates?.[0]?.content?.parts?.[0]?.text || '{}');
           const q = p.sections?.reduce((s, sec) => s + (sec.questions?.length || 0), 0) || 0;
-          pass('Exam paper', `"${p.title}" ${p.sections?.length}sec ${q}q ${p.totalMarks}mk PDF=${!!pdfPart} ${elapsed(t0)}s`);
+          const marks = p.sections?.reduce((s, sec) => s + (sec.questions?.reduce((qs, qn) => qs + (qn.marks || 0), 0) || 0), 0) || 0;
+          if (p.title && p.sections?.length >= 3 && q === 9 && marks === 15 && pdfPart) {
+            pass('Exam paper', `"${p.title}" ${p.sections?.length}sec ${q}q ${marks}mk PDF=${!!pdfPart} ${elapsed(t0)}s`);
+          } else {
+            fail('Exam paper', `bad structure: ${p.sections?.length}sec ${q}q ${marks}mk PDF=${!!pdfPart}`);
+          }
           return;
         } catch {}
       }

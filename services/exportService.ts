@@ -419,8 +419,14 @@ const createPaperPdfContent = async (paper: GeneratedPaper, teacherInfo?: Teache
             if (q.type === 'mcq' && q.options && q.options.length > 0) {
                 const qItems = await renderPdfRichText(qText, 'questionText');
                 sectionsContent.push(...qItems.map((item: any) => ({ ...item, margin: item.margin || [0, 4, 0, 2] })));
+                const optionItems = await Promise.all(
+                    q.options.map(async (opt) => {
+                        const rendered = await renderPdfRichText(opt, 'optionText');
+                        return rendered.length === 1 ? rendered[0] : { stack: rendered };
+                    })
+                );
                 sectionsContent.push({
-                    ul: q.options.map(opt => ({ text: opt, style: 'optionText' })),
+                    ul: optionItems,
                     margin: [0, 0, 0, 6]
                 });
             } else {
@@ -514,8 +520,9 @@ export const exportPaperAsDocx = async (paper: GeneratedPaper, teacherInfo?: Tea
                 });
                 children.push(qPara);
                 for (const opt of q.options) {
+                    const optRuns = await parseTextForDocx(opt);
                     children.push(new Paragraph({
-                        children: [new TextRun({ text: opt, size: 20, font: 'Calibri' })],
+                        children: optRuns,
                         indent: { left: 400 },
                         spacing: { after: 40 },
                     }));

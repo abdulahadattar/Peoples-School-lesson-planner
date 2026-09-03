@@ -8,6 +8,13 @@ export default defineConfig(() => {
         port: 3000,
         host: '0.0.0.0',
         proxy: {
+          // Proxy GitHub release downloads to bypass CORS
+          '/gh-releases': {
+            target: 'https://github.com',
+            changeOrigin: true,
+            followRedirects: true,
+            rewrite: (path) => path.replace(/^\/gh-releases\//, '/'),
+          },
           // Proxy GitHub raw content to bypass CORS
           '/pdf-proxy': {
             target: 'https://raw.githubusercontent.com',

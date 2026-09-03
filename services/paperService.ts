@@ -147,10 +147,10 @@ export async function generateExamPaper(
     - Section C (Long Questions): ${longQuestionCount} questions x 4 marks each = ${longMarks} marks
 5.  **MANDATORY JSON OUTPUT:** The output must ONLY be a valid JSON object matching the provided schema. Do not add any extra text or markdown.
 6.  **EQUATIONS:** Wrap ALL mathematical equations, formulas, and expressions in LaTeX delimiters:
-    - Inline equations: use single dollar signs, e.g. $E = mc^2$, $PV = nRT$, $F = ma$
-    - Display equations: use double dollar signs, e.g. $$\frac{3}{2}kT$$
-    - This includes fractions like (3/2) → $\frac{3}{2}$, powers like v^2 → $v^2$, Greek letters like rho → $\rho$
-    - Example option: "$P = \frac{1}{3} \rho v^2$"`;
+     - Inline equations: use single dollar signs, e.g. $E = mc^2$, $PV = nRT$, $F = ma$
+     - Display equations: use double dollar signs, e.g. $$\\frac{3}{2}kT$$
+     - This includes fractions like (3/2) → $\\frac{3}{2}$, powers like v^2 → $v^2$, Greek letters like rho → $\\rho$
+     - Example option: "$P = \\frac{1}{3} \\rho v^2$"`;
 
   const paperSchema = {
     type: Type.OBJECT,

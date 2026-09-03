@@ -188,28 +188,10 @@ export async function parseTextWithEquations(
 }
 
 /**
- * Process plain text (no LaTeX delimiters) and try to detect equations.
- * Tries common patterns like fractions, equations with =, superscripts, etc.
+ * Process plain text (no LaTeX delimiters) and return as plain text segments.
+ * Equations should already be wrapped in $...$ delimiters by the prompts.
  */
 async function processPlainText(text: string, fontSize: number): Promise<ParsedContent[]> {
-  const segments: ParsedContent[] = [];
-
-  // Quick check: if the text has no math-like content, return as-is
-  if (!/[=^²³⁴⁵⁶⁷⁸⁹⁰√∑∫αβγδθπστφωℏ∇±∞]|\d+\/\d+|\b[A-Z]\s*=/.test(text)) {
-    return [{ type: 'text', value: text }];
-  }
-
-  // Try to render the entire text as a KaTeX equation (it handles plain text too)
-  // If it contains an equation-like pattern, try rendering it
-  const html = renderLatexToSvg(text.trim(), false);
-  if (html) {
-    const image = await htmlToDataUrl(html, fontSize);
-    if (image) {
-      return [{ type: 'equation', value: text.trim(), image, display: false }];
-    }
-  }
-
-  // Fallback: return as plain text
   return [{ type: 'text', value: text }];
 }
 

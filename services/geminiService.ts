@@ -315,13 +315,10 @@ export async function downloadPdfAsPart(url: string): Promise<Part | null> {
     
     // Use Vite dev server proxy for GitHub raw URLs (bypasses CORS)
     let fetchUrl = url;
-    if (url.includes('github.com') && !url.startsWith('/pdf-proxy')) {
-      // Strip https://raw.githubusercontent.com/ and proxy through local server
-      const ghMatch = url.match(/raw\.githubusercontent\.com\/(.+)/);
+    if (!url.startsWith('/pdf-proxy')) {
+      const ghMatch = url.match(/^https?:\/\/raw\.githubusercontent\.com\/(.+)$/);
       if (ghMatch) {
         fetchUrl = `/pdf-proxy/${ghMatch[1]}`;
-      } else {
-        fetchUrl = `/pdf-proxy/${url}`;
       }
     }
     
@@ -420,10 +417,10 @@ export async function generateLessonPlan(
 7.  **Homework:** Provide a meaningful homework assignment reinforcing the lesson objective, appropriate for Pakistani students.
 8.  **MANDATORY JSON OUTPUT:** Output ONLY valid JSON matching the schema. No extra text or markdown.
 9.  **EQUATIONS:** Wrap ALL mathematical equations, formulas, and expressions in LaTeX delimiters:
-    - Inline equations: use single dollar signs, e.g. $E = mc^2$, $PV = nRT$, $F = ma$
-    - Display equations: use double dollar signs, e.g. $$\frac{3}{2}kT$$
-    - This includes fractions like (3/2) → $\frac{3}{2}$, powers like v^2 → $v^2$, Greek letters like rho → $\rho$
-    - Example: "The equation $P = \frac{1}{3} \rho v^2$ relates pressure to density and velocity."
+     - Inline equations: use single dollar signs, e.g. $E = mc^2$, $PV = nRT$, $F = ma$
+     - Display equations: use double dollar signs, e.g. $$\\frac{3}{2}kT$$
+     - This includes fractions like (3/2) → $\\frac{3}{2}$, powers like v^2 → $v^2$, Greek letters like rho → $\\rho$
+     - Example: "The equation $P = \\frac{1}{3} \\rho v^2$ relates pressure to density and velocity."
 9.  **Grade Appropriateness:** Content must match ${gradeLevelContext} cognitive level.
 `;
 
