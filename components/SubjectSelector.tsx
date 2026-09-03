@@ -122,24 +122,38 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
   const filteredTeachers = useMemo(() => {
     let list = teachers;
     if (selectedClassId) list = list.filter(t => t.classIds?.includes(selectedClassId));
-    if (selectedSubjectId) list = list.filter(t => t.subjects.some(s => s.toLowerCase() === selectedSubjectId.toLowerCase()));
+    if (selectedSubjectId) {
+      const selectedClass = classes.find(c => c.id === selectedClassId);
+      const selectedSubject = selectedClass?.subjects.find(s => s.id === selectedSubjectId);
+      list = list.filter(t => t.subjects.some(ts => {
+        if (!selectedSubject) return ts.toLowerCase() === selectedSubjectId.toLowerCase();
+        return subjectMatchesTeacher(ts, selectedSubject);
+      }));
+    }
     return list;
-  }, [teachers, selectedClassId, selectedSubjectId]);
+  }, [teachers, selectedClassId, selectedSubjectId, classes]);
 
   // Auto-select teacher if only one matches current filters
   // (We don't auto-select to avoid surprises, but we filter the dropdown)
 
   // Available subjects: if teacher selected, show only their subjects; otherwise show class subjects
+  const subjectMatchesTeacher = (teacherSubject: string, curriculumSubject: { id: string; name: string }): boolean => {
+    const ts = teacherSubject.toLowerCase();
+    const csName = curriculumSubject.name.toLowerCase();
+    const csId = curriculumSubject.id.toLowerCase();
+    return ts === csName || ts === csId ||
+      csName.includes(ts) || ts.includes(csName) ||
+      ts.includes(csId.replace('_', ' '));
+  };
+
   const availableSubjects = useMemo(() => {
     if (selectedTeacher) {
-      // Show curriculum subjects that match teacher's subjects
       const classSubjects = selectedClass?.subjects || [];
       if (classSubjects.length > 0) {
         return classSubjects.filter(s =>
-          selectedTeacher.subjects.some(ts => ts.toLowerCase() === s.id.toLowerCase() || ts.toLowerCase() === s.name.toLowerCase())
+          selectedTeacher.subjects.some(ts => subjectMatchesTeacher(ts, s))
         );
       }
-      // Fallback: return all class subjects
       return classSubjects;
     }
     if (!selectedClassId) return [];
@@ -203,24 +217,23 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
       onTeacherNameChange(teacher.name);
       onSchoolNameChange(teacher.schoolName);
 
+      // Reset dependent selections first
+      onSubjectChange('');
+      onChapterChange('');
+
       // Auto-select class if teacher teaches only one class
       const teacherClasses = teacher.classIds || [];
-      if (teacherClasses.length === 1) {
-        onClassChange(teacherClasses[0]);
-        onSubjectChange('');
-        onChapterChange('');
+      const newClassId = teacherClasses.length === 1 ? teacherClasses[0] : '';
+      if (newClassId) {
+        onClassChange(newClassId);
       }
 
       // Auto-select subject if teacher teaches only one subject
-      // (do this after class is set so availableSubjects filters correctly)
       if (teacher.subjects.length === 1) {
-        // Find the matching curriculum subject ID for the teacher's single subject
-        const classObj = teacherClasses.length === 1 ? classes.find(c => c.id === teacherClasses[0]) : classes.find(c => c.id === selectedClassId);
+        const classId = newClassId || selectedClassId;
+        const classObj = classes.find(c => c.id === classId);
         if (classObj) {
-          const matchSubject = classObj.subjects.find(s =>
-            s.name.toLowerCase() === teacher.subjects[0].toLowerCase() ||
-            s.id.toLowerCase() === teacher.subjects[0].toLowerCase()
-          );
+          const matchSubject = classObj.subjects.find(s => subjectMatchesTeacher(teacher.subjects[0], s));
           if (matchSubject) {
             onSubjectChange(matchSubject.id);
           }

@@ -57,12 +57,26 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating, 
   );
 
   // Filtered teachers by class + subject
+  const subjectMatches = (teacherSubject: string, curriculumSubject: { id: string; name: string }): boolean => {
+    const ts = teacherSubject.toLowerCase();
+    const csName = curriculumSubject.name.toLowerCase();
+    const csId = curriculumSubject.id.toLowerCase();
+    return ts === csName || ts === csId || csName.includes(ts) || ts.includes(csName) || ts.includes(csId.replace('_', ' '));
+  };
+
   const filteredTeachers = useMemo(() => {
     let list = teachers;
     if (selectedClassId) list = list.filter(t => t.classIds?.includes(selectedClassId));
-    if (selectedSubjectId) list = list.filter(t => t.subjects.some(s => s.toLowerCase() === selectedSubjectId.toLowerCase()));
+    if (selectedSubjectId) {
+      const selectedClass = classes.find(c => c.id === selectedClassId);
+      const selectedSubject = selectedClass?.subjects.find(s => s.id === selectedSubjectId);
+      list = list.filter(t => t.subjects.some(ts => {
+        if (!selectedSubject) return ts.toLowerCase() === selectedSubjectId.toLowerCase();
+        return subjectMatches(ts, selectedSubject);
+      }));
+    }
     return list;
-  }, [teachers, selectedClassId, selectedSubjectId]);
+  }, [teachers, selectedClassId, selectedSubjectId, classes]);
 
   // Available classes filtered by teacher
   const availableClasses = useMemo(() => {
@@ -82,7 +96,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating, 
     const classSubjects = selectedClass?.subjects || [];
     if (selectedTeacher) {
       return classSubjects.filter(s =>
-        selectedTeacher.subjects.some(ts => ts.toLowerCase() === s.id.toLowerCase() || ts.toLowerCase() === s.name.toLowerCase())
+        selectedTeacher.subjects.some(ts => subjectMatches(ts, s))
       );
     }
     return classSubjects;
@@ -165,11 +179,16 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating, 
 
       // Auto-select subject if teacher teaches only one subject
       if (teacher.subjects.length === 1) {
-        const classObj = teacherClasses.length === 1 ? classes.find(c => c.id === teacherClasses[0]) : classes.find(c => c.id === selectedClassId);
+        const classId = teacherClasses.length === 1 ? teacherClasses[0] : selectedClassId;
+        const classObj = classes.find(c => c.id === classId);
         if (classObj) {
+          const tSubj = teacher.subjects[0].toLowerCase();
           const matchSubject = classObj.subjects.find(s =>
-            s.name.toLowerCase() === teacher.subjects[0].toLowerCase() ||
-            s.id.toLowerCase() === teacher.subjects[0].toLowerCase()
+            s.name.toLowerCase() === tSubj ||
+            s.id.toLowerCase() === tSubj ||
+            s.name.toLowerCase().includes(tSubj) ||
+            tSubj.includes(s.name.toLowerCase()) ||
+            tSubj.includes(s.id.toLowerCase().replace('_', ' '))
           );
           if (matchSubject) {
             setSelectedSubjectId(matchSubject.id);
