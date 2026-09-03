@@ -399,14 +399,24 @@ export const useGeneralGeneration = () => {
     }
   }, []);
 
-  const exportPaper = useCallback(async (paper: GeneratedPaper, teacherInfo: TeacherInfo) => {
+  const exportPaper = useCallback(async (paper: GeneratedPaper, teacherInfo: TeacherInfo, exportFormatOption?: UiExportFormat) => {
     try {
       const { exportPaperAsDocx, exportPaperAsPdf } = await import('../services/exportService');
-      await exportPaperAsDocx(paper, teacherInfo);
-      await exportPaperAsPdf(paper, teacherInfo);
+      const fmt = exportFormatOption || 'both';
+      if (fmt === 'docx') {
+        await exportPaperAsDocx(paper, teacherInfo);
+      } else if (fmt === 'pdf') {
+        await exportPaperAsPdf(paper, teacherInfo);
+      } else {
+        // both
+        await exportPaperAsDocx(paper, teacherInfo);
+        await new Promise(resolve => setTimeout(resolve, 250));
+        await exportPaperAsPdf(paper, teacherInfo);
+      }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to export paper';
       setError(errorMsg);
+      throw error;
     }
   }, []);
 
