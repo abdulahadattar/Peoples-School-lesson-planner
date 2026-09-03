@@ -166,6 +166,70 @@ const ResultsView: React.FC<ResultsViewProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Floating Revision Bar */}
+        {onRevisePaper && (
+          <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
+            <div className="w-full max-w-2xl mx-4 mb-4 pointer-events-auto">
+              {!showRevision ? (
+                <button
+                  onClick={() => setShowRevision(true)}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 bg-brand-surface border border-brand-border rounded-full shadow-lg hover:shadow-xl hover:border-brand-primary/30 transition-all"
+                >
+                  <svg className="w-4 h-4 text-brand-primary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  <span className="text-sm text-brand-text-secondary">Revise this paper...</span>
+                </button>
+              ) : (
+                <div className="bg-brand-surface border border-brand-border rounded-2xl shadow-xl overflow-hidden transition-all">
+                  <div className="px-4 pt-3 pb-2">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-brand-primary uppercase tracking-wider">Revise Paper</span>
+                      <button onClick={() => { setShowRevision(false); setRevisionPrompt(''); }} className="text-brand-text-secondary hover:text-brand-text-primary transition-colors">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
+                    </div>
+                    <textarea
+                      value={revisionPrompt}
+                      onChange={(e) => setRevisionPrompt(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          if (revisionPrompt.trim() && !isRevising) {
+                            onRevisePaper(revisionPrompt).then(r => { if (r) { setRevisionPrompt(''); setShowRevision(false); } });
+                          }
+                        }
+                      }}
+                      placeholder="Describe any changes you want to make..."
+                      className="w-full h-16 px-1 py-1 bg-transparent text-sm text-brand-text-primary placeholder:text-brand-text-secondary/50 focus:outline-none resize-none"
+                      disabled={isRevising}
+                      autoFocus
+                    />
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-2 border-t border-brand-border bg-brand-bg/50">
+                    <p className="text-[10px] text-brand-text-secondary">e.g. Add MCQs about thermodynamics, remove q3</p>
+                    <button
+                      onClick={async () => {
+                        if (!revisionPrompt.trim() || isRevising) return;
+                        const result = await onRevisePaper(revisionPrompt);
+                        if (result) { setRevisionPrompt(''); setShowRevision(false); }
+                      }}
+                      disabled={isRevising || !revisionPrompt.trim()}
+                      className="flex items-center justify-center w-8 h-8 rounded-full bg-brand-primary text-white hover:bg-brand-primary-hover disabled:opacity-40 disabled:cursor-not-allowed transition-all flex-shrink-0"
+                    >
+                      {isRevising ? (
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -220,58 +284,86 @@ const ResultsView: React.FC<ResultsViewProps> = ({
               </div>
             ))}
           </div>
+        </div>
 
-          {/* Revision Panel */}
-          {onRevisePaper && (
-            <div className="bg-brand-surface rounded-xl border border-brand-border p-4 mb-4">
-              <button
-                onClick={() => setShowRevision(!showRevision)}
-                className="flex items-center gap-2 w-full text-left"
-              >
-                <span className="text-sm font-bold text-brand-primary uppercase tracking-widest">
-                  Revise Paper
-                </span>
-                <svg className={`w-4 h-4 text-brand-text-secondary transition-transform ${showRevision ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-
-              {showRevision && (
-                <div className="mt-4">
-                  <p className="text-xs text-brand-text-secondary mb-2">
-                    Tell the AI what to change — add questions, remove questions, modify difficulty, change topics, etc.
-                  </p>
-                  <p className="text-xs text-brand-text-secondary mb-3">
-                    Examples: "Add 2 more MCQs about thermodynamics" / "Remove q3, replace with a harder question" / "Make all long questions 6 marks instead of 4"
-                  </p>
+        {/* Floating Revision Bar */}
+        {onRevisePaper && (
+          <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
+            <div className="w-full max-w-2xl mx-4 mb-4 pointer-events-auto">
+              {!showRevision ? (
+                <button
+                  onClick={() => setShowRevision(true)}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 bg-brand-surface border border-brand-border rounded-full shadow-lg hover:shadow-xl hover:border-brand-primary/30 transition-all"
+                >
+                  <svg className="w-4 h-4 text-brand-primary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  <span className="text-sm text-brand-text-secondary">Revise this paper...</span>
+                </button>
+            ) : (
+              /* Expanded bar */
+              <div className="bg-brand-surface border border-brand-border rounded-2xl shadow-xl overflow-hidden transition-all">
+                <div className="px-4 pt-3 pb-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-brand-primary uppercase tracking-wider">Revise Paper</span>
+                    <button
+                      onClick={() => { setShowRevision(false); setRevisionPrompt(''); }}
+                      className="text-brand-text-secondary hover:text-brand-text-primary transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
                   <textarea
                     value={revisionPrompt}
                     onChange={(e) => setRevisionPrompt(e.target.value)}
-                    placeholder="e.g. Add 3 more MCQs about kinetic energy, remove question 5, make long questions worth 6 marks each..."
-                    className="w-full h-24 px-3 py-2 bg-brand-bg border border-brand-border rounded-lg text-sm text-brand-text-primary placeholder:text-brand-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 resize-none"
-                    disabled={isRevising}
-                  />
-                  <div className="flex justify-end mt-2">
-                    <button
-                      onClick={async () => {
-                        if (!revisionPrompt.trim()) return;
-                        const result = await onRevisePaper(revisionPrompt);
-                        if (result) {
-                          setRevisionPrompt('');
-                          setShowRevision(false);
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        if (revisionPrompt.trim() && !isRevising) {
+                          onRevisePaper(revisionPrompt).then(result => {
+                            if (result) { setRevisionPrompt(''); setShowRevision(false); }
+                          });
                         }
-                      }}
-                      disabled={isRevising || !revisionPrompt.trim()}
-                      className="px-4 py-2 bg-brand-primary text-white text-sm font-semibold rounded-lg hover:bg-brand-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                    >
-                      {isRevising ? 'Revising...' : 'Apply Revision'}
-                    </button>
-                  </div>
+                      }
+                    }}
+                    placeholder="Describe any changes you want to make..."
+                    className="w-full h-16 px-1 py-1 bg-transparent text-sm text-brand-text-primary placeholder:text-brand-text-secondary/50 focus:outline-none resize-none"
+                    disabled={isRevising}
+                    autoFocus
+                  />
                 </div>
-              )}
-            </div>
-          )}
+                <div className="flex items-center justify-between px-4 py-2 border-t border-brand-border bg-brand-bg/50">
+                  <p className="text-[10px] text-brand-text-secondary">
+                    e.g. Add MCQs about thermodynamics, remove q3, change marks
+                  </p>
+                  <button
+                    onClick={async () => {
+                      if (!revisionPrompt.trim() || isRevising) return;
+                      const result = await onRevisePaper(revisionPrompt);
+                      if (result) { setRevisionPrompt(''); setShowRevision(false); }
+                    }}
+                    disabled={isRevising || !revisionPrompt.trim()}
+                    className="flex items-center justify-center w-8 h-8 rounded-full bg-brand-primary text-white hover:bg-brand-primary-hover disabled:opacity-40 disabled:cursor-not-allowed transition-all flex-shrink-0"
+                  >
+                    {isRevising ? (
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
+      )}
       </div>
     );
   }
