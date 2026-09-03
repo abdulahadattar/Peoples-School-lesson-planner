@@ -10,9 +10,13 @@ import {
   VerticalAlign,
   WidthType,
   ISectionOptions,
+  ImageRun,
+  HorizontalPositionAlign,
+  VerticalAlign as DocxVerticalAlign,
 } from 'docx';
 import saveAs from 'file-saver';
 import { LessonPlan, GeneratedPaper, PaperQuestion, PaperSection, TeacherInfo } from '../types';
+import { parseTextWithEquations, dataUrlToBase64, isKatexAvailable } from './equationRenderer';
 
 declare const pdfMake: any;
 
@@ -41,44 +45,89 @@ export const formatFileName = (title: string, sloId?: string): string => {
   return baseName.replace(/[^a-z0-9_.-]/gi, '_').substring(0, 100);
 };
 
-const parseTextForDocx = (text: string): TextRun[] => {
+/**
+ * Parse text with LaTeX equations and bold/italic markdown.
+ * Equations are rendered to images via KaTeX and embedded as ImageRun.
+ * Bold/italic text is rendered as formatted TextRun.
+ */
+const parseTextForDocx = async (text: string): Promise<(TextRun | any)[]> => {
+  const runs: (TextRun | any)[] = [];
+
+  // If KaTeX is available, parse equations as rendered images
+  if (isKatexAvailable()) {
+    const segments = await parseTextWithEquations(text, 14);
+    for (const seg of segments) {
+      if (seg.type === 'equation' && seg.image) {
+        // Convert data URL to base64 and create ImageRun
+        const base64 = dataUrlToBase64(seg.image);
+        // Determine image dimensions from the data
+        const img = new Image();
+        await new Promise<void>((resolve) => {
+          img.onload = () => resolve();
+          img.onerror = () => resolve();
+          img.src = seg.image;
+        });
+        const width = Math.min(img.width || 120, 400);
+        const height = Math.min(img.height || 24, 60);
+        runs.push(new ImageRun({
+          data: base64,
+          transformation: { width, height },
+        }));
+      } else {
+        // Plain text — check for bold/italic markdown
+        runs.push(...parseMarkdownRuns(seg.value));
+      }
+    }
+    return runs;
+  }
+
+  // Fallback: no KaTeX — just handle bold/italic
+  return parseMarkdownRuns(text);
+};
+
+/**
+ * Parse bold/italic markdown into TextRun[]
+ */
+const parseMarkdownRuns = (text: string): TextRun[] => {
   const runs: TextRun[] = [];
-  const regex = /(\$\$[\s\S]*?\$\$|\$[^\s](?:[^\$]*[^\s])?\$|\*\*.*?\*\*|\*.*?\*)/g;
+  const regex = /(\*\*.*?\*\*|\*.*?\*)/g;
   let lastIndex = 0;
   let match;
   while ((match = regex.exec(text)) !== null) {
     if (match.index > lastIndex) {
-      runs.push(new TextRun({ text: text.substring(lastIndex, match.index), font: "Calibri", size: 22 }));
+      runs.push(new TextRun({ text: text.substring(lastIndex, match.index), font: 'Calibri', size: 22 }));
     }
     const matchedText = match[0];
-    if (matchedText.startsWith('$$') && matchedText.endsWith('$$')) {
-      runs.push(new TextRun({ text: matchedText.slice(2, -2).trim(), bold: true, font: "Cambria Math", size: 24 }));
-    } else if (matchedText.startsWith('$') && matchedText.endsWith('$')) {
-      runs.push(new TextRun({ text: matchedText.slice(1, -1), bold: true, font: "Cambria Math", size: 22 }));
-    } else if (matchedText.startsWith('**') && matchedText.endsWith('**')) {
-      runs.push(new TextRun({ text: matchedText.slice(2, -2), bold: true, font: "Calibri", size: 22 }));
+    if (matchedText.startsWith('**') && matchedText.endsWith('**')) {
+      runs.push(new TextRun({ text: matchedText.slice(2, -2), bold: true, font: 'Calibri', size: 22 }));
     } else if (matchedText.startsWith('*') && matchedText.endsWith('*')) {
-      runs.push(new TextRun({ text: matchedText.slice(1, -1), italics: true, font: "Calibri", size: 22 }));
+      runs.push(new TextRun({ text: matchedText.slice(1, -1), italics: true, font: 'Calibri', size: 22 }));
     }
     lastIndex = match.index + matchedText.length;
   }
   if (lastIndex < text.length) {
-    runs.push(new TextRun({ text: text.substring(lastIndex), font: "Calibri", size: 22 }));
+    runs.push(new TextRun({ text: text.substring(lastIndex), font: 'Calibri', size: 22 }));
   }
   return runs;
 };
 
-const createRichParagraph = (text: string): Paragraph => new Paragraph({
-  children: parseTextForDocx(text),
+const createRichParagraph = async (text: string): Promise<Paragraph> => new Paragraph({
+  children: await parseTextForDocx(text),
   spacing: { after: 100 },
   alignment: AlignmentType.JUSTIFIED,
 });
 
-const createBulletList = (items: string[]): Paragraph[] => items.map(item => new Paragraph({
-  children: parseTextForDocx(item),
-  bullet: { level: 0 },
-  spacing: { after: 50 },
-}));
+const createBulletList = async (items: string[]): Promise<Paragraph[]> => {
+  const paragraphs: Paragraph[] = [];
+  for (const item of items) {
+    paragraphs.push(new Paragraph({
+      children: await parseTextForDocx(item),
+      bullet: { level: 0 },
+      spacing: { after: 50 },
+    }));
+  }
+  return paragraphs;
+};
 
 const createSectionHeading = (title: string): Paragraph => new Paragraph({
   children: [new TextRun({ text: title, bold: true, size: 28, color: "1F4E79" })],
@@ -95,7 +144,7 @@ const A4_PAGE_WIDTH = 11906;
 const A4_PAGE_HEIGHT = 16838;
 const A4_MARGIN = 1134;
 
-export const createDocxContentForPlan = (lessonPlan: LessonPlan, teacherInfo?: TeacherInfo): (Paragraph | Table)[] => {
+export const createDocxContentForPlan = async (lessonPlan: LessonPlan, teacherInfo?: TeacherInfo): Promise<(Paragraph | Table)[]> => {
   const teacherName = teacherInfo?.name || "Abdul Ahad";
   const schoolPlaceholder = teacherInfo?.schoolName || "Peoples Higher Secondary School Jamshoro";
   const dateTimeline = '____________________';
@@ -144,14 +193,15 @@ export const createDocxContentForPlan = (lessonPlan: LessonPlan, teacherInfo?: T
 
   const children: (Paragraph | Table)[] = [headerTable];
   children.push(createSectionHeading('RESOURCES'));
-  children.push(...(lessonPlan.materials.length > 0 ? createBulletList(lessonPlan.materials) : [createRichParagraph('No materials required.')]));
+  const materials = lessonPlan.materials.length > 0 ? await createBulletList(lessonPlan.materials) : [await createRichParagraph('No materials required.')];
+  children.push(...materials);
   children.push(createSectionHeading('LESSON PROCEDURE & TIMINGS'));
-  lessonPlan.activities.forEach(activity => {
+  for (const activity of lessonPlan.activities) {
       children.push(new Paragraph({
           children: [ new TextRun({ text: `${activity.name.toUpperCase()} (${activity.duration} mins)`, bold: true, size: 24 })],
           spacing: { before: 200, after: 100 }
       }));
-      children.push(createRichParagraph(activity.description));
+      children.push(await createRichParagraph(activity.description));
       if (activity.teacherActions) {
           children.push(new Paragraph({
               children: [ new TextRun({ text: 'Teacher Actions: ', bold: true, size: 22 }), new TextRun({ text: activity.teacherActions, size: 22 })],
@@ -166,9 +216,9 @@ export const createDocxContentForPlan = (lessonPlan: LessonPlan, teacherInfo?: T
               indent: { left: 200 }
           }));
       }
-  });
+  }
   children.push(createSectionHeading('HOMEWORK ASSIGNMENT'));
-  children.push(createRichParagraph(lessonPlan.homework));
+  children.push(await createRichParagraph(lessonPlan.homework));
 
   return children;
 };
@@ -179,7 +229,7 @@ const PDF_MARGIN = 56.7;
 
 export const exportAsDocx = async (lessonPlan: LessonPlan, sloId?: string, teacherInfo?: TeacherInfo): Promise<void> => {
   const fileName = `${formatFileName(lessonPlan.title, sloId)}.docx`;
-  const children = createDocxContentForPlan(lessonPlan, teacherInfo);
+  const children = await createDocxContentForPlan(lessonPlan, teacherInfo);
   const doc = new Document({
       sections: [{
           properties: {
@@ -197,7 +247,7 @@ export const exportAsDocx = async (lessonPlan: LessonPlan, sloId?: string, teach
 
 export const exportAsPdf = async (lessonPlan: LessonPlan, sloId?: string, teacherInfo?: TeacherInfo): Promise<void> => {
   const fileName = `${formatFileName(lessonPlan.title, sloId)}.pdf`;
-  const content = createPdfContentForPlan(lessonPlan, teacherInfo);
+  const content = await createPdfContentForPlan(lessonPlan, teacherInfo);
   const docDefinition: any = {
       pageSize: { width: PDF_A4_WIDTH, height: PDF_A4_HEIGHT },
       pageMargins: [PDF_MARGIN, PDF_MARGIN, PDF_MARGIN, PDF_MARGIN],
@@ -218,7 +268,7 @@ export const exportAsPdf = async (lessonPlan: LessonPlan, sloId?: string, teache
   }
 };
 
-const createPdfContentForPlan = (lessonPlan: LessonPlan, teacherInfo?: TeacherInfo): any[] => {
+const createPdfContentForPlan = async (lessonPlan: LessonPlan, teacherInfo?: TeacherInfo): Promise<any[]> => {
     const teacherName = teacherInfo?.name || "Abdul Ahad";
     const schoolPlaceholder = teacherInfo?.schoolName || "Peoples Higher Secondary School Jamshoro";
     const dateTimeline = '____________________';
@@ -250,42 +300,48 @@ const createPdfContentForPlan = (lessonPlan: LessonPlan, teacherInfo?: TeacherIn
         { ul: lessonPlan.materials.length > 0 ? lessonPlan.materials.map(m => ({ text: m, style: 'body' })) : [{ text: 'No materials required.', style: 'body' }] },
     ];
 
-    const procedureSection = [
+    const procedureSection: any[] = [
         { text: 'LESSON PROCEDURE & TIMINGS', style: 'sectionHeader' },
-        ...lessonPlan.activities.flatMap(activity => {
-            const parts: any[] = [
-                { text: `${activity.name.toUpperCase()} (${activity.duration} mins)`, bold: true, margin: [0, 8, 0, 4] },
-                { text: activity.description, style: 'body' },
-            ];
-            if (activity.teacherActions) {
-                parts.push({ text: `Teacher Actions: ${activity.teacherActions}`, style: 'body', margin: [0, 2, 0, 2] });
-            }
-            if (activity.studentResponses) {
-                parts.push({ text: `Student Responses: ${activity.studentResponses}`, style: 'body', margin: [0, 2, 0, 6] });
-            }
-            return parts;
-        }),
     ];
+    for (const activity of lessonPlan.activities) {
+        procedureSection.push(
+            { text: `${activity.name.toUpperCase()} (${activity.duration} mins)`, bold: true, margin: [0, 8, 0, 4] },
+        );
+        const descItems = await renderPdfRichText(activity.description, 'body');
+        procedureSection.push(...descItems.map((item: any) => ({ ...item, margin: item.margin || [0, 0, 0, 2] })));
+        if (activity.teacherActions) {
+            const taItems = await renderPdfRichText(`Teacher Actions: ${activity.teacherActions}`, 'body');
+            procedureSection.push(...taItems.map((item: any) => ({ ...item, margin: item.margin || [0, 2, 0, 2] })));
+        }
+        if (activity.studentResponses) {
+            const srItems = await renderPdfRichText(`Student Responses: ${activity.studentResponses}`, 'body');
+            procedureSection.push(...srItems.map((item: any) => ({ ...item, margin: item.margin || [0, 2, 0, 6] })));
+        }
+    }
 
-    const homeworkSection = [
+    const hwItems = await renderPdfRichText(lessonPlan.homework, 'body');
+    const homeworkSection: any[] = [
         { text: 'HOMEWORK ASSIGNMENT', style: 'sectionHeader' },
-        { text: lessonPlan.homework, style: 'body' },
+        ...hwItems,
     ];
 
     return [headerTable, ...resourcesSection, ...procedureSection, ...homeworkSection];
 };
 
 export const exportMultipleLessonsAsDocx = async (lessonPlans: LessonPlan[], fileName: string, teacherInfo?: TeacherInfo): Promise<void> => {
-    const sections: ISectionOptions[] = lessonPlans.map((plan, index) => ({
-        properties: {
-            page: {
-                size: { width: A4_PAGE_WIDTH, height: A4_PAGE_HEIGHT },
-                margin: { top: A4_MARGIN, right: A4_MARGIN, bottom: A4_MARGIN, left: A4_MARGIN }
+    const sections: any[] = [];
+    for (let index = 0; index < lessonPlans.length; index++) {
+        sections.push({
+            properties: {
+                page: {
+                    size: { width: A4_PAGE_WIDTH, height: A4_PAGE_HEIGHT },
+                    margin: { top: A4_MARGIN, right: A4_MARGIN, bottom: A4_MARGIN, left: A4_MARGIN }
+                },
             },
-        },
-        pageBreakBefore: index > 0,
-        children: createDocxContentForPlan(plan, teacherInfo),
-    }));
+            pageBreakBefore: index > 0,
+            children: await createDocxContentForPlan(lessonPlans[index], teacherInfo),
+        });
+    }
 
     const doc = new Document({ sections });
     const blob = await Packer.toBlob(doc);
@@ -293,13 +349,14 @@ export const exportMultipleLessonsAsDocx = async (lessonPlans: LessonPlan[], fil
 };
 
 export const exportMultipleLessonsAsPdf = async (lessonPlans: LessonPlan[], fileName: string, teacherInfo?: TeacherInfo): Promise<void> => {
-    const allContent = lessonPlans.flatMap((plan, index) => {
-        const content = createPdfContentForPlan(plan, teacherInfo);
+    const allContent: any[] = [];
+    for (let index = 0; index < lessonPlans.length; index++) {
+        const content = await createPdfContentForPlan(lessonPlans[index], teacherInfo);
         if (index > 0) {
-            return [{ text: '', pageBreak: 'before' as const }, ...content];
+            allContent.push({ text: '', pageBreak: 'before' as const });
         }
-        return content;
-    });
+        allContent.push(...content);
+    }
 
     const docDefinition: any = {
         pageSize: { width: PDF_A4_WIDTH, height: PDF_A4_HEIGHT },
@@ -322,7 +379,46 @@ export const exportMultipleLessonsAsPdf = async (lessonPlans: LessonPlan[], file
     }
 };
 
-const createPaperPdfContent = (paper: GeneratedPaper, teacherInfo?: TeacherInfo): any[] => {
+/**
+ * Render text with equations for pdfMake.
+ * Returns an array of pdfMake content items.
+ */
+const renderPdfRichText = async (text: string, style: string = 'body'): Promise<any[]> => {
+  if (!isKatexAvailable()) {
+    return [{ text, style }];
+  }
+
+  const segments = await parseTextWithEquations(text, 10);
+  const items: any[] = [];
+  let currentText = '';
+
+  for (const seg of segments) {
+    if (seg.type === 'equation' && seg.image) {
+      // Flush any accumulated text
+      if (currentText) {
+        items.push({ text: currentText, style });
+        currentText = '';
+      }
+      // Add equation as image
+      const base64 = dataUrlToBase64(seg.image);
+      items.push({
+        image: `data:image/png;base64,${base64}`,
+        width: seg.display ? 200 : 100,
+        style,
+      });
+    } else {
+      currentText += seg.value;
+    }
+  }
+
+  if (currentText) {
+    items.push({ text: currentText, style });
+  }
+
+  return items.length > 0 ? items : [{ text, style }];
+};
+
+const createPaperPdfContent = async (paper: GeneratedPaper, teacherInfo?: TeacherInfo): Promise<any[]> => {
     const schoolName = teacherInfo?.schoolName || "Peoples Higher Secondary School Jamshoro";
     const teacherName = teacherInfo?.name || "";
 
@@ -333,35 +429,28 @@ const createPaperPdfContent = (paper: GeneratedPaper, teacherInfo?: TeacherInfo)
         teacherName ? { text: `Teacher: ${teacherName}`, style: 'paperHeader', alignment: 'center', fontSize: 10, margin: [0, 0, 0, 8] } : {},
     ].filter(Boolean);
 
-    const sectionsContent = paper.sections.flatMap((section: PaperSection) => {
-        const sectionContent: any[] = [
+    const sectionsContent: any[] = [];
+    for (const section of paper.sections) {
+        sectionsContent.push(
             { text: section.title, style: 'sectionTitle', margin: [0, 10, 0, 4] },
             { text: section.instruction, style: 'sectionInstruction', margin: [0, 0, 0, 6] },
-        ];
+        );
 
-        section.questions.forEach((q: PaperQuestion) => {
+        for (const q of section.questions) {
             const qText = `${q.id}. ${q.question} [${q.marks} marks]`;
             if (q.type === 'mcq' && q.options && q.options.length > 0) {
-                sectionContent.push({
-                    text: qText,
-                    style: 'questionText',
-                    margin: [0, 4, 0, 2]
-                });
-                sectionContent.push({
+                const qItems = await renderPdfRichText(qText, 'questionText');
+                sectionsContent.push(...qItems.map((item: any) => ({ ...item, margin: item.margin || [0, 4, 0, 2] })));
+                sectionsContent.push({
                     ul: q.options.map(opt => ({ text: opt, style: 'optionText' })),
                     margin: [0, 0, 0, 6]
                 });
             } else {
-                sectionContent.push({
-                    text: qText,
-                    style: 'questionText',
-                    margin: [0, 4, 0, 6]
-                });
+                const qItems = await renderPdfRichText(qText, 'questionText');
+                sectionsContent.push(...qItems.map((item: any) => ({ ...item, margin: item.margin || [0, 4, 0, 6] })));
             }
-        });
-
-        return sectionContent;
-    });
+        }
+    }
 
     return [
         ...headerContent,
@@ -424,7 +513,7 @@ export const exportPaperAsDocx = async (paper: GeneratedPaper, teacherInfo?: Tea
     });
     children.push(divider);
 
-    paper.sections.forEach((section: PaperSection) => {
+    for (const section of paper.sections) {
         const sectionTitle = new Paragraph({
             children: [new TextRun({ text: section.title, bold: true, size: 24, font: "Calibri", color: "1F4E79" })],
             spacing: { before: 300, after: 100 },
@@ -437,29 +526,31 @@ export const exportPaperAsDocx = async (paper: GeneratedPaper, teacherInfo?: Tea
         });
         children.push(instruction);
 
-        section.questions.forEach((q: PaperQuestion) => {
+        for (const q of section.questions) {
             const qText = `${q.id}. ${q.question}`;
             if (q.type === 'mcq' && q.options && q.options.length > 0) {
+                const qRuns = await parseTextForDocx(qText);
                 const qPara = new Paragraph({
-                    children: [new TextRun({ text: qText, size: 22, font: "Calibri" })],
+                    children: qRuns,
                     spacing: { after: 80 },
                 });
                 children.push(qPara);
-                q.options.forEach(opt => {
+                for (const opt of q.options) {
                     children.push(new Paragraph({
-                        children: [new TextRun({ text: opt, size: 20, font: "Calibri" })],
+                        children: [new TextRun({ text: opt, size: 20, font: 'Calibri' })],
                         indent: { left: 400 },
                         spacing: { after: 40 },
                     }));
-                });
+                }
             } else {
+                const qRuns = await parseTextForDocx(qText);
                 children.push(new Paragraph({
-                    children: [new TextRun({ text: qText, size: 22, font: "Calibri" })],
+                    children: qRuns,
                     spacing: { after: 120 },
                 }));
             }
-        });
-    });
+        }
+    }
 
     const endDivider = new Paragraph({
         children: [],
@@ -485,7 +576,7 @@ export const exportPaperAsDocx = async (paper: GeneratedPaper, teacherInfo?: Tea
 
 export const exportPaperAsPdf = async (paper: GeneratedPaper, teacherInfo?: TeacherInfo): Promise<void> => {
     const fileName = `${formatFileName(paper.title)}.pdf`;
-    const content = createPaperPdfContent(paper, teacherInfo);
+    const content = await createPaperPdfContent(paper, teacherInfo);
     const docDefinition: any = {
         pageSize: { width: PDF_A4_WIDTH, height: PDF_A4_HEIGHT },
         pageMargins: [PDF_MARGIN, PDF_MARGIN, PDF_MARGIN, PDF_MARGIN],
