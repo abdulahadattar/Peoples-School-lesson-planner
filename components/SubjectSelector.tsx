@@ -160,7 +160,7 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
   const handleClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newClassId = e.target.value;
     onClassChange(newClassId);
-    if (selectedTeacher && newClassId && !selectedTeacher.classIds?.includes(newClassId)) {
+    if (selectedTeacher && newClassId && selectedTeacher.classIds && selectedTeacher.classIds.length > 0 && !selectedTeacher.classIds.includes(newClassId)) {
       deselectTeacher();
     }
     onSubjectChange('');
@@ -170,7 +170,7 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
   const handleSubjectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newSubjectId = e.target.value;
     onSubjectChange(newSubjectId);
-    if (selectedTeacher && newSubjectId && !selectedTeacher.subjects.some(s => s.toLowerCase() === newSubjectId.toLowerCase())) {
+    if (selectedTeacher && newSubjectId && selectedTeacher.subjects && selectedTeacher.subjects.length > 0 && !selectedTeacher.subjects.some(s => s.toLowerCase() === newSubjectId.toLowerCase())) {
       deselectTeacher();
     }
     onChapterChange('');
@@ -189,23 +189,19 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
     onTeacherNameChange(teacher.name);
     onSchoolNameChange(teacher.schoolName);
 
-    onChapterChange('');
     const auto = autoSelectForTeacher(teacher, classes, selectedClassId);
 
-    // Keep the current class when this teacher teaches it; otherwise move to
-    // the teacher's auto/first class.
-    const classId =
-      selectedClassId && (teacher.classIds ?? []).includes(selectedClassId)
+    const classId = (!teacher.classIds || teacher.classIds.length === 0)
+      ? selectedClassId
+      : selectedClassId && (teacher.classIds ?? []).includes(selectedClassId)
         ? selectedClassId
         : auto.classId || teacher.classIds?.[0] || '';
     onClassChange(classId);
 
-    // Keep the current subject only if this teacher teaches it in that class;
-    // otherwise prefer the teacher's auto subject, else clear it so the
-    // teacher-narrowed subject dropdown drives the choice.
     const teachable = subjectsForTeacher(classes, classId, teacher);
-    const subjectId =
-      teachable.some(s => s.id === selectedSubjectId) && selectedSubjectId
+    const subjectId = (!teacher.subjects || teacher.subjects.length === 0)
+      ? selectedSubjectId
+      : teachable.some(s => s.id === selectedSubjectId) && selectedSubjectId
         ? selectedSubjectId
         : auto.subjectId && teachable.some(s => s.id === auto.subjectId)
           ? auto.subjectId
