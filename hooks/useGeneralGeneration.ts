@@ -441,7 +441,7 @@ export const useGeneralGeneration = () => {
 
    const exportPlan = useCallback(async (plan: LessonPlan, teacherInfo: TeacherInfo, exportFormatOption?: UiExportFormat) => {
     const isWeekly = (plan as WeeklyLessonPlan).isWeekly === true;
-    const fileName = formatFileName(`${plan.gradeLevel || ''} ${plan.subject || ''} ${plan.chapterName || ''}`.trim()) || 'lesson-plan';
+    const fileName = formatFileName(`${plan.gradeLevel || ''} ${plan.subject || ''} ${plan.chapterName || ''}`.trim()) || formatFileName(plan.title || 'lesson-plan');
     try {
       const fmt = exportFormatOption || 'both';
       if (isWeekly) {
