@@ -43,7 +43,6 @@
     {
       "chapter_number": 2,
       "chapter_name": "Differentiation",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Mathematics/Chapter%2028%20-%20Derivatives.pdf",
       "slos": [
         {
           "id": "math12_ch2_1",
@@ -80,7 +79,6 @@
     {
       "chapter_number": 3,
       "chapter_name": "Higher Order Derivatives and Applications",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Mathematics/Chapter%2028%20-%20Derivatives.pdf",
       "slos": [
         {
           "id": "math12_ch3_1",
@@ -117,7 +115,6 @@
     {
       "chapter_number": 4,
       "chapter_name": "Integration",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Mathematics/Chapter%2029%20-%20Integration.pdf",
       "slos": [
         {
           "id": "math12_ch4_1",
@@ -159,7 +156,6 @@
     {
       "chapter_number": 5,
       "chapter_name": "Plane Analytic Geometry",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Mathematics/Chapter%2020%20-%20Analytic%20Geometry.pdf",
       "slos": [
         {
           "id": "math12_ch5_1",
@@ -191,7 +187,6 @@
     {
       "chapter_number": 6,
       "chapter_name": "Circle",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Mathematics/Chapter%2020%20-%20Analytic%20Geometry.pdf",
       "slos": [
         {
           "id": "math12_ch6_1",
@@ -223,7 +218,6 @@
     {
       "chapter_number": 7,
       "chapter_name": "Parabola, Ellipse and Hyperbola",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Mathematics/Chapter%2022%20-%20Conics.pdf",
       "slos": [
         {
           "id": "math12_ch7_1",
@@ -255,7 +249,6 @@
     {
       "chapter_number": 8,
       "chapter_name": "Differential Equations",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Mathematics/Chapter%2030%20-%20Differential%20Equations.pdf",
       "slos": [
         {
           "id": "math12_ch8_1",
@@ -292,7 +285,6 @@
     {
       "chapter_number": 9,
       "chapter_name": "Partial Differentiation",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Mathematics/Chapter%2020%20-%20Analytic%20Geometry.pdf",
       "slos": [
         {
           "id": "math12_ch9_1",
@@ -319,7 +311,6 @@
     {
       "chapter_number": 10,
       "chapter_name": "Introduction to Numerical Methods",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Mathematics/Chapter%2022%20-%20Conics.pdf",
       "slos": [
         {
           "id": "math12_ch10_1",

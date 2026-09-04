@@ -6,6 +6,7 @@
     {
       "chapter_number": 1,
       "chapter_name": "General Wave Properties",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2010/Physics/Chapter%2010%20-%20General%20Waves%20Properties",
       "slos": [
         {
           "id": "phy10_ch1_1",
@@ -72,6 +73,7 @@
     {
       "chapter_number": 2,
       "chapter_name": "Sound",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2010/Physics/Chapter%2011%20-%20Sound",
       "slos": [
         {
           "id": "phy10_ch2_1",
@@ -133,6 +135,7 @@
     {
       "chapter_number": 3,
       "chapter_name": "Electromagnetic Spectrum",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2010/Physics/Chapter%2012%20-%20Electromagnetic%20Spectrum",
       "slos": [
         {
           "id": "phy10_ch3_1",
@@ -169,6 +172,7 @@
     {
       "chapter_number": 4,
       "chapter_name": "Geometrical Optics",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2010/Physics/Chapter%2013%20-%20Geometrical%20Optics",
       "slos": [
         {
           "id": "phy10_ch4_1",
@@ -280,6 +284,7 @@
     {
       "chapter_number": 5,
       "chapter_name": "Electrostatics",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2010/Physics/Chapter%2014%20-%20Electrostatics",
       "slos": [
         {
           "id": "phy10_ch5_1",
@@ -396,6 +401,7 @@
     {
       "chapter_number": 6,
       "chapter_name": "Current Electricity",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2010/Physics/Chapter%2015%20-%20Current%20Electricity",
       "slos": [
         {
           "id": "phy10_ch6_1",
@@ -517,6 +523,7 @@
     {
       "chapter_number": 7,
       "chapter_name": "Electromagnetism",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2010/Physics/Chapter%2016%20-%20Electromagnetism",
       "slos": [
         {
           "id": "phy10_ch7_1",
@@ -598,6 +605,7 @@
     {
       "chapter_number": 8,
       "chapter_name": "Introductory Electronics",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2010/Physics/Chapter%2017%20-%20Introductory%20Electronics",
       "slos": [
         {
           "id": "phy10_ch8_1",
@@ -669,6 +677,7 @@
     {
       "chapter_number": 9,
       "chapter_name": "Information and Communication Technology",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2010/Physics/Chapter%2018%20-%20Information%20and%20Communication%20Technology",
       "slos": [
         {
           "id": "phy10_ch9_1",
@@ -715,6 +724,7 @@
     {
       "chapter_number": 10,
       "chapter_name": "Atomic Structure",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2010/Physics/Chapter%2019%20-%20Atomic%20Structure",
       "slos": [
         {
           "id": "phy10_ch10_1",
@@ -751,6 +761,7 @@
     {
       "chapter_number": 11,
       "chapter_name": "Nuclear Structure",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2010/Physics/Chapter%2020%20-%20Nuclear%20Structure%20and%20Nuclear%20Power%20Plant%20K-2",
       "slos": [
         {
           "id": "phy10_ch11_1",

@@ -264,7 +264,6 @@
     {
       "chapter_number": 10,
       "chapter_name": "Forms and Functions in Plants",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Biology/Chapter%2010%20-%20Forms%20and%20Functions%20in%20Plant.pdf",
       "slos": [
         {
           "id": "bio11_ch10_1",
@@ -291,7 +290,6 @@
     {
       "chapter_number": 11,
       "chapter_name": "Holozoic Nutrition",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Biology/Chapter%2011%20-%20Holozoic%20Nutrition.pdf",
       "slos": [
         {
           "id": "bio11_ch11_1",
@@ -318,7 +316,7 @@
     {
       "chapter_number": 12,
       "chapter_name": "Circulation",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Biology/Chapter%2012%20-%20Circulation.pdf",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Biology/Chapter%2011%20-%20Circulation.pdf",
       "slos": [
         {
           "id": "bio11_ch12_1",
@@ -350,7 +348,7 @@
     {
       "chapter_number": 13,
       "chapter_name": "Immunity",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Biology/Chapter%2013%20-%20Immunity.pdf",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Biology/Chapter%2012%20-%20Immunity.pdf",
       "slos": [
         {
           "id": "bio11_ch13_1",
@@ -382,7 +380,7 @@
     {
       "chapter_number": 14,
       "chapter_name": "Gaseous Exchange",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Biology/Chapter%2014%20-%20Gaseous%20Exchange.pdf",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Biology/Chapter%2013%20-%20Gaseous%20Exchange.pdf",
       "slos": [
         {
           "id": "bio11_ch14_1",

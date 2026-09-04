@@ -117,7 +117,6 @@
     {
       "chapter_number": 4,
       "chapter_name": "States of Matter",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Chemistry/Chapter%2004%20-%20States%20of%20Matter.pdf",
       "slos": [
         {
           "id": "chem11_ch4_1",
@@ -149,7 +148,7 @@
     {
       "chapter_number": 5,
       "chapter_name": "Thermochemistry",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Chemistry/Chapter%2005%20-%20Thermochemistry.pdf",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Chemistry/Chapter%2011%20-%20Thermochemistry.pdf",
       "slos": [
         {
           "id": "chem11_ch5_1",
@@ -181,7 +180,7 @@
     {
       "chapter_number": 6,
       "chapter_name": "Chemical Equilibrium",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Chemistry/Chapter%2006%20-%20Chemical%20Equilibrium.pdf",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Chemistry/Chapter%2007%20-%20Chemical%20Equilibrium.pdf",
       "slos": [
         {
           "id": "chem11_ch6_1",
@@ -213,7 +212,7 @@
     {
       "chapter_number": 7,
       "chapter_name": "Electrochemistry",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Chemistry/Chapter%2007%20-%20Electrochemistry.pdf",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Chemistry/Chapter%2012%20-%20Electrochemistry.pdf",
       "slos": [
         {
           "id": "chem11_ch7_1",
@@ -250,7 +249,7 @@
     {
       "chapter_number": 8,
       "chapter_name": "Reaction Kinetics",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Chemistry/Chapter%2008%20-%20Reaction%20Kinetics.pdf",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Chemistry/Chapter%2009%20-%20Chemical%20Kinetics.pdf",
       "slos": [
         {
           "id": "chem11_ch8_1",

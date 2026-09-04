@@ -117,7 +117,7 @@
     {
       "chapter_number": 4,
       "chapter_name": "Sequences and Series",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Mathematics/Chapter%2004%20-%20Sequences%20and%20Series.pdf",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Mathematics/Chapter%2004%20-%20Sequences%20%26%20Series.pdf",
       "slos": [
         {
           "id": "math11_ch4_1",
@@ -171,7 +171,7 @@
     {
       "chapter_number": 6,
       "chapter_name": "Permutation, Combination and Probability",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Mathematics/Chapter%2006%20-%20Permutation%2C%20Combination%20and%20Probability.pdf",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Mathematics/Chapter%2006%20-%20Permutation%2C%20Combination%20%26%20Probability.pdf",
       "slos": [
         {
           "id": "math11_ch6_1",
@@ -208,7 +208,7 @@
     {
       "chapter_number": 7,
       "chapter_name": "Mathematical Induction and Binomial Theorem",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Mathematics/Chapter%2007%20-%20Mathematical%20Induction%20and%20Binomial%20Theorem.pdf",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Mathematics/Chapter%2007%20-%20Mathematical%20Induction%20%26%20Binomial%20Theorem.pdf",
       "slos": [
         {
           "id": "math11_ch7_1",
@@ -235,7 +235,7 @@
     {
       "chapter_number": 8,
       "chapter_name": "Functions and Graphs",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Mathematics/Chapter%2008%20-%20Functions%20and%20Graphs.pdf",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Mathematics/Chapter%2008%20-%20Functions%20%26%20Graphs.pdf",
       "slos": [
         {
           "id": "math11_ch8_1",
@@ -267,7 +267,7 @@
     {
       "chapter_number": 9,
       "chapter_name": "Linear Programming",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Mathematics/Chapter%2009%20-%20Linear%20Programming.pdf",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Mathematics/Chapter%2009%20-%20Linear%20Programming%20%28LP%29.pdf",
       "slos": [
         {
           "id": "math11_ch9_1",
@@ -294,7 +294,7 @@
     {
       "chapter_number": 10,
       "chapter_name": "Trigonometric Identities",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Mathematics/Chapter%2010%20-%20Trigonometric%20Identities.pdf",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Mathematics/Chapter%2010%20-%20Trigonometric%20Identities%20of%20Sum%20%26%20Difference%20of%20Angles.pdf",
       "slos": [
         {
           "id": "math11_ch10_1",
@@ -343,7 +343,7 @@
     {
       "chapter_number": 12,
       "chapter_name": "Graphs of Trigonometric Functions",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Mathematics/Chapter%2012%20-%20Graphs%20of%20Trigonometric%20Functions.pdf",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Mathematics/Chapter%2012%20-%20Graphs%20of%20Trigonometric%20%26%20Inverse%20Trigonometric%20Functions.pdf",
       "slos": [
         {
           "id": "math11_ch12_1",

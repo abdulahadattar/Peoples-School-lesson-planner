@@ -237,6 +237,7 @@
     {
       "chapter_number": 4,
       "chapter_name": "Rotational and Circular Motion",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2004%20-%20Rotational%20and%20Circular%20Motion.pdf",
       "slos": [
         {
           "id": "phy11_ch4_1",
@@ -313,12 +314,12 @@
           "text": "derive a relation between torque, moment of inertia and angular acceleration",
           "cognitive_level": "Application"
         }
-      ],
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2005%20-%20Chapter%204%20-%20Rotational%20and%20Circular%20Motion.pdf"
+      ]
     },
     {
       "chapter_number": 5,
       "chapter_name": "Work, Energy and Power",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2005%20-%20Work%20and%20Energy.pdf",
       "slos": [
         {
           "id": "phy11_ch5_1",
@@ -420,12 +421,12 @@
           "text": "Explain Law of conservation of energy with the help of suitable examples",
           "cognitive_level": "Understanding"
         }
-      ],
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2006%20-%20Chapter%205%20-%20Work%2C%20Energy%20and%20Power.pdf"
+      ]
     },
     {
       "chapter_number": 6,
       "chapter_name": "Fluid Statics",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2006%20-%20Fluid%20Statics.pdf",
       "slos": [
         {
           "id": "phy11_ch6_1",
@@ -462,12 +463,12 @@
           "text": "Describe surface tension along with suitable examples",
           "cognitive_level": "Understanding"
         }
-      ],
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2007%20-%20Chapter%206%20-%20Fluid%20Statics.pdf"
+      ]
     },
     {
       "chapter_number": 7,
       "chapter_name": "Fluid Dynamics",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2007%20-%20Fluid%20Dynamics.pdf",
       "slos": [
         {
           "id": "phy11_ch7_1",
@@ -529,12 +530,12 @@
           "text": "Interpret and apply Bernoulli Effect in the: filter pump, Venturi meter, in, atomizers, flow of air over an aerofoil and in blood physics.",
           "cognitive_level": "Understanding"
         }
-      ],
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2008%20-%20Chapter%207%20-%20Fluid%20Dynamics.pdf"
+      ]
     },
     {
       "chapter_number": 8,
       "chapter_name": "Electric Fields",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2008%20-%20Electric%20Fields.pdf",
       "slos": [
         {
           "id": "phy11_ch8_1",
@@ -641,12 +642,12 @@
           "text": "Define electron volt.",
           "cognitive_level": "Knowledge"
         }
-      ],
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2009%20-%20Chapter%208%20-%20Electric%20Fields.pdf"
+      ]
     },
     {
       "chapter_number": 9,
       "chapter_name": "Capacitors",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2009%20-%20Capacitors.pdf",
       "slos": [
         {
           "id": "phy11_ch9_1",
@@ -678,12 +679,12 @@
           "text": "Prove that energy stored in a capacitor is 𝑊 = 𝟏\n𝟎 𝐶𝑍 and hence 𝐸 = 𝟏\n𝟎 𝐶𝑍𝟎",
           "cognitive_level": "Understanding"
         }
-      ],
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2010%20-%20Chapter%209%20-%20Capacitors.pdf"
+      ]
     },
     {
       "chapter_number": 10,
       "chapter_name": "D.C Circuits",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2010%20-%20D.C%20Circuits.pdf",
       "slos": [
         {
           "id": "phy11_ch10_1",
@@ -785,12 +786,12 @@
           "text": "Describe the function of potentiometer to measure and compare potentials without drawing any current from the circuit.",
           "cognitive_level": "Understanding"
         }
-      ],
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2011%20-%20Chapter%2010%20-%20D.C%20Circuits.pdf"
+      ]
     },
     {
       "chapter_number": 11,
       "chapter_name": "Oscillations",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2011%20-%20Oscillations.pdf",
       "slos": [
         {
           "id": "phy11_ch11_1",
@@ -862,12 +863,12 @@
           "text": "Describe qualitatively the factors which determine the frequency response and sharpness of the resonance.",
           "cognitive_level": "Understanding"
         }
-      ],
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2012%20-%20Chapter%2011%20-%20Oscillations.pdf"
+      ]
     },
     {
       "chapter_number": 12,
       "chapter_name": "Acoustics",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2012%20-%20Acoustics.pdf",
       "slos": [
         {
           "id": "phy11_ch12_1",
@@ -944,12 +945,12 @@
           "text": "Outline some cardiac problems that can be detected through the use of the Doppler’s effect.",
           "cognitive_level": "Knowledge"
         }
-      ],
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2013%20-%20Chapter%2012%20-%20Acoustics.pdf"
+      ]
     },
     {
       "chapter_number": 13,
       "chapter_name": "Physical Optics",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2013%20-%20Physical%20Optics.pdf",
       "slos": [
         {
           "id": "phy11_ch13_1",
@@ -1031,12 +1032,12 @@
           "text": "Measure the slit separation/ grating element ‘d’ of a diffraction grating by using the known wavelength of laser light.",
           "cognitive_level": "Application"
         }
-      ],
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2014%20-%20Chapter%2013%20-%20Physical%20Optics.pdf"
+      ]
     },
     {
       "chapter_number": 14,
       "chapter_name": "Communication",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2014%20-%20Communication.pdf",
       "slos": [
         {
           "id": "phy11_ch14_1",
@@ -1078,8 +1079,7 @@
           "text": "understand that the digital transmission of speech or music involves analogue-to-digital conversion (ADC) before transmission and digital-to-analogue conversion (DAC) after reception",
           "cognitive_level": "Understanding"
         }
-      ],
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2011/Physics/Chapter%2015%20-%20Chapter%2014%20-%20Communication.pdf"
+      ]
     }
   ]
 }

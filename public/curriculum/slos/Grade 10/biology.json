@@ -132,7 +132,7 @@
     {
       "chapter_number": 4,
       "chapter_name": "Reproduction",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2010/Biology/Chapter%2004%20-%20REPRODUCTION.pdf",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2010/Biology/Chapter%2005%20-%20REPRODUCTION.pdf",
       "slos": [
         {
           "id": "bio10_ch4_1",
@@ -174,7 +174,7 @@
     {
       "chapter_number": 5,
       "chapter_name": "Inheritance",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2010/Biology/Chapter%2005%20-%20INHERITANCE.pdf",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2010/Biology/Chapter%2006%20-%20INHERITANCE.pdf",
       "slos": [
         {
           "id": "bio10_ch5_1",
@@ -216,7 +216,6 @@
     {
       "chapter_number": 6,
       "chapter_name": "Evolution",
-      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2010/Biology/Chapter%2006%20-%20EVOLUTION.pdf",
       "slos": [
         {
           "id": "bio10_ch6_1",
