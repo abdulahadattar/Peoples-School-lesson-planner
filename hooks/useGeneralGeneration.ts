@@ -438,17 +438,31 @@ export const useGeneralGeneration = () => {
   }, [addLog]);
 
    const exportPlan = useCallback(async (plan: LessonPlan, teacherInfo: TeacherInfo, exportFormatOption?: UiExportFormat) => {
+    const isWeekly = (plan as WeeklyLessonPlan).isWeekly === true;
+    const fileName = formatFileName(`${plan.gradeLevel || ''} ${plan.subject || ''} ${plan.chapterName || ''}`.trim());
     try {
       const fmt = exportFormatOption || 'both';
-      if (fmt === 'docx') {
-        await exportAsDocx(plan, undefined, teacherInfo);
-      } else if (fmt === 'pdf') {
-        await exportAsPdf(plan, undefined, teacherInfo);
+      if (isWeekly) {
+        const weeklyPlan = plan as WeeklyLessonPlan;
+        if (fmt === 'docx') {
+          await exportWeeklyPlanAsDocx(weeklyPlan, fileName, teacherInfo);
+        } else if (fmt === 'pdf') {
+          await exportWeeklyPlanAsPdf(weeklyPlan, fileName, teacherInfo);
+        } else {
+          await exportWeeklyPlanAsDocx(weeklyPlan, fileName, teacherInfo);
+          await new Promise(resolve => setTimeout(resolve, 250));
+          await exportWeeklyPlanAsPdf(weeklyPlan, fileName, teacherInfo);
+        }
       } else {
-        // both
-        await exportAsDocx(plan, undefined, teacherInfo);
-        await new Promise(resolve => setTimeout(resolve, 250));
-        await exportAsPdf(plan, undefined, teacherInfo);
+        if (fmt === 'docx') {
+          await exportAsDocx(plan, undefined, teacherInfo);
+        } else if (fmt === 'pdf') {
+          await exportAsPdf(plan, undefined, teacherInfo);
+        } else {
+          await exportAsDocx(plan, undefined, teacherInfo);
+          await new Promise(resolve => setTimeout(resolve, 250));
+          await exportAsPdf(plan, undefined, teacherInfo);
+        }
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to export plan';
