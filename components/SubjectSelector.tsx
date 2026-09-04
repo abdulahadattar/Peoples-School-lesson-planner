@@ -16,9 +16,9 @@ import {
 import {
   autoSelectForTeacher,
   classesForTeacher,
-  filterTeachersBySelection,
   sortClassesByGrade,
   subjectsForTeacher,
+  teacherOptions,
 } from '../services/curriculumHelpers';
 
 interface SubjectSelectorProps {
@@ -127,8 +127,10 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
     [teachers, selectedTeacherId]
   );
 
-  const filteredTeachers = useMemo(
-    () => filterTeachersBySelection(teachers, selectedClassId, selectedSubjectId, classes),
+  // Full roster (matching class/subject first) so a teacher already chosen
+  // can always be switched without clearing class and subject first.
+  const teacherChoices = useMemo(
+    () => teacherOptions(teachers, selectedClassId, selectedSubjectId, classes),
     [teachers, selectedClassId, selectedSubjectId, classes]
   );
   const availableSubjects = useMemo(
@@ -187,13 +189,28 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
     onTeacherNameChange(teacher.name);
     onSchoolNameChange(teacher.schoolName);
 
-    // Reset dependent selections before auto-selecting
-    onSubjectChange('');
     onChapterChange('');
+    const auto = autoSelectForTeacher(teacher, classes, selectedClassId);
 
-    const { classId, subjectId } = autoSelectForTeacher(teacher, classes, selectedClassId);
-    if (classId) onClassChange(classId);
-    if (subjectId) onSubjectChange(subjectId);
+    // Keep the current class when this teacher teaches it; otherwise move to
+    // the teacher's auto/first class.
+    const classId =
+      selectedClassId && (teacher.classIds ?? []).includes(selectedClassId)
+        ? selectedClassId
+        : auto.classId || teacher.classIds?.[0] || '';
+    onClassChange(classId);
+
+    // Keep the current subject only if this teacher teaches it in that class;
+    // otherwise prefer the teacher's auto subject, else clear it so the
+    // teacher-narrowed subject dropdown drives the choice.
+    const teachable = subjectsForTeacher(classes, classId, teacher);
+    const subjectId =
+      teachable.some(s => s.id === selectedSubjectId) && selectedSubjectId
+        ? selectedSubjectId
+        : auto.subjectId && teachable.some(s => s.id === auto.subjectId)
+          ? auto.subjectId
+          : '';
+    onSubjectChange(subjectId);
   };
 
   const handleChapterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -291,14 +308,11 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
                   className="h-11"
                 >
                   <option value="">Choose a teacher...</option>
-                  {filteredTeachers.map(t => (
+                  {teacherChoices.map(t => (
                     <option key={t.id} value={t.id}>
                       {t.name} — {t.subjects.join(', ')}
                     </option>
                   ))}
-                  {filteredTeachers.length === 0 && teachers.length > 0 && (
-                    <option value="" disabled>No teachers match current filters</option>
-                  )}
                 </SelectField>
 
                 {selectedTeacher && (

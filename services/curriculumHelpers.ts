@@ -70,6 +70,23 @@ export function filterTeachersBySelection(
   return list;
 }
 
+/**
+ * Teacher dropdown options: the FULL roster with teachers matching the
+ * selected class/subject listed first (so narrowing never locks the list
+ * to a single teacher and the user can always switch).
+ */
+export function teacherOptions(
+  teachers: Teacher[],
+  classId: string,
+  subjectId: string,
+  classes: CurriculumClass[]
+): Teacher[] {
+  const matches = filterTeachersBySelection(teachers, classId, subjectId, classes);
+  if (matches.length === teachers.length) return teachers;
+  const matchedIds = new Set(matches.map(t => t.id));
+  return [...matches, ...teachers.filter(t => !matchedIds.has(t.id))];
+}
+
 /** Classes a teacher teaches (or all classes when the teacher has no classIds). */
 export function classesForTeacher(classes: CurriculumClass[], teacher: Teacher | null): CurriculumClass[] {
   if (teacher?.classIds?.length) {

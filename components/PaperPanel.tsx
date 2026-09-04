@@ -8,9 +8,9 @@ import { PaperConfig } from '../types';
 import {
   autoSelectForTeacher,
   classesForTeacher,
-  filterTeachersBySelection,
   sortClassesByGrade,
   subjectsForTeacher,
+  teacherOptions,
 } from '../services/curriculumHelpers';
 
 interface PaperPanelProps {
@@ -84,8 +84,10 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
     [teachers, selectedTeacherId]
   );
 
-  const filteredTeachers = useMemo(
-    () => filterTeachersBySelection(teachers, selectedClassId, selectedSubjectId, classes),
+  // Full roster (matching class/subject listed first) so the teacher can
+  // always be switched without clearing the class and subject first.
+  const teacherChoices = useMemo(
+    () => teacherOptions(teachers, selectedClassId, selectedSubjectId, classes),
     [teachers, selectedClassId, selectedSubjectId, classes]
   );
   const availableClasses = useMemo(() => classesForTeacher(classes, selectedTeacher), [classes, selectedTeacher]);
@@ -170,9 +172,27 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
     onSchoolNameChange(teacher.schoolName);
 
     setSelectedChapterId('');
-    const { classId, subjectId } = autoSelectForTeacher(teacher, classes, selectedClassId);
-    if (classId) setSelectedClassId(classId);
-    if (subjectId) setSelectedSubjectId(subjectId);
+    const auto = autoSelectForTeacher(teacher, classes, selectedClassId);
+
+    // Keep the current class when this teacher teaches it; otherwise move to
+    // the teacher's auto/first class.
+    const classId =
+      selectedClassId && (teacher.classIds ?? []).includes(selectedClassId)
+        ? selectedClassId
+        : auto.classId || teacher.classIds?.[0] || '';
+    setSelectedClassId(classId);
+
+    // Keep the current subject only if this teacher teaches it in that class;
+    // otherwise prefer the teacher's auto subject (single-subject teachers),
+    // else clear it so the teacher-narrowed subject list drives the choice.
+    const teachable = subjectsForTeacher(classes, classId, teacher);
+    const subjectId =
+      teachable.some(s => s.id === selectedSubjectId) && selectedSubjectId
+        ? selectedSubjectId
+        : auto.subjectId && teachable.some(s => s.id === auto.subjectId)
+          ? auto.subjectId
+          : '';
+    setSelectedSubjectId(subjectId);
   };
 
   const handleGenerate = () => {
@@ -234,14 +254,11 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
               className="h-11"
             >
               <option value="">-- Choose a teacher --</option>
-              {filteredTeachers.map(t => (
+              {teacherChoices.map(t => (
                 <option key={t.id} value={t.id}>
                   {t.name} — {t.subjects.join(', ')}
                 </option>
               ))}
-              {filteredTeachers.length === 0 && teachers.length > 0 && (
-                <option value="" disabled>No teachers match current filters</option>
-              )}
             </SelectField>
 
             {selectedTeacher && (
