@@ -153,6 +153,9 @@ export function useSelection({ teachers, onChapterChange }: UseSelectionOptions)
     if (!nextTeacher) {
       setTeacherName('');
       setSchoolName('');
+      setChapterId('');
+      setSubjectId('');
+      onChapterChange?.('');
       return;
     }
 
