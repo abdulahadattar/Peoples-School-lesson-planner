@@ -83,11 +83,14 @@ const App: React.FC = () => {
   // Load chapter SLOs when chapter changes
   useEffect(() => {
     if (selectedClassId && selectedSubjectId && selectedChapterId) {
+      setSelectedSloIds([]);
+      const abortController = new AbortController();
+
       setIsLoadingSlos(true);
       const gradeNum = parseInt(selectedClassId.replace('class', ''), 10);
       const gradeName = `Grade ${gradeNum}`;
 
-      fetch(`/curriculum/slos/${gradeName}/${selectedSubjectId}.json`)
+      fetch(`/curriculum/slos/${gradeName}/${selectedSubjectId}.json`, { signal: abortController.signal })
         .then(res => res.ok ? res.json() : null)
         .then(data => {
           if (!data) {
@@ -109,10 +112,18 @@ const App: React.FC = () => {
           }
         })
         .catch(err => {
-          console.error('Failed to load chapter SLOs:', err);
-          setChapterSlos([]);
+          if (err.name !== 'AbortError') {
+            console.error('Failed to load chapter SLOs:', err);
+            setChapterSlos([]);
+          }
         })
-        .finally(() => setIsLoadingSlos(false));
+        .finally(() => {
+          if (!abortController.signal.aborted) {
+            setIsLoadingSlos(false);
+          }
+        });
+
+      return () => abortController.abort();
     } else {
       setChapterSlos([]);
       setSelectedSloIds([]);
