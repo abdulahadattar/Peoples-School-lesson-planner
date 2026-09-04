@@ -36,6 +36,15 @@ def colnum(ref: str) -> int:
     return n
 
 
+def col_to_letter(col: int) -> str:
+    result = ''
+    while col > 0:
+        col -= 1
+        result = chr(65 + col % 26) + result
+        col //= 26
+    return result
+
+
 def load_sheet(zf: zipfile.ZipFile, name: str) -> dict:
     with zf.open(name) as f:
         root = ET.parse(f).getroot()
@@ -137,10 +146,10 @@ def parse_sheet(zf: zipfile.ZipFile, name: str) -> dict | None:
 
     periods = []
     for r in range(header_row + 1, header_row + 40):
-        t = cells.get(f'{chr(64 + time_col)}{r}', '').strip()
-        s_no = cells.get(f'{chr(64 + s_no_col)}{r}', '').strip() if s_no_col else ''
+        t = cells.get(f'{col_to_letter(time_col)}{r}', '').strip()
+        s_no = cells.get(f'{col_to_letter(s_no_col)}{r}', '').strip() if s_no_col else ''
         day_vals = {
-            DAY_SHORT[d]: cells.get(f'{chr(64 + c)}{r}', '').strip()
+            DAY_SHORT[d]: cells.get(f'{col_to_letter(c)}{r}', '').strip()
             for d, c in day_cols.items()
         }
         if 'break' in f'{t} {s_no}'.lower():

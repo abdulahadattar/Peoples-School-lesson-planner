@@ -141,7 +141,7 @@ export function resolveByName(raw: string, teachers: Teacher[]): Teacher | null 
   return (
     teachers.find(t => {
       const tn = nameKey(t.name);
-      return tn === key || tn.startsWith(key + ' ') || tn.startsWith(key);
+      return tn === key || tn.startsWith(key + ' ');
     }) ?? null
   );
 }

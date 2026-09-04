@@ -138,6 +138,7 @@ export function locatePeriod(entry: TimetableClassEntry, day: DayKey, minutes: n
   const times = entry.periods.map(p => periodTimeRange(p, day));
   for (let i = 0; i < times.length; i++) {
     const { start, end } = times[i];
+    if (Number.isNaN(start) || Number.isNaN(end)) continue;
     if (minutes >= start && minutes < end) {
       return { index: i, state: 'in', label: `Period ${entry.periods[i].no}` };
     }

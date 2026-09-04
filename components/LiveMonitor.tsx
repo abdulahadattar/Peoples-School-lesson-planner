@@ -260,10 +260,9 @@ const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => {
   const livePeriodIndex = useMemo(() => {
     if (!timetable || !liveDay) return -1;
     const minutes = now.getHours() * 60 + now.getMinutes();
-    const entry = timetable.classes[0];
-    const loc = locatePeriod(entry, liveDay, minutes);
-    return loc.index;
-  }, [timetable, liveDay, now]);
+    const idx = schedule.findIndex(p => minutes >= p.startMin && minutes < p.endMin);
+    return idx >= 0 ? idx : -1;
+  }, [timetable, liveDay, now, schedule]);
 
   // Effective period index across the grid
   const periodIndex = previewPeriod ?? livePeriodIndex;

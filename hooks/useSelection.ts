@@ -54,16 +54,13 @@ interface UseSelectionOptions {
   onChapterChange?: (chapterId: string) => void;
 }
 
-const DEFAULT_TEACHER_NAME = 'Abdul Ahad';
-const DEFAULT_SCHOOL_NAME = 'Peoples Higher Secondary School Jamshoro';
-
 export function useSelection({ teachers, onChapterChange }: UseSelectionOptions): SelectionApi {
   const [classId, setClassId] = useState('');
   const [subjectId, setSubjectId] = useState('');
   const [chapterId, setChapterId] = useState('');
   const [teacherId, setTeacherId] = useState('');
-  const [teacherName, setTeacherName] = useState(DEFAULT_TEACHER_NAME);
-  const [schoolName, setSchoolName] = useState(DEFAULT_SCHOOL_NAME);
+  const [teacherName, setTeacherName] = useState('');
+  const [schoolName, setSchoolName] = useState('');
 
   const classes = useMemo(() => sortClassesByGrade(curriculumData.classes), []);
   const teacher = useMemo(() => teachers.find(t => t.id === teacherId) || null, [teachers, teacherId]);

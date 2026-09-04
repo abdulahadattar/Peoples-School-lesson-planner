@@ -92,7 +92,7 @@ export async function generateExamPaper(
     - Section C (Long Questions): generate exactly ${longQuestionCount} long questions x 4 marks each; students attempt any ${attemptLong} of them = ${longMarks} marks
     - The optional (non-attempted) questions ${shortQuestionCount - attemptShort > 0 ? `(${shortQuestionCount - attemptShort} short and ` : ''}${longQuestionCount - attemptLong > 0 ? `${longQuestionCount - attemptLong} long` : ''}${shortQuestionCount - attemptShort > 0 || longQuestionCount - attemptLong > 0 ? ')' : ''} still appear on the paper for choice.
 5.  **No per-question marks:** Never place mark values inside individual questions. Marks appear ONLY in each section's instruction line, e.g. "Answer any ${attemptShort} of the ${shortQuestionCount} questions. Each question carries 2 marks." When a section requires every question, write "Answer all questions. Each question carries N marks."
-5.  **MANDATORY JSON OUTPUT:** The output must ONLY be a valid JSON object matching the provided schema. Do not add any extra text or markdown.
+6.  **MANDATORY JSON OUTPUT:** The output must ONLY be a valid JSON object matching the provided schema. Do not add any extra text or markdown.
 6.  **EQUATIONS — ONLY for real math, NEVER for text:** Wrap mathematical equations, formulas and expressions in LaTeX delimiters, and NOTHING else:
     - Inline equations use single dollar signs: $E = mc^2$, $PV = nRT$, $F = ma$
     - Display equations use double dollar signs: $$\frac{3}{2}kT$$
