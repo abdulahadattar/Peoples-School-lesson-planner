@@ -32,15 +32,17 @@ export const physicsCurriculum: CurriculumClass[] = [
         id: 'physics',
         name: 'Physics',
         chapters: [
-          { id: 'ch1', name: 'Simple Harmonic Motion and Waves', slos: [] },
+          { id: 'ch1', name: 'General Wave Properties', slos: [] },
           { id: 'ch2', name: 'Sound', slos: [] },
-          { id: 'ch3', name: 'Electrostatics', slos: [] },
-          { id: 'ch4', name: 'Current Electricity', slos: [] },
-          { id: 'ch5', name: 'Electromagnetism', slos: [] },
-          { id: 'ch6', name: 'Introductory Electronics', slos: [] },
-          { id: 'ch7', name: 'Information and Communication Technology', slos: [] },
-          { id: 'ch8', name: 'Atomic Structure', slos: [] },
-          { id: 'ch9', name: 'Nuclear Physics', slos: [] },
+          { id: 'ch3', name: 'Electromagnetic Spectrum', slos: [] },
+          { id: 'ch4', name: 'Geometrical Optics', slos: [] },
+          { id: 'ch5', name: 'Electrostatics', slos: [] },
+          { id: 'ch6', name: 'Current Electricity', slos: [] },
+          { id: 'ch7', name: 'Electromagnetism', slos: [] },
+          { id: 'ch8', name: 'Introductory Electronics', slos: [] },
+          { id: 'ch9', name: 'Information and Communication Technology', slos: [] },
+          { id: 'ch10', name: 'Atomic Structure', slos: [] },
+          { id: 'ch11', name: 'Nuclear Structure', slos: [] },
         ]
       }
     ]

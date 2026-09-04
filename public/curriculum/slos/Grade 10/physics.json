@@ -1,0 +1,833 @@
+{
+  "subject": "physics",
+  "grade": "Grade 10",
+  "total_chapters": 11,
+  "chapters": [
+    {
+      "chapter_number": 1,
+      "chapter_name": "General Wave Properties",
+      "slos": [
+        {
+          "id": "phy10_ch1_1",
+          "text": "Describe wave motion as illustrated by vibrations in rope, slinky spring and by experiments with water waves",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch1_2",
+          "text": "Identify transverse and longitudinal waves in mechanical media, slinky and springs",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch1_3",
+          "text": "Describe that waves are means of energy transfer without transfer of matter",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch1_4",
+          "text": "Distinguish between mechanical and electromagnetic waves",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch1_5",
+          "text": "Describe properties of waves such as reflection, refraction and diffraction with the help of ripple tank",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch1_6",
+          "text": "Define the terms speed (v), frequency (f), wavelength (λ), time period (T), amplitude, crest, trough, cycle, wave front, compression and rarefaction",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch1_7",
+          "text": "Solve problems by applying the relation f = 1/T and v = f λ",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy10_ch1_8",
+          "text": "State the conditions necessary for an object to oscillate with SHM",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch1_9",
+          "text": "Explain SHM with simple pendulum, ball and bowl examples.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch1_10",
+          "text": "Draw forces acting on a displaced pendulum",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch1_11",
+          "text": "Solve problems by using the formula T = 2π √l /g for simple pendulum",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy10_ch1_12",
+          "text": "Understand that damping progressively reduces the amplitude of oscillation",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 2,
+      "chapter_name": "Sound",
+      "slos": [
+        {
+          "id": "phy10_ch2_1",
+          "text": "Describe the production of sound by vibrating sources.",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch2_2",
+          "text": "Describe the longitudinal nature of sound waves and describe compression and rarefaction.",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch2_3",
+          "text": "Explain why a medium is required in order to transmit sound waves and describe an experiment to demonstrate this.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch2_4",
+          "text": "Describe a direct method for the determination of the speed of sound in air and make the necessary calculation.",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy10_ch2_5",
+          "text": "State the order of magnitude of the speeds of sound in air, liquids and solids.",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch2_6",
+          "text": "Describe the factors which affects the speed of sound (temperature, humidity etc.)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch2_7",
+          "text": "Describe how the shape of a sound wave as demonstrated by an oscilloscope is affected by the quality (timbre) of the sound wave",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch2_8",
+          "text": "Explain that noise is a nuisance.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch2_9",
+          "text": "Define ultrasound.",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch2_10",
+          "text": "Describe how the reflection of sound may produce an echo.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch2_11",
+          "text": "Describe how ultrasound techniques are used in medical and industry.",
+          "cognitive_level": "Knowledge"
+        }
+      ]
+    },
+    {
+      "chapter_number": 3,
+      "chapter_name": "Electromagnetic Spectrum",
+      "slos": [
+        {
+          "id": "phy10_ch3_1",
+          "text": "Describe the dispersion of light as illustrated by the action on light of a glass prism.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch3_2",
+          "text": "State the colours of the spectrum and explain how the colours are related to frequency/wavelength.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch3_3",
+          "text": "Describe the behavior of light when passing through water droplets.",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch3_4",
+          "text": "State that all electromagnetic waves travel with the same high speed in air and state the magnitude of that speed.",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch3_5",
+          "text": "Describe the main components of the electromagnetic spectrum.",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch3_6",
+          "text": "Discuss the role of the following: (i) radio waves – radio and television communications, (ii) microwaves – satellite television and telephone, (iii) infra-red – household electrical appliances, television controllers and intruder alarms, (iv) light – optical fibers in medical uses and telephone, (v) ultra-violet – sunbeds, fluorescent tubes and sterilization, (vi) X -rays – hospital use in medical imaging and killing cancerous cells, and engineering applications such as detecting cracks in metal, (vii) gamma rays – medical treatment in killing cancerous cells, and engineering applications such as detecting cracks in metal",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 4,
+      "chapter_name": "Geometrical Optics",
+      "slos": [
+        {
+          "id": "phy10_ch4_1",
+          "text": "Describe the terms used in reflection including normal, angle of incidence, angle of reflection and state laws of reflection",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch4_2",
+          "text": "Solve problems of image location by spherical mirrors by using mirror formula.",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy10_ch4_3",
+          "text": "Describe the use of spherical mirrors for safe driving, blind turns on hilly roads, dentist mirror.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch4_4",
+          "text": "Define the terminology for the angle of incidence i and angle of refraction r and describe the passage of light through parallel-sided transparent material.",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch4_5",
+          "text": "Solve problems by using the equation sin i /sin r = n (refractive index)",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy10_ch4_6",
+          "text": "State the conditions for total internal reflection",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch4_7",
+          "text": "Describe how total internal reflection is used in light propagation through optical-fibres",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch4_8",
+          "text": "Describe the use of optical fibres in telecommunications and medical field and state the advantages of their use.",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch4_9",
+          "text": "Describe the passage of light through a glass prism.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch4_10",
+          "text": "Describe how light is refracted through lenses.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch4_11",
+          "text": "Define power of a lens and its unit.",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch4_12",
+          "text": "Solve problems of image location by lenses using lens formula.",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy10_ch4_13",
+          "text": "Describe the use of a single lens as a magnifying glass and in a camera, projector and photographic enlarger and draw ray diagrams to show how each forms an image.",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch4_14",
+          "text": "Define the terms resolving power and magnifying power of lens.",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch4_15",
+          "text": "Draw ray diagram of simple microscope and mention its magnifying power.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch4_16",
+          "text": "Draw ray diagram of compound microscope and mention its magnifying power.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch4_17",
+          "text": "Describe the exploration of the world of microorganism by using microscopes and of distant celestial bodies by telescopes",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch4_18",
+          "text": "Draw ray diagram of a telescope and mention its magnifying power",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch4_19",
+          "text": "Describe the correction of short-sight and long-sight",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch4_20",
+          "text": "Describe the use of lenses/ contact lenses for rectifying vision defects of the human eye.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch4_21",
+          "text": "Draw ray diagrams to show the formation of images in the normal eye, a short-sighted eye and a long-sighted eye",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 5,
+      "chapter_name": "Electrostatics",
+      "slos": [
+        {
+          "id": "phy10_ch5_1",
+          "text": "Describe simple experiments to show the production and detection of electric charge",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch5_2",
+          "text": "Demonstrate the existence of different kind of charges.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch5_3",
+          "text": "Describe experiments to show electrostatic charging by induction.",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch5_4",
+          "text": "State that there are positive and negative charges.",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch5_5",
+          "text": "Describe the construction and working principle of electroscope.",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch5_6",
+          "text": "Detect the type of charge on a body using an electroscope.",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy10_ch5_7",
+          "text": "Demonstrate that like charges repel each other and unlike charges attract each other using an electroscope.",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy10_ch5_8",
+          "text": "State Coulomb’s law.",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch5_9",
+          "text": "Solve problems on electrostatic charges by using Formula F=kq1q2/r2",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy10_ch5_10",
+          "text": "Define electric field and electric field intensity.",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch5_11",
+          "text": "Sketch the electric field lines for an isolated +ve and –ve point charges.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch5_12",
+          "text": "Solve problems using equation E=F/q0",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy10_ch5_13",
+          "text": "Describe the concept of electrostatic potential.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch5_14",
+          "text": "Define the unit “volt”.",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch5_15",
+          "text": "Describe potential difference as energy transfer per unit charge.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch5_16",
+          "text": "Describe one situation in which static electricity is dangerous and the precautions taken to ensure that static electricity is discharged safely",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch5_17",
+          "text": "Describe the use of electrostatic charging (e.g. spraying of paint and dust extraction).",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch5_18",
+          "text": "Describe that the capacitor is charge storing device.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch5_19",
+          "text": "Define capacitance and its unit.",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch5_20",
+          "text": "Explain importance of effective capacitance of a number of capacitors connected in series and in parallel.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch5_21",
+          "text": "Apply the formula for the effective capacitance of a number of capacitors connected in series and in parallel to solve related problems",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy10_ch5_22",
+          "text": "List the use of capacitors in various electrical appliances.",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 6,
+      "chapter_name": "Current Electricity",
+      "slos": [
+        {
+          "id": "phy10_ch6_1",
+          "text": "Define electric current.",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch6_2",
+          "text": "Describe the concept of conventional current",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch6_3",
+          "text": "Understand the potential difference across a circuit component and name its unit",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch6_4",
+          "text": "Describe Ohm’s law and its limitations",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch6_5",
+          "text": "Define resistance and its unit.",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch6_6",
+          "text": "Explain the under lying principles in the working of volume controls of radio and T.V",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch6_7",
+          "text": "Calculate the effective resistance of a number of resistances connected in series and also in parallel.",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy10_ch6_8",
+          "text": "Describe the factors affecting the resistances of a metallic conductor",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch6_9",
+          "text": "Distinguish between conductors and insulators",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch6_10",
+          "text": "Sketch and interpret the V-I characteristics graph for a metallic conductor, a filament lamp and a thermistor",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy10_ch6_11",
+          "text": "Describe how energy is dissipated in a resistance and explain Joule’s law.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch6_12",
+          "text": "Apply the equation E=I.Vt = I2Rt = V2 t/R to solve numerical problem.",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy10_ch6_13",
+          "text": "Calculate the cost of energy when given the cost per kWh.",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy10_ch6_14",
+          "text": "Identify circuit components such as switches, resistors batteries transducers, LDRs, Thermistors and capacitors, Relays and diodes, LEDs.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch6_15",
+          "text": "Identify the symbols of circuit components and colour codes on resistors",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch6_16",
+          "text": "Construct simple series (single path) and parallel circuits (multiple paths).",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch6_17",
+          "text": "State the functions of the live, neutral and earth wires in the domestic main supply.",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch6_18",
+          "text": "Predict the behavior of light bulbs in series and parallel circuit such as for celebration lights.",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy10_ch6_19",
+          "text": "Describe the use of electrical measuring devices like galvanometer, ammeter and voltmeter (construction and working principles not required).",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy10_ch6_20",
+          "text": "Explain Alternating Current AC",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch6_21",
+          "text": "Describe hazards of electricity (damage insulation, overheating of cables, damp conditions).",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch6_22",
+          "text": "Explain the use of safety measures in household electricity, (fuse, circuit breaker, earth wire).",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch6_23",
+          "text": "Describe the damages of an electric shock from appliances on the human body.",
+          "cognitive_level": "Knowledge"
+        }
+      ]
+    },
+    {
+      "chapter_number": 7,
+      "chapter_name": "Electromagnetism",
+      "slos": [
+        {
+          "id": "phy10_ch7_1",
+          "text": "Explain by describing an experiment that an electric current in a conductor produces a magnetic field around it.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch7_2",
+          "text": "Define Magnetic field",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch7_3",
+          "text": "Sketch the lines of magnetic force",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch7_4",
+          "text": "Describe that a force acts on a current carrying conductor placed in a magnetic field as long as the conductor is not parallel to the magnetic field",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch7_5",
+          "text": "State that a current carrying coil in a magnetic field experiences a torque.",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch7_6",
+          "text": "Relate the turning effect on a coil to the action of a D.C. motor",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy10_ch7_7",
+          "text": "Describe an experiment to show that a changing magnetic field can induce e.m.f. in a circuit.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch7_8",
+          "text": "List factors affecting the magnitude of an induced e.m.f.",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy10_ch7_9",
+          "text": "Explain that the direction of an induced e.m.f opposes the change causing it and relate this phenomenon to conservation of energy",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch7_10",
+          "text": "Describe a simple form of A.C generator.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch7_11",
+          "text": "Describe mutual induction and state its units",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch7_12",
+          "text": "Identify that a transformer works on the principle of mutual induction between two coils",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch7_13",
+          "text": "Describe the purpose of transformers in A.C circuits",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch7_14",
+          "text": "Identify the role of transformers in power transmission from power station to your house.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch7_15",
+          "text": "List the use of transformer (step – up and step-down) for various purposes in your home",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 8,
+      "chapter_name": "Introductory Electronics",
+      "slos": [
+        {
+          "id": "phy10_ch8_1",
+          "text": "Identify by quoting examples that the modern world is the world of digital electronics.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch8_2",
+          "text": "Identify that the computers are the forefront of electronic technology.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch8_3",
+          "text": "Realize that electronics is shifting from low-tech electrical appliances to high-tech electronic appliances",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch8_4",
+          "text": "Differentiate between analogue and digital electronics.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch8_5",
+          "text": "Explain the process of thermionic emission emitted from a filament.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch8_6",
+          "text": "Describe the simple construction and use of an electron gun as a source of electron beam.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch8_7",
+          "text": "Describe the effect of electric field on an electron beam.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch8_8",
+          "text": "Describe the effect of magnetic field on an electron beam.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch8_9",
+          "text": "Describe the basic principle of CRO and make a list of its uses.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch8_10",
+          "text": "State the basic operations of digital electronics.",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch8_11",
+          "text": "Identify and draw the symbols for the logic gates (NOT, OR, AND, NOR and NAND).",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch8_12",
+          "text": "State the action of the logic gates in truth table form.",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch8_13",
+          "text": "Describe the simple uses of logic gates.",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 9,
+      "chapter_name": "Information and Communication Technology",
+      "slos": [
+        {
+          "id": "phy10_ch9_1",
+          "text": "Describe the components of information technology.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch9_2",
+          "text": "Analyze and describe the energy transformations that occur in cell phone photo phone and fax machine",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch9_3",
+          "text": "Explain briefly the transmission of electric signals through wires",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch9_4",
+          "text": "radio waves through air light signals through optical fibres",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch9_5",
+          "text": "Describe function and use of fax machine, cell phone, photo phone and computer.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch9_6",
+          "text": "Make a list of the use of E-mail and internet.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch9_7",
+          "text": "Describe the use of information storage devices such as audio cassettes, video cassettes, hard discs, floppy, compact discs and flash drive.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch9_8",
+          "text": "Identify the functions of word processing, data managing, monitoring and controlling",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 10,
+      "chapter_name": "Atomic Structure",
+      "slos": [
+        {
+          "id": "phy10_ch10_1",
+          "text": "Describe the structure of an atom in terms of a nucleus and electrons",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch10_2",
+          "text": "Describe evidence for the nuclear model of the atom",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch10_3",
+          "text": "Describe the composition of the nucleus in terms protons and neutrons",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch10_4",
+          "text": "Explain that number of protons in a nucleus distinguishes one element from the other.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch10_5",
+          "text": "Represent various nuclides by using the symbol of proton number Z, nucleon number A and the nuclide notion X",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch10_6",
+          "text": "Use the term isotope",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 11,
+      "chapter_name": "Nuclear Structure",
+      "slos": [
+        {
+          "id": "phy10_ch11_1",
+          "text": "Explain that some nuclei are unstable, give out radiation to get rid of excess energy and are said to be radioactive.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch11_2",
+          "text": "Describe that the three types of radiation are α, β & γ.",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "phy10_ch11_3",
+          "text": "State, for radioactive emissions: (i)their nature (ii)their relative ionizing effects. (iii)their relative penetrating abilities",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch11_4",
+          "text": "Explain that an element may change into another element when radioactivity occurs.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch11_5",
+          "text": "Represent changes in the composition of the nucleus by symbolic equation when alpha or beta particles are emitted.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch11_6",
+          "text": "Describe sources of background radiations and artificial radiations.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch11_7",
+          "text": "Describe that radioactive emission occur randomly over space and time.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch11_8",
+          "text": "Explain the meaning of half-life of a radioactive material.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch11_9",
+          "text": "Make calculation based on half-life which might involve information in tables or shown by decay curves.",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy10_ch11_10",
+          "text": "Determine the half-life of a sample of radioactive material by using a graph of number of radioactive nuclei or activity versus time.",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy10_ch11_11",
+          "text": "Make estimation of age of ancient objects by the process of carbon dating.",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "phy10_ch11_12",
+          "text": "Describe what are radio isotopes. What makes them useful for various applications?",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch11_13",
+          "text": "Describe the application of radioisotopes in medical, agriculture and industrial fields.",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch11_14",
+          "text": "Describe briefly the process of fission and fusion",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "phy10_ch11_15",
+          "text": "Describe how radioactive materials are handled, used, stored and disposed of, in a safe way.",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    }
+  ]
+}
