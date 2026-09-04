@@ -111,6 +111,7 @@ export function useSelection({ teachers, onChapterChange }: UseSelectionOptions)
   const handleClassChange = (newClassId: string) => {
     setClassId(newClassId);
     setChapterId('');
+    onChapterChange?.('');
     // Unrestricted teachers (no subject scopes) teach everywhere — keep them selected.
     if (teacher && newClassId && teacher.subjects.length > 0 && !teachesClass(teacher, newClassId)) {
       deselectTeacher();
