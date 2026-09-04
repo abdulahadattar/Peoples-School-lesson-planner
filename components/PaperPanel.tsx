@@ -1,26 +1,14 @@
 import React, { useState, useMemo } from 'react';
-import { curriculumData } from '../curriculum';
-import { Teacher } from '../types';
+import { PaperConfig } from '../types';
+import { SelectionApi } from '../hooks/useSelection';
 import SelectField from './ui/SelectField';
 import Spinner from './ui/Spinner';
-import { DocumentTextIcon, GraduationCapIcon, BookOpenIcon, ClipboardListIcon, SchoolIcon, SparklesIcon, UserIcon } from './icons/MiscIcons';
-import { PaperConfig } from '../types';
-import {
-  autoSelectForTeacher,
-  classesForTeacher,
-  sortClassesByGrade,
-  subjectsForTeacher,
-  teacherOptions,
-} from '../services/curriculumHelpers';
+import { DocumentTextIcon, GraduationCapIcon, BookOpenIcon, ClipboardListIcon, SparklesIcon, UserIcon } from './icons/MiscIcons';
 
 interface PaperPanelProps {
   onGeneratePaper: (config: PaperConfig) => void;
   isGenerating: boolean;
-  teachers: Teacher[];
-  selectedTeacherId: string;
-  onSelectedTeacherIdChange: (id: string) => void;
-  onTeacherNameChange: (name: string) => void;
-  onSchoolNameChange: (name: string) => void;
+  selection: SelectionApi;
 }
 
 const clampNumber = (value: string, min: number, max: number): number => {
@@ -58,15 +46,28 @@ const NumberField: React.FC<{
 const PaperPanel: React.FC<PaperPanelProps> = ({
   onGeneratePaper,
   isGenerating,
-  teachers,
-  selectedTeacherId,
-  onSelectedTeacherIdChange,
-  onTeacherNameChange,
-  onSchoolNameChange,
+  selection,
 }) => {
-  const [selectedClassId, setSelectedClassId] = useState<string>('');
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
-  const [selectedChapterId, setSelectedChapterId] = useState<string>('');
+  const {
+    classId: selectedClassId,
+    subjectId: selectedSubjectId,
+    chapterId: selectedChapterId,
+    teacherId: selectedTeacherId,
+    teacher: selectedTeacher,
+    classes,
+    teacherChoices,
+    availableClasses,
+    availableSubjects,
+    chapters,
+    selectedClass,
+    selectedSubject,
+    selectedChapter,
+    handleClassChange,
+    handleSubjectChange,
+    handleChapterChange,
+    handleTeacherChange,
+  } = selection;
+
   const [totalMarks, setTotalMarks] = useState<number>(23);
   const [mcqCount, setMcqCount] = useState<number>(5);
   // Short/long questions the paper LISTS; students attempt any `shortAttemptCount`
@@ -77,38 +78,6 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
   const [longAttemptCount, setLongAttemptCount] = useState<number>(2);
   const [durationMinutes, setDurationMinutes] = useState<number>(60);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
-
-  const classes = useMemo(() => sortClassesByGrade(curriculumData.classes), []);
-  const selectedTeacher = useMemo(
-    () => teachers.find(t => t.id === selectedTeacherId) || null,
-    [teachers, selectedTeacherId]
-  );
-
-  // Full roster (matching class/subject listed first) so the teacher can
-  // always be switched without clearing the class and subject first.
-  const teacherChoices = useMemo(
-    () => teacherOptions(teachers, selectedClassId, selectedSubjectId, classes),
-    [teachers, selectedClassId, selectedSubjectId, classes]
-  );
-  const availableClasses = useMemo(() => classesForTeacher(classes, selectedTeacher), [classes, selectedTeacher]);
-  const availableSubjects = useMemo(
-    () => subjectsForTeacher(classes, selectedClassId, selectedTeacher),
-    [classes, selectedClassId, selectedTeacher]
-  );
-
-  const selectedClass = useMemo(
-    () => classes.find(c => c.id === selectedClassId) || null,
-    [classes, selectedClassId]
-  );
-  const selectedSubject = useMemo(
-    () => availableSubjects.find(s => s.id === selectedSubjectId) || null,
-    [availableSubjects, selectedSubjectId]
-  );
-  const chapters = useMemo(() => selectedSubject?.chapters || [], [selectedSubject]);
-  const selectedChapter = useMemo(
-    () => chapters.find(c => c.id === selectedChapterId) || null,
-    [chapters, selectedChapterId]
-  );
 
   const markDistribution = useMemo(() => {
     const MCQ_WEIGHT = 1;
@@ -134,63 +103,6 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
       totalQuestionMarks,
     };
   }, [mcqCount, shortQuestionCount, shortAttemptCount, longQuestionCount, longAttemptCount]);
-
-  const deselectTeacher = () => {
-    onSelectedTeacherIdChange('');
-    onTeacherNameChange('');
-  };
-
-  const handleClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newClassId = e.target.value;
-    setSelectedClassId(newClassId);
-    setSelectedSubjectId('');
-    setSelectedChapterId('');
-    if (selectedTeacher && newClassId && selectedTeacher.classIds && selectedTeacher.classIds.length > 0 && !selectedTeacher.classIds.includes(newClassId)) {
-      deselectTeacher();
-    }
-  };
-
-  const handleSubjectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newSubjectId = e.target.value;
-    setSelectedSubjectId(newSubjectId);
-    setSelectedChapterId('');
-    if (selectedTeacher && newSubjectId && selectedTeacher.subjects && selectedTeacher.subjects.length > 0 && !selectedTeacher.subjects.some(s => s.toLowerCase() === newSubjectId.toLowerCase())) {
-      deselectTeacher();
-    }
-  };
-
-  const handleTeacherChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const teacherId = e.target.value;
-    onSelectedTeacherIdChange(teacherId);
-    const teacher = teachers.find(t => t.id === teacherId);
-    if (!teacher) {
-      onTeacherNameChange('');
-      return;
-    }
-
-    onTeacherNameChange(teacher.name);
-    onSchoolNameChange(teacher.schoolName);
-
-    setSelectedChapterId('');
-    const auto = autoSelectForTeacher(teacher, classes, selectedClassId);
-
-    const classId = (!teacher.classIds || teacher.classIds.length === 0)
-      ? selectedClassId
-      : selectedClassId && (teacher.classIds ?? []).includes(selectedClassId)
-        ? selectedClassId
-        : auto.classId || teacher.classIds?.[0] || '';
-    setSelectedClassId(classId);
-
-    const teachable = subjectsForTeacher(classes, classId, teacher);
-    const subjectId = (!teacher.subjects || teacher.subjects.length === 0)
-      ? selectedSubjectId
-      : teachable.some(s => s.id === selectedSubjectId) && selectedSubjectId
-        ? selectedSubjectId
-        : auto.subjectId && teachable.some(s => s.id === auto.subjectId)
-          ? auto.subjectId
-          : '';
-    setSelectedSubjectId(subjectId);
-  };
 
   const handleGenerate = () => {
     const config: PaperConfig = {
@@ -247,7 +159,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
               label="Select Teacher"
               icon={<UserIcon className="w-3.5 h-3.5" />}
               value={selectedTeacherId}
-              onChange={handleTeacherChange}
+              onChange={e => handleTeacherChange(e.target.value)}
               className="h-11"
             >
               <option value="">-- Choose a teacher --</option>
@@ -276,7 +188,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
               label="Select Class"
               icon={<GraduationCapIcon className="w-3.5 h-3.5" />}
               value={selectedClassId}
-              onChange={handleClassChange}
+              onChange={e => handleClassChange(e.target.value)}
             >
               <option value="">-- Choose a class --</option>
               {(selectedTeacher ? availableClasses : classes).map(cls => (
@@ -289,7 +201,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
               label="Select Subject"
               icon={<BookOpenIcon className="w-3.5 h-3.5" />}
               value={selectedSubjectId}
-              onChange={handleSubjectChange}
+              onChange={e => handleSubjectChange(e.target.value)}
               disabled={!selectedClassId}
             >
               <option value="">-- Choose a subject --</option>
@@ -303,7 +215,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
               label="Select Chapter"
               icon={<ClipboardListIcon className="w-3.5 h-3.5" />}
               value={selectedChapterId}
-              onChange={e => setSelectedChapterId(e.target.value)}
+              onChange={e => handleChapterChange(e.target.value)}
               disabled={!selectedSubjectId}
             >
               <option value="">-- Choose a chapter --</option>

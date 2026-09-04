@@ -13,6 +13,7 @@
  * the class simultaneously; that is NOT a clash.
  */
 import { Teacher } from '../types';
+import { isKnownSubject, normalizeSubject, resolveByName, resolveTeacher } from './teacherRoster';
 
 export type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat';
 
@@ -165,92 +166,7 @@ export function standardSchedule(classes: TimetableClassEntry[]) {
   }));
 }
 
-/* ── Subject normalisation ─────────────────────────────────────── */
-
-const SUBJECT_ALIASES: Record<string, string> = {
-  maths: 'Mathematics',
-  math: 'Mathematics',
-  sci: 'Science',
-  science: 'Science',
-  's.s': 'Social Studies',
-  's.st': 'Social Studies',
-  's.s.t': 'Social Studies',
-  sst: 'Social Studies',
-  'social studies': 'Social Studies',
-  islam: 'Islamiat',
-  islamiat: 'Islamiat',
-  islamiyat: 'Islamiat',
-  art: 'Art',
-  'p.e': 'P.E',
-  pe: 'P.E',
-  'eng lib': 'Library',
-  lib: 'Library',
-  library: 'Library',
-  urdu: 'Urdu',
-  sindhi: 'Sindhi',
-  english: 'English',
-  physics: 'Physics',
-  chemistry: 'Chemistry',
-  biology: 'Biology',
-  ict: 'ICT',
-  pst: 'Pak Studies',
-  'p.st': 'Pak Studies',
-  'pak studies': 'Pak Studies',
-  'pakistan studies': 'Pak Studies',
-};
-
-/**
- * Normalize a raw subject string to its canonical name using known aliases.
- */
-export function normalizeSubject(raw: string): string {
-  const key = raw.trim().toLowerCase().replace(/\s+/g, ' ');
-  return SUBJECT_ALIASES[key] ?? raw.trim();
-}
-
-/* ── Class-section -> teacher matching ─────────────────────────── */
-
-const SECTION_TO_CLASS: Record<string, string> = {
-  'IV-A': 'class4', 'IV-B': 'class4',
-  V: 'class5',
-  'VI-A': 'class6', 'VI-B': 'class6',
-  VII: 'class7',
-  VIII: 'class8',
-  IX: 'class9',
-  'X-A': 'class10', 'X-B': 'class10',
-  XI: 'class11',
-  XII: 'class12',
-};
-
-/** Match a timetable subject to a teacher from teachers.json. */
-export function resolveTeacher(subject: string, section: string, teachers: Teacher[]): Teacher | null {
-  const norm = normalizeSubject(subject);
-  if (norm === 'Library') return null;
-  const candidates = teachers.filter(t =>
-    (t.subjects || []).some(s => normalizeSubject(s) === norm),
-  );
-  if (candidates.length === 0) return null;
-  const classId = SECTION_TO_CLASS[section];
-  const inSection = candidates.filter(t =>
-    classId && (t.sectionLabels?.[classId] ?? []).includes(section),
-  );
-  const inClass = candidates.filter(t => classId && (t.classIds ?? []).includes(classId));
-  // Strict by roster: only assign a teacher that teaches this class/section.
-  // If teachers.json has no matching teacher, the slot shows as unassigned
-  // rather than guessing a wrong teacher.
-  return inSection[0] ?? inClass[0] ?? null;
-}
-
-/** Some cells contain a teacher's name instead of a subject (e.g. "Feroz"). */
-export function resolveByName(raw: string, teachers: Teacher[]): Teacher | null {
-  const namePart = raw.trim().replace(/^(sir|miss|ma'am|mrs|mr)\s+/i, '').toLowerCase();
-  if (!namePart) return null;
-  return (
-    teachers.find(t => {
-      const tn = t.name.toLowerCase().replace(/^(sir|miss|ma'am|mrs|mr)\s+/i, '');
-      return tn === namePart || tn.startsWith(namePart + ' ') || tn.startsWith(namePart);
-    }) ?? null
-  );
-}
+/* ── Slot resolution (subject cells → teachers via shared roster) ── */
 
 /** Resolve a timetable cell into its subject(s) and teacher(s) for a section. */
 export function resolveSlot(
@@ -269,7 +185,7 @@ export function resolveSlot(
     let subject = normalizeSubject(subjectRaw);
     let teacher = resolveTeacher(subject, entry.label, teachers);
     if (!teacher) teacher = resolveByName(subjectRaw, teachers);
-    if (teacher && SUBJECT_ALIASES[subjectRaw.toLowerCase().replace(/\s+/g, ' ')] === undefined) {
+    if (teacher && !isKnownSubject(subjectRaw)) {
       // Cell was a teacher name (e.g. "Feroz") — label it with their subject.
       subject = teacher.subjects?.[0] ?? subject;
     }

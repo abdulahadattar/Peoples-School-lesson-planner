@@ -16,6 +16,7 @@ import {
   resolveSlot,
   standardSchedule,
 } from '../services/timetable';
+import { canonicalName } from '../services/teacherRoster';
 import { ChevronLeftIcon, ChevronRightIcon, LockIcon, RefreshIcon, UserIcon } from './icons/MiscIcons';
 
 const ACCESS_CODE = 'phssj'; // fixed for now — principal / coordinator access
@@ -23,16 +24,6 @@ const ACCESS_CODE = 'phssj'; // fixed for now — principal / coordinator access
 function initials(name: string): string {
   const parts = name.replace(/^(sir|miss|ma'am|mrs|mr)\s+/i, '').trim().split(/\s+/);
   return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?';
-}
-
-/** Resolve a timetable name ("MISS Aneela", "Sir kamran") to the roster's canonical form. */
-function canonicalName(raw: string, teachers: Teacher[]): string {
-  const namePart = raw.replace(/^(sir|miss|ma'am|mrs|mr)\s+/i, '').trim().toLowerCase();
-  const match = teachers.find(t => {
-    const tn = t.name.replace(/^(sir|miss|ma'am|mrs|mr)\s+/i, '').trim().toLowerCase();
-    return tn === namePart || tn.startsWith(namePart + ' ');
-  });
-  return match?.name ?? raw.trim();
 }
 
 function Avatar({ name, size = 'sm' }: { name: string; size?: 'sm' | 'md' }) {

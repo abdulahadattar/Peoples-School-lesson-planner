@@ -10,6 +10,7 @@ import LiveMonitor from './components/LiveMonitor';
 import { PhssjLogo, ZiauddinLogo } from './components/Logo';
 import { BookOpenIcon, CloseIcon, DocumentTextIcon, HomeIcon, PulseIcon } from './components/icons/MiscIcons';
 import { useGeneralGeneration, GenerationMode } from './hooks/useGeneralGeneration';
+import { useSelection } from './hooks/useSelection';
 
 interface NavItem {
   view: View;
@@ -30,11 +31,6 @@ const App: React.FC = () => {
   const [theme, setTheme] = useState<Theme>('light');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const [selectedClassId, setSelectedClassId] = useState('');
-  const [selectedSubjectId, setSelectedSubjectId] = useState('');
-  const [selectedChapterId, setSelectedChapterId] = useState('');
-  const [teacherName, setTeacherName] = useState('Abdul Ahad');
-  const [schoolName, setSchoolName] = useState('Peoples Higher Secondary School Jamshoro');
   const [generationMode, setGenerationMode] = useState<GenerationMode>('topic');
   const [topicInput, setTopicInput] = useState('');
 
@@ -42,9 +38,13 @@ const App: React.FC = () => {
   const [selectedSloIds, setSelectedSloIds] = useState<string[]>([]);
   const [exportFormat, setExportFormat] = useState<'docx' | 'pdf' | 'both'>('both');
   const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
   const [chapterSlos, setChapterSlos] = useState<any[]>([]);
   const [isLoadingSlos, setIsLoadingSlos] = useState(false);
+
+  const selection = useSelection({
+    teachers,
+    onChapterChange: () => setSelectedSloIds([]),
+  });
 
   const {
     isLoading,
@@ -68,14 +68,7 @@ const App: React.FC = () => {
   useEffect(() => {
     fetch('/teachers.json')
       .then(res => res.ok ? res.json() : { teachers: [] })
-      .then(data => {
-        setTeachers(data.teachers || []);
-        if (data.teachers?.length > 0) {
-          setSelectedTeacherId(data.teachers[0].id);
-          setTeacherName(data.teachers[0].name);
-          setSchoolName(data.teachers[0].schoolName);
-        }
-      })
+      .then(data => setTeachers(data.teachers || []))
       .catch(err => {
         console.error('Failed to load teachers:', err);
         setTeachers([]);
@@ -84,19 +77,19 @@ const App: React.FC = () => {
 
   // Load chapter SLOs when chapter changes
   useEffect(() => {
-    if (selectedClassId && selectedSubjectId && selectedChapterId) {
+    if (selection.classId && selection.subjectId && selection.chapterId) {
       setIsLoadingSlos(true);
-      const gradeNum = parseInt(selectedClassId.replace('class', ''), 10);
+      const gradeNum = parseInt(selection.classId.replace('class', ''), 10);
       const gradeName = `Grade ${gradeNum}`;
 
-      fetch(`/curriculum/slos/${gradeName}/${selectedSubjectId}.json`)
+      fetch(`/curriculum/slos/${gradeName}/${selection.subjectId}.json`)
         .then(res => res.ok ? res.json() : null)
         .then(data => {
           if (!data) {
             setChapterSlos([]);
             return;
           }
-          const chapterNum = parseInt(selectedChapterId.split('ch')[1] || '1', 10);
+          const chapterNum = parseInt(selection.chapterId.split('ch')[1] || '1', 10);
           const chapter = data.chapters?.find((ch: any) => ch.chapter_number === chapterNum);
           if (chapter) {
             const slos = (chapter.slos || []).map((slo: any, idx: number) => ({
@@ -119,18 +112,7 @@ const App: React.FC = () => {
       setChapterSlos([]);
       setSelectedSloIds([]);
     }
-  }, [selectedClassId, selectedSubjectId, selectedChapterId]);
-
-  // Update teacher info when teacher selection changes
-  useEffect(() => {
-    if (selectedTeacherId && teachers.length > 0) {
-      const teacher = teachers.find(t => t.id === selectedTeacherId);
-      if (teacher) {
-        setTeacherName(teacher.name);
-        setSchoolName(teacher.schoolName);
-      }
-    }
-  }, [selectedTeacherId, teachers]);
+  }, [selection.classId, selection.subjectId, selection.chapterId]);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') as Theme;
@@ -164,9 +146,7 @@ const App: React.FC = () => {
     setIsSidebarOpen(false);
     // Re-clicking the nav item you are already on preserves the form selections
     if (isSwitching) {
-      setSelectedClassId('');
-      setSelectedSubjectId('');
-      setSelectedChapterId('');
+      selection.reset();
       setSelectedSloIds([]);
       setChapterSlos([]);
     }
@@ -178,18 +158,18 @@ const App: React.FC = () => {
   };
 
   const handleGenerateLesson = async () => {
-    if (!selectedClassId || !selectedSubjectId) return;
-    if (generationMode === 'whole-chapter' && !selectedChapterId) return;
-    if (generationMode === 'single-slo' && (!selectedChapterId || selectedSloIds.length === 0)) return;
+    if (!selection.classId || !selection.subjectId) return;
+    if (generationMode === 'whole-chapter' && !selection.chapterId) return;
+    if (generationMode === 'single-slo' && (!selection.chapterId || selectedSloIds.length === 0)) return;
     if (generationMode === 'topic' && !topicInput.trim()) return;
 
     const topicOverride = generationMode === 'topic' ? topicInput.trim() : undefined;
 
     const plans = await generateLessonPlan(
-      selectedClassId,
-      selectedSubjectId,
-      selectedChapterId,
-      { name: teacherName, schoolName },
+      selection.classId,
+      selection.subjectId,
+      selection.chapterId,
+      { name: selection.teacherName, schoolName: selection.schoolName },
       topicOverride,
       {
         mode: generationMode,
@@ -215,7 +195,7 @@ const App: React.FC = () => {
 
   const handleExportPlan = async (plan: any) => {
     try {
-      await exportPlan(plan, { name: teacherName, schoolName }, exportFormat);
+      await exportPlan(plan, { name: selection.teacherName, schoolName: selection.schoolName }, exportFormat);
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Failed to export. Please try again.');
     }
@@ -305,16 +285,7 @@ const App: React.FC = () => {
           {view === 'lesson' && (
             <div className="max-w-2xl mx-auto px-4 py-6 md:py-8">
               <SubjectSelector
-                selectedClassId={selectedClassId}
-                selectedSubjectId={selectedSubjectId}
-                selectedChapterId={selectedChapterId}
-                onClassChange={setSelectedClassId}
-                onSubjectChange={setSelectedSubjectId}
-                onChapterChange={setSelectedChapterId}
-                teacherName={teacherName}
-                schoolName={schoolName}
-                onTeacherNameChange={setTeacherName}
-                onSchoolNameChange={setSchoolName}
+                selection={selection}
                 generationMode={generationMode}
                 onGenerationModeChange={setGenerationMode}
                 topicInput={topicInput}
@@ -323,9 +294,6 @@ const App: React.FC = () => {
                 onSelectedSloIdsChange={setSelectedSloIds}
                 exportFormat={exportFormat}
                 onExportFormatChange={setExportFormat}
-                selectedTeacherId={selectedTeacherId}
-                onSelectedTeacherIdChange={setSelectedTeacherId}
-                teachers={teachers}
                 chapterSlos={chapterSlos}
                 isLoadingSlos={isLoadingSlos}
                 onGenerate={handleGenerateLesson}
@@ -338,11 +306,7 @@ const App: React.FC = () => {
             <PaperPanel
               onGeneratePaper={handleGeneratePaper}
               isGenerating={isLoading}
-              teachers={teachers}
-              selectedTeacherId={selectedTeacherId}
-              onSelectedTeacherIdChange={setSelectedTeacherId}
-              onTeacherNameChange={setTeacherName}
-              onSchoolNameChange={setSchoolName}
+              selection={selection}
             />
           )}
 
@@ -353,8 +317,8 @@ const App: React.FC = () => {
               lessonPlans={generatedPlans}
               papers={generatedPapers}
               onBack={handleBackToHome}
-              teacherName={teacherName}
-              schoolName={schoolName}
+              teacherName={selection.teacherName}
+              schoolName={selection.schoolName}
               onExportPlan={handleExportPlan}
               exportFormat={exportFormat}
               onRevisePaper={revisePaper}

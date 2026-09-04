@@ -1,6 +1,4 @@
-import React, { useState, useMemo } from 'react';
-import { curriculumData } from '../curriculum';
-import { Teacher } from '../types';
+import React, { useState } from 'react';
 import SelectField from './ui/SelectField';
 import Spinner from './ui/Spinner';
 import { SkeletonList } from './ui/Skeleton';
@@ -13,25 +11,10 @@ import {
   SparklesIcon,
   UserIcon,
 } from './icons/MiscIcons';
-import {
-  autoSelectForTeacher,
-  classesForTeacher,
-  sortClassesByGrade,
-  subjectsForTeacher,
-  teacherOptions,
-} from '../services/curriculumHelpers';
+import { SelectionApi } from '../hooks/useSelection';
 
 interface SubjectSelectorProps {
-  selectedClassId: string;
-  selectedSubjectId: string;
-  selectedChapterId: string;
-  onClassChange: (classId: string) => void;
-  onSubjectChange: (subjectId: string) => void;
-  onChapterChange: (chapterId: string) => void;
-  teacherName: string;
-  schoolName: string;
-  onTeacherNameChange: (name: string) => void;
-  onSchoolNameChange: (name: string) => void;
+  selection: SelectionApi;
   generationMode: 'single-slo' | 'whole-chapter' | 'topic';
   onGenerationModeChange: (mode: 'single-slo' | 'whole-chapter' | 'topic') => void;
   topicInput: string;
@@ -40,9 +23,6 @@ interface SubjectSelectorProps {
   onSelectedSloIdsChange: (ids: string[]) => void;
   exportFormat: 'docx' | 'pdf' | 'both';
   onExportFormatChange: (format: 'docx' | 'pdf' | 'both') => void;
-  selectedTeacherId: string;
-  onSelectedTeacherIdChange: (id: string) => void;
-  teachers: Teacher[];
   chapterSlos: any[];
   isLoadingSlos: boolean;
   onGenerate: () => void;
@@ -89,16 +69,7 @@ const SegmentedControl: React.FC<{
 );
 
 const SubjectSelector: React.FC<SubjectSelectorProps> = ({
-  selectedClassId,
-  selectedSubjectId,
-  selectedChapterId,
-  onClassChange,
-  onSubjectChange,
-  onChapterChange,
-  teacherName,
-  schoolName,
-  onTeacherNameChange,
-  onSchoolNameChange,
+  selection,
   generationMode,
   onGenerationModeChange,
   topicInput,
@@ -107,9 +78,6 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
   onSelectedSloIdsChange,
   exportFormat,
   onExportFormatChange,
-  selectedTeacherId,
-  onSelectedTeacherIdChange,
-  teachers,
   chapterSlos,
   isLoadingSlos,
   onGenerate,
@@ -117,102 +85,25 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
 }) => {
   const [isTeacherInfoOpen, setIsTeacherInfoOpen] = useState(true);
 
-  const classes = useMemo(() => sortClassesByGrade(curriculumData.classes), []);
-  const selectedClass = useMemo(
-    () => classes.find(c => c.id === selectedClassId) || null,
-    [classes, selectedClassId]
-  );
-  const selectedTeacher = useMemo(
-    () => teachers.find(t => t.id === selectedTeacherId) || null,
-    [teachers, selectedTeacherId]
-  );
-
-  // Full roster (matching class/subject first) so a teacher already chosen
-  // can always be switched without clearing class and subject first.
-  const teacherChoices = useMemo(
-    () => teacherOptions(teachers, selectedClassId, selectedSubjectId, classes),
-    [teachers, selectedClassId, selectedSubjectId, classes]
-  );
-  const availableSubjects = useMemo(
-    () => subjectsForTeacher(classes, selectedClassId, selectedTeacher),
-    [classes, selectedClassId, selectedTeacher]
-  );
-  const availableClasses = useMemo(
-    () => classesForTeacher(classes, selectedTeacher),
-    [classes, selectedTeacher]
-  );
-  const availableChapters = useMemo(
-    () => selectedClass?.subjects.find(s => s.id === selectedSubjectId)?.chapters || [],
-    [selectedClass, selectedSubjectId]
-  );
-
-  const selectedChapter = useMemo(
-    () => availableChapters.find(c => c.id === selectedChapterId) || null,
-    [availableChapters, selectedChapterId]
-  );
-
-  const deselectTeacher = () => {
-    onSelectedTeacherIdChange('');
-    onTeacherNameChange('');
-    onSchoolNameChange('');
-  };
-
-  const handleClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newClassId = e.target.value;
-    onClassChange(newClassId);
-    if (selectedTeacher && newClassId && selectedTeacher.classIds && selectedTeacher.classIds.length > 0 && !selectedTeacher.classIds.includes(newClassId)) {
-      deselectTeacher();
-    }
-    onSubjectChange('');
-    onChapterChange('');
-  };
-
-  const handleSubjectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newSubjectId = e.target.value;
-    onSubjectChange(newSubjectId);
-    if (selectedTeacher && newSubjectId && selectedTeacher.subjects && selectedTeacher.subjects.length > 0 && !selectedTeacher.subjects.some(s => s.toLowerCase() === newSubjectId.toLowerCase())) {
-      deselectTeacher();
-    }
-    onChapterChange('');
-  };
-
-  const handleTeacherChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const teacherId = e.target.value;
-    onSelectedTeacherIdChange(teacherId);
-    const teacher = teachers.find(t => t.id === teacherId);
-    if (!teacher) {
-      onTeacherNameChange('');
-      onSchoolNameChange('');
-      return;
-    }
-
-    onTeacherNameChange(teacher.name);
-    onSchoolNameChange(teacher.schoolName);
-
-    const auto = autoSelectForTeacher(teacher, classes, selectedClassId);
-
-    const classId = (!teacher.classIds || teacher.classIds.length === 0)
-      ? selectedClassId
-      : selectedClassId && (teacher.classIds ?? []).includes(selectedClassId)
-        ? selectedClassId
-        : auto.classId || teacher.classIds?.[0] || '';
-    onClassChange(classId);
-
-    const teachable = subjectsForTeacher(classes, classId, teacher);
-    const subjectId = (!teacher.subjects || teacher.subjects.length === 0)
-      ? selectedSubjectId
-      : teachable.some(s => s.id === selectedSubjectId) && selectedSubjectId
-        ? selectedSubjectId
-        : auto.subjectId && teachable.some(s => s.id === auto.subjectId)
-          ? auto.subjectId
-          : '';
-    onSubjectChange(subjectId);
-  };
-
-  const handleChapterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    onChapterChange(e.target.value);
-    onSelectedSloIdsChange([]);
-  };
+  const {
+    classId: selectedClassId,
+    subjectId: selectedSubjectId,
+    chapterId: selectedChapterId,
+    teacherId: selectedTeacherId,
+    teacher: selectedTeacher,
+    schoolName,
+    classes,
+    teacherChoices,
+    availableClasses,
+    availableSubjects,
+    chapters: availableChapters,
+    selectedChapter,
+    handleClassChange,
+    handleSubjectChange,
+    handleChapterChange,
+    handleTeacherChange,
+    setSchoolName,
+  } = selection;
 
   const handleSloToggle = (sloId: string) => {
     onSelectedSloIdsChange(
@@ -299,9 +190,9 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
                   id="teacher-select"
                   label="Teacher Name"
                   icon={<UserIcon className="w-3.5 h-3.5" />}
-                  value={selectedTeacherId}
-                  onChange={handleTeacherChange}
-                  className="h-11"
+              value={selectedTeacherId}
+              onChange={e => handleTeacherChange(e.target.value)}
+              className="h-11"
                 >
                   <option value="">Choose a teacher...</option>
                   {teacherChoices.map(t => (
@@ -332,7 +223,7 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
                   <input
                     type="text"
                     value={schoolName}
-                    onChange={e => onSchoolNameChange(e.target.value)}
+                    onChange={e => setSchoolName(e.target.value)}
                     placeholder="Enter school name"
                     className={inputClass}
                   />
@@ -347,7 +238,7 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
               label="Select Class"
               icon={<GraduationCapIcon className="w-3.5 h-3.5" />}
               value={selectedClassId}
-              onChange={handleClassChange}
+              onChange={e => handleClassChange(e.target.value)}
             >
               <option value="">Choose a class</option>
               {(selectedTeacher ? availableClasses : classes).map(cls => (
@@ -360,7 +251,7 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
               label="Select Subject"
               icon={<BookOpenIcon className="w-3.5 h-3.5" />}
               value={selectedSubjectId}
-              onChange={handleSubjectChange}
+              onChange={e => handleSubjectChange(e.target.value)}
               disabled={!selectedClassId || availableSubjects.length === 0}
             >
               <option value="">Choose a subject</option>
@@ -374,7 +265,7 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
               label="Select Chapter"
               icon={<ClipboardListIcon className="w-3.5 h-3.5" />}
               value={selectedChapterId}
-              onChange={handleChapterChange}
+              onChange={e => handleChapterChange(e.target.value)}
               disabled={!selectedSubjectId || availableChapters.length === 0}
             >
               <option value="">Choose a chapter</option>
