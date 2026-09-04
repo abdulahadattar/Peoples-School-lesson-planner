@@ -6,8 +6,9 @@ import SubjectSelector from './components/SubjectSelector';
 import PaperPanel from './components/PaperPanel';
 import ResultsView from './components/ResultsView';
 import GenerationStatusPanel from './components/GenerationStatusPanel';
+import LiveMonitor from './components/LiveMonitor';
 import { PhssjLogo, ZiauddinLogo } from './components/Logo';
-import { BookOpenIcon, CloseIcon, DocumentTextIcon, HomeIcon } from './components/icons/MiscIcons';
+import { BookOpenIcon, CloseIcon, DocumentTextIcon, HomeIcon, PulseIcon } from './components/icons/MiscIcons';
 import { useGeneralGeneration, GenerationMode } from './hooks/useGeneralGeneration';
 
 interface NavItem {
@@ -21,6 +22,7 @@ const NAV_ITEMS: NavItem[] = [
   { view: 'home', label: 'Home', icon: HomeIcon, activeViews: ['home'] },
   { view: 'lesson', label: 'Lesson Plans', icon: BookOpenIcon, activeViews: ['lesson', 'results'] },
   { view: 'paper', label: 'Exam Papers', icon: DocumentTextIcon, activeViews: ['paper'] },
+  { view: 'live', label: 'Live Monitor', icon: PulseIcon, activeViews: ['live'] },
 ];
 
 const App: React.FC = () => {
@@ -256,7 +258,11 @@ const App: React.FC = () => {
               return (
                 <button
                   key={item.view}
-                  onClick={() => (item.view === 'home' ? handleBackToHome() : handleNavigate(item.view === 'lesson' ? 'lesson' : 'paper'))}
+                  onClick={() => {
+                    if (item.view === 'home') handleBackToHome();
+                    else if (item.view === 'live') navigate('live');
+                    else handleNavigate(item.view === 'lesson' ? 'lesson' : 'paper');
+                  }}
                   className={`relative w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${
                     isActive
                       ? 'text-white'
@@ -339,6 +345,8 @@ const App: React.FC = () => {
               onSchoolNameChange={setSchoolName}
             />
           )}
+
+          {view === 'live' && <LiveMonitor teachers={teachers} />}
 
           {view === 'results' && (
             <ResultsView

@@ -125,7 +125,7 @@ export interface Teacher {
   sectionLabels?: Record<string, string[]>;
 }
 
-export type View = 'home' | 'lesson' | 'paper' | 'results';
+export type View = 'home' | 'lesson' | 'paper' | 'results' | 'live';
 export type Theme = 'light' | 'dark';
 
 export interface SLO {

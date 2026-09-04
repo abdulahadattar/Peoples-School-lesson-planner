@@ -162,3 +162,16 @@ export const HomeIcon: React.FC<IconProps> = (props) => (
     <path d="M9 21v-6h6v6" />
   </svg>
 );
+
+export const LockIcon: React.FC<IconProps> = (props) => (
+  <svg {...props} {...base}>
+    <rect x="3" y="11" width="18" height="11" rx="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </svg>
+);
+
+export const PulseIcon: React.FC<IconProps> = (props) => (
+  <svg {...props} {...base}>
+    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+  </svg>
+);
