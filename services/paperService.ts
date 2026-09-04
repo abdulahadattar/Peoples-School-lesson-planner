@@ -67,8 +67,8 @@ export async function generateExamPaper(
 
   // Students attempt every MCQ but only a chosen subset of the listed short
   // and long questions — marks are earned by what is attempted.
-  const attemptShort = Math.min(shortAttemptCount || shortQuestionCount, shortQuestionCount);
-  const attemptLong = Math.min(longAttemptCount || longQuestionCount, longQuestionCount);
+  const attemptShort = Math.min(shortAttemptCount, shortQuestionCount);
+  const attemptLong = Math.min(longAttemptCount, longQuestionCount);
   const mcqMarks = mcqCount * 1;
   const shortMarks = attemptShort * 2;
   const longMarks = attemptLong * 4;
