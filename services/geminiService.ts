@@ -379,7 +379,7 @@ export async function downloadPdfAsPart(url: string): Promise<Part | null> {
       return { inlineData: { mimeType: 'application/pdf', data: base64 } };
     } catch (err) {
       console.error(`[geminiService] PDF encoding error for ${url}:`, err);
-      return null;
+      continue;
     }
   }
 
