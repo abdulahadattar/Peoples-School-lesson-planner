@@ -147,6 +147,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating, 
     if (selectedTeacher && newClassId && !selectedTeacher.classIds?.includes(newClassId)) {
       onSelectedTeacherIdChange('');
       onTeacherNameChange('');
+      onSchoolNameChange('');
     }
   };
 
@@ -158,6 +159,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating, 
     if (selectedTeacher && newSubjectId && !selectedTeacher.subjects.some(s => s.toLowerCase() === newSubjectId.toLowerCase())) {
       onSelectedTeacherIdChange('');
       onTeacherNameChange('');
+      onSchoolNameChange('');
     }
   };
 
@@ -197,6 +199,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating, 
       }
     } else {
       onTeacherNameChange('');
+      onSchoolNameChange('');
     }
   };
 
