@@ -13,7 +13,7 @@
       "id": "teacher-2",
       "name": "Sir Abdul Razzaq",
       "schoolName": "Peoples Higher Secondary School Jamshoro",
-      "designation": "Subject Specialist",
+      "designation": "Co-Ordinator",
       "subjects": ["English"],
       "classIds": ["class10", "class11", "class12"],
       "sectionLabels": { "class10": ["X-A", "X-B"], "class11": ["XI"], "class12": ["XII"] }
@@ -31,7 +31,7 @@
       "id": "teacher-4",
       "name": "Ma'am Arsala",
       "schoolName": "Peoples Higher Secondary School Jamshoro",
-      "designation": "Subject Specialist",
+      "designation": "Principal",
       "subjects": ["Asan Urdu"],
       "classIds": ["class10", "class11"],
       "sectionLabels": { "class10": ["X-A"], "class11": ["XI"] }
@@ -83,7 +83,7 @@
     },
     {
       "id": "teacher-10",
-      "name": "Engr. Faizan Shaikh",
+      "name": "Sir Faizan Shaikh",
       "schoolName": "Peoples Higher Secondary School Jamshoro",
       "designation": "Subject Specialist",
       "subjects": ["ICT"],
@@ -131,7 +131,7 @@
       "name": "Miss Madiha",
       "schoolName": "Peoples Higher Secondary School Jamshoro",
       "designation": "Subject Specialist",
-      "subjects": ["Social Studies"],
+      "subjects": ["Social Studies", "Pak Studies"],
       "classIds": ["class4", "class5", "class6", "class7", "class8", "class10"],
       "sectionLabels": { "class4": ["IV-A", "IV-B"], "class5": ["V"], "class6": ["VI-A", "VI-B"], "class7": ["VII"], "class8": ["VIII"], "class10": ["X-A", "X-B"] }
     },
@@ -148,7 +148,7 @@
       "id": "teacher-17",
       "name": "Ma'am Layla Abrejo",
       "schoolName": "Peoples Higher Secondary School Jamshoro",
-      "designation": "Subject Specialist",
+      "designation": "Vice Principal",
       "subjects": ["Pak Studies"],
       "classIds": ["class12"],
       "sectionLabels": { "class12": ["XII"] }
@@ -157,7 +157,7 @@
       "id": "teacher-18",
       "name": "Miss Narjis",
       "schoolName": "Peoples Higher Secondary School Jamshoro",
-      "designation": "Subject Specialist",
+      "designation": "Co-Ordinator",
       "subjects": ["Islamiat", "Urdu", "Science"],
       "classIds": ["class4", "class5"],
       "sectionLabels": { "class4": ["IV-A", "IV-B"], "class5": ["V"] }
