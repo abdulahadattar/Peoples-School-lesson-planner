@@ -14,6 +14,18 @@ export interface LessonPlan {
   homework: string;
   unitNumber?: string;
   chapterName?: string;
+  isWeekly?: boolean;
+}
+
+export interface WeeklyLessonPlan extends LessonPlan {
+  isWeekly: true;
+  dailyBreakdown: {
+    day: string;
+    topic: string;
+    objective: string;
+    activities: { name: string; duration: number; description: string }[];
+    homework: string;
+  }[];
 }
 
 export interface CurriculumSLO {
@@ -160,3 +172,4 @@ export interface ContextPdf {
 
 export type ExportOption = 'individual' | 'byUnit' | 'byGrade' | 'all';
 export type ExportFormat = 'docx' | 'pdf' | 'both';
+export type LessonPlanScope = 'weekly' | 'daily' | 'both';

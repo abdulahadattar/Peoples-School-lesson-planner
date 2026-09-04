@@ -1,9 +1,9 @@
 import { useState, useCallback, useRef } from 'react';
 import { Part } from '@google/genai';
-import { LessonPlan, GeneratedPaper, PaperConfig, TeacherInfo, ExportOption, SLO } from '../types';
-import { generateLessonPlan as generateGeminiLessonPlan, downloadPdfAsPart } from '../services/geminiService';
+import { LessonPlan, GeneratedPaper, PaperConfig, TeacherInfo, ExportOption, SLO, LessonPlanScope, WeeklyLessonPlan } from '../types';
+import { generateLessonPlan as generateGeminiLessonPlan, generateWeeklyLessonPlan, downloadPdfAsPart } from '../services/geminiService';
 import { generateExamPaper, reviseExamPaper } from '../services/paperService';
-import { exportAsDocx, exportAsPdf, exportMultipleLessonsAsDocx, exportMultipleLessonsAsPdf, formatFileName } from '../services/exportService';
+import { exportAsDocx, exportAsPdf, exportMultipleLessonsAsDocx, exportMultipleLessonsAsPdf, exportWeeklyPlanAsDocx, exportWeeklyPlanAsPdf, formatFileName } from '../services/exportService';
 import { curriculumData, getSubjectById, getChapterById } from '../curriculum';
 import { loadSloChapter } from '../services/sloData';
 
@@ -14,6 +14,7 @@ export interface GenerationOptions {
   selectedSloIds?: string[];
   exportFormat: UiExportFormat;
   teacherInfo: TeacherInfo;
+  scope?: LessonPlanScope;
 }
 
 /**
@@ -53,12 +54,14 @@ export const useGeneralGeneration = () => {
       selectedSloIds?: string[];
       exportFormat?: UiExportFormat;
       allChapterSlos?: SLO[];
+      scope?: LessonPlanScope;
     }
   ): Promise<LessonPlan[] | null> => {
     const mode = options?.mode || 'topic';
     const selectedSloIds = options?.selectedSloIds || [];
     const uiExportFormat = options?.exportFormat || 'docx';
     const allChapterSlos = options?.allChapterSlos || [];
+    const scope = options?.scope || 'daily';
 
     // Convert UI export format to internal export option
     const exportOption: ExportOption = uiExportFormat === 'both' ? 'all' : 'individual';
@@ -185,8 +188,9 @@ export const useGeneralGeneration = () => {
       setStatusMessage('Preparing lesson plans...');
 
       const allGeneratedPlans: LessonPlan[] = [];
+      const weeklyPlans: WeeklyLessonPlan[] = [];
 
-      // Download chapter PDF once before the loop — same PDF reused for every SLO in this chapter
+      // Download chapter PDF once before any generation
       let chapterPdfPart: Part | null = null;
       if (mode !== 'topic') {
         addLog('Downloading chapter textbook PDF for context...');
@@ -196,7 +200,7 @@ export const useGeneralGeneration = () => {
           chapterPdfPart = await downloadPdfAsPart(pdfUrl);
           if (chapterPdfPart) {
             const sizeKB = ((chapterPdfPart.inlineData?.data?.length || 0) * 0.75 / 1024).toFixed(0);
-            addLog(`PDF context loaded (${sizeKB}KB) — will be sent with EACH SLO request below`);
+            addLog(`PDF context loaded (${sizeKB}KB) — will be sent with generation requests`);
           } else {
             addLog('WARN: Could not download PDF. AI will use general knowledge instead.');
           }
@@ -205,59 +209,113 @@ export const useGeneralGeneration = () => {
         }
       }
 
-      addLog(`\nGenerating ${totalSlos} isolated lesson plan(s) — one API request per SLO:`);
-
-      for (let i = 0; i < totalSlos; i++) {
-        if (isCancelledRef.current) break; // Allow cancellation
-
-        const slo = slosToGenerate[i];
-        setGenerationProgress({ current: i + 1, total: totalSlos });
-        setStatusMessage(`Generating plan ${i + 1} of ${totalSlos}...`);
-        addLog(`\n── Request ${i + 1}/${totalSlos}: SLO "${slo.SLO_ID}" ──`);
-        addLog(`   Topic: ${slo.SLO_Text}`);
-        addLog(`   PDF attached: ${chapterPdfPart ? 'Yes' : 'No'}`);
-
+      // Generate weekly overview plan if scope is 'weekly' or 'both'
+      if ((scope === 'weekly' || scope === 'both') && mode !== 'topic' && chapter) {
+        addLog('Generating weekly overview plan...');
+        setStatusMessage('Generating weekly overview...');
         try {
-          // Each SLO gets its own isolated API request with the chapter PDF
-          const contextFileParts: any[] = chapterPdfPart ? [chapterPdfPart] : [];
+          const mockSloForWeekly: SLO = {
+            SLO_ID: `WEEKLY-${chapterId}`,
+            SLO_Text: `Weekly overview for ${chapter.name}`,
+            grade: cls.name,
+            Unit_Name: chapter.name,
+            Unit_Number: chapterId.replace('ch', ''),
+            Section_Name: chapter.name,
+            Cognitive_Level_Code: 'U',
+            uniqueId: `${classId}_${subjectId}_${chapterId}_weekly`,
+          };
+          const weeklyPlan = await generateWeeklyLessonPlan(
+            mockSloForWeekly,
+            slosToGenerate.length > 0 ? slosToGenerate : [mockSloForWeekly],
+            chapterPdfPart ? [chapterPdfPart] : undefined,
+            subject.name,
+            addLog
+          );
+          weeklyPlan.gradeLevel = cls.name;
+          weeklyPlan.subject = subject.name;
+          weeklyPlan.chapterName = chapter.name;
+          weeklyPlans.push(weeklyPlan);
+          allGeneratedPlans.push(weeklyPlan);
+          addLog(`✓ Weekly overview generated: "${weeklyPlan.title}"`);
 
-          const plan = await generateGeminiLessonPlan(slo, slosToGenerate, contextFileParts, subject.name, addLog);
-
-          plan.gradeLevel = cls.name;
-          plan.subject = subject.name;
-          plan.chapterName = chapterName;
-
-          allGeneratedPlans.push(plan);
-          addLog(`✓ Done: "${plan.title}"`);
-
-           // Export based on format (skip if cancelled)
-           if (isIndividualExport && !isCancelledRef.current) {
-             addLog(`Exporting (${uiExportFormat})...`);
-             try {
-               if (uiExportFormat === 'docx') {
-                 await withTimeout(exportAsDocx(plan, slo.SLO_ID, teacherInfo), 30000, 'DOCX export timed out');
-               } else if (uiExportFormat === 'pdf') {
-                 await withTimeout(exportAsPdf(plan, slo.SLO_ID, teacherInfo), 30000, 'PDF export timed out');
-               }
-             } catch (exportError) {
-               addLog(`WARN: Export failed for ${slo.SLO_ID}: ${exportError instanceof Error ? exportError.message : 'Unknown error'}`);
-             }
-           }
-
-          // Delay between requests (except for last one, skip if cancelled)
-          if (i < totalSlos - 1 && !isCancelledRef.current) {
-            addLog('Waiting 2 seconds before next request...');
-            await new Promise(resolve => setTimeout(resolve, 2000));
+          // Export weekly plan if individual export
+          if (isIndividualExport && !isCancelledRef.current) {
+            addLog(`Exporting weekly plan (${uiExportFormat})...`);
+            try {
+              const weeklyFileName = formatFileName(`${cls.name} ${subject.name} ${chapter.name} Weekly`);
+              if (uiExportFormat === 'docx') {
+                await withTimeout(exportWeeklyPlanAsDocx(weeklyPlan, weeklyFileName, teacherInfo), 30000, 'Weekly DOCX export timed out');
+              } else if (uiExportFormat === 'pdf') {
+                await withTimeout(exportWeeklyPlanAsPdf(weeklyPlan, weeklyFileName, teacherInfo), 30000, 'Weekly PDF export timed out');
+              }
+            } catch (exportError) {
+              addLog(`WARN: Weekly plan export failed: ${exportError instanceof Error ? exportError.message : 'Unknown error'}`);
+            }
           }
-        } catch (sloError) {
-          const errorMsg = sloError instanceof Error ? sloError.message : String(sloError);
-          addLog(`✗ ERROR for ${slo.SLO_ID}: ${errorMsg}`);
-          console.error(`Failed to generate plan for ${slo.SLO_ID}:`, sloError);
-          
-          // Continue with next SLO instead of stopping
-          if (i < totalSlos - 1) {
-            addLog('Continuing with next SLO...');
-            await new Promise(resolve => setTimeout(resolve, 2000));
+        } catch (weeklyError) {
+          const errorMsg = weeklyError instanceof Error ? weeklyError.message : String(weeklyError);
+          addLog(`✗ ERROR generating weekly plan: ${errorMsg}`);
+          console.error('Failed to generate weekly plan:', weeklyError);
+        }
+      }
+
+      // For 'daily' or 'both' scope, generate per-SLO daily plans
+      if (scope === 'daily' || scope === 'both') {
+        addLog(`\nGenerating ${totalSlos} isolated lesson plan(s) — one API request per SLO:`);
+
+        for (let i = 0; i < totalSlos; i++) {
+          if (isCancelledRef.current) break; // Allow cancellation
+
+          const slo = slosToGenerate[i];
+          setGenerationProgress({ current: i + 1, total: totalSlos });
+          setStatusMessage(`Generating plan ${i + 1} of ${totalSlos}...`);
+          addLog(`\n── Request ${i + 1}/${totalSlos}: SLO "${slo.SLO_ID}" ──`);
+          addLog(`   Topic: ${slo.SLO_Text}`);
+          addLog(`   PDF attached: ${chapterPdfPart ? 'Yes' : 'No'}`);
+
+          try {
+            // Each SLO gets its own isolated API request with the chapter PDF
+            const contextFileParts: any[] = chapterPdfPart ? [chapterPdfPart] : [];
+
+            const plan = await generateGeminiLessonPlan(slo, slosToGenerate, contextFileParts, subject.name, addLog);
+
+            plan.gradeLevel = cls.name;
+            plan.subject = subject.name;
+            plan.chapterName = chapterName;
+            plan.isWeekly = false;
+
+            allGeneratedPlans.push(plan);
+            addLog(`✓ Done: "${plan.title}"`);
+
+             // Export based on format (skip if cancelled)
+             if (isIndividualExport && !isCancelledRef.current) {
+               addLog(`Exporting (${uiExportFormat})...`);
+               try {
+                 if (uiExportFormat === 'docx') {
+                   await withTimeout(exportAsDocx(plan, slo.SLO_ID, teacherInfo), 30000, 'DOCX export timed out');
+                 } else if (uiExportFormat === 'pdf') {
+                   await withTimeout(exportAsPdf(plan, slo.SLO_ID, teacherInfo), 30000, 'PDF export timed out');
+                 }
+               } catch (exportError) {
+                 addLog(`WARN: Export failed for ${slo.SLO_ID}: ${exportError instanceof Error ? exportError.message : 'Unknown error'}`);
+               }
+             }
+
+            // Delay between requests (except for last one, skip if cancelled)
+            if (i < totalSlos - 1 && !isCancelledRef.current) {
+              addLog('Waiting 2 seconds before next request...');
+              await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+          } catch (sloError) {
+            const errorMsg = sloError instanceof Error ? sloError.message : String(sloError);
+            addLog(`✗ ERROR for ${slo.SLO_ID}: ${errorMsg}`);
+            console.error(`Failed to generate plan for ${slo.SLO_ID}:`, sloError);
+            
+            // Continue with next SLO instead of stopping
+            if (i < totalSlos - 1) {
+              addLog('Continuing with next SLO...');
+              await new Promise(resolve => setTimeout(resolve, 2000));
+            }
           }
         }
       }
@@ -304,7 +362,7 @@ export const useGeneralGeneration = () => {
       setGeneratedPlans(allGeneratedPlans);
       setGenerationProgress(null);
       setStatusMessage(allGeneratedPlans.length > 0 ? 'Complete!' : 'No plans generated');
-      addLog(`\n✓ Generation complete: ${allGeneratedPlans.length}/${totalSlos} plans created`);
+      addLog(`\n✓ Generation complete: ${allGeneratedPlans.length} plan(s) created`);
 
       return allGeneratedPlans;
     } catch (err) {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LessonPlan, GeneratedPaper, TeacherInfo, ExportFormat } from '../types';
+import { LessonPlan, GeneratedPaper, TeacherInfo, ExportFormat, WeeklyLessonPlan } from '../types';
 import { ArrowLeftIcon, DownloadIcon, ChevronLeftIcon, ChevronRightIcon, RefreshIcon } from './icons/MiscIcons';
 import { exportPaperAsDocx, exportPaperAsPdf } from '../services/exportService';
 import {
@@ -65,6 +65,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
   if (lessonPlans.length > 0) {
     const selectedPlan = lessonPlans[selectedPlanIndex];
     const hasMultiple = lessonPlans.length > 1;
+    const isWeeklyPlan = (selectedPlan as WeeklyLessonPlan).isWeekly;
 
     return (
       <div className="h-full flex flex-col bg-brand-bg">
@@ -126,6 +127,11 @@ const ResultsView: React.FC<ResultsViewProps> = ({
                     <span className={chipClass}>{selectedPlan.gradeLevel}</span>
                     <span className={chipClass}>{selectedPlan.subject}</span>
                     {selectedPlan.chapterName && <span className={chipClass}>{selectedPlan.chapterName}</span>}
+                    {isWeeklyPlan && (
+                      <span className="px-2 py-1 bg-brand-primary/10 text-brand-primary rounded-md border border-brand-primary/15 font-semibold text-[11px]">
+                        Weekly Overview
+                      </span>
+                    )}
                     {hasMultiple && (
                       <span className="px-2 py-1 bg-brand-primary/10 text-brand-primary rounded-md border border-brand-primary/15 font-semibold text-[11px]">
                         Plan {selectedPlanIndex + 1} of {lessonPlans.length}
@@ -136,42 +142,82 @@ const ResultsView: React.FC<ResultsViewProps> = ({
               </div>
             </div>
 
-            <div className="glass-card rounded-xl p-4 hover:shadow-card-hover transition-shadow">
-              <h2 className="text-sm font-bold text-brand-primary uppercase tracking-widest mb-2">Objective</h2>
-              <KaTeXText text={selectedPlan.objective} className="text-brand-text-primary leading-relaxed" as="p" />
-            </div>
+            {isWeeklyPlan ? (
+              <>
+                <div className="glass-card rounded-xl p-4 hover:shadow-card-hover transition-shadow">
+                  <h2 className="text-sm font-bold text-brand-primary uppercase tracking-widest mb-2">Objective</h2>
+                  <KaTeXText text={selectedPlan.objective} className="text-brand-text-primary leading-relaxed" as="p" />
+                </div>
 
-            <div className="glass-card rounded-xl p-4">
-              <h2 className="text-sm font-bold text-brand-primary uppercase tracking-widest mb-4">Lesson Procedure</h2>
-              <div className="space-y-4">
-                {selectedPlan.activities.map((activity, i) => (
-                  <div key={i} className="border-l-2 border-brand-primary pl-4 group">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="font-bold text-brand-text-primary text-sm">{activity.name}</h3>
-                      <span className="text-xs text-brand-text-secondary bg-brand-bg px-2 py-0.5 rounded-md">{activity.duration} mins</span>
-                    </div>
-                    <KaTeXText text={activity.description} className="text-sm text-brand-text-secondary leading-relaxed group-hover:text-brand-text-primary transition-colors" as="p" />
+                <div className="glass-card rounded-xl p-4">
+                  <h2 className="text-sm font-bold text-brand-primary uppercase tracking-widest mb-4">Weekly Breakdown</h2>
+                  <div className="space-y-4">
+                    {(selectedPlan as WeeklyLessonPlan).dailyBreakdown.map((day, i) => (
+                      <div key={i} className="border-l-2 border-brand-primary pl-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="font-bold text-brand-text-primary text-sm">{day.day}</h3>
+                          <span className="text-xs text-brand-text-secondary bg-brand-bg px-2 py-0.5 rounded-md">{day.topic}</span>
+                        </div>
+                        <p className="text-sm text-brand-text-secondary mb-2">{day.objective}</p>
+                        <div className="space-y-2">
+                          {day.activities.map((activity, j) => (
+                            <div key={j} className="text-xs text-brand-text-secondary">
+                              <span className="font-semibold">{activity.name}</span>
+                              <span className="text-brand-text-secondary ml-2">({activity.duration} mins)</span>
+                              <p className="mt-0.5">{activity.description}</p>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-brand-text-secondary mt-2 italic">Homework: {day.homework}</p>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="glass-card rounded-xl p-4 hover:shadow-card-hover transition-shadow">
+                  <h2 className="text-sm font-bold text-brand-primary uppercase tracking-widest mb-2">Objective</h2>
+                  <KaTeXText text={selectedPlan.objective} className="text-brand-text-primary leading-relaxed" as="p" />
+                </div>
 
-            <div className="glass-card rounded-xl p-4">
-              <h2 className="text-sm font-bold text-brand-primary uppercase tracking-widest mb-2">Resources</h2>
-              <ul className="space-y-1">
-                {selectedPlan.materials.map((item, i) => (
-                  <li key={i} className="text-sm text-brand-text-secondary flex items-start gap-2">
-                    <span className="text-brand-primary mt-1">•</span>
-                    <KaTeXText text={item} />
-                  </li>
-                ))}
-              </ul>
-            </div>
+                <div className="glass-card rounded-xl p-4">
+                  <h2 className="text-sm font-bold text-brand-primary uppercase tracking-widest mb-4">Lesson Procedure</h2>
+                  <div className="space-y-4">
+                    {selectedPlan.activities.map((activity, i) => (
+                      <div key={i} className="border-l-2 border-brand-primary pl-4 group">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="font-bold text-brand-text-primary text-sm">{activity.name}</h3>
+                          <span className="text-xs text-brand-text-secondary bg-brand-bg px-2 py-0.5 rounded-md">{activity.duration} mins</span>
+                        </div>
+                        <KaTeXText text={activity.description} className="text-sm text-brand-text-secondary leading-relaxed group-hover:text-brand-text-primary transition-colors" as="p" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
 
-            <div className="glass-card rounded-xl p-4">
-              <h2 className="text-sm font-bold text-brand-primary uppercase tracking-widest mb-2">Homework</h2>
-              <KaTeXText text={selectedPlan.homework} className="text-sm text-brand-text-secondary leading-relaxed" as="p" />
-            </div>
+            {!isWeeklyPlan && (
+              <>
+                <div className="glass-card rounded-xl p-4">
+                  <h2 className="text-sm font-bold text-brand-primary uppercase tracking-widest mb-2">Resources</h2>
+                  <ul className="space-y-1">
+                    {selectedPlan.materials.map((item, i) => (
+                      <li key={i} className="text-sm text-brand-text-secondary flex items-start gap-2">
+                        <span className="text-brand-primary mt-1">•</span>
+                        <KaTeXText text={item} />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="glass-card rounded-xl p-4">
+                  <h2 className="text-sm font-bold text-brand-primary uppercase tracking-widest mb-2">Homework</h2>
+                  <KaTeXText text={selectedPlan.homework} className="text-sm text-brand-text-secondary leading-relaxed" as="p" />
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

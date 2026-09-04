@@ -14,6 +14,7 @@ import {
 import { SelectionApi } from '../hooks/useSelection';
 import { sectionsByClass, subjectNames } from '../services/teacherRoster';
 import SegmentedControl, { EXPORT_FORMATS } from './ui/SegmentedControl';
+import { LessonPlanScope } from '../types';
 
 interface SubjectSelectorProps {
   selection: SelectionApi;
@@ -29,12 +30,20 @@ interface SubjectSelectorProps {
   isLoadingSlos: boolean;
   onGenerate: () => void;
   isGenerating: boolean;
+  lessonPlanScope: LessonPlanScope;
+  onLessonPlanScopeChange: (scope: LessonPlanScope) => void;
 }
 
 const MODES = [
   { value: 'topic', label: 'Topic' },
   { value: 'single-slo', label: 'Single SLO' },
   { value: 'whole-chapter', label: 'Whole Chapter' },
+] as const;
+
+const PLAN_SCOPES = [
+  { value: 'daily', label: 'Daily Only' },
+  { value: 'weekly', label: 'Weekly Only' },
+  { value: 'both', label: 'Both' },
 ] as const;
 
 const SubjectSelector: React.FC<SubjectSelectorProps> = ({
@@ -51,6 +60,8 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
   isLoadingSlos,
   onGenerate,
   isGenerating,
+  lessonPlanScope,
+  onLessonPlanScopeChange,
 }) => {
   const [isTeacherInfoOpen, setIsTeacherInfoOpen] = useState(true);
 
@@ -249,6 +260,16 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
               </label>
               <SegmentedControl value={generationMode} options={MODES} onChange={onGenerationModeChange} />
             </div>
+
+            {/* Plan scope - only for whole chapter mode */}
+            {generationMode === 'whole-chapter' && (
+              <div className="animate-fadeIn">
+                <label className="block text-[11px] font-semibold text-brand-text-secondary mb-2 uppercase tracking-wide">
+                  Plan Scope
+                </label>
+                <SegmentedControl value={lessonPlanScope} options={PLAN_SCOPES} onChange={onLessonPlanScopeChange} />
+              </div>
+            )}
 
             {/* Topic input */}
             {generationMode === 'topic' && (

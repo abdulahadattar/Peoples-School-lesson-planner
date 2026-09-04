@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Theme, PaperConfig, Teacher, View } from './types';
+import { Theme, PaperConfig, Teacher, View, LessonPlanScope } from './types';
 import Header from './components/Header';
 import HomeView from './components/HomeView';
 import SubjectSelector from './components/SubjectSelector';
@@ -35,6 +35,7 @@ const App: React.FC = () => {
 
   const [generationMode, setGenerationMode] = useState<GenerationMode>('topic');
   const [topicInput, setTopicInput] = useState('');
+  const [lessonPlanScope, setLessonPlanScope] = useState<LessonPlanScope>('daily');
 
   // SLO and batch generation state
   const [selectedSloIds, setSelectedSloIds] = useState<string[]>([]);
@@ -162,6 +163,7 @@ const App: React.FC = () => {
         selectedSloIds,
         exportFormat,
         allChapterSlos: chapterSlos,
+        scope: lessonPlanScope,
       }
     );
 
@@ -284,6 +286,8 @@ const App: React.FC = () => {
                 isLoadingSlos={isLoadingSlos}
                 onGenerate={handleGenerateLesson}
                 isGenerating={isLoading}
+                lessonPlanScope={lessonPlanScope}
+                onLessonPlanScopeChange={setLessonPlanScope}
               />
             </div>
           )}

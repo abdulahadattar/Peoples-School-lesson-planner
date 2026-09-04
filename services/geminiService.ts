@@ -1,5 +1,5 @@
 import { Part, Type } from "@google/genai";
-import { LessonPlan, SLO } from "../types";
+import { LessonPlan, SLO, WeeklyLessonPlan } from "../types";
 import { cleanAndParseJson } from './jsonHelpers';
 import { sanitizeStringFields } from './latexSanitizer';
 
@@ -636,6 +636,138 @@ Generate a single 40-minute lesson plan focused ONLY on the target SLO above.`;
       const lessonPlan = parseLessonPlanJson(raw, gradeLevelContext, subject);
       log(`Successfully parsed lesson plan: "${lessonPlan.title}"`);
       return lessonPlan;
+    },
+    abortIf: (err) => {
+      if (err.message.includes("does not support pdf input") || err.message.includes("Cannot read ")) {
+        return "PDF_CONTEXT_NOT_SUPPORTED: The current AI model does not support PDF file input.";
+      }
+      return null;
+    },
+  });
+}
+
+const weeklyLessonPlanSchema = {
+  type: Type.OBJECT,
+  properties: {
+    title: { type: Type.STRING, description: "Weekly overview title, e.g. 'Weekly Lesson Plan - Chapter X'" },
+    objective: { type: Type.STRING, description: "Overall chapter learning objective for the week" },
+    materials: { type: Type.ARRAY, description: "Resources needed for the week", items: { type: Type.STRING } },
+    dailyBreakdown: {
+      type: Type.ARRAY,
+      description: "Exactly 5 entries, one for each day Monday through Friday",
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          day: { type: Type.STRING, enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], description: "Day of the week" },
+          topic: { type: Type.STRING, description: "Topic to cover on this day" },
+          objective: { type: Type.STRING, description: "Day-specific learning objective" },
+          activities: {
+            type: Type.ARRAY,
+            description: "3-4 activities for the day following 4As where applicable",
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                name: { type: Type.STRING, description: "Activity phase name" },
+                duration: { type: Type.INTEGER, description: "Duration in minutes" },
+                description: { type: Type.STRING, description: "Brief description of the activity" },
+              },
+              required: ['name', 'duration', 'description'],
+            },
+          },
+          homework: { type: Type.STRING, description: "Homework assigned at end of this day" },
+        },
+        required: ['day', 'topic', 'objective', 'activities', 'homework'],
+      },
+    },
+  },
+  required: ['title', 'objective', 'materials', 'dailyBreakdown'],
+};
+
+export async function generateWeeklyLessonPlan(
+  slo: SLO,
+  unitSlos: SLO[],
+  contextFileParts?: Part[],
+  subjectName?: string,
+  logCallback?: LogCallback
+): Promise<WeeklyLessonPlan> {
+  const log = (msg: string) => {
+    console.log(`[geminiService] ${msg}`);
+    logCallback?.(msg);
+  };
+
+  const gradeNum = parseInt(slo.grade?.replace(/Grade\s+|Class\s+/i, "") || "9", 10);
+  const gradeLevelContext = isNaN(gradeNum) ? `${slo.grade}` : `${slo.grade} (${gradeNum <= 10 ? "Foundational" : "Advanced"})`;
+  const subject = subjectName || "General";
+
+  log(`Generating weekly lesson plan for chapter: ${slo.Unit_Name} | Subject: ${subject} | Grade: ${slo.grade}`);
+
+  const systemInstruction = `You are a ${subject} Teacher at Peoples Higher Secondary School Jamshoro, creating a detailed weekly lesson plan for your own use and for school records. Your task is to generate a structured weekly overview as a JSON object. The tone should be professional, direct, and suitable for a Pakistani secondary school context.
+
+**Weekly Lesson Plan Structure:**
+
+Create a 5-day weekly plan (Monday through Friday) that breaks down the chapter content across the school week. Each day should have:
+- A focused topic derived from the chapter SLOs
+- A clear day-specific objective
+- 3-4 activities with time allocations
+- A homework assignment
+
+**Critical Instructions:**
+1.  **Grounded Content:** Base the entire weekly plan ONLY on the attached PDF content if provided. If no PDF, use your knowledge of the ${subject} curriculum for ${slo.grade} as per Sindh Textbook Board (STBB) standards.
+2.  **NO SOURCE REFERENCES:** Never mention "the PDF," "textbook," or any source. Present content directly as lesson material.
+3.  **Teacher-Centric Tone:** Write in direct instructional style. Use active verbs.
+4.  **Specific Instructions:** For each activity, provide clear step-by-step teacher actions.
+5.  **Local Context:** Make examples and applications relevant to Pakistani students.
+6.  **Time Allocation:** Activities per day should total approximately 40 minutes.
+7.  **Homework:** Provide meaningful homework assignments.
+8.  **MANDATORY JSON OUTPUT:** Output ONLY valid JSON matching the schema. No extra text or markdown.
+9.  **Grade Appropriateness:** Content must match ${gradeLevelContext} cognitive level.
+10. **5 DAYS ONLY:** The dailyBreakdown array must contain exactly 5 entries for Monday through Friday.
+`;
+
+  const contextText = unitSlos
+    .filter((s) => s.uniqueId !== slo.uniqueId)
+    .map((s) => `- ${s.SLO_ID}: ${s.SLO_Text}`)
+    .join("\n");
+
+  const hasPdf = contextFileParts && contextFileParts.length > 0;
+
+  const userPrompt = `You are generating a WEEKLY lesson plan for a chapter. Create exactly 5 daily entries (Monday to Friday) covering all the SLOs in this chapter.
+
+**CHAPTER:**
+${slo.Unit_Name}
+
+**TARGET SLO (primary focus):**
+${slo.SLO_ID}: ${slo.SLO_Text}
+
+${hasPdf ? `The attached PDF is the ${subject} textbook chapter for ${slo.grade}. Use its content as the GROUND TRUTH for this weekly lesson plan.` : `Use your knowledge of the ${subject} curriculum for ${slo.grade} as per STBB standards.`}
+
+For awareness of what else exists in this chapter:
+${contextText || "None"}
+
+Generate a weekly lesson plan with exactly 5 days (Monday-Friday), each with its own topic, objective, activities, and homework.`;
+
+  return requestJsonWithRetry<WeeklyLessonPlan>({
+    operationName: "generating weekly lesson plan",
+    firstAttemptLog: "Calling Gemini API for weekly plan via withKeyRotation...",
+    systemInstruction,
+    userPrompt,
+    schema: weeklyLessonPlanSchema,
+    temperature: 0.2,
+    contextParts: contextFileParts,
+    log,
+    parse: (raw) => {
+      log(`Received weekly plan API response (${raw.length} chars). Parsing JSON...`);
+      const parsed = cleanAndParseJson(raw);
+      if (!parsed.title || !parsed.objective || !Array.isArray(parsed.dailyBreakdown) || parsed.dailyBreakdown.length !== 5) {
+        throw new Error("Parsed JSON is missing required fields or does not have 5 days.");
+      }
+      const cleaned = sanitizeStringFields(parsed) as Record<string, unknown>;
+      return {
+        ...(cleaned as unknown as WeeklyLessonPlan),
+        gradeLevel: gradeLevelContext,
+        subject,
+        isWeekly: true,
+      };
     },
     abortIf: (err) => {
       if (err.message.includes("does not support pdf input") || err.message.includes("Cannot read ")) {
