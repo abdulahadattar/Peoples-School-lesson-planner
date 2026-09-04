@@ -209,7 +209,9 @@ export const useGeneralGeneration = () => {
         }
       }
 
-      // Generate weekly overview plan if scope is 'weekly' or 'both'
+      // Generate weekly overview plan if scope is 'weekly' or 'both'.
+      // Scope only applies to whole-chapter mode; single-slo and topic modes
+      // always produce a single daily plan.
       if ((scope === 'weekly' || scope === 'both') && mode !== 'topic' && chapter) {
         addLog('Generating weekly overview plan...');
         setStatusMessage('Generating weekly overview...');
@@ -439,7 +441,7 @@ export const useGeneralGeneration = () => {
 
    const exportPlan = useCallback(async (plan: LessonPlan, teacherInfo: TeacherInfo, exportFormatOption?: UiExportFormat) => {
     const isWeekly = (plan as WeeklyLessonPlan).isWeekly === true;
-    const fileName = formatFileName(`${plan.gradeLevel || ''} ${plan.subject || ''} ${plan.chapterName || ''}`.trim());
+    const fileName = formatFileName(`${plan.gradeLevel || ''} ${plan.subject || ''} ${plan.chapterName || ''}`.trim()) || 'lesson-plan';
     try {
       const fmt = exportFormatOption || 'both';
       if (isWeekly) {
