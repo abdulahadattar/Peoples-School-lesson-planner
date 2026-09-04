@@ -1,58 +1,50 @@
-
 import React from 'react';
-import { AtomIcon, MenuIcon, MoonIcon, SunIcon } from './icons/MiscIcons';
+import { MenuIcon, MoonIcon, SunIcon } from './icons/MiscIcons';
+import { PhssjLogo } from './Logo';
 
 type Theme = 'light' | 'dark';
 
 interface HeaderProps {
-    directoryName: string | null;
-    theme: Theme;
-    onToggleTheme: () => void;
-    onOpenSidebar: () => void;
+  theme: Theme;
+  onToggleTheme: () => void;
+  onOpenSidebar: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ directoryName, theme, onToggleTheme, onOpenSidebar }) => {
-    return (
-      <header className="h-14 px-4 md:px-6 bg-brand-surface border-b border-brand-border flex items-center justify-between sticky top-0 z-30">
-        <div className="flex items-center gap-4">
-            <button 
-                onClick={onOpenSidebar}
-                className="md:hidden p-2 text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg rounded-xl transition-colors"
-            >
-                <MenuIcon className="w-5 h-5" />
-            </button>
-            <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-brand-primary rounded-xl flex items-center justify-center text-white">
-                    <AtomIcon className="w-5 h-5" />
-                </div>
-                <h1 className="text-lg font-bold text-brand-text-primary hidden sm:block tracking-tight">Lesson Plan AI</h1>
-            </div>
-        </div>
-
+const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onOpenSidebar }) => {
+  return (
+    <header className="h-14 md:h-16 px-4 md:px-6 bg-brand-surface/80 backdrop-blur-xl border-b border-brand-border flex items-center justify-between sticky top-0 z-30">
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onOpenSidebar}
+          aria-label="Open navigation"
+          className="md:hidden p-2 text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg rounded-xl transition-all duration-200 active:scale-90"
+        >
+          <MenuIcon className="w-5 h-5" />
+        </button>
         <div className="flex items-center gap-3">
-              <div className="hidden md:flex items-center px-3 py-1.5 bg-brand-bg rounded-full border border-brand-border gap-2">
-                 <div className={`w-1.5 h-1.5 rounded-full ${directoryName ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
-                 <span className="text-xs font-medium text-brand-text-secondary">
-                     {directoryName ? directoryName : 'No Context'}
-                 </span>
-             </div>
-              
-             <div className="h-5 w-px bg-brand-border/60 mx-0.5"></div>
-
-             <button 
-                onClick={onToggleTheme}
-                 className="p-2 rounded-xl text-brand-text-secondary hover:text-brand-primary hover:bg-brand-primary/10 transition-colors"
-                title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
-             >
-                {theme === 'light' ? <MoonIcon className="w-5 h-5" /> : <SunIcon className="w-5 h-5" />}
-            </button>
-              
-              <div className="w-8 h-8 rounded-full bg-brand-primary flex items-center justify-center cursor-pointer transition-transform active:scale-[0.98]">
-                   <span className="text-[10px] font-semibold text-white">AA</span>
-              </div>
+          <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white shadow-card border border-brand-border flex items-center justify-center overflow-hidden">
+            <PhssjLogo className="w-full h-full" />
+          </div>
+          <div className="leading-tight">
+            <h1 className="text-sm md:text-base font-bold text-brand-text-primary tracking-tight">
+              PHSSJ Lesson Planner
+            </h1>
+          </div>
         </div>
-      </header>
-    );
+      </div>
+
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onToggleTheme}
+          aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+          className="relative p-2.5 rounded-xl text-brand-text-secondary hover:text-brand-primary hover:bg-brand-primary/10 transition-all duration-200 active:scale-90 group"
+        >
+          <span className="absolute inset-0 rounded-xl group-hover:ring-1 group-hover:ring-brand-primary/20" />
+          {theme === 'light' ? <MoonIcon className="w-5 h-5" /> : <SunIcon className="w-5 h-5" />}
+        </button>
+      </div>
+    </header>
+  );
 };
 
 export default Header;

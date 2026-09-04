@@ -10,17 +10,19 @@
     "test": "node scripts/test-all.mjs"
   },
   "dependencies": {
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
     "@google/genai": "^1.29.0",
-    "react-dropzone": "^14.3.8",
     "docx": "^8.5.0",
     "file-saver": "^2.0.5",
-    "idb-keyval": "^6.2.1"
+    "idb-keyval": "^6.2.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-dropzone": "^14.3.8"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "tailwindcss": "^4.3.3",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   }

@@ -4,6 +4,7 @@ import {
   Packer,
   Paragraph,
   Table,
+  TableBorders,
   TableCell,
   TableRow,
   TextRun,
@@ -16,7 +17,17 @@ import {
 } from 'docx';
 import saveAs from 'file-saver';
 import { LessonPlan, GeneratedPaper, PaperQuestion, PaperSection, TeacherInfo } from '../types';
-import { parseTextWithEquations, dataUrlToBase64, isKatexAvailable } from './equationRenderer';
+import { parseTextWithEquations, dataUrlToBase64 } from './equationRenderer';
+import { latexToUnicodeText } from './latexSanitizer';
+import {
+  hasOptions,
+  layoutOptions,
+  optionLetter,
+  optionLine,
+  paperSectionNote,
+  questionNumber,
+  sectionInstruction,
+} from './paperLayout';
 
 declare const pdfMake: any;
 
@@ -53,36 +64,27 @@ export const formatFileName = (title: string, sloId?: string): string => {
 const parseTextForDocx = async (text: string): Promise<(TextRun | any)[]> => {
   const runs: (TextRun | any)[] = [];
 
-  // If KaTeX is available, parse equations as rendered images
-  if (isKatexAvailable()) {
-    const segments = await parseTextWithEquations(text, 14);
-    for (const seg of segments) {
-      if (seg.type === 'equation' && seg.image) {
-        // Convert data URL to base64 and create ImageRun
-        const base64 = dataUrlToBase64(seg.image);
-        // Determine image dimensions from the data
-        const img = new Image();
-        await new Promise<void>((resolve) => {
-          img.onload = () => resolve();
-          img.onerror = () => resolve();
-          img.src = seg.image;
-        });
-        const width = Math.min(img.width || 120, 400);
-        const height = Math.min(img.height || 24, 60);
-        runs.push(new ImageRun({
-          data: base64,
-          transformation: { width, height },
-        }));
-      } else {
-        // Plain text — check for bold/italic markdown
-        runs.push(...parseMarkdownRuns(seg.value));
-      }
+  // Parse equations through the browser-safe MathJax pipeline (falls back to
+  // plain text automatically when no renderer is available).
+  const segments = await parseTextWithEquations(text, 14);
+  for (const seg of segments) {
+    if (seg.type === 'equation' && seg.image) {
+      // Convert data URL to base64 and create an ImageRun at its natural size
+      // (measured in CSS px before the 2x rasterization).
+      const base64 = dataUrlToBase64(seg.image);
+      runs.push(new ImageRun({
+        data: base64,
+        transformation: {
+          width: Math.min(seg.width || 120, 400),
+          height: Math.min(seg.height || 24, 60),
+        },
+      }));
+    } else {
+      // Plain text — check for bold/italic markdown
+      runs.push(...parseMarkdownRuns(seg.value));
     }
-    return runs;
   }
-
-  // Fallback: no KaTeX — just handle bold/italic
-  return parseMarkdownRuns(text);
+  return runs;
 };
 
 /**
@@ -360,40 +362,55 @@ export const exportMultipleLessonsAsPdf = async (lessonPlans: LessonPlan[], file
 /**
  * Render text with equations for pdfMake.
  * Returns an array of pdfMake content items.
+ *
+ * pdfMake cannot place images inline inside a sentence (they always jump to a
+ * new line and look oversized), so INLINE equations are converted to readable
+ * unicode text (g/cm³, 10²³, ρ, √x) that flows at text size. Only standalone
+ * display ($$...$$) equations are embedded as raster images.
  */
-const renderPdfRichText = async (text: string, style: string = 'body'): Promise<any[]> => {
-  if (!isKatexAvailable()) {
-    return [{ text, style }];
-  }
-
-  const segments = await parseTextWithEquations(text, 10);
+const renderPdfRichText = async (
+  text: string,
+  style: string = 'body',
+  prefix?: string,
+  fontSize: number = 12
+): Promise<any[]> => {
+  const segments = await parseTextWithEquations(text, fontSize);
   const items: any[] = [];
-  let currentText = '';
+  let runs: any[] = [];
+
+  if (prefix) runs.push(prefix);
+  const flush = () => {
+    if (runs.length > 0) {
+      items.push({ text: runs, style });
+      runs = [];
+    }
+  };
 
   for (const seg of segments) {
-    if (seg.type === 'equation' && seg.image) {
-      // Flush any accumulated text
-      if (currentText) {
-        items.push({ text: currentText, style });
-        currentText = '';
-      }
-      // Add equation as image
+    if (seg.type === 'equation' && seg.image && seg.display) {
+      // Standalone display equation: raster image on its own centered block
+      flush();
       const base64 = dataUrlToBase64(seg.image);
+      const natural = (seg.width || 200) * 0.75;
       items.push({
         image: `data:image/png;base64,${base64}`,
-        width: seg.display ? 200 : 100,
+        width: Math.max(8, Math.min(Math.round(natural), 380)),
+        alignment: 'center' as const,
+        margin: [0, 2, 0, 2],
         style,
       });
-    } else {
-      currentText += seg.value;
+      continue;
     }
+    if (seg.type === 'equation') {
+      // Inline math -> unicode text at the exact size of surrounding text
+      runs.push(latexToUnicodeText(seg.value || ''));
+      continue;
+    }
+    runs.push(seg.value);
   }
+  flush();
 
-  if (currentText) {
-    items.push({ text: currentText, style });
-  }
-
-  return items.length > 0 ? items : [{ text, style }];
+  return items.length > 0 ? items : [{ text: runs.length > 0 ? runs : [text], style }];
 };
 
 const createPaperPdfContent = async (paper: GeneratedPaper, teacherInfo?: TeacherInfo): Promise<any[]> => {
@@ -401,34 +418,60 @@ const createPaperPdfContent = async (paper: GeneratedPaper, teacherInfo?: Teache
     const teacherName = teacherInfo?.name || "";
 
     const headerContent = [
-        { text: schoolName, style: 'paperHeader', alignment: 'center', bold: true, fontSize: 14, margin: [0, 0, 0, 4] },
-        { text: paper.title, style: 'paperHeader', alignment: 'center', bold: true, fontSize: 12, margin: [0, 0, 0, 4] },
-        { text: `Subject: ${paper.subject}    |    Class: ${paper.gradeLevel}    |    Total Marks: ${paper.totalMarks}    |    Duration: ${paper.durationMinutes} minutes`, style: 'paperHeader', alignment: 'center', fontSize: 10, margin: [0, 0, 0, 10] },
-        teacherName ? { text: `Teacher: ${teacherName}`, style: 'paperHeader', alignment: 'center', fontSize: 10, margin: [0, 0, 0, 8] } : {},
+        { text: schoolName, style: 'paperHeader', alignment: 'center', bold: true, fontSize: 14, margin: [0, 0, 0, 2] },
+        { text: paper.title, style: 'paperHeader', alignment: 'center', bold: true, fontSize: 12, margin: [0, 0, 0, 2] },
+        { text: `Subject: ${paper.subject}    |    Class: ${paper.gradeLevel}    |    Total Marks: ${paper.totalMarks}    |    Duration: ${paper.durationMinutes} minutes`, style: 'paperHeader', alignment: 'center', fontSize: 10, margin: [0, 0, 0, 3] },
+        teacherName ? { text: `Teacher: ${teacherName}`, style: 'paperHeader', alignment: 'center', fontSize: 10, margin: [0, 0, 0, 2] } : {},
     ].filter(Boolean);
 
     const sectionsContent: any[] = [];
-    for (const section of paper.sections) {
-        sectionsContent.push(
-            { text: section.title, style: 'sectionTitle', margin: [0, 10, 0, 4] },
-            { text: section.instruction, style: 'sectionInstruction', margin: [0, 0, 0, 6] },
-        );
+    for (let sIdx = 0; sIdx < paper.sections.length; sIdx++) {
+        const section = paper.sections[sIdx];
+        sectionsContent.push({ text: section.title, style: 'sectionTitle', margin: [0, 10, 0, 4] });
+        const genericInstruction = sectionInstruction(section);
+        if (genericInstruction) {
+            sectionsContent.push({ text: genericInstruction, style: 'sectionInstruction', margin: [0, 0, 0, 4] });
+        }
+        const markingNote = paperSectionNote(paper, sIdx, section);
+        if (markingNote) {
+            sectionsContent.push({ text: markingNote, style: 'sectionMarkingNote', margin: [0, 0, 0, 6] });
+        }
 
-        for (const q of section.questions) {
-            const qText = `${q.id}. ${q.question} [${q.marks} marks]`;
-            if (q.type === 'mcq' && q.options && q.options.length > 0) {
+        for (let qIdx = 0; qIdx < section.questions.length; qIdx++) {
+            const q = section.questions[qIdx];
+            // Marks are NOT repeated per question — only the section note above says them
+            const qText = `${questionNumber(qIdx)}. ${q.question}`;
+            if (hasOptions(q)) {
                 const qItems = await renderPdfRichText(qText, 'questionText');
                 sectionsContent.push(...qItems.map((item: any) => ({ ...item, margin: item.margin || [0, 4, 0, 2] })));
-                const optionItems = await Promise.all(
-                    q.options.map(async (opt) => {
-                        const rendered = await renderPdfRichText(opt, 'optionText');
-                        return rendered.length === 1 ? rendered[0] : { stack: rendered };
-                    })
-                );
-                sectionsContent.push({
-                    ul: optionItems,
-                    margin: [0, 0, 0, 6]
-                });
+                const rows = layoutOptions(q.options || []);
+                for (const row of rows) {
+                    const columns: any[] = [];
+                    for (const o of row.options) {
+                        // The hollow circle is drawn as a vector canvas because
+                        // the bundled Roboto font has no ○ (U+25CB) glyph. Inline
+                        // math in the option is unicode text, so each option is a
+                        // single text line next to its circle.
+                        const optLines = await renderPdfRichText(
+                            o.text || '',
+                            'optionText',
+                            `${optionLetter(o.index)}) `
+                        );
+                        const optionBlock: any = {
+                            columns: [
+                                { width: 12, canvas: [{ type: 'circle', x: 6, y: 5, r: 3.1, lineWidth: 1, lineColor: '#000000' }] },
+                                { width: '*', stack: optLines },
+                            ],
+                            columnGap: 3,
+                        };
+                        columns.push({ width: row.options.length === 2 ? 235 : '*', stack: [optionBlock] });
+                    }
+                    sectionsContent.push({
+                        columns,
+                        columnGap: row.options.length === 2 ? 10 : 0,
+                        margin: [0, 1, 0, 4],
+                    });
+                }
             } else {
                 const qItems = await renderPdfRichText(qText, 'questionText');
                 sectionsContent.push(...qItems.map((item: any) => ({ ...item, margin: item.margin || [0, 4, 0, 6] })));
@@ -438,7 +481,7 @@ const createPaperPdfContent = async (paper: GeneratedPaper, teacherInfo?: Teache
 
     return [
         ...headerContent,
-        { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 595.28, y2: 0, lineWidth: 1, lineColor: '#000000' }], margin: [0, 0, 0, 10] },
+        { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 595.28, y2: 0, lineWidth: 1, lineColor: '#000000' }], margin: [0, 0, 0, 6] },
         ...sectionsContent,
         { text: '\n\n', margin: [0, 20, 0, 0] },
         { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 595.28, y2: 0, lineWidth: 1, lineColor: '#000000' }], margin: [0, 0, 0, 10] },
@@ -457,7 +500,7 @@ export const exportPaperAsDocx = async (paper: GeneratedPaper, teacherInfo?: Tea
             new TextRun({ text: schoolName, bold: true, size: 28, font: "Calibri" }),
         ],
         alignment: AlignmentType.CENTER,
-        spacing: { after: 200 },
+        spacing: { after: 60 },
     });
     children.push(headerParagraph);
 
@@ -466,7 +509,7 @@ export const exportPaperAsDocx = async (paper: GeneratedPaper, teacherInfo?: Tea
             new TextRun({ text: paper.title, bold: true, size: 24, font: "Calibri" }),
         ],
         alignment: AlignmentType.CENTER,
-        spacing: { after: 100 },
+        spacing: { after: 40 },
     });
     children.push(titleParagraph);
 
@@ -475,7 +518,7 @@ export const exportPaperAsDocx = async (paper: GeneratedPaper, teacherInfo?: Tea
             new TextRun({ text: `Subject: ${paper.subject}    Class: ${paper.gradeLevel}    Total Marks: ${paper.totalMarks}    Duration: ${paper.durationMinutes} minutes`, size: 20, font: "Calibri" }),
         ],
         alignment: AlignmentType.CENTER,
-        spacing: { after: 300 },
+        spacing: { after: 80 },
     });
     children.push(infoParagraph);
 
@@ -485,7 +528,7 @@ export const exportPaperAsDocx = async (paper: GeneratedPaper, teacherInfo?: Tea
                 new TextRun({ text: `Teacher: ${teacherInfo.name}`, size: 20, font: "Calibri" }),
             ],
             alignment: AlignmentType.CENTER,
-            spacing: { after: 200 },
+            spacing: { after: 40 },
         });
         children.push(teacherParagraph);
     }
@@ -493,46 +536,96 @@ export const exportPaperAsDocx = async (paper: GeneratedPaper, teacherInfo?: Tea
     const divider = new Paragraph({
         children: [],
         border: { bottom: { style: 'single', size: 6, color: '000000' } },
-        spacing: { after: 200 },
+        spacing: { after: 120 },
     });
     children.push(divider);
 
-    for (const section of paper.sections) {
-        const sectionTitle = new Paragraph({
+    const noBorders = {
+        top: { style: 'none' as const }, bottom: { style: 'none' as const },
+        left: { style: 'none' as const }, right: { style: 'none' as const },
+    };
+
+    /** One option paragraph inside a borderless cell (keeps columns aligned). */
+    const optionCell = async (o: { index: number; text: string }): Promise<TableCell> => new TableCell({
+        children: [
+            new Paragraph({
+                children: await parseTextForDocx(optionLine(o.index, o.text)),
+                spacing: { after: 30 },
+                indent: { left: 80 },
+            }),
+        ],
+        borders: noBorders,
+        width: { size: 50, type: WidthType.PERCENTAGE },
+        verticalAlign: DocxVerticalAlign.CENTER,
+    });
+
+    for (let sIdx = 0; sIdx < paper.sections.length; sIdx++) {
+        const section = paper.sections[sIdx];
+
+        children.push(new Paragraph({
             children: [new TextRun({ text: section.title, bold: true, size: 24, font: "Calibri", color: "1F4E79" })],
             spacing: { before: 300, after: 100 },
-        });
-        children.push(sectionTitle);
+        }));
 
-        const instruction = new Paragraph({
-            children: [new TextRun({ text: section.instruction, italics: true, size: 20, font: "Calibri" })],
-            spacing: { after: 150 },
-        });
-        children.push(instruction);
+        // Generic AI instruction (suppressed when it would repeat the marking note)
+        const genericInstruction = sectionInstruction(section);
+        if (genericInstruction) {
+            children.push(new Paragraph({
+                children: [new TextRun({ text: genericInstruction, italics: true, size: 20, font: "Calibri" })],
+                spacing: { after: 80 },
+            }));
+        }
 
-        for (const q of section.questions) {
-            const qText = `${q.id}. ${q.question}`;
-            if (q.type === 'mcq' && q.options && q.options.length > 0) {
-                const qRuns = await parseTextForDocx(qText);
-                const qPara = new Paragraph({
-                    children: qRuns,
-                    spacing: { after: 80 },
-                });
-                children.push(qPara);
-                for (const opt of q.options) {
-                    const optRuns = await parseTextForDocx(opt);
-                    children.push(new Paragraph({
-                        children: optRuns,
-                        indent: { left: 400 },
-                        spacing: { after: 40 },
-                    }));
+        // Section-level marking line printed ONCE per section (never per question)
+        const markingNote = paperSectionNote(paper, sIdx, section);
+        if (markingNote) {
+            children.push(new Paragraph({
+                children: [new TextRun({ text: markingNote, bold: true, size: 20, font: "Calibri" })],
+                spacing: { after: 150 },
+            }));
+        }
+
+        for (let qIdx = 0; qIdx < section.questions.length; qIdx++) {
+            const q = section.questions[qIdx];
+            // Deterministic Q1/Q2 numbering (per section) — never the AI's id or marks
+            const qRuns = await parseTextForDocx(`${questionNumber(qIdx)}. ${q.question}`);
+            children.push(new Paragraph({
+                children: qRuns,
+                spacing: { after: hasOptions(q) ? 60 : 120 },
+            }));
+
+            if (hasOptions(q)) {
+                // Two short options share one fixed-width line; longer options wrap alone
+                const rows = layoutOptions(q.options || []);
+                for (const row of rows) {
+                    if (row.options.length === 2) {
+                        const table = new Table({
+                            width: { size: 100, type: WidthType.PERCENTAGE },
+                            borders: TableBorders.NONE,
+                            rows: [new TableRow({ children: [await optionCell(row.options[0]), await optionCell(row.options[1])] })],
+                        });
+                        children.push(table);
+                    } else {
+                        const table = new Table({
+                            width: { size: 100, type: WidthType.PERCENTAGE },
+                            borders: TableBorders.NONE,
+                            rows: [new TableRow({
+                                children: [await new TableCell({
+                                    children: [
+                                        new Paragraph({
+                                            children: await parseTextForDocx(optionLine(row.options[0].index, row.options[0].text)),
+                                            spacing: { after: 30 },
+                                            indent: { left: 80 },
+                                        }),
+                                    ],
+                                    borders: noBorders,
+                                    width: { size: 100, type: WidthType.PERCENTAGE },
+                                })],
+                            })],
+                        });
+                        children.push(table);
+                    }
                 }
-            } else {
-                const qRuns = await parseTextForDocx(qText);
-                children.push(new Paragraph({
-                    children: qRuns,
-                    spacing: { after: 120 },
-                }));
             }
         }
     }
@@ -570,6 +663,7 @@ export const exportPaperAsPdf = async (paper: GeneratedPaper, teacherInfo?: Teac
             paperHeader: { margin: [0, 0, 0, 4] },
             sectionTitle: { bold: true, fontSize: 12, color: '#1F4E79', margin: [0, 10, 0, 4] },
             sectionInstruction: { italics: true, fontSize: 10, margin: [0, 0, 0, 6] },
+            sectionMarkingNote: { bold: true, fontSize: 10, margin: [0, 0, 0, 6] },
             questionText: { fontSize: 10, margin: [0, 4, 0, 6] },
             optionText: { fontSize: 9, margin: [0, 0, 0, 2] },
         },

@@ -54,15 +54,38 @@ export interface PaperQuestion {
   topic?: string;
 }
 
+export type PaperDifficulty = 'easy' | 'medium' | 'hard';
+
 export interface PaperConfig {
   gradeId: string;
   subjectId: string;
   chapterId: string;
   totalMarks: number;
   mcqCount: number;
+  /** Overall difficulty of the generated questions. */
+  difficulty?: PaperDifficulty;
+  /** Number of short questions listed on the paper (students attempt `shortAttemptCount`). */
   shortQuestionCount: number;
+  /** Number of short questions students must attempt (<= shortQuestionCount). */
+  shortAttemptCount: number;
+  /** Number of long questions listed on the paper (students attempt `longAttemptCount`). */
   longQuestionCount: number;
+  /** Number of long questions students must attempt (<= longQuestionCount). */
+  longAttemptCount: number;
   durationMinutes: number;
+}
+
+/**
+ * Per-section marking structure used to print the section instruction line
+ * ("Each question carries N marks" / "Attempt any X of the Y questions").
+ */
+export interface PaperSectionBlueprint {
+  /** Questions listed on the paper (all are candidates for the attempt-any rule). */
+  questionCount: number;
+  /** Questions the student must actually attempt. */
+  attemptCount: number;
+  /** Uniform marks carried by every question in this section. */
+  perQuestionMarks: number;
 }
 
 export interface GeneratedPaper {
@@ -73,6 +96,8 @@ export interface GeneratedPaper {
   totalMarks: number;
   durationMinutes: number;
   sections: PaperSection[];
+  /** Marking structure per section (index-aligned with `sections`). Absent after AI revision. */
+  sectionBlueprints?: PaperSectionBlueprint[];
 }
 
 export interface PaperSection {

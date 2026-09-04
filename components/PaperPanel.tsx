@@ -1,8 +1,17 @@
 import React, { useState, useMemo } from 'react';
 import { curriculumData } from '../curriculum';
-import { CurriculumClass, Teacher } from '../types';
-import { DocumentTextIcon } from './icons/MiscIcons';
+import { Teacher } from '../types';
+import SelectField from './ui/SelectField';
+import Spinner from './ui/Spinner';
+import { DocumentTextIcon, GraduationCapIcon, BookOpenIcon, ClipboardListIcon, SchoolIcon, SparklesIcon, UserIcon } from './icons/MiscIcons';
 import { PaperConfig } from '../types';
+import {
+  autoSelectForTeacher,
+  classesForTeacher,
+  filterTeachersBySelection,
+  sortClassesByGrade,
+  subjectsForTeacher,
+} from '../services/curriculumHelpers';
 
 interface PaperPanelProps {
   onGeneratePaper: (config: PaperConfig) => void;
@@ -13,12 +22,6 @@ interface PaperPanelProps {
   onTeacherNameChange: (name: string) => void;
   onSchoolNameChange: (name: string) => void;
 }
-
-const ChevronDownIcon = () => (
-  <svg className="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-  </svg>
-);
 
 const clampNumber = (value: string, min: number, max: number): number => {
   const parsed = parseInt(value, 10);
@@ -31,88 +34,77 @@ const formatMark = (value: number): string => {
   return value.toFixed(1);
 };
 
-const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating, teachers, selectedTeacherId, onSelectedTeacherIdChange, onTeacherNameChange, onSchoolNameChange }) => {
+/** Shared styled number input (used for every paper-config field). */
+const NumberField: React.FC<{
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (value: number) => void;
+}> = ({ label, value, min, max, onChange }) => (
+  <div className="space-y-1.5">
+    <label className="block text-[11px] text-brand-text-secondary font-medium">{label}</label>
+    <input
+      type="number"
+      min={min}
+      max={max}
+      value={value}
+      onChange={e => onChange(clampNumber(e.target.value, min, max))}
+      className="w-full h-11 px-3.5 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text-primary placeholder:text-brand-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+    />
+  </div>
+);
+
+const PaperPanel: React.FC<PaperPanelProps> = ({
+  onGeneratePaper,
+  isGenerating,
+  teachers,
+  selectedTeacherId,
+  onSelectedTeacherIdChange,
+  onTeacherNameChange,
+  onSchoolNameChange,
+}) => {
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
   const [selectedChapterId, setSelectedChapterId] = useState<string>('');
   const [totalMarks, setTotalMarks] = useState<number>(23);
   const [mcqCount, setMcqCount] = useState<number>(5);
+  // Short/long questions the paper LISTS; students attempt any `shortAttemptCount`
+  // of the listed short questions (optional = listed - attempted).
   const [shortQuestionCount, setShortQuestionCount] = useState<number>(5);
+  const [shortAttemptCount, setShortAttemptCount] = useState<number>(5);
   const [longQuestionCount, setLongQuestionCount] = useState<number>(2);
+  const [longAttemptCount, setLongAttemptCount] = useState<number>(2);
   const [durationMinutes, setDurationMinutes] = useState<number>(60);
+  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
 
-  // Sort classes numerically
-  const classes: CurriculumClass[] = useMemo(() =>
-    [...curriculumData.classes].sort((a, b) => {
-      const numA = parseInt(a.id.replace('class', ''), 10);
-      const numB = parseInt(b.id.replace('class', ''), 10);
-      return numA - numB;
-    }),
-    []
-  );
-
+  const classes = useMemo(() => sortClassesByGrade(curriculumData.classes), []);
   const selectedTeacher = useMemo(
     () => teachers.find(t => t.id === selectedTeacherId) || null,
     [teachers, selectedTeacherId]
   );
 
-  // Filtered teachers by class + subject
-  const subjectMatches = (teacherSubject: string, curriculumSubject: { id: string; name: string }): boolean => {
-    const ts = teacherSubject.toLowerCase();
-    const csName = curriculumSubject.name.toLowerCase();
-    const csId = curriculumSubject.id.toLowerCase();
-    return ts === csName || ts === csId || csName.includes(ts) || ts.includes(csName) || ts.includes(csId.replace('_', ' '));
-  };
-
-  const filteredTeachers = useMemo(() => {
-    let list = teachers;
-    if (selectedClassId) list = list.filter(t => t.classIds?.includes(selectedClassId));
-    if (selectedSubjectId) {
-      const selectedClass = classes.find(c => c.id === selectedClassId);
-      const selectedSubject = selectedClass?.subjects.find(s => s.id === selectedSubjectId);
-      list = list.filter(t => t.subjects.some(ts => {
-        if (!selectedSubject) return ts.toLowerCase() === selectedSubjectId.toLowerCase();
-        return subjectMatches(ts, selectedSubject);
-      }));
-    }
-    return list;
-  }, [teachers, selectedClassId, selectedSubjectId, classes]);
-
-  // Available classes filtered by teacher
-  const availableClasses = useMemo(() => {
-    if (selectedTeacher?.classIds && selectedTeacher.classIds.length > 0) {
-      return classes.filter(c => selectedTeacher.classIds!.includes(c.id));
-    }
-    return classes;
-  }, [classes, selectedTeacher]);
+  const filteredTeachers = useMemo(
+    () => filterTeachersBySelection(teachers, selectedClassId, selectedSubjectId, classes),
+    [teachers, selectedClassId, selectedSubjectId, classes]
+  );
+  const availableClasses = useMemo(() => classesForTeacher(classes, selectedTeacher), [classes, selectedTeacher]);
+  const availableSubjects = useMemo(
+    () => subjectsForTeacher(classes, selectedClassId, selectedTeacher),
+    [classes, selectedClassId, selectedTeacher]
+  );
 
   const selectedClass = useMemo(
-    () => classes.find((c) => c.id === selectedClassId) || null,
+    () => classes.find(c => c.id === selectedClassId) || null,
     [classes, selectedClassId]
   );
-
-  // Available subjects filtered by teacher + class
-  const availableSubjects = useMemo(() => {
-    const classSubjects = selectedClass?.subjects || [];
-    if (selectedTeacher) {
-      return classSubjects.filter(s =>
-        selectedTeacher.subjects.some(ts => subjectMatches(ts, s))
-      );
-    }
-    return classSubjects;
-  }, [selectedClass, selectedTeacher]);
-
-  const subjects = useMemo(() => selectedClass?.subjects || [], [selectedClass]);
-
   const selectedSubject = useMemo(
-    () => subjects.find((s) => s.id === selectedSubjectId) || null,
-    [subjects, selectedSubjectId]
+    () => availableSubjects.find(s => s.id === selectedSubjectId) || null,
+    [availableSubjects, selectedSubjectId]
   );
-
   const chapters = useMemo(() => selectedSubject?.chapters || [], [selectedSubject]);
-
   const selectedChapter = useMemo(
-    () => chapters.find((c) => c.id === selectedChapterId) || null,
+    () => chapters.find(c => c.id === selectedChapterId) || null,
     [chapters, selectedChapterId]
   );
 
@@ -121,32 +113,38 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating, 
     const SHORT_WEIGHT = 2;
     const LONG_WEIGHT = 4;
 
+    const attemptShort = Math.min(shortAttemptCount, shortQuestionCount);
+    const attemptLong = Math.min(longAttemptCount, longQuestionCount);
     const mcqMarks = mcqCount * MCQ_WEIGHT;
-    const shortMarks = shortQuestionCount * SHORT_WEIGHT;
-    const longMarks = longQuestionCount * LONG_WEIGHT;
+    const shortMarks = attemptShort * SHORT_WEIGHT;
+    const longMarks = attemptLong * LONG_WEIGHT;
     const totalQuestionMarks = mcqMarks + shortMarks + longMarks;
 
     return {
       mcqMarks,
       shortMarks,
       longMarks,
-      mcqPerQuestion: mcqCount > 0 ? mcqMarks / mcqCount : 0,
-      shortPerQuestion: shortQuestionCount > 0 ? shortMarks / shortQuestionCount : 0,
-      longPerQuestion: longQuestionCount > 0 ? longMarks / longQuestionCount : 0,
+      shortAttempt: attemptShort,
+      longAttempt: attemptLong,
+      mcqPerQuestion: mcqCount > 0 ? MCQ_WEIGHT : 0,
+      shortPerQuestion: SHORT_WEIGHT,
+      longPerQuestion: LONG_WEIGHT,
       totalQuestionMarks,
-      weightSum: totalQuestionMarks,
     };
-  }, [totalMarks, mcqCount, shortQuestionCount, longQuestionCount]);
+  }, [mcqCount, shortQuestionCount, shortAttemptCount, longQuestionCount, longAttemptCount]);
+
+  const deselectTeacher = () => {
+    onSelectedTeacherIdChange('');
+    onTeacherNameChange('');
+  };
 
   const handleClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newClassId = e.target.value;
     setSelectedClassId(newClassId);
     setSelectedSubjectId('');
     setSelectedChapterId('');
-    // If teacher doesn't teach this class, deselect
     if (selectedTeacher && newClassId && !selectedTeacher.classIds?.includes(newClassId)) {
-      onSelectedTeacherIdChange('');
-      onTeacherNameChange('');
+      deselectTeacher();
     }
   };
 
@@ -154,10 +152,8 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating, 
     const newSubjectId = e.target.value;
     setSelectedSubjectId(newSubjectId);
     setSelectedChapterId('');
-    // If teacher doesn't teach this subject, deselect
     if (selectedTeacher && newSubjectId && !selectedTeacher.subjects.some(s => s.toLowerCase() === newSubjectId.toLowerCase())) {
-      onSelectedTeacherIdChange('');
-      onTeacherNameChange('');
+      deselectTeacher();
     }
   };
 
@@ -165,52 +161,18 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating, 
     const teacherId = e.target.value;
     onSelectedTeacherIdChange(teacherId);
     const teacher = teachers.find(t => t.id === teacherId);
-    if (teacher) {
-      onTeacherNameChange(teacher.name);
-      onSchoolNameChange(teacher.schoolName);
-
-      // Auto-select class and subject
-      const teacherClasses = teacher.classIds || [];
-      setSelectedChapterId('');
-
-      // Auto-select subject if teacher teaches only one subject
-      let autoSelectedSubject = '';
-      if (teacher.subjects.length === 1) {
-        const classIds = teacherClasses.length > 0 ? teacherClasses : (selectedClassId ? [selectedClassId] : []);
-        for (const cid of classIds) {
-          const classObj = classes.find(c => c.id === cid);
-          if (classObj) {
-            const matchSubject = classObj.subjects.find(s => subjectMatches(teacher.subjects[0], s));
-            if (matchSubject) {
-              autoSelectedSubject = matchSubject.id;
-              break;
-            }
-          }
-        }
-      }
-
-      if (autoSelectedSubject) {
-        const classForSubject = teacherClasses.find(cid => {
-          const classObj = classes.find(c => c.id === cid);
-          return classObj?.subjects.some(s => s.id === autoSelectedSubject);
-        });
-        if (classForSubject) {
-          setSelectedClassId(classForSubject);
-        } else if (teacherClasses.length === 1) {
-          setSelectedClassId(teacherClasses[0]);
-        }
-        setSelectedSubjectId(autoSelectedSubject);
-      } else if (teacherClasses.length === 1) {
-        setSelectedClassId(teacherClasses[0]);
-        setSelectedSubjectId('');
-      }
-    } else {
+    if (!teacher) {
       onTeacherNameChange('');
+      return;
     }
-  };
 
-  const handleChapterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedChapterId(e.target.value);
+    onTeacherNameChange(teacher.name);
+    onSchoolNameChange(teacher.schoolName);
+
+    setSelectedChapterId('');
+    const { classId, subjectId } = autoSelectForTeacher(teacher, classes, selectedClassId);
+    if (classId) setSelectedClassId(classId);
+    if (subjectId) setSelectedSubjectId(subjectId);
   };
 
   const handleGenerate = () => {
@@ -221,23 +183,34 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating, 
       totalMarks,
       mcqCount,
       shortQuestionCount,
+      shortAttemptCount: Math.min(shortAttemptCount, shortQuestionCount),
       longQuestionCount,
+      longAttemptCount: Math.min(longAttemptCount, longQuestionCount),
       durationMinutes,
+      difficulty,
     };
     onGeneratePaper(config);
   };
 
   const canGenerate = Boolean(selectedClassId && selectedSubjectId && selectedChapterId);
   const marksValid = markDistribution.totalQuestionMarks > 0 && markDistribution.totalQuestionMarks === totalMarks;
-
   const isDisabled = isGenerating || !canGenerate || !marksValid;
 
+  const shortHasOptional = shortAttemptCount < shortQuestionCount;
+  const longHasOptional = longAttemptCount < longQuestionCount;
+
+  const distributionRows = [
+    { label: 'MCQ Section', marks: markDistribution.mcqMarks, count: mcqCount, per: markDistribution.mcqPerQuestion, attempt: mcqCount },
+    { label: 'Short Answer Section', marks: markDistribution.shortMarks, count: shortQuestionCount, per: markDistribution.shortPerQuestion, attempt: markDistribution.shortAttempt },
+    { label: 'Long Answer Section', marks: markDistribution.longMarks, count: longQuestionCount, per: markDistribution.longPerQuestion, attempt: markDistribution.longAttempt },
+  ];
+
   return (
-      <div className="w-full max-w-2xl mx-auto px-4 py-6 md:py-8">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-9 h-9 rounded-xl bg-brand-primary flex items-center justify-center flex-shrink-0">
-            <DocumentTextIcon className="w-5 h-5 text-white" />
-          </div>
+    <div className="w-full max-w-2xl mx-auto px-4 py-6 md:py-8 animate-fadeInUp">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-xl brand-gradient flex items-center justify-center flex-shrink-0 text-white shadow-card-hover">
+          <DocumentTextIcon className="w-5 h-5" />
+        </div>
         <div>
           <h1 className="text-lg md:text-xl font-bold text-brand-text-primary tracking-tight">
             Exam Paper Generator
@@ -248,132 +221,82 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating, 
         </div>
       </div>
 
-      <div className="bg-brand-surface rounded-2xl border border-brand-border overflow-hidden">
+      <div className="glass-card rounded-2xl overflow-hidden">
         <div className="p-4 sm:p-5 space-y-5">
           {/* Selectors */}
           <div className="space-y-3">
-            {/* Teacher Dropdown */}
-            <div>
-              <label className="block text-[11px] font-semibold text-brand-text-secondary mb-1.5 uppercase tracking-wider">
-                Select Teacher
-              </label>
-              <div className="relative">
-                <select
-                  value={selectedTeacherId}
-                  onChange={handleTeacherChange}
-                  className="w-full h-11 px-3.5 pr-10 bg-brand-bg border border-brand-border rounded-lg text-sm text-brand-text-primary appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all hover:border-brand-text-secondary/40"
-                >
-                  <option value="">-- Choose a teacher --</option>
-                  {filteredTeachers.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} — {t.subjects.join(', ')}
-                    </option>
-                  ))}
-                  {filteredTeachers.length === 0 && teachers.length > 0 && (
-                    <option value="" disabled>No teachers match current filters</option>
-                  )}
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-secondary pointer-events-none">
-                  <ChevronDownIcon />
-                </div>
-              </div>
-              {selectedTeacher && (
-                <div className="mt-1.5 flex flex-wrap gap-1">
-                  {selectedTeacher.classIds?.map(cid => {
-                    const cls = classes.find(c => c.id === cid);
-                    const labels = selectedTeacher.sectionLabels?.[cid];
-                    return labels?.map(label => (
-                      <span key={`${cid}-${label}`} className="text-[10px] font-medium text-brand-primary bg-brand-primary/10 px-1.5 py-0.5 rounded border border-brand-primary/15">
-                        {label}
-                      </span>
-                    ));
-                  })}
-                </div>
+            <SelectField
+              id="paper-teacher-select"
+              label="Select Teacher"
+              icon={<UserIcon className="w-3.5 h-3.5" />}
+              value={selectedTeacherId}
+              onChange={handleTeacherChange}
+              className="h-11"
+            >
+              <option value="">-- Choose a teacher --</option>
+              {filteredTeachers.map(t => (
+                <option key={t.id} value={t.id}>
+                  {t.name} — {t.subjects.join(', ')}
+                </option>
+              ))}
+              {filteredTeachers.length === 0 && teachers.length > 0 && (
+                <option value="" disabled>No teachers match current filters</option>
               )}
-            </div>
+            </SelectField>
 
-            <div>
-              <label
-                htmlFor="class-select"
-                className="block text-[11px] font-semibold text-brand-text-secondary mb-1.5 uppercase tracking-wider"
-              >
-                Select Class
-              </label>
-              <div className="relative">
-                <select
-                  id="class-select"
-                  value={selectedClassId}
-                  onChange={handleClassChange}
-                  className="w-full h-11 px-3.5 pr-10 bg-brand-bg border border-brand-border rounded-lg text-sm text-brand-text-primary appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all hover:border-brand-text-secondary/40"
-                >
-                  <option value="">-- Choose a class --</option>
-                  {(selectedTeacher ? availableClasses : classes).map((cls) => (
-                    <option key={cls.id} value={cls.id}>
-                      {cls.name}
-                    </option>
-                  ))}
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-secondary pointer-events-none">
-                  <ChevronDownIcon />
-                </div>
+            {selectedTeacher && (
+              <div className="flex flex-wrap gap-1">
+                {selectedTeacher.classIds?.map(cid => {
+                  const labels = selectedTeacher.sectionLabels?.[cid];
+                  return labels?.map(label => (
+                    <span key={`${cid}-${label}`} className="text-[10px] font-medium text-brand-primary bg-brand-primary/10 px-1.5 py-0.5 rounded-md border border-brand-primary/15">
+                      {label}
+                    </span>
+                  ));
+                })}
               </div>
-            </div>
+            )}
 
-            <div>
-              <label
-                htmlFor="subject-select"
-                className="block text-[11px] font-semibold text-brand-text-secondary mb-1.5 uppercase tracking-wider"
-              >
-                Select Subject
-              </label>
-              <div className="relative">
-                <select
-                  id="subject-select"
-                  value={selectedSubjectId}
-                  onChange={handleSubjectChange}
-                  disabled={!selectedClassId}
-                  className="w-full h-11 px-3.5 pr-10 bg-brand-bg border border-brand-border rounded-lg text-sm text-brand-text-primary appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all hover:border-brand-text-secondary/40 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <option value="">-- Choose a subject --</option>
-                  {availableSubjects.map((subject) => (
-                    <option key={subject.id} value={subject.id}>
-                      {subject.name}
-                    </option>
-                  ))}
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-secondary pointer-events-none">
-                  <ChevronDownIcon />
-                </div>
-              </div>
-            </div>
+            <SelectField
+              id="paper-class-select"
+              label="Select Class"
+              icon={<GraduationCapIcon className="w-3.5 h-3.5" />}
+              value={selectedClassId}
+              onChange={handleClassChange}
+            >
+              <option value="">-- Choose a class --</option>
+              {(selectedTeacher ? availableClasses : classes).map(cls => (
+                <option key={cls.id} value={cls.id}>{cls.name}</option>
+              ))}
+            </SelectField>
 
-            <div>
-              <label
-                htmlFor="chapter-select"
-                className="block text-[11px] font-semibold text-brand-text-secondary mb-1.5 uppercase tracking-wider"
-              >
-                Select Chapter
-              </label>
-              <div className="relative">
-                <select
-                  id="chapter-select"
-                  value={selectedChapterId}
-                  onChange={handleChapterChange}
-                  disabled={!selectedSubjectId}
-                  className="w-full h-11 px-3.5 pr-10 bg-brand-bg border border-brand-border rounded-lg text-sm text-brand-text-primary appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all hover:border-brand-text-secondary/40 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <option value="">-- Choose a chapter --</option>
-                  {chapters.map((chapter) => (
-                    <option key={chapter.id} value={chapter.id}>
-                      {chapter.name}
-                    </option>
-                  ))}
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-secondary pointer-events-none">
-                  <ChevronDownIcon />
-                </div>
-              </div>
-            </div>
+            <SelectField
+              id="paper-subject-select"
+              label="Select Subject"
+              icon={<BookOpenIcon className="w-3.5 h-3.5" />}
+              value={selectedSubjectId}
+              onChange={handleSubjectChange}
+              disabled={!selectedClassId}
+            >
+              <option value="">-- Choose a subject --</option>
+              {availableSubjects.map(subject => (
+                <option key={subject.id} value={subject.id}>{subject.name}</option>
+              ))}
+            </SelectField>
+
+            <SelectField
+              id="paper-chapter-select"
+              label="Select Chapter"
+              icon={<ClipboardListIcon className="w-3.5 h-3.5" />}
+              value={selectedChapterId}
+              onChange={e => setSelectedChapterId(e.target.value)}
+              disabled={!selectedSubjectId}
+            >
+              <option value="">-- Choose a chapter --</option>
+              {chapters.map(chapter => (
+                <option key={chapter.id} value={chapter.id}>{chapter.name}</option>
+              ))}
+            </SelectField>
           </div>
 
           {/* Paper configuration */}
@@ -381,77 +304,62 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating, 
             <h3 className="text-[11px] font-semibold text-brand-text-secondary uppercase tracking-wider mb-3">
               Paper Configuration
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <label className="block text-[11px] text-brand-text-secondary font-medium">
-                  Total Marks
-                </label>
-                <input
-                  type="number"
-                  min={5}
-                  max={100}
-                  value={totalMarks}
-                  onChange={(e) => setTotalMarks(clampNumber(e.target.value, 5, 100))}
-                   className="w-full h-11 px-3.5 bg-brand-bg border border-brand-border rounded-lg text-sm text-brand-text-primary placeholder:text-brand-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-[11px] text-brand-text-secondary font-medium">
-                  Duration (Minutes)
-                </label>
-                <input
-                  type="number"
-                  min={15}
-                  max={180}
-                  value={durationMinutes}
-                  onChange={(e) => setDurationMinutes(clampNumber(e.target.value, 15, 180))}
-                   className="w-full h-11 px-3.5 bg-brand-bg border border-brand-border rounded-lg text-sm text-brand-text-primary placeholder:text-brand-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-[11px] text-brand-text-secondary font-medium">
-                  MCQ Count
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  max={50}
-                  value={mcqCount}
-                  onChange={(e) => setMcqCount(clampNumber(e.target.value, 0, 50))}
-                   className="w-full h-11 px-3.5 bg-brand-bg border border-brand-border rounded-lg text-sm text-brand-text-primary placeholder:text-brand-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-[11px] text-brand-text-secondary font-medium">
-                  Short Questions Count
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  max={30}
-                  value={shortQuestionCount}
-                  onChange={(e) => setShortQuestionCount(clampNumber(e.target.value, 0, 30))}
-                   className="w-full h-11 px-3.5 bg-brand-bg border border-brand-border rounded-lg text-sm text-brand-text-primary placeholder:text-brand-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-[11px] text-brand-text-secondary font-medium">
-                  Long Questions Count
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  max={20}
-                  value={longQuestionCount}
-                  onChange={(e) => setLongQuestionCount(clampNumber(e.target.value, 0, 20))}
-                   className="w-full h-11 px-3.5 bg-brand-bg border border-brand-border rounded-lg text-sm text-brand-text-primary placeholder:text-brand-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
+            <div className="mb-4">
+              <label className="block text-[11px] text-brand-text-secondary font-medium mb-2">Difficulty</label>
+              <div className="inline-flex rounded-xl border border-brand-border bg-brand-bg p-1 gap-1">
+                {(['easy', 'medium', 'hard'] as const).map(level => (
+                  <button
+                    key={level}
+                    type="button"
+                    onClick={() => setDifficulty(level)}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all duration-200 ${
+                      difficulty === level
+                        ? 'brand-gradient text-white shadow-sm'
+                        : 'text-brand-text-secondary hover:text-brand-text-primary'
+                    }`}
+                  >
+                    {level}
+                  </button>
+                ))}
               </div>
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <NumberField label="Total Marks" value={totalMarks} min={5} max={100} onChange={setTotalMarks} />
+              <NumberField label="Duration (Minutes)" value={durationMinutes} min={15} max={180} onChange={setDurationMinutes} />
+              <NumberField label="MCQ Count (1 mark each)" value={mcqCount} min={0} max={50} onChange={setMcqCount} />
+              <NumberField
+                label="Short Questions on Paper"
+                value={shortQuestionCount}
+                min={0}
+                max={30}
+                onChange={v => { setShortQuestionCount(v); setShortAttemptCount(a => Math.min(a, v)); }}
+              />
+              <NumberField
+                label="Short to Attempt (Any)"
+                value={shortAttemptCount}
+                min={0}
+                max={Math.max(1, shortQuestionCount)}
+                onChange={setShortAttemptCount}
+              />
+              <NumberField
+                label="Long Questions on Paper"
+                value={longQuestionCount}
+                min={0}
+                max={20}
+                onChange={v => { setLongQuestionCount(v); setLongAttemptCount(a => Math.min(a, v)); }}
+              />
+              <NumberField
+                label="Long to Attempt (Any)"
+                value={longAttemptCount}
+                min={0}
+                max={Math.max(1, longQuestionCount)}
+                onChange={setLongAttemptCount}
+              />
+            </div>
+            <p className="mt-2 text-[11px] text-brand-text-secondary leading-relaxed">
+              Optional questions: set “on paper” higher than “to attempt” to add optional short/long questions students
+              can choose from. Marks always follow what students attempt.
+            </p>
           </div>
 
           {/* Live mark distribution summary */}
@@ -465,39 +373,25 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating, 
               </span>
             </div>
             <div className="space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-brand-text-primary">MCQ Section</span>
-                <span className="text-xs font-mono text-brand-text-secondary">
-                  {formatMark(markDistribution.mcqMarks)} marks
-                  {mcqCount > 0 && (
-                    <span className="hidden sm:inline">
-                      {' '}({formatMark(markDistribution.mcqPerQuestion)} x {mcqCount})
-                    </span>
-                  )}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-brand-text-primary">Short Answer Section</span>
-                <span className="text-xs font-mono text-brand-text-secondary">
-                  {formatMark(markDistribution.shortMarks)} marks
-                  {shortQuestionCount > 0 && (
-                    <span className="hidden sm:inline">
-                      {' '}({formatMark(markDistribution.shortPerQuestion)} x {shortQuestionCount})
-                    </span>
-                  )}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-brand-text-primary">Long Answer Section</span>
-                <span className="text-xs font-mono text-brand-text-secondary">
-                  {formatMark(markDistribution.longMarks)} marks
-                  {longQuestionCount > 0 && (
-                    <span className="hidden sm:inline">
-                      {' '}({formatMark(markDistribution.longPerQuestion)} x {longQuestionCount})
-                    </span>
-                  )}
-                </span>
-              </div>
+              {(shortHasOptional || longHasOptional) && (
+                <p className="text-[11px] text-brand-primary/80 bg-brand-primary/5 border border-brand-primary/15 rounded-lg px-3 py-2">
+                  Attempt-any: students answer {markDistribution.shortAttempt} of {shortQuestionCount} short and{' '}
+                  {markDistribution.longAttempt} of {longQuestionCount} long questions — the rest appear as optional choices.
+                </p>
+              )}
+              {distributionRows.map(row => (
+                <div key={row.label} className="flex items-center justify-between">
+                  <span className="text-sm text-brand-text-primary">{row.label}</span>
+                  <span className="text-xs font-mono text-brand-text-secondary">
+                    {formatMark(row.marks)} marks
+                    {row.count > 0 && (
+                      <span className="hidden sm:inline">
+                        {' '}({formatMark(row.per)} × {row.attempt}{row.attempt < row.count ? ` of ${row.count}` : ''})
+                      </span>
+                    )}
+                  </span>
+                </div>
+              ))}
               <div className="border-t border-brand-border/50 pt-2.5 mt-2 flex items-center justify-between">
                 <span className="text-[11px] font-semibold text-brand-text-secondary uppercase tracking-wider">
                   Duration
@@ -512,27 +406,27 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating, 
           {/* Selection summary */}
           {(selectedClass || selectedSubject || selectedChapter) && (
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono text-brand-text-secondary">
-              {selectedClass ? (
+              {selectedClass && (
                 <span className="px-2 py-1 bg-brand-bg rounded-md border border-brand-border/60">
                   Class: {selectedClass.shortName}
                 </span>
-              ) : null}
-              {selectedSubject ? (
+              )}
+              {selectedSubject && (
                 <span className="px-2 py-1 bg-brand-bg rounded-md border border-brand-border/60">
                   Subject: {selectedSubject.name}
                 </span>
-              ) : null}
-              {selectedChapter ? (
+              )}
+              {selectedChapter && (
                 <span className="px-2 py-1 bg-brand-bg rounded-md border border-brand-border/60">
                   Chapter: {selectedChapter.name}
                 </span>
-              ) : null}
+              )}
             </div>
           )}
 
           {/* Generate button */}
           {!marksValid && (
-            <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-600 dark:text-red-400 font-medium">
+            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-600 dark:text-red-400 font-medium animate-fadeIn">
               Mark distribution mismatch: questions total {markDistribution.totalQuestionMarks} marks, but you selected {totalMarks} marks. Adjust counts to match.
             </div>
           )}
@@ -540,36 +434,16 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating, 
             type="button"
             onClick={handleGenerate}
             disabled={isDisabled}
-            className="w-full flex items-center justify-center gap-2.5 bg-brand-primary text-white font-bold py-2.5 px-5 rounded-xl hover:bg-brand-primary-hover transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-h-[44px]"
+            className="w-full flex items-center justify-center gap-2.5 brand-gradient text-white font-bold py-3 px-5 rounded-xl hover:shadow-glass hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none min-h-[48px]"
           >
             {isGenerating ? (
               <>
-                <svg
-                  className="animate-spin h-4 w-4 text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  aria-label="loading"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
+                <Spinner className="w-4 h-4" />
                 <span className="text-sm">Generating Paper...</span>
               </>
             ) : (
               <>
-                <DocumentTextIcon className="w-4 h-4" />
+                <SparklesIcon className="w-4 h-4" />
                 <span className="text-sm">Generate Exam Paper</span>
               </>
             )}

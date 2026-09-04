@@ -348,8 +348,11 @@ export const useGeneralGeneration = () => {
         config.totalMarks,
         config.mcqCount,
         config.shortQuestionCount,
+        config.shortAttemptCount,
         config.longQuestionCount,
+        config.longAttemptCount,
         config.durationMinutes,
+        config.difficulty || 'medium',
         addLog
       );
 
@@ -379,7 +382,28 @@ export const useGeneralGeneration = () => {
     }
   }, [addLog]);
 
-   const stopGeneration = useCallback(() => {
+   const exportPlan = useCallback(async (plan: LessonPlan, teacherInfo: TeacherInfo, exportFormatOption?: UiExportFormat) => {
+    try {
+      const fmt = exportFormatOption || 'both';
+      if (fmt === 'docx') {
+        await exportAsDocx(plan, undefined, teacherInfo);
+      } else if (fmt === 'pdf') {
+        await exportAsPdf(plan, undefined, teacherInfo);
+      } else {
+        // both
+        await exportAsDocx(plan, undefined, teacherInfo);
+        await new Promise(resolve => setTimeout(resolve, 250));
+        await exportAsPdf(plan, undefined, teacherInfo);
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to export plan';
+      setError(errorMsg);
+      throw error;
+    }
+  }, []);
+
+  const stopGeneration = useCallback(() => {
+
     isCancelledRef.current = true;
     setIsLoading(false);
     setError('Generation cancelled by user.');
@@ -441,6 +465,7 @@ export const useGeneralGeneration = () => {
     setShowStatusPanel,
     generateLessonPlan,
     generatePaper,
+    exportPlan,
     revisePaper,
     stopGeneration,
     clearResults,

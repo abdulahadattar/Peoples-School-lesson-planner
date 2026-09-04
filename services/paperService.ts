@@ -1,5 +1,6 @@
 import { Part, Type } from "@google/genai";
-import { GeneratedPaper, PaperSection, PaperQuestion } from "../types";
+import { GeneratedPaper, PaperSection, PaperQuestion, PaperSectionBlueprint, PaperDifficulty } from "../types";
+import { sanitizeStringFields } from './latexSanitizer';
 import { curriculumData } from "../curriculum";
 import { withKeyRotation, DEFAULT_MODEL, downloadPdfAsPart, LogCallback } from "./geminiService";
 import { cleanAndParseJson } from './jsonHelpers';
@@ -111,8 +112,11 @@ export async function generateExamPaper(
   totalMarks: number,
   mcqCount: number,
   shortQuestionCount: number,
+  shortAttemptCount: number,
   longQuestionCount: number,
+  longAttemptCount: number,
   durationMinutes: number,
+  difficulty: PaperDifficulty = 'medium',
   logCallback?: LogCallback
 ): Promise<GeneratedPaper> {
   const log = (msg: string) => {
@@ -124,9 +128,13 @@ export async function generateExamPaper(
   const chapterName = getChapterName(gradeId, subjectId, chapterId);
   const slos = getChapterSLOs(gradeId, subjectId, chapterId);
 
+  // Students attempt every MCQ but only a chosen subset of the listed short
+  // and long questions — marks are earned by what is attempted.
+  const attemptShort = Math.min(shortAttemptCount || shortQuestionCount, shortQuestionCount);
+  const attemptLong = Math.min(longAttemptCount || longQuestionCount, longQuestionCount);
   const mcqMarks = mcqCount * 1;
-  const shortMarks = shortQuestionCount * 2;
-  const longMarks = longQuestionCount * 4;
+  const shortMarks = attemptShort * 2;
+  const longMarks = attemptLong * 4;
   const totalQuestionMarks = mcqMarks + shortMarks + longMarks;
 
   if (totalQuestionMarks !== totalMarks) {
@@ -142,15 +150,18 @@ export async function generateExamPaper(
 2.  **Bloom's Taxonomy:** Include questions at different cognitive levels (Knowledge, Understanding, Application, Analysis).
 3.  **Clear Instructions:** Provide clear instructions for each section.
 4.  **Mark Distribution:** Ensure the total marks match exactly ${totalMarks} marks.
-    - Section A (MCQs): ${mcqCount} questions x 1 mark each = ${mcqMarks} marks
-    - Section B (Short Questions): ${shortQuestionCount} questions x 2 marks each = ${shortMarks} marks
-    - Section C (Long Questions): ${longQuestionCount} questions x 4 marks each = ${longMarks} marks
+    - Section A (MCQs): ${mcqCount} questions x 1 mark each = ${mcqMarks} marks (all are attempted)
+    - Section B (Short Questions): generate exactly ${shortQuestionCount} short questions x 2 marks each; students attempt any ${attemptShort} of them = ${shortMarks} marks
+    - Section C (Long Questions): generate exactly ${longQuestionCount} long questions x 4 marks each; students attempt any ${attemptLong} of them = ${longMarks} marks
+    - The optional (non-attempted) questions ${shortQuestionCount - attemptShort > 0 ? `(${shortQuestionCount - attemptShort} short and ` : ''}${longQuestionCount - attemptLong > 0 ? `${longQuestionCount - attemptLong} long` : ''}${shortQuestionCount - attemptShort > 0 || longQuestionCount - attemptLong > 0 ? ')' : ''} still appear on the paper for choice.
+5.  **No per-question marks:** Never place mark values inside individual questions. Marks appear ONLY in each section's instruction line, e.g. "Answer any ${attemptShort} of the ${shortQuestionCount} questions. Each question carries 2 marks." When a section requires every question, write "Answer all questions. Each question carries N marks."
 5.  **MANDATORY JSON OUTPUT:** The output must ONLY be a valid JSON object matching the provided schema. Do not add any extra text or markdown.
-6.  **EQUATIONS:** Wrap ALL mathematical equations, formulas, and expressions in LaTeX delimiters:
-     - Inline equations: use single dollar signs, e.g. $E = mc^2$, $PV = nRT$, $F = ma$
-     - Display equations: use double dollar signs, e.g. $$\\frac{3}{2}kT$$
-     - This includes fractions like (3/2) → $\\frac{3}{2}$, powers like v^2 → $v^2$, Greek letters like rho → $\\rho$
-     - Example option: "$P = \\frac{1}{3} \\rho v^2$"`;
+6.  **EQUATIONS — ONLY for real math, NEVER for text:** Wrap mathematical equations, formulas and expressions in LaTeX delimiters, and NOTHING else:
+    - Inline equations use single dollar signs: $E = mc^2$, $PV = nRT$, $F = ma$
+    - Display equations use double dollar signs: $$\frac{3}{2}kT$$
+    - Includes fractions (3/2) → $\frac{3}{2}$, powers v^2 → $v^2$, Greek letters rho → $\rho$, units like $g/cm^3$, $kg/m^3$, $10^{23}$
+    - Example option: "$P = \frac{1}{3} \rho v^2$"
+    - FORBIDDEN — ordinary words, names and emphasis must NEVER go inside dollar signs. Wrong: "define $biology$", "$carbon$ cycle", "$Newton's$ law", "the $first$ law". Keep those as plain text.`;
 
   const paperSchema = {
     type: Type.OBJECT,
@@ -199,6 +210,11 @@ export async function generateExamPaper(
     ],
   };
 
+  const difficultyText =
+    difficulty === 'easy' ? 'Easy — favour Knowledge & Understanding questions with direct recall and simple calculations' :
+    difficulty === 'hard' ? 'Hard — weight towards Application, Analysis & Evaluation with multi-step problems and unfamiliar contexts' :
+    'Medium — a balanced mix of Knowledge, Understanding and Application questions';
+
   const sloText =
     slos.length > 0 ? slos.map((s) => `- ${s}`).join("\n") : "General chapter content";
 
@@ -209,14 +225,17 @@ export async function generateExamPaper(
 **Chapter:** ${chapterName}
 **Total Marks:** ${totalMarks}
 **Duration:** ${durationMinutes} minutes
+**Difficulty:** ${difficultyText}
 
 **Student Learning Outcomes (SLOs) for this chapter:**
 ${sloText}
 
 **Paper Structure Requirements:**
-1. Section A - Multiple Choice Questions (MCQs): ${mcqCount} questions, 1 mark each
-2. Section B - Short Questions: ${shortQuestionCount} questions, 2 marks each
-3. Section C - Long Questions: ${longQuestionCount} questions, 4 marks each
+1. Section A - Multiple Choice Questions (MCQs): exactly ${mcqCount} questions, 1 mark each, all attempted
+2. Section B - Short Questions: generate ${shortQuestionCount} short questions, 2 marks each; students attempt any ${attemptShort} of them
+3. Section C - Long Questions: generate ${longQuestionCount} long questions, 4 marks each; students attempt any ${attemptLong} of them
+
+Set each section's "instruction" field to the marking rule for that section (e.g. "Answer any ${attemptShort} of the ${shortQuestionCount} questions. Each question carries 2 marks."). Do NOT write mark values next to individual questions.
 
 Ensure questions cover all major topics from the chapter and align with the SLOs provided. Make the difficulty appropriate for ${gradeName} students.`;
 
@@ -276,7 +295,18 @@ Ensure questions cover all major topics from the chapter and align with the SLOs
       });
 
       const parsed = cleanAndParseJson(response);
-      return parsed as GeneratedPaper;
+      const cleaned = sanitizeStringFields(parsed) as GeneratedPaper;
+      // Attach the marking blueprint (single source of truth for the printed
+      // section marks line) — index-aligned with the three sections.
+      if (Array.isArray(cleaned.sections) && cleaned.sections.length === 3) {
+        const blueprints: PaperSectionBlueprint[] = [
+          { questionCount: mcqCount, attemptCount: mcqCount, perQuestionMarks: 1 },
+          { questionCount: shortQuestionCount, attemptCount: attemptShort, perQuestionMarks: 2 },
+          { questionCount: longQuestionCount, attemptCount: attemptLong, perQuestionMarks: 4 },
+        ];
+        cleaned.sectionBlueprints = blueprints;
+      }
+      return cleaned;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
       console.error(`Error generating exam paper (attempt ${attempt + 1}):`, error);
@@ -321,7 +351,7 @@ export async function reviseExamPaper(
 2. Maintain proper question numbering across all sections.
 3. Keep the total marks consistent (or update if the teacher changes the structure).
 4. Ensure questions are properly formatted with MCQ options where applicable.
-5. **EQUATIONS:** Wrap ALL mathematical equations in LaTeX delimiters: $...$ for inline, $$...$$ for display.
+5. **EQUATIONS — ONLY for real math, NEVER for text:** Wrap mathematical equations in LaTeX delimiters ($...$ inline, $$...$$ display). Ordinary words, names and emphasis must NEVER be wrapped in dollar signs — only genuine formulas, expressions, powers and units like $g/cm^3$.
 6. **MANDATORY JSON OUTPUT:** Output ONLY valid JSON matching the schema. No extra text or markdown.`;
 
   const paperSchema = {
@@ -397,8 +427,9 @@ Please return the complete revised exam paper as a JSON object.`;
       });
 
       const parsed = cleanAndParseJson(response);
-      log(`Revised paper received: ${parsed.sections?.length || 0} sections`);
-      return parsed as GeneratedPaper;
+      const cleaned = sanitizeStringFields(parsed) as GeneratedPaper;
+      log(`Revised paper received: ${cleaned.sections?.length || 0} sections`);
+      return cleaned;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
       console.error(`Error revising exam paper (attempt ${attempt + 1}):`, error);

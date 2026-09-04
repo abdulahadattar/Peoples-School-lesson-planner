@@ -1,6 +1,7 @@
 import path from 'path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig(() => {
     return {
@@ -28,7 +29,7 @@ export default defineConfig(() => {
           },
         },
       },
-      plugins: [react()],
+      plugins: [react(), tailwindcss()],
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
@@ -41,7 +42,7 @@ export default defineConfig(() => {
               react: ['react', 'react-dom'],
               genai: ['@google/genai'],
               docx: ['docx', 'file-saver'],
-              vendor: ['idb-keyval', 'react-dropzone'],
+              vendor: ['idb-keyval'],
             },
           },
         },

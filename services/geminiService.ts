@@ -1,6 +1,7 @@
 import { Part, Type } from "@google/genai";
 import { LessonPlan, SLO } from "../types";
 import { cleanAndParseJson } from './jsonHelpers';
+import { sanitizeStringFields } from './latexSanitizer';
 
 /**
  * Google API keys follow the pattern AIzaSy followed by 33 chars.
@@ -277,8 +278,11 @@ function parseLessonPlanJson(jsonText: string, gradeLevel: string, subject: stri
     if (!parsed.title || !parsed.objective || !Array.isArray(parsed.activities) || !parsed.homework) {
       throw new Error("Parsed JSON is missing required fields.");
     }
+    // Repair AI math mistakes (prose in $...$, bare LaTeX, stray $) so the
+    // lesson plan can never render broken equations.
+    const cleaned = sanitizeStringFields(parsed) as Record<string, unknown>;
     return {
-      ...parsed,
+      ...(cleaned as unknown as LessonPlan),
       gradeLevel,
       subject,
     };
@@ -307,55 +311,80 @@ export async function loadChapterPdfUrl(grade: string, subject: string, chapterN
   }
 }
 
-// Helper function to download PDF and convert to Part
-export async function downloadPdfAsPart(url: string): Promise<Part | null> {
+/**
+ * Build the dev-only proxy URL for GitHub raw content (bypasses CORS in the
+ * Vite dev server). Returns null for non-GitHub or already-proxied URLs.
+ */
+function toProxyUrl(url: string): string | null {
+  if (!url.includes('github.com') || url.startsWith('/pdf-proxy')) return null;
+  const ghMatch = url.match(/raw\.githubusercontent\.com\/(.+)/);
+  return ghMatch ? `/pdf-proxy/${ghMatch[1]}` : `/pdf-proxy/${url}`;
+}
+
+/**
+ * Fetch a URL with a timeout, returning null on failure instead of throwing.
+ */
+async function fetchWithTimeout(url: string, ms: number): Promise<Response | null> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), ms);
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
-    
-    // Use Vite dev server proxy for GitHub raw URLs (bypasses CORS)
-    let fetchUrl = url;
-    if (!url.startsWith('/pdf-proxy')) {
-      const ghMatch = url.match(/^https?:\/\/raw\.githubusercontent\.com\/(.+)$/);
-      if (ghMatch) {
-        fetchUrl = `/pdf-proxy/${ghMatch[1]}`;
-      }
-    }
-    
-    const response = await fetch(fetchUrl, { signal: controller.signal });
+    return await fetch(url, { signal: controller.signal });
+  } catch {
+    return null;
+  } finally {
     clearTimeout(timeoutId);
-    
-    if (!response.ok) {
-      console.warn(`[geminiService] PDF download failed: HTTP ${response.status} for ${url}`);
+  }
+}
+
+async function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(blob);
+    reader.onload = () => resolve((reader.result as string).split(',')[1]);
+    reader.onerror = reject;
+  });
+}
+
+/**
+ * Verify a blob is a PDF (magic bytes or content-type).
+ */
+function isPdfBlob(blob: Blob, contentType: string): Promise<boolean> {
+  return blob.slice(0, 5).text().then(header =>
+    header.startsWith('%PDF') || contentType.includes('pdf')
+  );
+}
+
+/**
+ * Download a PDF and convert it to a Gemini Part.
+ *
+ * Tries the dev-only Vite proxy first (fast in development), then falls back
+ * to fetching the URL directly. The direct fallback keeps PDF downloads
+ * working on static hosting such as Vercel, where the proxy does not exist.
+ * raw.githubusercontent.com serves CORS headers, so direct fetch works in
+ * browsers.
+ */
+export async function downloadPdfAsPart(url: string): Promise<Part | null> {
+  const candidates = [toProxyUrl(url), url].filter((u): u is string => Boolean(u));
+
+  for (const candidate of candidates) {
+    const response = await fetchWithTimeout(candidate, 60000);
+    if (!response || !response.ok) continue;
+
+    try {
+      const blob = await response.blob();
+      if (!(await isPdfBlob(blob, response.headers.get('content-type') || ''))) continue;
+
+      const base64 = await blobToBase64(blob);
+      console.log(`[geminiService] PDF downloaded successfully: ${(base64.length * 0.75 / 1024).toFixed(0)}KB from ${url}`);
+      return { inlineData: { mimeType: 'application/pdf', data: base64 } };
+    } catch (err) {
+      console.error(`[geminiService] PDF encoding error for ${url}:`, err);
       return null;
     }
-    
-    const blob = await response.blob();
-    
-    // Verify it's a PDF by checking magic bytes (first 5 bytes: %PDF-)
-    const header = await blob.slice(0, 5).text();
-    if (!header.startsWith('%PDF')) {
-      // Also accept if content-type says PDF (some proxies strip magic bytes)
-      const contentType = response.headers.get('content-type') || '';
-      if (!contentType.includes('pdf')) {
-        console.warn(`[geminiService] Downloaded file is not a PDF (header: ${header.slice(0, 10)}). URL: ${url}`);
-        return null;
-      }
-    }
-    
-    const base64 = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(blob);
-      reader.onload = () => resolve((reader.result as string).split(',')[1]);
-      reader.onerror = reject;
-    });
-    
-    console.log(`[geminiService] PDF downloaded successfully: ${(base64.length * 0.75 / 1024).toFixed(0)}KB from ${url}`);
-    return { inlineData: { mimeType: 'application/pdf', data: base64 } };
-  } catch (err) {
-    console.error(`[geminiService] PDF download error for ${url}:`, err);
-    return null;
   }
+
+  console.warn(`[geminiService] PDF download failed for ${url}`);
+  return null;
 }
 
 export async function generateLessonPlan(
@@ -416,12 +445,13 @@ export async function generateLessonPlan(
 6.  **Time Allocation:** Each of the 4 activities must have a duration. Total must equal exactly 40 minutes.
 7.  **Homework:** Provide a meaningful homework assignment reinforcing the lesson objective, appropriate for Pakistani students.
 8.  **MANDATORY JSON OUTPUT:** Output ONLY valid JSON matching the schema. No extra text or markdown.
-9.  **EQUATIONS:** Wrap ALL mathematical equations, formulas, and expressions in LaTeX delimiters:
-     - Inline equations: use single dollar signs, e.g. $E = mc^2$, $PV = nRT$, $F = ma$
-     - Display equations: use double dollar signs, e.g. $$\\frac{3}{2}kT$$
-     - This includes fractions like (3/2) → $\\frac{3}{2}$, powers like v^2 → $v^2$, Greek letters like rho → $\\rho$
-     - Example: "The equation $P = \\frac{1}{3} \\rho v^2$ relates pressure to density and velocity."
-9.  **Grade Appropriateness:** Content must match ${gradeLevelContext} cognitive level.
+9.  **EQUATIONS — ONLY for real math, NEVER for text:** Wrap mathematical equations, formulas and expressions in LaTeX delimiters, and NOTHING else:
+    - Inline equations use single dollar signs: $E = mc^2$, $PV = nRT$, $F = ma$
+    - Display equations use double dollar signs: $$\frac{3}{2}kT$$
+    - Includes fractions (3/2) → $\frac{3}{2}$, powers v^2 → $v^2$, Greek letters rho → $\rho$
+    - Example: "The equation $P = \frac{1}{3} \rho v^2$ relates pressure to density and velocity."
+    - FORBIDDEN — ordinary words, names, biological/Latin terms and emphasis must NEVER go inside dollar signs. Wrong: "$Bios$ means life", "study of $cells$", "the plant $Brassica\ campestris$", "define $biology$". Keep those as plain text; use *asterisks* for emphasis or italics.
+10.  **Grade Appropriateness:** Content must match ${gradeLevelContext} cognitive level.
 `;
 
   const lessonPlanSchema = {
