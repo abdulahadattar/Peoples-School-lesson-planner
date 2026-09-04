@@ -1,14 +1,18 @@
 import React, { useState, useMemo } from 'react';
 import { PaperConfig } from '../types';
 import { SelectionApi } from '../hooks/useSelection';
+import { sectionsByClass, subjectNames } from '../services/teacherRoster';
 import SelectField from './ui/SelectField';
 import Spinner from './ui/Spinner';
+import SegmentedControl, { EXPORT_FORMATS } from './ui/SegmentedControl';
 import { DocumentTextIcon, GraduationCapIcon, BookOpenIcon, ClipboardListIcon, SparklesIcon, UserIcon } from './icons/MiscIcons';
 
 interface PaperPanelProps {
   onGeneratePaper: (config: PaperConfig) => void;
   isGenerating: boolean;
   selection: SelectionApi;
+  exportFormat: 'docx' | 'pdf' | 'both';
+  onExportFormatChange: (format: 'docx' | 'pdf' | 'both') => void;
 }
 
 const clampNumber = (value: string, min: number, max: number): number => {
@@ -47,6 +51,8 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
   onGeneratePaper,
   isGenerating,
   selection,
+  exportFormat,
+  onExportFormatChange,
 }) => {
   const {
     classId: selectedClassId,
@@ -165,21 +171,20 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
               <option value="">-- Choose a teacher --</option>
               {teacherChoices.map(t => (
                 <option key={t.id} value={t.id}>
-                  {t.name} — {t.subjects.join(', ')}
+                  {t.name} — {subjectNames(t).join(', ')}
                 </option>
               ))}
             </SelectField>
 
             {selectedTeacher && (
               <div className="flex flex-wrap gap-1">
-                {selectedTeacher.classIds?.map(cid => {
-                  const labels = selectedTeacher.sectionLabels?.[cid];
-                  return labels?.map(label => (
+                {Object.entries(sectionsByClass(selectedTeacher)).map(([cid, labels]) =>
+                  labels.map(label => (
                     <span key={`${cid}-${label}`} className="text-[10px] font-medium text-brand-primary bg-brand-primary/10 px-1.5 py-0.5 rounded-md border border-brand-primary/15">
                       {label}
                     </span>
-                  ));
-                })}
+                  )),
+                )}
               </div>
             )}
 
@@ -248,6 +253,15 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
                   </button>
                 ))}
               </div>
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-brand-text-secondary mb-2 uppercase tracking-wide">
+                Export Format
+              </label>
+              <SegmentedControl value={exportFormat} options={EXPORT_FORMATS} onChange={onExportFormatChange} />
+              <p className="mt-2 text-[11px] text-brand-text-secondary leading-relaxed">
+                Choose how the generated paper is delivered: Word, PDF, or both.
+              </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <NumberField label="Total Marks" value={totalMarks} min={5} max={100} onChange={setTotalMarks} />

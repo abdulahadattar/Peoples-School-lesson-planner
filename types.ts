@@ -114,15 +114,19 @@ export interface TeacherInfo {
   grades?: string[];
 }
 
+/** A subject a teacher teaches, scoped to the exact class sections (e.g. "Physics" in ["IX", "X-A", "X-B", "XI", "XII"]). */
+export interface TeacherSubject {
+  name: string;
+  sections: string[];
+}
+
 export interface Teacher {
   id: string;
   name: string;
   schoolName: string;
   designation?: string;
-  subjects: string[];
-  grades?: string[];
-  classIds?: string[];
-  sectionLabels?: Record<string, string[]>;
+  /** Per-subject class sections — the single source of truth for where a teacher teaches. */
+  subjects: TeacherSubject[];
 }
 
 export type View = 'home' | 'lesson' | 'paper' | 'results' | 'live';

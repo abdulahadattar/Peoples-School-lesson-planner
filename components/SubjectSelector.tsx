@@ -12,6 +12,8 @@ import {
   UserIcon,
 } from './icons/MiscIcons';
 import { SelectionApi } from '../hooks/useSelection';
+import { sectionsByClass, subjectNames } from '../services/teacherRoster';
+import SegmentedControl, { EXPORT_FORMATS } from './ui/SegmentedControl';
 
 interface SubjectSelectorProps {
   selection: SelectionApi;
@@ -34,39 +36,6 @@ const MODES = [
   { value: 'single-slo', label: 'Single SLO' },
   { value: 'whole-chapter', label: 'Whole Chapter' },
 ] as const;
-
-const EXPORT_FORMATS = [
-  { value: 'docx', label: 'Word (.docx)' },
-  { value: 'pdf', label: 'PDF (.pdf)' },
-  { value: 'both', label: 'Both' },
-] as const;
-
-/** Segmented control — shared by generation mode & export format toggles. */
-const SegmentedControl: React.FC<{
-  value: string;
-  options: readonly { value: string; label: string }[];
-  onChange: (value: any) => void;
-}> = ({ value, options, onChange }) => (
-  <div className="grid gap-2 p-1 bg-brand-bg rounded-xl border border-brand-border" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
-    {options.map(option => {
-      const isActive = value === option.value;
-      return (
-        <button
-          key={option.value}
-          type="button"
-          onClick={() => onChange(option.value)}
-          aria-pressed={isActive}
-          className={`relative flex items-center justify-center px-3 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 min-h-[44px] overflow-hidden ${
-            isActive ? 'text-white' : 'text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-surface'
-          }`}
-        >
-          {isActive && <span className="absolute inset-0 brand-gradient animate-scaleIn" />}
-          <span className="relative z-10 truncate">{option.label}</span>
-        </button>
-      );
-    })}
-  </div>
-);
 
 const SubjectSelector: React.FC<SubjectSelectorProps> = ({
   selection,
@@ -171,7 +140,7 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
                 </span>
                 {selectedTeacher && (
                   <span className="hidden sm:inline text-[10px] font-medium text-brand-primary bg-brand-primary/10 px-2 py-0.5 rounded-full">
-                    {selectedTeacher.subjects.join(', ')}
+                    {subjectNames(selectedTeacher).join(', ')}
                   </span>
                 )}
               </div>
@@ -197,21 +166,20 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
                   <option value="">Choose a teacher...</option>
                   {teacherChoices.map(t => (
                     <option key={t.id} value={t.id}>
-                      {t.name} — {t.subjects.join(', ')}
+                      {t.name} — {subjectNames(t).join(', ')}
                     </option>
                   ))}
                 </SelectField>
 
                 {selectedTeacher && (
                   <div className="flex flex-wrap gap-1.5">
-                    {selectedTeacher.classIds?.map(cid => {
-                      const labels = selectedTeacher.sectionLabels?.[cid];
-                      return labels?.map(label => (
+                    {Object.entries(sectionsByClass(selectedTeacher)).map(([cid, labels]) =>
+                      labels.map(label => (
                         <span key={`${cid}-${label}`} className="text-[10px] font-medium text-brand-primary bg-brand-primary/10 px-2 py-0.5 rounded-md border border-brand-primary/15">
                           {label}
                         </span>
-                      ));
-                    })}
+                      )),
+                    )}
                   </div>
                 )}
 

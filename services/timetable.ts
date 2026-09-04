@@ -187,7 +187,7 @@ export function resolveSlot(
     if (!teacher) teacher = resolveByName(subjectRaw, teachers);
     if (teacher && !isKnownSubject(subjectRaw)) {
       // Cell was a teacher name (e.g. "Feroz") — label it with their subject.
-      subject = teacher.subjects?.[0] ?? subject;
+      subject = teacher.subjects[0]?.name ?? subject;
     }
     return { subject, teacher };
   });

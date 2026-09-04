@@ -14,8 +14,10 @@ import { curriculumData } from '../curriculum';
 import { sortClassesByGrade } from '../services/curriculumHelpers';
 import {
   autoSelectForTeacher,
+  classIdsForTeacher,
   classesForTeacher,
   subjectsForTeacher,
+  teachesClass,
   teacherOptions,
 } from '../services/teacherRoster';
 
@@ -108,17 +110,26 @@ export function useSelection({ teachers, onChapterChange }: UseSelectionOptions)
 
   const handleClassChange = (newClassId: string) => {
     setClassId(newClassId);
-    setSubjectId('');
     setChapterId('');
-    // Unrestricted teachers (no classIds) teach everywhere — keep them selected.
-    if (
-      teacher &&
-      newClassId &&
-      teacher.classIds &&
-      teacher.classIds.length > 0 &&
-      !teacher.classIds.includes(newClassId)
-    ) {
+    // Unrestricted teachers (no subject scopes) teach everywhere — keep them selected.
+    if (teacher && newClassId && teacher.subjects.length > 0 && !teachesClass(teacher, newClassId)) {
       deselectTeacher();
+      setSubjectId('');
+      return;
+    }
+    if (teacher && newClassId) {
+      const narrowed = subjectsForTeacher(classes, newClassId, teacher);
+      if (narrowed.length === 1) {
+        // Single subject in this class (e.g. a one-subject teacher like
+        // Razzaq→English) — auto-pick it instead of forcing a manual choice.
+        setSubjectId(narrowed[0].id);
+      } else if (!narrowed.some(s => s.id === subjectId)) {
+        // Multiple options and the current subject isn't taught here — clear
+        // it so the teacher-narrowed list drives the choice.
+        setSubjectId('');
+      }
+    } else {
+      setSubjectId('');
     }
   };
 
@@ -162,19 +173,22 @@ export function useSelection({ teachers, onChapterChange }: UseSelectionOptions)
     setChapterId('');
     const auto = autoSelectForTeacher(nextTeacher, classes, classId);
 
-    // Unrestricted teachers (no classIds) keep the current class; otherwise
+    // Unrestricted teachers (no subject scopes) keep the current class; otherwise
     // keep the current class when they teach it, else move to their auto/first.
+    const teacherClassIds = classIdsForTeacher(nextTeacher);
     const nextClassId =
-      !nextTeacher.classIds || nextTeacher.classIds.length === 0
+      teacherClassIds.length === 0
         ? classId
-        : classId && (nextTeacher.classIds ?? []).includes(classId)
+        : classId && teacherClassIds.includes(classId)
           ? classId
-          : auto.classId || nextTeacher.classIds?.[0] || '';
+          : auto.classId || teacherClassIds[0] || '';
     setClassId(nextClassId);
 
     // Keep the current subject only if this teacher teaches it in that class;
-    // otherwise prefer the teacher's auto subject (single-subject teachers),
-    // else clear it so the teacher-narrowed subject list drives the choice.
+    // otherwise auto-pick when exactly one subject is teachable there (covers
+    // single-subject teachers AND multi-subject teachers with one curriculum
+    // subject in the class), else prefer the teacher's auto subject, else
+    // clear it so the teacher-narrowed subject list drives the choice.
     // Teachers with no subject list are unrestricted — keep the subject.
     const teachable = subjectsForTeacher(classes, nextClassId, nextTeacher);
     const nextSubjectId =
@@ -182,9 +196,11 @@ export function useSelection({ teachers, onChapterChange }: UseSelectionOptions)
         ? subjectId
         : teachable.some(s => s.id === subjectId) && subjectId
           ? subjectId
-          : auto.subjectId && teachable.some(s => s.id === auto.subjectId)
-            ? auto.subjectId
-            : '';
+          : teachable.length === 1
+            ? teachable[0].id
+            : auto.subjectId && teachable.some(s => s.id === auto.subjectId)
+              ? auto.subjectId
+              : '';
     setSubjectId(nextSubjectId);
   };
 

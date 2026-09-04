@@ -16,7 +16,7 @@ import {
   resolveSlot,
   standardSchedule,
 } from '../services/timetable';
-import { canonicalName } from '../services/teacherRoster';
+import { canonicalName, subjectNames } from '../services/teacherRoster';
 import { ChevronLeftIcon, ChevronRightIcon, LockIcon, RefreshIcon, UserIcon } from './icons/MiscIcons';
 
 const ACCESS_CODE = 'phssj'; // fixed for now — principal / coordinator access
@@ -547,7 +547,7 @@ const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => {
                       {t.name}
                     </p>
                     <p className="text-[10px] text-brand-text-tertiary truncate">
-                      {t.designation ?? (t.subjects ?? []).join(', ')}
+                      {t.designation ?? subjectNames(t).join(', ')}
                     </p>
                   </div>
                   <span className="ml-auto h-2 w-2 rounded-full bg-emerald-500 shrink-0" title="Free" />

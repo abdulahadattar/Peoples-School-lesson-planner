@@ -293,6 +293,8 @@ const App: React.FC = () => {
               onGeneratePaper={handleGeneratePaper}
               isGenerating={isLoading}
               selection={selection}
+              exportFormat={exportFormat}
+              onExportFormatChange={setExportFormat}
             />
           )}
 

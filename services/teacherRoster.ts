@@ -10,7 +10,7 @@
  * misassigned-teacher bugs. Add new subjects, aliases, or class scopes here,
  * once.
  */
-import { CurriculumClass, CurriculumSubject, Teacher } from '../types';
+import { CurriculumClass, CurriculumSubject, Teacher, TeacherSubject } from '../types';
 import { findClass, findSubject } from './curriculumHelpers';
 
 /* ── Subject normalisation ─────────────────────────────────────── */
@@ -99,25 +99,87 @@ export function sectionToClassId(section: string): string | undefined {
   return SECTION_TO_CLASS[section];
 }
 
+/* ── Derived teacher views (from the per-subject section scopes) ─ */
+
+/** Every subject name a teacher teaches (deduped). */
+export function subjectNames(teacher: Teacher): string[] {
+  return [...new Set(teacher.subjects.map(s => s.name))];
+}
+
+/** Every class id a teacher teaches in (derived from subject sections). */
+export function classIdsForTeacher(teacher: Teacher): string[] {
+  const ids = new Set<string>();
+  for (const s of teacher.subjects) {
+    for (const section of s.sections) {
+      const cid = SECTION_TO_CLASS[section];
+      if (cid) ids.add(cid);
+    }
+  }
+  return [...ids];
+}
+
+/** True when the teacher teaches any subject in the given class. */
+export function teachesClass(teacher: Teacher, classId: string): boolean {
+  return classIdsForTeacher(teacher).includes(classId);
+}
+
+/** Section labels grouped by class id (used for the "teaches in" chips), deduped. */
+export function sectionsByClass(teacher: Teacher): Record<string, string[]> {
+  const map: Record<string, string[]> = {};
+  for (const s of teacher.subjects) {
+    for (const section of s.sections) {
+      const cid = SECTION_TO_CLASS[section];
+      if (!cid) continue;
+      const list = (map[cid] ??= []);
+      if (!list.includes(section)) list.push(section);
+    }
+  }
+  return map;
+}
+
+/** Section labels for a teacher's subject entry that maps to the given class id. */
+export function sectionsForSubjectInClass(teacher: Teacher, subjectName: string, classId: string): string[] {
+  const out: string[] = [];
+  for (const s of teacher.subjects) {
+    if (!subjectsEqual(s.name, subjectName)) continue;
+    for (const section of s.sections) {
+      if (SECTION_TO_CLASS[section] === classId) out.push(section);
+    }
+  }
+  return out;
+}
+
 /* ── Timetable resolution (Live Monitor) ───────────────────────── */
+
+/** Subject entries of a teacher that match the normalized timetable subject. */
+function matchingSubjectEntries(teacher: Teacher, subject: string): TeacherSubject[] {
+  const norm = normalizeSubject(subject);
+  return teacher.subjects.filter(s => subjectsEqual(s.name, norm));
+}
 
 /** Match a timetable subject to a teacher from teachers.json. */
 export function resolveTeacher(subject: string, section: string, teachers: Teacher[]): Teacher | null {
-  const norm = normalizeSubject(subject);
-  if (norm === 'Library') return null;
-  const candidates = teachers.filter(t =>
-    (t.subjects || []).some(s => subjectsEqual(s, norm)),
-  );
+  const candidates = teachers.filter(t => matchingSubjectEntries(t, subject).length > 0);
   if (candidates.length === 0) return null;
-  const classId = SECTION_TO_CLASS[section];
+  // Strict by roster: the teacher's subject entry must include this exact
+  // section. If teachers.json has no matching teacher, the slot shows as
+  // unassigned rather than guessing a wrong teacher.
   const inSection = candidates.filter(t =>
-    classId && (t.sectionLabels?.[classId] ?? []).includes(section),
+    matchingSubjectEntries(t, subject).some(entry => entry.sections.includes(section)),
   );
-  const inClass = candidates.filter(t => classId && (t.classIds ?? []).includes(classId));
-  // Strict by roster: only assign a teacher that teaches this class/section.
-  // If teachers.json has no matching teacher, the slot shows as unassigned
-  // rather than guessing a wrong teacher.
-  return inSection[0] ?? inClass[0] ?? null;
+  if (inSection.length > 0) return inSection[0];
+  // Fall back to another section of the same class (e.g. the roster lists
+  // "V" but the timetable splits sections differently).
+  const classId = SECTION_TO_CLASS[section];
+  if (classId) {
+    const inClass = candidates.filter(t =>
+      matchingSubjectEntries(t, subject).some(entry =>
+        entry.sections.some(s => SECTION_TO_CLASS[s] === classId),
+      ),
+    );
+    if (inClass.length > 0) return inClass[0];
+  }
+  return null;
 }
 
 function nameKey(raw: string): string {
@@ -159,12 +221,12 @@ export function filterTeachersBySelection(
   classes: CurriculumClass[],
 ): Teacher[] {
   let list = teachers;
-  if (classId) list = list.filter(t => t.classIds?.includes(classId));
+  if (classId) list = list.filter(t => teachesClass(t, classId));
   if (subjectId) {
     const subject = findSubject(classes, classId, subjectId);
     list = list.filter(t =>
       t.subjects.some(ts =>
-        subject ? subjectMatches(ts, subject) : ts.toLowerCase() === subjectId.toLowerCase(),
+        subject ? subjectMatches(ts.name, subject) : ts.name.toLowerCase() === subjectId.toLowerCase(),
       ),
     );
   }
@@ -188,10 +250,11 @@ export function teacherOptions(
   return [...matches, ...teachers.filter(t => !matchedIds.has(t.id))];
 }
 
-/** Classes a teacher teaches (or all classes when the teacher has no classIds). */
+/** Classes a teacher teaches (or all classes when the teacher has no subject scopes). */
 export function classesForTeacher(classes: CurriculumClass[], teacher: Teacher | null): CurriculumClass[] {
-  if (teacher?.classIds?.length) {
-    return classes.filter(c => teacher.classIds!.includes(c.id));
+  if (teacher?.subjects?.length) {
+    const ids = new Set(classIdsForTeacher(teacher));
+    return classes.filter(c => ids.has(c.id));
   }
   return classes;
 }
@@ -204,7 +267,7 @@ export function subjectsForTeacher(
 ): CurriculumSubject[] {
   const classSubjects = findClass(classes, classId)?.subjects || [];
   if (!teacher) return classSubjects;
-  return classSubjects.filter(s => teacher.subjects.some(ts => subjectMatches(ts, s)));
+  return classSubjects.filter(s => teacher.subjects.some(ts => subjectMatches(ts.name, s)));
 }
 
 export interface AutoSelectResult {
@@ -223,14 +286,14 @@ export function autoSelectForTeacher(
   classes: CurriculumClass[],
   currentClassId: string,
 ): AutoSelectResult {
-  const teacherClasses = teacher.classIds || [];
+  const teacherClasses = classIdsForTeacher(teacher);
 
   let subjectId = '';
   if (teacher.subjects.length === 1) {
     const classIds = teacherClasses.length > 0 ? teacherClasses : currentClassId ? [currentClassId] : [];
     for (const cid of classIds) {
       const cls = findClass(classes, cid);
-      const match = cls?.subjects.find(s => subjectMatches(teacher.subjects[0], s));
+      const match = cls?.subjects.find(s => subjectMatches(teacher.subjects[0].name, s));
       if (match) {
         subjectId = match.id;
         break;
