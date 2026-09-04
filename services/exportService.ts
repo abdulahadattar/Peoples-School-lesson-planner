@@ -16,7 +16,7 @@ import {
   VerticalAlign as DocxVerticalAlign,
 } from 'docx';
 import saveAs from 'file-saver';
-import { LessonPlan, GeneratedPaper, PaperQuestion, PaperSection, TeacherInfo } from '../types';
+import { LessonPlan, GeneratedPaper, PaperQuestion, PaperSection, TeacherInfo, WeeklyLessonPlan } from '../types';
 import { parseTextWithEquations, dataUrlToBase64 } from './equationRenderer';
 import { latexToUnicodeText } from './latexSanitizer';
 import {
@@ -323,12 +323,211 @@ const createPdfContentForPlan = async (lessonPlan: LessonPlan, teacherInfo?: Tea
     return [headerTable, ...resourcesSection, ...procedureSection, ...homeworkSection];
 };
 
+const createWeeklyDocxContentForPlan = async (lessonPlan: WeeklyLessonPlan, teacherInfo?: TeacherInfo): Promise<(Paragraph | Table)[]> => {
+  const teacherName = teacherInfo?.name || "Abdul Ahad";
+  const schoolPlaceholder = teacherInfo?.schoolName || "Peoples Higher Secondary School Jamshoro";
+  const gradeShort = lessonPlan.gradeLevel.replace('Grade ', '').split(' ')[0];
+
+  const headerTable = new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [
+          new TableRow({
+              children: [
+                  new TableCell({
+                      children: [
+                          new Paragraph({ children: [createHeaderRun(schoolPlaceholder, true, 24)], alignment: AlignmentType.CENTER }),
+                          new Paragraph({ children: [createHeaderRun('WEEKLY LESSON PLAN', true, 36)], alignment: AlignmentType.CENTER, spacing: { after: 50 } }),
+                      ],
+                      columnSpan: 4,
+                      borders: { top: { style: 'single', size: 12 }, bottom: { style: 'single', size: 12 }, left: { style: 'none'}, right: { style: 'none'} }
+                  }),
+              ],
+          }),
+          new TableRow({
+              children: [
+                  new TableCell({ children: [new Paragraph({ children: [createHeaderRun(`GRADE: ${gradeShort}`, true, 24)] })], verticalAlign: VerticalAlign.CENTER, borders: {top: {style: 'none'}, bottom: {style: 'none'}, left: {style: 'none'}, right: {style: 'none'}} }),
+                  new TableCell({ children: [new Paragraph({ children: [createHeaderRun(`SUBJECT: ${lessonPlan.subject}`, true, 24)] })], verticalAlign: VerticalAlign.CENTER, borders: {top: {style: 'none'}, bottom: {style: 'none'}, left: {style: 'none'}, right: {style: 'none'}} }),
+                  new TableCell({ children: [new Paragraph({ children: [createHeaderRun(`CHAPTER: ${lessonPlan.chapterName || lessonPlan.title}`, true, 24)] })], verticalAlign: VerticalAlign.CENTER, borders: {top: {style: 'none'}, bottom: {style: 'none'}, left: {style: 'none'}, right: {style: 'none'}} }),
+                  new TableCell({ children: [new Paragraph({ children: [createHeaderRun(`TEACHER: ${teacherName}`, true, 24)] })], verticalAlign: VerticalAlign.CENTER, borders: {top: {style: 'none'}, bottom: {style: 'none'}, left: {style: 'none'}, right: {style: 'none'}} }),
+              ],
+          }),
+      ],
+  });
+
+  const children: (Paragraph | Table)[] = [headerTable];
+  children.push(createSectionHeading('OVERVIEW'));
+  children.push(await createRichParagraph(`Objective: ${lessonPlan.objective}`));
+
+  children.push(createSectionHeading('WEEKLY BREAKDOWN'));
+
+  const dayRows: TableRow[] = [];
+  for (const day of lessonPlan.dailyBreakdown) {
+      const cells = [
+          new TableCell({ children: [new Paragraph({ children: [createHeaderRun(day.day, true, 22)] })], verticalAlign: VerticalAlign.CENTER }),
+          new TableCell({ children: [await createRichParagraph(day.topic)] }),
+          new TableCell({ children: [await createRichParagraph(day.objective)] }),
+          new TableCell({ children: [await createRichParagraph(day.homework)] }),
+      ];
+      dayRows.push(new TableRow({ children: cells }));
+  }
+
+  const dayTable = new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [
+          new TableRow({
+              children: [
+                  new TableCell({ children: [new Paragraph({ children: [createHeaderRun('DAY', true, 22)] })], shading: { fill: '1F4E79' }, verticalAlign: VerticalAlign.CENTER }),
+                  new TableCell({ children: [new Paragraph({ children: [createHeaderRun('TOPIC', true, 22)] })], shading: { fill: '1F4E79' }, verticalAlign: VerticalAlign.CENTER }),
+                  new TableCell({ children: [new Paragraph({ children: [createHeaderRun('OBJECTIVE', true, 22)] })], shading: { fill: '1F4E79' }, verticalAlign: VerticalAlign.CENTER }),
+                  new TableCell({ children: [new Paragraph({ children: [createHeaderRun('HOMEWORK', true, 22)] })], shading: { fill: '1F4E79' }, verticalAlign: VerticalAlign.CENTER }),
+              ],
+          }),
+          ...dayRows,
+      ],
+  });
+
+  children.push(dayTable);
+
+  children.push(createSectionHeading('DAILY ACTIVITIES DETAIL'));
+  for (const day of lessonPlan.dailyBreakdown) {
+      children.push(new Paragraph({
+          children: [ new TextRun({ text: `${day.day.toUpperCase()}`, bold: true, size: 24, color: '1F4E79' })],
+          spacing: { before: 120, after: 60 }
+      }));
+      for (const activity of day.activities) {
+          children.push(new Paragraph({
+              children: [ new TextRun({ text: `${activity.name} (${activity.duration} mins)`, bold: true, size: 22 })],
+              spacing: { before: 80, after: 40 }
+          }));
+          children.push(await createRichParagraph(activity.description));
+      }
+  }
+
+  return children;
+};
+
+const createWeeklyPdfContentForPlan = async (lessonPlan: WeeklyLessonPlan, teacherInfo?: TeacherInfo): Promise<any[]> => {
+    const teacherName = teacherInfo?.name || "Abdul Ahad";
+    const schoolPlaceholder = teacherInfo?.schoolName || "Peoples Higher Secondary School Jamshoro";
+    const gradeShort = lessonPlan.gradeLevel.replace('Grade ', '').split(' ')[0];
+
+    const headerContent = [
+        { text: schoolPlaceholder, style: 'paperHeader', alignment: 'center', bold: true, fontSize: 14, margin: [0, 0, 0, 2] },
+        { text: 'WEEKLY LESSON PLAN', style: 'paperHeader', alignment: 'center', bold: true, fontSize: 14, margin: [0, 0, 0, 4] },
+        { text: `Grade: ${gradeShort}    |    Subject: ${lessonPlan.subject}    |    Chapter: ${lessonPlan.chapterName || lessonPlan.title}`, style: 'paperHeader', alignment: 'center', fontSize: 10, margin: [0, 0, 0, 2] },
+        { text: `Teacher: ${teacherName}`, style: 'paperHeader', alignment: 'center', fontSize: 10, margin: [0, 0, 0, 6] },
+    ];
+
+    const overviewSection: any[] = [
+        { text: 'OVERVIEW', style: 'sectionTitle', margin: [0, 10, 0, 4] },
+        { text: `Objective: ${lessonPlan.objective}`, style: 'body', margin: [0, 0, 0, 8] },
+    ];
+
+    const breakdownHeader = [
+        { text: 'WEEKLY BREAKDOWN', style: 'sectionTitle', margin: [0, 10, 0, 4] },
+    ];
+
+    const breakdownTable: any = {
+        table: {
+            widths: [40, 90, 130, 130],
+            body: [
+                [
+                    { text: 'DAY', style: 'tableHeader', fillColor: '#1F4E79', color: '#FFFFFF' },
+                    { text: 'TOPIC', style: 'tableHeader', fillColor: '#1F4E79', color: '#FFFFFF' },
+                    { text: 'OBJECTIVE', style: 'tableHeader', fillColor: '#1F4E79', color: '#FFFFFF' },
+                    { text: 'HOMEWORK', style: 'tableHeader', fillColor: '#1F4E79', color: '#FFFFFF' },
+                ],
+                ...lessonPlan.dailyBreakdown.map((day) => [
+                    { text: day.day, style: 'tableBody', alignment: 'center' as const },
+                    { text: day.topic, style: 'tableBody' },
+                    { text: day.objective, style: 'tableBody' },
+                    { text: day.homework, style: 'tableBody' },
+                ]),
+            ],
+        },
+        layout: 'lightHorizontalLines',
+        margin: [0, 0, 0, 12],
+    };
+
+    const dailyActivitiesHeader = { text: 'DAILY ACTIVITIES DETAIL', style: 'sectionTitle', margin: [0, 10, 0, 4] };
+
+    const dailyActivities: any[] = [];
+    for (const day of lessonPlan.dailyBreakdown) {
+        dailyActivities.push({ text: day.day.toUpperCase(), style: 'sectionTitle', margin: [0, 8, 0, 4] });
+        for (const activity of day.activities) {
+            dailyActivities.push({ text: `${activity.name} (${activity.duration} mins)`, bold: true, margin: [0, 4, 0, 2] });
+            const descItems = await renderPdfRichText(activity.description, 'body');
+            dailyActivities.push(...descItems);
+        }
+    }
+
+    return [
+        ...headerContent,
+        { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 595.28, y2: 0, lineWidth: 1, lineColor: '#000000' }], margin: [0, 0, 0, 6] },
+        ...overviewSection,
+        ...breakdownHeader,
+        breakdownTable,
+        dailyActivitiesHeader,
+        ...dailyActivities,
+        { text: '\n\n', margin: [0, 20, 0, 0] },
+        { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 595.28, y2: 0, lineWidth: 1, lineColor: '#000000' }], margin: [0, 0, 0, 10] },
+        { text: '--- End of Weekly Plan ---', alignment: 'center', fontSize: 10, margin: [0, 10, 0, 0] },
+    ];
+};
+
+export const exportWeeklyPlanAsDocx = async (lessonPlan: WeeklyLessonPlan, fileName: string, teacherInfo?: TeacherInfo): Promise<void> => {
+  const children = await createWeeklyDocxContentForPlan(lessonPlan, teacherInfo);
+  const doc = new Document({
+      sections: [{
+          properties: {
+              page: {
+                  size: { width: A4_PAGE_WIDTH, height: A4_PAGE_HEIGHT },
+                  margin: DOCX_PAGE_MARGINS
+              }
+          },
+          children: children,
+      }],
+  });
+  const blob = await Packer.toBlob(doc);
+  saveAs(blob, `${fileName}.docx`);
+};
+
+export const exportWeeklyPlanAsPdf = async (lessonPlan: WeeklyLessonPlan, fileName: string, teacherInfo?: TeacherInfo): Promise<void> => {
+  const content = await createWeeklyPdfContentForPlan(lessonPlan, teacherInfo);
+  const docDefinition: any = {
+      pageSize: { width: PDF_A4_WIDTH, height: PDF_A4_HEIGHT },
+      pageMargins: PDF_PAGE_MARGINS,
+      content: content,
+      styles: {
+          paperHeader: { margin: [0, 0, 0, 4] },
+          sectionTitle: { bold: true, fontSize: 12, color: '#1F4E79', margin: [0, 10, 0, 4], decoration: 'underline', decorationColor: '#1F4E79' },
+          tableHeader: { bold: true, fontSize: 10, fillColor: '#1F4E79', color: '#FFFFFF', margin: [4, 4, 4, 4] },
+          tableBody: { fontSize: 9, margin: [4, 4, 4, 4] },
+          body: { fontSize: 10, lineHeight: 1.2, alignment: 'justify' },
+      },
+      defaultStyle: { font: 'Roboto', fontSize: 10, lineHeight: 1.3 }
+  };
+  if (typeof pdfMake !== 'undefined' && typeof pdfMake.createPdf === 'function') {
+    pdfMake.createPdf(docDefinition).download(`${fileName}.pdf`);
+  } else {
+    throw new Error('PDF export is unavailable: pdfMake library has not loaded yet. Please try again in a moment.');
+  }
+};
+
 /**
  * Export multiple lesson plans as a single DOCX file with page breaks.
+ * Supports both daily and weekly plans.
  */
 export const exportMultipleLessonsAsDocx = async (lessonPlans: LessonPlan[], fileName: string, teacherInfo?: TeacherInfo): Promise<void> => {
     const sections: any[] = [];
     for (let index = 0; index < lessonPlans.length; index++) {
+        const plan = lessonPlans[index];
+        let children: (Paragraph | Table)[];
+        if (plan.isWeekly) {
+            children = await createWeeklyDocxContentForPlan(plan as WeeklyLessonPlan, teacherInfo);
+        } else {
+            children = await createDocxContentForPlan(plan, teacherInfo);
+        }
         sections.push({
             properties: {
                 page: {
@@ -337,7 +536,7 @@ export const exportMultipleLessonsAsDocx = async (lessonPlans: LessonPlan[], fil
                 },
             },
             pageBreakBefore: index > 0,
-            children: await createDocxContentForPlan(lessonPlans[index], teacherInfo),
+            children: children,
         });
     }
 
@@ -348,11 +547,18 @@ export const exportMultipleLessonsAsDocx = async (lessonPlans: LessonPlan[], fil
 
 /**
  * Export multiple lesson plans as a single PDF file with page breaks.
+ * Supports both daily and weekly plans.
  */
 export const exportMultipleLessonsAsPdf = async (lessonPlans: LessonPlan[], fileName: string, teacherInfo?: TeacherInfo): Promise<void> => {
     const allContent: any[] = [];
     for (let index = 0; index < lessonPlans.length; index++) {
-        const content = await createPdfContentForPlan(lessonPlans[index], teacherInfo);
+        const plan = lessonPlans[index];
+        let content: any[];
+        if (plan.isWeekly) {
+            content = await createWeeklyPdfContentForPlan(plan as WeeklyLessonPlan, teacherInfo);
+        } else {
+            content = await createPdfContentForPlan(plan, teacherInfo);
+        }
         if (index > 0) {
             allContent.push({ text: '', pageBreak: 'before' as const });
         }
