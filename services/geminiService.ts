@@ -696,6 +696,8 @@ export async function generateWeeklyLessonPlan(
   };
 
   const subject = subjectName || "General";
+  const gradeNum = parseInt(slo.grade?.replace(/Grade\s+|Class\s+/i, "") || "9", 10);
+  const gradeLevelContext = isNaN(gradeNum) ? `${slo.grade}` : `${slo.grade} (${gradeNum <= 10 ? "Foundational" : "Advanced"})`;
 
   log(`Generating weekly lesson plan for chapter: ${slo.Unit_Name} | Subject: ${subject} | Grade: ${slo.grade}`);
 

@@ -212,7 +212,7 @@ export const useGeneralGeneration = () => {
       // Generate weekly overview plan if scope is 'weekly' or 'both'.
       // Scope only applies to whole-chapter mode; single-slo and topic modes
       // always produce a single daily plan.
-      if ((scope === 'weekly' || scope === 'both') && mode !== 'topic' && chapter) {
+      if ((scope === 'weekly' || scope === 'both') && mode === 'whole-chapter' && chapter) {
         addLog('Generating weekly overview plan...');
         setStatusMessage('Generating weekly overview...');
         try {
