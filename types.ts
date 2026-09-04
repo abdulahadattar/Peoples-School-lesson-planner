@@ -120,7 +120,7 @@ export interface Teacher {
   schoolName: string;
   designation?: string;
   subjects: string[];
-  grades: string[];
+  grades?: string[];
   classIds?: string[];
   sectionLabels?: Record<string, string[]>;
 }
