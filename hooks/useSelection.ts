@@ -111,6 +111,7 @@ export function useSelection({ teachers, onChapterChange }: UseSelectionOptions)
   const handleClassChange = (newClassId: string) => {
     setClassId(newClassId);
     setChapterId('');
+    onChapterChange?.('');
     // Unrestricted teachers (no subject scopes) teach everywhere — keep them selected.
     if (teacher && newClassId && teacher.subjects.length > 0 && !teachesClass(teacher, newClassId)) {
       deselectTeacher();
@@ -136,6 +137,7 @@ export function useSelection({ teachers, onChapterChange }: UseSelectionOptions)
   const handleSubjectChange = (newSubjectId: string) => {
     setSubjectId(newSubjectId);
     setChapterId('');
+    onChapterChange?.('');
     // The subject dropdown is teacher-narrowed when a teacher is selected;
     // only deselect if the new subject genuinely isn't teachable by them
     // (teachers with no subject list are unrestricted — keep them selected).
@@ -208,6 +210,7 @@ export function useSelection({ teachers, onChapterChange }: UseSelectionOptions)
     setClassId('');
     setSubjectId('');
     setChapterId('');
+    onChapterChange?.('');
   };
 
   return {
