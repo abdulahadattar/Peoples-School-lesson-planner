@@ -197,6 +197,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({ onGeneratePaper, isGenerating, 
       }
     } else {
       onTeacherNameChange('');
+      onSchoolNameChange('');
     }
   };
 

@@ -201,7 +201,7 @@ const App: React.FC = () => {
         <div className="p-6 flex-grow flex flex-col h-full overflow-hidden">
           <div className="flex items-center justify-between mb-8 md:hidden">
             <span className="font-semibold text-base text-brand-text-primary">Menu</span>
-            <button onClick={() => setIsSidebarOpen(false)} className="p-2 text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg rounded-xl transition-colors">
+            <button onClick={() => setIsSidebarOpen(false)} aria-label="Close navigation" className="p-2 text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg rounded-xl transition-colors">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />

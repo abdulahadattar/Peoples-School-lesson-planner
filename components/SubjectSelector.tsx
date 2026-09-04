@@ -117,7 +117,7 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
   // Teachers filtered by selected class (if any)
   const teachersForClass = useMemo(() => {
     if (!selectedClassId) return teachers;
-    return teachers.filter(t => t.classIds?.includes(selectedClassId));
+    return teachers.filter(t => !t.classIds || t.classIds.length === 0 || t.classIds.includes(selectedClassId));
   }, [teachers, selectedClassId]);
 
   // Teachers filtered by selected subject (if any)
@@ -129,7 +129,7 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
   // Combined filtered teachers (intersection of class + subject filters)
   const filteredTeachers = useMemo(() => {
     let list = teachers;
-    if (selectedClassId) list = list.filter(t => t.classIds?.includes(selectedClassId));
+    if (selectedClassId) list = list.filter(t => !t.classIds || t.classIds.length === 0 || t.classIds.includes(selectedClassId));
     if (selectedSubjectId) {
       const selectedClass = classes.find(c => c.id === selectedClassId);
       const selectedSubject = selectedClass?.subjects.find(s => s.id === selectedSubjectId);
