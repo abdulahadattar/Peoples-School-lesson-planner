@@ -15,10 +15,16 @@ export function sortClassesByGrade(classes: CurriculumClass[]): CurriculumClass[
   return [...classes].sort((a, b) => getGradeNumber(a.id) - getGradeNumber(b.id));
 }
 
+/**
+ * Find a class by its ID in the curriculum array.
+ */
 export function findClass(classes: CurriculumClass[], classId: string): CurriculumClass | undefined {
   return classes.find(c => c.id === classId);
 }
 
+/**
+ * Find a subject by class and subject IDs.
+ */
 export function findSubject(
   classes: CurriculumClass[],
   classId: string,

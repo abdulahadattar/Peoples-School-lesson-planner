@@ -51,6 +51,9 @@ if (typeof pdfMake !== 'undefined' && pdfMake.tableLayouts) {
   };
 }
 
+/**
+ * Sanitize a title for use as a file name.
+ */
 export const formatFileName = (title: string, sloId?: string): string => {
   const baseName = sloId ? `${sloId}_${title}` : title;
   return baseName.replace(/[^a-z0-9_.-]/gi, '_').substring(0, 100);
@@ -148,6 +151,9 @@ const A4_PAGE_HEIGHT = 16838;
 // left/right 0.75", portrait. 1 inch = 1440 twips.
 const DOCX_PAGE_MARGINS = { top: 432, right: 1080, bottom: 720, left: 1080 };
 
+/**
+ * Build the DOCX body content for a single lesson plan.
+ */
 export const createDocxContentForPlan = async (lessonPlan: LessonPlan, teacherInfo?: TeacherInfo): Promise<(Paragraph | Table)[]> => {
   const teacherName = teacherInfo?.name || "Abdul Ahad";
   const schoolPlaceholder = teacherInfo?.schoolName || "Peoples Higher Secondary School Jamshoro";
@@ -218,6 +224,9 @@ const PDF_A4_HEIGHT = 841.89;
 // pdfMake margin order is [left, top, right, bottom] — 0.75 / 0.3 / 0.75 / 0.5 in
 const PDF_PAGE_MARGINS: [number, number, number, number] = [54, 21.6, 54, 36];
 
+/**
+ * Export a single lesson plan as a DOCX file and trigger a browser download.
+ */
 export const exportAsDocx = async (lessonPlan: LessonPlan, sloId?: string, teacherInfo?: TeacherInfo): Promise<void> => {
   const fileName = `${formatFileName(lessonPlan.title, sloId)}.docx`;
   const children = await createDocxContentForPlan(lessonPlan, teacherInfo);
@@ -236,6 +245,9 @@ export const exportAsDocx = async (lessonPlan: LessonPlan, sloId?: string, teach
   saveAs(blob, fileName);
 };
 
+/**
+ * Export a single lesson plan as a PDF file and trigger a browser download.
+ */
 export const exportAsPdf = async (lessonPlan: LessonPlan, sloId?: string, teacherInfo?: TeacherInfo): Promise<void> => {
   const fileName = `${formatFileName(lessonPlan.title, sloId)}.pdf`;
   const content = await createPdfContentForPlan(lessonPlan, teacherInfo);
@@ -311,6 +323,9 @@ const createPdfContentForPlan = async (lessonPlan: LessonPlan, teacherInfo?: Tea
     return [headerTable, ...resourcesSection, ...procedureSection, ...homeworkSection];
 };
 
+/**
+ * Export multiple lesson plans as a single DOCX file with page breaks.
+ */
 export const exportMultipleLessonsAsDocx = async (lessonPlans: LessonPlan[], fileName: string, teacherInfo?: TeacherInfo): Promise<void> => {
     const sections: any[] = [];
     for (let index = 0; index < lessonPlans.length; index++) {
@@ -331,6 +346,9 @@ export const exportMultipleLessonsAsDocx = async (lessonPlans: LessonPlan[], fil
     saveAs(blob, `${fileName}.docx`);
 };
 
+/**
+ * Export multiple lesson plans as a single PDF file with page breaks.
+ */
 export const exportMultipleLessonsAsPdf = async (lessonPlans: LessonPlan[], fileName: string, teacherInfo?: TeacherInfo): Promise<void> => {
     const allContent: any[] = [];
     for (let index = 0; index < lessonPlans.length; index++) {
@@ -492,6 +510,9 @@ const createPaperPdfContent = async (paper: GeneratedPaper, teacherInfo?: Teache
     ];
 };
 
+/**
+ * Export an exam paper as a DOCX file and trigger a browser download.
+ */
 export const exportPaperAsDocx = async (paper: GeneratedPaper, teacherInfo?: TeacherInfo): Promise<void> => {
     const fileName = `${formatFileName(paper.title)}.docx`;
     const schoolName = teacherInfo?.schoolName || "Peoples Higher Secondary School Jamshoro";
@@ -655,6 +676,9 @@ export const exportPaperAsDocx = async (paper: GeneratedPaper, teacherInfo?: Tea
     saveAs(blob, fileName);
 };
 
+/**
+ * Export an exam paper as a PDF file and trigger a browser download.
+ */
 export const exportPaperAsPdf = async (paper: GeneratedPaper, teacherInfo?: TeacherInfo): Promise<void> => {
     const fileName = `${formatFileName(paper.title)}.pdf`;
     const content = await createPaperPdfContent(paper, teacherInfo);

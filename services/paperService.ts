@@ -105,6 +105,9 @@ async function callGeminiAPI(
   throw new Error("No content in API response");
 }
 
+/**
+ * Generate a full exam paper JSON via the Gemini API.
+ */
 export async function generateExamPaper(
   gradeId: string,
   subjectId: string,

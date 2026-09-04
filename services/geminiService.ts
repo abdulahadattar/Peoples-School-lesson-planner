@@ -298,6 +298,9 @@ function parseLessonPlanJson(jsonText: string, gradeLevel: string, subject: stri
 export type LogCallback = (message: string) => void;
 
 // Helper function to load chapter PDF URL from SLO JSON structure
+/**
+ * Load the PDF URL for a chapter from the curriculum SLO JSON data.
+ */
 export async function loadChapterPdfUrl(grade: string, subject: string, chapterNum: number): Promise<string | null> {
   try {
     const path = `/curriculum/slos/${grade}/${subject.toLowerCase()}.json`;
@@ -387,6 +390,9 @@ export async function downloadPdfAsPart(url: string): Promise<Part | null> {
   return null;
 }
 
+/**
+ * Generate a lesson plan JSON via the Gemini API for a single SLO.
+ */
 export async function generateLessonPlan(
   slo: SLO,
   unitSlos: SLO[],

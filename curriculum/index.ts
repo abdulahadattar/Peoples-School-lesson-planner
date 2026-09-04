@@ -12,16 +12,25 @@ import { pakStudiesCurriculum } from './subjects/pak_studies';
 import { urduCurriculum } from './subjects/urdu';
 import { generalKnowledgeCurriculum } from './subjects/general_knowledge';
 
+/**
+ * Find a subject within a class by class and subject IDs.
+ */
 export function getSubjectById(classes: CurriculumClass[], classId: string, subjectId: string): CurriculumSubject | undefined {
   const cls = classes.find(c => c.id === classId);
   return cls?.subjects.find(s => s.id === subjectId);
 }
 
+/**
+ * Find a chapter within a class by class, subject, and chapter IDs.
+ */
 export function getChapterById(cls: CurriculumClass, subjectId: string, chapterId: string) {
   const subject = cls.subjects.find(s => s.id === subjectId);
   return subject?.chapters.find(ch => ch.id === chapterId);
 }
 
+/**
+ * Merge all subject curricula into a single sorted class array.
+ */
 export function mergeCurriculums(): CurriculumClass[] {
   const classMap = new Map<string, CurriculumClass>();
 

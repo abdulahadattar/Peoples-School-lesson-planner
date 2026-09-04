@@ -74,6 +74,9 @@ export interface PeriodLocation {
 
 let cache: TimetableData | null = null;
 
+/**
+ * Load timetable JSON from the public folder and cache it for the session.
+ */
 export async function loadTimetable(): Promise<TimetableData> {
   if (cache) return cache;
   const res = await fetch('/timetable.json');
@@ -111,6 +114,9 @@ export function parseTimeToMinutes(t: string): number {
   return h * 60 + min;
 }
 
+/**
+ * Format minutes-since-midnight into a 12-hour time string (e.g. "8:15 AM").
+ */
 export function formatMinutes(min: number): string {
   const h24 = Math.floor(min / 60);
   const m = min % 60;
@@ -193,6 +199,9 @@ const SUBJECT_ALIASES: Record<string, string> = {
   'pakistan studies': 'Pak Studies',
 };
 
+/**
+ * Normalize a raw subject string to its canonical name using known aliases.
+ */
 export function normalizeSubject(raw: string): string {
   const key = raw.trim().toLowerCase().replace(/\s+/g, ' ');
   return SUBJECT_ALIASES[key] ?? raw.trim();
@@ -285,6 +294,9 @@ export interface StaffStatus {
   status: 'busy' | 'free';
 }
 
+/**
+ * Compute busy and free teachers for a given day and period index.
+ */
 export function computeStaff(
   classes: TimetableClassEntry[],
   teachers: Teacher[],

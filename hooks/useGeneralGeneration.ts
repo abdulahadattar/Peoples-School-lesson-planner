@@ -15,6 +15,10 @@ export interface GenerationOptions {
   teacherInfo: TeacherInfo;
 }
 
+/**
+ * Shared generation hook for lesson plans and exam papers.
+ * Tracks loading state, progress, logs, and results for both generators.
+ */
 export const useGeneralGeneration = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [generationProgress, setGenerationProgress] = useState<{ current: number; total: number } | null>(null);
