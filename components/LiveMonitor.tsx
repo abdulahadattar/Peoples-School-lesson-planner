@@ -258,23 +258,45 @@ const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => {
   );
 
   const livePeriodIndex = useMemo(() => {
-    if (!timetable || !liveDay) return -1;
+    if (!timetable || !liveDay || timetable.classes.length === 0) return -1;
     const minutes = now.getHours() * 60 + now.getMinutes();
-    const idx = schedule.findIndex(p => minutes >= p.startMin && minutes < p.endMin);
-    return idx >= 0 ? idx : -1;
-  }, [timetable, liveDay, now, schedule]);
+    const loc = locatePeriod(timetable.classes[0], liveDay, minutes);
+    return loc.state === 'in' ? loc.index : -1;
+  }, [timetable, liveDay, now]);
 
   // Effective period index across the grid
   const periodIndex = previewPeriod ?? livePeriodIndex;
 
   const staff = useMemo(() => {
     if (!timetable || day === null) return null;
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    if (isLive) {
+      const busyMap = new Map<string, string[]>();
+      for (const entry of timetable.classes) {
+        const loc = locatePeriod(entry, day, nowMinutes);
+        if (loc.state !== 'in') continue;
+        const slot = resolveSlot(entry, day, loc.index, teachers);
+        for (const t of slot.teachers) {
+          const list = busyMap.get(t.id) ?? [];
+          list.push(entry.label);
+          busyMap.set(t.id, list);
+        }
+      }
+      const busy: { teacher: Teacher; busyIn: string[]; status: 'busy' | 'free' }[] = [];
+      for (const [id, classesList] of busyMap) {
+        const teacher = teachers.find(t => t.id === id);
+        if (teacher) busy.push({ teacher, busyIn: classesList, status: 'busy' });
+      }
+      const busyIds = new Set(busyMap.keys());
+      const free = teachers.filter(t => !busyIds.has(t.id));
+      return { busy, free };
+    }
     if (periodIndex < 0) {
       // Outside school hours (or preview with no period chosen) — everyone is free.
       return { busy: [], free: teachers };
     }
     return computeStaff(timetable.classes, teachers, day, periodIndex);
-  }, [timetable, teachers, day, periodIndex]);
+  }, [timetable, teachers, day, periodIndex, isLive, now]);
 
   const currentPeriodInfo = schedule[periodIndex] ?? null;
   const isSunday = liveDay === null;
