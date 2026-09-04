@@ -3,7 +3,7 @@
  *
  * Loads the timetable JSON (generated from the school's Excel timetable by
  * scripts/parse_timetable.py) and combines it with the teacher roster
- * (public/teachers.json) to answer:
+ * (data/teachers.json) to answer:
  *   - who is teaching which class RIGHT NOW (live period detection by clock)
  *   - who is teaching where at any (day, period) the principal previews
  *   - which teachers are currently free (staff room)
@@ -12,6 +12,7 @@
  * (e.g. "Urdu / Sindhi", "Maths / Biology") — BOTH teachers are present in
  * the class simultaneously; that is NOT a clash.
  */
+import timetableData from '../data/timetable.json';
 import { Teacher } from '../types';
 import { isKnownSubject, normalizeSubject, resolveByName, resolveTeacher } from './teacherRoster';
 
@@ -76,13 +77,11 @@ export interface PeriodLocation {
 let cache: TimetableData | null = null;
 
 /**
- * Load timetable JSON from the public folder and cache it for the session.
+ * Load timetable JSON from the bundled data and cache it for the session.
  */
 export async function loadTimetable(): Promise<TimetableData> {
   if (cache) return cache;
-  const res = await fetch('/timetable.json');
-  if (!res.ok) throw new Error(`Failed to load timetable (${res.status})`);
-  cache = await res.json();
+  cache = timetableData as TimetableData;
   return cache;
 }
 

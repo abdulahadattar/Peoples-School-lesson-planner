@@ -12,6 +12,7 @@ import { BookOpenIcon, CloseIcon, DocumentTextIcon, HomeIcon, PulseIcon } from '
 import { useGeneralGeneration, GenerationMode } from './hooks/useGeneralGeneration';
 import { useSelection } from './hooks/useSelection';
 import { loadSloChapter } from './services/sloData';
+import teachersData from './data/teachers.json';
 
 interface NavItem {
   view: View;
@@ -67,13 +68,7 @@ const App: React.FC = () => {
 
   // Load teachers from JSON
   useEffect(() => {
-    fetch('/teachers.json')
-      .then(res => res.ok ? res.json() : { teachers: [] })
-      .then(data => setTeachers(data.teachers || []))
-      .catch(err => {
-        console.error('Failed to load teachers:', err);
-        setTeachers([]);
-      });
+    setTeachers((teachersData as { teachers: Teacher[] }).teachers || []);
   }, []);
 
   // Load chapter SLOs when chapter changes

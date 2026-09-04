@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 parse_timetable.py — converts the PHSSJ class timetable (.xlsx) into
-public/timetable.json consumed by the Live Monitor feature.
+data/timetable.json consumed by the Live Monitor feature.
 
 Pure Python stdlib only (zipfile + ElementTree). The sheet FILE order inside
 the workbook is shuffled, so the authoritative class identity is taken from
@@ -10,7 +10,7 @@ sheet names or file order.
 
 Usage:
     python scripts/parse_timetable.py [path-to-xlsx] [output-json]
-Defaults: data/timetable.xlsx -> public/timetable.json
+Defaults: data/timetable.xlsx -> data/timetable.json
 """
 import json
 import re
@@ -174,7 +174,7 @@ def parse_sheet(zf: zipfile.ZipFile, name: str) -> dict | None:
 
 def main():
     src = sys.argv[1] if len(sys.argv) > 1 else 'data/timetable.xlsx'
-    out = sys.argv[2] if len(sys.argv) > 2 else 'public/timetable.json'
+    out = sys.argv[2] if len(sys.argv) > 2 else 'data/timetable.json'
     global _shared_strings
     with zipfile.ZipFile(src) as zf:
         _shared_strings = build_shared_strings(zf)
