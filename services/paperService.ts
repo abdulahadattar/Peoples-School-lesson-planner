@@ -2,8 +2,9 @@ import { Part, Type } from "@google/genai";
 import { GeneratedPaper, PaperSection, PaperQuestion, PaperSectionBlueprint, PaperDifficulty } from "../types";
 import { sanitizeStringFields } from './latexSanitizer';
 import { curriculumData } from "../curriculum";
-import { withKeyRotation, DEFAULT_MODEL, downloadPdfAsPart, LogCallback } from "./geminiService";
+import { requestJsonWithRetry, downloadPdfAsPart, LogCallback } from "./geminiService";
 import { cleanAndParseJson } from './jsonHelpers';
+import { loadSloChapter } from './sloData';
 
 const getGradeName = (gradeId: string): string => {
   const cls = curriculumData.classes.find((c) => c.id === gradeId);
@@ -37,73 +38,6 @@ const getChapterSLOs = (
   const chapter = subject?.chapters.find((ch) => ch.id === chapterId);
   return chapter?.slos.map((s) => `${s.id}: ${s.text}`) || [];
 };
-
-/**
- * Direct REST API call to Gemini — bypasses the @google/genai SDK which has
- * known timeout bugs with gemma-4-26b-a4b-it (see googleapis/js-genai#1277).
- * Discovered: gemma-4-26b-a4b-it hangs when generationConfig has temperature
- * but no responseSchema — the model waits for schema-based output indefinitely.
- */
-async function callGeminiAPI(
-  apiKey: string,
-  model: string,
-  systemInstruction: string,
-  userPrompt: string,
-  schema: any,
-  temperature = 0.3,
-  contextParts?: Part[],
-  logCallback?: LogCallback
-): Promise<string> {
-  const log = (msg: string) => {
-    console.log(`[paperService.callGeminiAPI] ${msg}`);
-    logCallback?.(msg);
-  };
-  // Build parts: context files (PDFs) first, then the text prompt
-  const parts: any[] = [];
-  if (contextParts && contextParts.length > 0) {
-    for (const part of contextParts) {
-      parts.push(part);
-    }
-    log(`Attached ${contextParts.length} context PDF part(s) to request.`);
-  } else {
-    log(`No PDF context attached to this request.`);
-  }
-  parts.push({ text: userPrompt });
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
-      },
-      body: JSON.stringify({
-        contents: [{ parts }],
-        systemInstruction: {
-          parts: [{ text: systemInstruction }],
-        },
-        generationConfig: {
-          temperature,
-          responseMimeType: "application/json",
-          responseSchema: schema,
-        },
-      }),
-    }
-  );
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`HTTP ${response.status}: ${errorText}`);
-  }
-
-  const data = await response.json();
-  if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-    return data.candidates[0].content.parts[0].text;
-  }
-
-  throw new Error("No content in API response");
-}
 
 /**
  * Generate a full exam paper JSON via the Gemini API.
@@ -245,59 +179,34 @@ Ensure questions cover all major topics from the chapter and align with the SLOs
   // Download chapter PDF for grounding
   let contextParts: Part[] = [];
   try {
-    const gradeNum = gradeId.replace('class', '');
-    const grade = `Grade ${parseInt(gradeNum, 10)}`;
-    const chapterNum = parseInt(chapterId.replace('ch', ''), 10);
-    const sloPath = `/curriculum/slos/${grade}/${subjectId.toLowerCase()}.json`;
-    log(`Fetching SLO data from: ${sloPath}`);
-    const sloResponse = await fetch(sloPath);
-    log(`SLO response status: ${sloResponse.status}`);
-    if (sloResponse.ok) {
-      const sloData = await sloResponse.json();
-      const chapter = sloData.chapters?.find((c: any) => c.chapter_number === chapterNum);
-      log(`Found chapter: ${chapter ? chapter.chapter_name : 'null'}, pdf_url: ${chapter?.pdf_url || 'none'}`);
-      if (chapter?.pdf_url) {
-        log(`Downloading chapter PDF: ${chapter.pdf_url}`);
-        const pdfPart = await downloadPdfAsPart(chapter.pdf_url);
-        if (pdfPart) {
-          contextParts = [pdfPart];
-          log(`✓ PDF context loaded (${((pdfPart.inlineData?.data?.length || 0) * 0.75 / 1024).toFixed(0)}KB) — will be sent with API request`);
-        } else {
-          log(`✗ Could not download PDF, proceeding without book context.`);
-        }
+    const chapter = await loadSloChapter(gradeId, subjectId, chapterId);
+    log(`Found chapter: ${chapter ? chapter.chapter_name : 'null'}, pdf_url: ${chapter?.pdf_url || 'none'}`);
+    if (chapter?.pdf_url) {
+      log(`Downloading chapter PDF: ${chapter.pdf_url}`);
+      const pdfPart = await downloadPdfAsPart(chapter.pdf_url);
+      if (pdfPart) {
+        contextParts = [pdfPart];
+        log(`✓ PDF context loaded (${((pdfPart.inlineData?.data?.length || 0) * 0.75 / 1024).toFixed(0)}KB) — will be sent with API request`);
       } else {
-        log(`No PDF URL found for chapter ${chapterNum} in SLO data`);
+        log(`✗ Could not download PDF, proceeding without book context.`);
       }
     } else {
-      log(`SLO data not found at ${sloPath} (status ${sloResponse.status})`);
+      log(`No PDF URL found for chapter ${chapterId} in SLO data`);
     }
   } catch (err) {
     log(`Error loading PDF context: ${err instanceof Error ? err.message : String(err)}`);
   }
 
-  const MAX_RETRIES = 2;
-  let lastError: Error | null = null;
-
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      if (attempt > 0) {
-        log(`Retrying (attempt ${attempt + 1}/${MAX_RETRIES + 1})...`);
-      }
-      const response = await withKeyRotation(async (apiKey) => {
-        log(`Calling Gemini API with model: ${DEFAULT_MODEL}`);
-        return callGeminiAPI(
-          apiKey,
-          DEFAULT_MODEL,
-          systemInstruction,
-          userPrompt,
-          paperSchema,
-          0.3,
-          contextParts.length > 0 ? contextParts : undefined,
-          logCallback
-        );
-      });
-
-      const parsed = cleanAndParseJson(response);
+  return requestJsonWithRetry<GeneratedPaper>({
+    operationName: 'generating exam paper',
+    systemInstruction,
+    userPrompt,
+    schema: paperSchema,
+    temperature: 0.3,
+    contextParts: contextParts.length > 0 ? contextParts : undefined,
+    log,
+    parse: (raw) => {
+      const parsed = cleanAndParseJson(raw);
       const cleaned = sanitizeStringFields(parsed) as GeneratedPaper;
       // Attach the marking blueprint (single source of truth for the printed
       // section marks line) — index-aligned with the three sections.
@@ -310,24 +219,9 @@ Ensure questions cover all major topics from the chapter and align with the SLOs
         cleaned.sectionBlueprints = blueprints;
       }
       return cleaned;
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      console.error(`Error generating exam paper (attempt ${attempt + 1}):`, error);
-      log(`ERROR (attempt ${attempt + 1}): ${lastError.message}`);
-
-      // Retry on parse errors
-      if ((lastError.message.includes("parse") || lastError.message.includes("JSON") || lastError.message.includes("Unexpected")) && attempt < MAX_RETRIES) {
-        log("Response was malformed, requesting new response...");
-        continue;
-      }
-
-      if (attempt === MAX_RETRIES) {
-        throw new Error(`Failed to generate exam paper: ${lastError.message}`);
-      }
-    }
-  }
-
-  throw new Error(`Failed to generate exam paper: ${lastError?.message || 'Unknown error'}`);
+    },
+    failMessage: (lastError) => `Failed to generate exam paper: ${lastError.message}`,
+  });
 }
 
 /**
@@ -407,47 +301,21 @@ ${revisionPrompt}
 
 Please return the complete revised exam paper as a JSON object.`;
 
-  const MAX_RETRIES = 2;
-  let lastError: Error | null = null;
-
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      if (attempt > 0) log(`Retrying revision (attempt ${attempt + 1}/${MAX_RETRIES + 1})...`);
-      else log('Sending revision request to AI...');
-
-      const response = await withKeyRotation(async (apiKey) => {
-        log(`Calling Gemini API with model: ${DEFAULT_MODEL}`);
-        return callGeminiAPI(
-          apiKey,
-          DEFAULT_MODEL,
-          systemInstruction,
-          userPrompt,
-          paperSchema,
-          0.3,
-          undefined,
-          logCallback
-        );
-      });
-
-      const parsed = cleanAndParseJson(response);
+  return requestJsonWithRetry<GeneratedPaper>({
+    operationName: 'revising exam paper',
+    firstAttemptLog: 'Sending revision request to AI...',
+    retryLabel: 'Retrying revision',
+    systemInstruction,
+    userPrompt,
+    schema: paperSchema,
+    temperature: 0.3,
+    log,
+    parse: (raw) => {
+      const parsed = cleanAndParseJson(raw);
       const cleaned = sanitizeStringFields(parsed) as GeneratedPaper;
       log(`Revised paper received: ${cleaned.sections?.length || 0} sections`);
       return cleaned;
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      console.error(`Error revising exam paper (attempt ${attempt + 1}):`, error);
-      log(`ERROR (attempt ${attempt + 1}): ${lastError.message}`);
-
-      if ((lastError.message.includes('parse') || lastError.message.includes('JSON') || lastError.message.includes('Unexpected')) && attempt < MAX_RETRIES) {
-        log('Response was malformed, requesting new response...');
-        continue;
-      }
-
-      if (attempt === MAX_RETRIES) {
-        throw new Error(`Failed to revise exam paper: ${lastError.message}`);
-      }
-    }
-  }
-
-  throw new Error(`Failed to revise exam paper: ${lastError?.message || 'Unknown error'}`);
+    },
+    failMessage: (lastError) => `Failed to revise exam paper: ${lastError.message}`,
+  });
 }

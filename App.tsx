@@ -11,6 +11,7 @@ import { PhssjLogo, ZiauddinLogo } from './components/Logo';
 import { BookOpenIcon, CloseIcon, DocumentTextIcon, HomeIcon, PulseIcon } from './components/icons/MiscIcons';
 import { useGeneralGeneration, GenerationMode } from './hooks/useGeneralGeneration';
 import { useSelection } from './hooks/useSelection';
+import { loadSloChapter } from './services/sloData';
 
 interface NavItem {
   view: View;
@@ -79,29 +80,19 @@ const App: React.FC = () => {
   useEffect(() => {
     if (selection.classId && selection.subjectId && selection.chapterId) {
       setIsLoadingSlos(true);
-      const gradeNum = parseInt(selection.classId.replace('class', ''), 10);
-      const gradeName = `Grade ${gradeNum}`;
-
-      fetch(`/curriculum/slos/${gradeName}/${selection.subjectId}.json`)
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (!data) {
+      loadSloChapter(selection.classId, selection.subjectId, selection.chapterId)
+        .then(chapter => {
+          if (!chapter) {
             setChapterSlos([]);
             return;
           }
-          const chapterNum = parseInt(selection.chapterId.split('ch')[1] || '1', 10);
-          const chapter = data.chapters?.find((ch: any) => ch.chapter_number === chapterNum);
-          if (chapter) {
-            const slos = (chapter.slos || []).map((slo: any, idx: number) => ({
-              uniqueId: slo.uniqueId || slo.id || `slo-${idx}`,
-              SLO_ID: slo.id || `SLO_${idx}`,
-              SLO_Text: slo.text || '',
-              Cognitive_Level_Code: slo.cognitiveLevel || 'U',
-            }));
-            setChapterSlos(slos);
-          } else {
-            setChapterSlos([]);
-          }
+          const slos = (chapter.slos || []).map((slo: any, idx: number) => ({
+            uniqueId: slo.uniqueId || slo.id || `slo-${idx}`,
+            SLO_ID: slo.id || `SLO_${idx}`,
+            SLO_Text: slo.text || '',
+            Cognitive_Level_Code: slo.cognitiveLevel || 'U',
+          }));
+          setChapterSlos(slos);
         })
         .catch(err => {
           console.error('Failed to load chapter SLOs:', err);

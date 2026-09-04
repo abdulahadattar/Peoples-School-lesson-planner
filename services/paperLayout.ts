@@ -10,6 +10,7 @@
  *   too long for a column goes on its own line.
  */
 import { GeneratedPaper, PaperQuestion, PaperSection, PaperSectionBlueprint } from '../types';
+import { MATH_REGEX } from './mathDetection';
 
 /** Hollow circle students fill in to mark their chosen option. */
 export const OPTION_CIRCLE = '\u25CB';
@@ -32,8 +33,8 @@ export const optionLine = (index: number, text: string): string => `${optionPref
 /** Estimate of the on-page width of an option's plain text (equations are wide). */
 const plainTextLength = (text: string): number => {
   // Equation delimiters expand to wide rendered images — treat them as long
-  const withEquations = text.match(/\$\$[\s\S]*?\$\$|\$(?!\s)(?:[^$\\]|\\.)+?\$/g);
-  if (withEquations) return Number.MAX_SAFE_INTEGER;
+  MATH_REGEX.lastIndex = 0;
+  if (MATH_REGEX.test(text)) return Number.MAX_SAFE_INTEGER;
   return text.length;
 };
 

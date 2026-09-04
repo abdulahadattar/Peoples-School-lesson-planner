@@ -21,21 +21,9 @@
  * inline inside a sentence.
  */
 
-/** LaTeX command names that unambiguously signal real math (not prose). */
-const LATEX_COMMANDS =
-  'alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|omicron|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega|' +
-  'Gamma|Delta|Theta|Lambda|Xi|Pi|Sigma|Upsilon|Phi|Psi|Omega|' +
-  'frac|dfrac|tfrac|cfrac|binom|overline|underline|sqrt|times|div|cdot|left|right|big|Big|bigg|Bigg|' +
-  'sum|int|prod|oint|approx|sim|cong|rightarrow|leftarrow|Leftarrow|Rightarrow|leftrightarrow|Leftrightarrow|' +
-  'neq|leq|geq|pm|mp|partial|infty|vec|bar|hat|dot|ddot|ldots|cdots|vdots|ddots|' +
-  'mathrm|text|textbf|textit|log|ln|sin|cos|tan|cot|sec|csc|exp|lim|max|min|mod|' +
-  'displaystyle|textstyle|qquad|quad|textsuperscript';
+import { isFormulaText, LATEX_COMMANDS, MATH_REGEX } from './mathDetection';
 
-/** Math symbols that make a fragment "real math". */
-const MATHY_SYMBOLS = /[√∑∫∏πρσαβγδθλμτωΩΔ±×÷≥≤≠≈∞→←]/;
-
-/** Match balanced $...$ and $$...$$ regions (same shape as the renderers use). */
-const DELIMITED = /(\$\$[\s\S]*?\$\$|\$(?!\s)(?:[^$\\]|\\.)+?\$)/g;
+export { isFormulaText };
 
 /** Match a LaTeX command plus any immediately following brace groups (≤2 deep). */
 const COMMAND_RE = new RegExp(
@@ -46,35 +34,12 @@ const COMMAND_RE = new RegExp(
 /** Match a bare power like v^2 or 10^{23} (a common AI omission). */
 const POWER_RE = /\b([A-Za-z][A-Za-z0-9]*|\d+(?:\.\d+)?)\^(\{[^{}]*\}|[A-Za-z0-9.+\-]+)/g;
 
-/**
- * Decide whether a $...$-delimited fragment is genuine math or prose that a
- * model wrongly wrapped in delimiters. Conservative: whenever in doubt the
- * fragment is kept as math (rendering math as math is always safe).
- */
-export function isFormulaText(fragment: string): boolean {
-  if (!fragment) return false;
-  const t = fragment.trim();
-  if (t.length === 0) return false;
-  // Whole prose sentences are never sent to a math renderer
-  if (t.length > 160) return false;
-  // A real LaTeX command (backslash + letters). A bare "\ " escape-space or a
-  // trailing backslash is NOT math — it is usually an italic name or emphasis.
-  if (/\\(?:[A-Za-z]{2,}|[{}\^_])/.test(t)) return true; // LaTeX command present
-  if (/[{}\^_]/.test(t)) return true;     // sub/superscript or groups
-  if (MATHY_SYMBOLS.test(t)) return true; // math operators/greek
-  // A fragment with operators but no real words ("F = ma", "PV = nRT",
-  // "x + y", "3/4") is formula-like. English words (≥3 lower letters)
-  // veto it, so a sentence like "Water = 2 hydrogen + 1 oxygen" stays prose.
-  if (/[=+\-*/]/.test(t) && !/[a-z]{3,}/.test(t)) return true;
-  return false;
-}
-
 /** Returns the character indices of every '$' that belongs to a $...$ pair. */
 function pairedDollarIndices(text: string): Set<number> {
   const paired = new Set<number>();
-  DELIMITED.lastIndex = 0;
+  MATH_REGEX.lastIndex = 0;
   let m: RegExpExecArray | null;
-  while ((m = DELIMITED.exec(text)) !== null) {
+  while ((m = MATH_REGEX.exec(text)) !== null) {
     for (let i = m.index; i < m.index + m[0].length; i++) {
       if (text[i] === '$') paired.add(i);
     }
@@ -142,9 +107,9 @@ export function sanitizeMathText(text: string): string {
   const out: string[] = [];
   let cursor = 0;
 
-  DELIMITED.lastIndex = 0;
+  MATH_REGEX.lastIndex = 0;
   let m: RegExpExecArray | null;
-  while ((m = DELIMITED.exec(text)) !== null) {
+  while ((m = MATH_REGEX.exec(text)) !== null) {
     const start = m.index;
     const token = m[0];
     if (start > cursor) out.push(wrapBareMath(text.slice(cursor, start)));

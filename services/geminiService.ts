@@ -198,8 +198,10 @@ export async function withKeyRotation<T>(operation: (apiKey: string) => Promise<
 
 /**
  * Direct REST API call to Gemini — bypasses the buggy @google/genai SDK.
+ * Shared by every generator (lesson plans, exam papers, revisions) so the
+ * request shape lives in exactly one place.
  */
-async function callGeminiAPI(
+export async function callGeminiAPI(
   apiKey: string,
   model: string,
   systemInstruction: string,
@@ -267,6 +269,87 @@ async function callGeminiAPI(
   throw new Error("No content in API response");
 }
 
+export interface RetryRequestOptions<T> {
+  /** Used in the console.error prefix, e.g. "generating exam paper". */
+  operationName: string;
+  systemInstruction: string;
+  userPrompt: string;
+  schema: unknown;
+  temperature?: number;
+  contextParts?: Part[];
+  log: (msg: string) => void;
+  /** Turn the raw API response text into the typed result. */
+  parse: (raw: string) => T;
+  /** Logged before the first attempt (optional). */
+  firstAttemptLog?: string;
+  /** Retry prefix, e.g. "Retrying revision" (default "Retrying"). */
+  retryLabel?: string;
+  /** Return a fatal message to throw immediately (never retried). */
+  abortIf?: (err: Error) => string | null;
+  /** Wrap the final error message (default: rethrow lastError as-is). */
+  failMessage?: (lastError: Error) => string;
+}
+
+/**
+ * Call Gemini with key rotation and the shared retry policy: up to 3 attempts,
+ * retrying only on parse errors (the AI may return valid JSON next time).
+ * The one retry loop every generator used to hand-roll.
+ */
+export async function requestJsonWithRetry<T>(options: RetryRequestOptions<T>): Promise<T> {
+  const MAX_RETRIES = 2;
+  const retryLabel = options.retryLabel ?? "Retrying";
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      if (attempt > 0) {
+        options.log(`${retryLabel} (attempt ${attempt + 1}/${MAX_RETRIES + 1})...`);
+      } else if (options.firstAttemptLog) {
+        options.log(options.firstAttemptLog);
+      }
+
+      const response = await withKeyRotation(async (apiKey) => {
+        options.log(`Sending request to model: ${DEFAULT_MODEL}`);
+        return callGeminiAPI(
+          apiKey,
+          DEFAULT_MODEL,
+          options.systemInstruction,
+          options.userPrompt,
+          options.schema,
+          options.temperature ?? 0.2,
+          options.log,
+          options.contextParts
+        );
+      });
+
+      return options.parse(response);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      console.error(`Error ${options.operationName} (attempt ${attempt + 1}):`, error);
+      options.log(`ERROR (attempt ${attempt + 1}): ${lastError.message}`);
+
+      const fatal = options.abortIf?.(lastError);
+      if (fatal) throw new Error(fatal);
+
+      // Parse errors are retried — the model may return valid JSON next time
+      const isParseError =
+        lastError.message.includes("parse") ||
+        lastError.message.includes("JSON") ||
+        lastError.message.includes("Unexpected");
+      if (isParseError && attempt < MAX_RETRIES) {
+        options.log("Response was malformed, requesting new response...");
+        continue;
+      }
+
+      if (attempt === MAX_RETRIES) {
+        throw options.failMessage ? new Error(options.failMessage(lastError)) : lastError;
+      }
+    }
+  }
+
+  throw lastError ?? new Error(`Unknown error during ${options.operationName}.`);
+}
+
 /**
  * Fix control characters inside JSON string values.
  * Walks the string tracking whether we're inside quotes, and escapes
@@ -296,23 +379,6 @@ function parseLessonPlanJson(jsonText: string, gradeLevel: string, subject: stri
 }
 
 export type LogCallback = (message: string) => void;
-
-// Helper function to load chapter PDF URL from SLO JSON structure
-/**
- * Load the PDF URL for a chapter from the curriculum SLO JSON data.
- */
-export async function loadChapterPdfUrl(grade: string, subject: string, chapterNum: number): Promise<string | null> {
-  try {
-    const path = `/curriculum/slos/${grade}/${subject.toLowerCase()}.json`;
-    const response = await fetch(path);
-    if (!response.ok) return null;
-    const data = await response.json();
-    const chapter = data.chapters?.find((c: any) => c.chapter_number === chapterNum);
-    return chapter?.pdf_url || null;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Build the dev-only proxy URL for GitHub raw content (bypasses CORS in the
@@ -507,49 +573,26 @@ Generate a single 40-minute lesson plan focused ONLY on the target SLO above.`;
   const contextPartCount = contextFileParts?.length ?? 0;
   log(`Built user prompt (${userPromptLength} chars). Context PDF parts attached: ${contextPartCount}.`);
 
-  const MAX_RETRIES = 2;
-  let lastError: Error | null = null;
-
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      if (attempt > 0) {
-        log(`Retrying (attempt ${attempt + 1}/${MAX_RETRIES + 1})...`);
-      } else {
-        log("Calling Gemini API via withKeyRotation...");
-      }
-      const result = await withKeyRotation(async (apiKey) => {
-        log(`Sending request to model: ${DEFAULT_MODEL}`);
-        return callGeminiAPI(apiKey, DEFAULT_MODEL, systemInstruction, userPrompt, lessonPlanSchema, 0.2, log, contextFileParts);
-      });
-
-      log(`Received API response (${result.length} chars). Parsing JSON...`);
-      const lessonPlan = parseLessonPlanJson(result, gradeLevelContext, subject);
+  return requestJsonWithRetry<LessonPlan>({
+    operationName: "generating lesson plan",
+    firstAttemptLog: "Calling Gemini API via withKeyRotation...",
+    systemInstruction,
+    userPrompt,
+    schema: lessonPlanSchema,
+    temperature: 0.2,
+    contextParts: contextFileParts,
+    log,
+    parse: (raw) => {
+      log(`Received API response (${raw.length} chars). Parsing JSON...`);
+      const lessonPlan = parseLessonPlanJson(raw, gradeLevelContext, subject);
       log(`Successfully parsed lesson plan: "${lessonPlan.title}"`);
       return lessonPlan;
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      console.error(`Error generating lesson plan (attempt ${attempt + 1}):`, error);
-      log(`ERROR (attempt ${attempt + 1}): ${lastError.message}`);
-
-      // Check for non-retryable errors
-      if (lastError.message.includes("does not support pdf input") || lastError.message.includes("Cannot read ")) {
-        throw new Error("PDF_CONTEXT_NOT_SUPPORTED: The current AI model does not support PDF file input.");
+    },
+    abortIf: (err) => {
+      if (err.message.includes("does not support pdf input") || err.message.includes("Cannot read ")) {
+        return "PDF_CONTEXT_NOT_SUPPORTED: The current AI model does not support PDF file input.";
       }
-
-      // If this was a parse error, retry (AI might return valid JSON next time)
-      if (lastError.message.includes("parse") || lastError.message.includes("JSON") || lastError.message.includes("Unexpected")) {
-        if (attempt < MAX_RETRIES) {
-          log("Response was malformed, requesting new response...");
-          continue;
-        }
-      }
-
-      // For other errors on last attempt, throw
-      if (attempt === MAX_RETRIES) {
-        throw lastError;
-      }
-    }
-  }
-
-  throw lastError || new Error("Unknown error during generation.");
+      return null;
+    },
+  });
 }

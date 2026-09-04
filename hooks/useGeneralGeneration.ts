@@ -5,6 +5,7 @@ import { generateLessonPlan as generateGeminiLessonPlan, downloadPdfAsPart } fro
 import { generateExamPaper, reviseExamPaper } from '../services/paperService';
 import { exportAsDocx, exportAsPdf, exportMultipleLessonsAsDocx, exportMultipleLessonsAsPdf, formatFileName } from '../services/exportService';
 import { curriculumData, getSubjectById, getChapterById } from '../curriculum';
+import { loadSloChapter } from '../services/sloData';
 
 export type GenerationMode = 'single-slo' | 'whole-chapter' | 'topic';
 export type UiExportFormat = 'docx' | 'pdf' | 'both';
@@ -139,17 +140,10 @@ export const useGeneralGeneration = () => {
         } else {
           // Curriculum data has empty SLOs — load from SLO JSON files in public/curriculum/slos/
           addLog('Loading SLOs from curriculum data files...');
-          const gradeNum = classId.replace('class', '');
-          const grade = `Grade ${parseInt(gradeNum, 10)}`;
-          const sloPath = `/curriculum/slos/${grade}/${subjectId.toLowerCase()}.json`;
           try {
-            const sloResponse = await fetch(sloPath);
-            if (sloResponse.ok) {
-              const sloData = await sloResponse.json();
-              const chapterNum = parseInt(chapterId.replace('ch', ''), 10);
-              const sloChapter = sloData.chapters?.find((c: any) => c.chapter_number === chapterNum);
-              if (sloChapter?.slos?.length > 0) {
-                slosToGenerate = sloChapter.slos.map((slo: any, idx: number) => ({
+            const sloChapter = await loadSloChapter(classId, subjectId, chapterId);
+            if (sloChapter?.slos && sloChapter.slos.length > 0) {
+              slosToGenerate = sloChapter.slos.map((slo: any, idx: number) => ({
                   SLO_ID: slo.id || `SLO_${idx}`,
                   SLO_Text: slo.text || '',
                   grade: cls.name,
@@ -159,8 +153,7 @@ export const useGeneralGeneration = () => {
                   Cognitive_Level_Code: slo.cognitive_level || 'U',
                   uniqueId: `${classId}_${subjectId}_${chapterId}_slo_${idx}`,
                 }));
-                addLog(`Loaded ${slosToGenerate.length} SLO(s) from curriculum data`);
-              }
+              addLog(`Loaded ${slosToGenerate.length} SLO(s) from curriculum data`);
             }
           } catch (err) {
             console.warn('[useGeneralGeneration] Error loading SLOs:', err);
@@ -197,7 +190,7 @@ export const useGeneralGeneration = () => {
       let chapterPdfPart: Part | null = null;
       if (mode !== 'topic') {
         addLog('Downloading chapter textbook PDF for context...');
-        const pdfUrl = await downloadPdfUrlForChapter(classId, subjectId, chapterId);
+        const pdfUrl = (await loadSloChapter(classId, subjectId, chapterId))?.pdf_url || null;
         if (pdfUrl) {
           addLog(`PDF URL: ${pdfUrl}`);
           chapterPdfPart = await downloadPdfAsPart(pdfUrl);
@@ -475,31 +468,6 @@ export const useGeneralGeneration = () => {
     clearResults,
   };
 };
-
-/**
- * Download PDF URL for a chapter from the SLO curriculum data.
- */
-async function downloadPdfUrlForChapter(classId: string, subjectId: string, chapterId: string): Promise<string | null> {
-  try {
-    // Extract grade from classId
-    const gradeNum = classId.replace('class', '');
-    const grade = `Grade ${parseInt(gradeNum, 10)}`;
-    
-    // Extract chapter number
-    const chapterNum = parseInt(chapterId.replace('ch', ''), 10);
-    
-    // Load from SLO JSON files
-    const response = await fetch(`/curriculum/slos/${grade}/${subjectId.toLowerCase()}.json`);
-    if (!response.ok) return null;
-    
-    const data = await response.json();
-    const chapter = data.chapters?.find((c: any) => c.chapter_number === chapterNum);
-    return chapter?.pdf_url || null;
-  } catch (error) {
-    console.error('[useGeneralGeneration] Error getting PDF URL:', error);
-    return null;
-  }
-}
 
 /**
  * Run a promise with a timeout. The timeout handle is always cleared on

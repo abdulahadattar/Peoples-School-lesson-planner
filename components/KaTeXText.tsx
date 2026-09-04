@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { isFormulaText, MATH_REGEX } from '../services/mathDetection';
 
 declare global {
   interface Window {
@@ -14,8 +15,7 @@ interface KaTeXTextProps {
   as?: 'p' | 'span' | 'div' | 'li';
 }
 
-/** Balanced $...$ / $$...$$ regions (identical to the export renderer). */
-const MATH_REGEX = /(\$\$[\s\S]*?\$\$|\$(?!\s)(?:[^$\\]|\\.)+?\$)/g;
+
 
 /**
  * Renders text with inline KaTeX equation support.
@@ -48,6 +48,14 @@ const KaTeXText: React.FC<KaTeXTextProps> = ({ text, className = '', as: Tag = '
         const token = m[0];
         const display = token.startsWith('$$');
         const latex = display ? token.slice(2, -2) : token.slice(1, -1);
+
+        // Prose wrongly wrapped in delimiters ("$Bios$") must stay text —
+        // same gate the DOCX/PDF exporters apply, so surfaces never disagree.
+        if (!isFormulaText(latex) && /[A-Za-z]/.test(latex)) {
+          frag.appendChild(document.createTextNode(latex));
+          last = m.index + token.length;
+          continue;
+        }
 
         if (window.katex?.renderToString) {
           const html = window.katex.renderToString(latex, {

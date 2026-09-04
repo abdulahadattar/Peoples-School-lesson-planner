@@ -25,10 +25,7 @@ declare global {
   }
 }
 
-import { isFormulaText } from './latexSanitizer';
-
-// Match $$...$$ (display) and $...$ (inline) LaTeX delimiters
-const LATEX_REGEX = /(\$\$[\s\S]*?\$\$|\$(?!\s)(?:[^$\\]|\\.)+?\$)/g;
+import { isFormulaText, MATH_REGEX } from './mathDetection';
 
 // Guardrails so one equation can never stall an export or blow up memory.
 const MAX_EQUATION_CHARS = 400;
@@ -202,9 +199,9 @@ export async function parseTextWithEquations(
   // Step 1: Find all LaTeX-delimited equations
   let lastIndex = 0;
   let match;
-  LATEX_REGEX.lastIndex = 0;
+  MATH_REGEX.lastIndex = 0;
 
-  while ((match = LATEX_REGEX.exec(text)) !== null) {
+  while ((match = MATH_REGEX.exec(text)) !== null) {
     if (match.index > lastIndex) {
       const before = text.substring(lastIndex, match.index);
       segments.push(...await processPlainText(before, fontSize));
