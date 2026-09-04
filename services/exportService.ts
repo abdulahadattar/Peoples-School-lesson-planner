@@ -144,7 +144,9 @@ const createHeaderRun = (text: string, bold: boolean = false, size: number = 18)
 
 const A4_PAGE_WIDTH = 11906;
 const A4_PAGE_HEIGHT = 16838;
-const A4_MARGIN = 1134;
+// Word Page Setup (from the school template): top 0.3", bottom 0.5",
+// left/right 0.75", portrait. 1 inch = 1440 twips.
+const DOCX_PAGE_MARGINS = { top: 432, right: 1080, bottom: 720, left: 1080 };
 
 export const createDocxContentForPlan = async (lessonPlan: LessonPlan, teacherInfo?: TeacherInfo): Promise<(Paragraph | Table)[]> => {
   const teacherName = teacherInfo?.name || "Abdul Ahad";
@@ -213,7 +215,8 @@ export const createDocxContentForPlan = async (lessonPlan: LessonPlan, teacherIn
 
 const PDF_A4_WIDTH = 595.28;
 const PDF_A4_HEIGHT = 841.89;
-const PDF_MARGIN = 56.7;
+// pdfMake margin order is [left, top, right, bottom] — 0.75 / 0.3 / 0.75 / 0.5 in
+const PDF_PAGE_MARGINS: [number, number, number, number] = [54, 21.6, 54, 36];
 
 export const exportAsDocx = async (lessonPlan: LessonPlan, sloId?: string, teacherInfo?: TeacherInfo): Promise<void> => {
   const fileName = `${formatFileName(lessonPlan.title, sloId)}.docx`;
@@ -223,7 +226,7 @@ export const exportAsDocx = async (lessonPlan: LessonPlan, sloId?: string, teach
           properties: {
               page: {
                   size: { width: A4_PAGE_WIDTH, height: A4_PAGE_HEIGHT },
-                  margin: { top: A4_MARGIN, right: A4_MARGIN, bottom: A4_MARGIN, left: A4_MARGIN }
+                  margin: DOCX_PAGE_MARGINS
               }
           },
           children: children,
@@ -238,7 +241,7 @@ export const exportAsPdf = async (lessonPlan: LessonPlan, sloId?: string, teache
   const content = await createPdfContentForPlan(lessonPlan, teacherInfo);
   const docDefinition: any = {
       pageSize: { width: PDF_A4_WIDTH, height: PDF_A4_HEIGHT },
-      pageMargins: [PDF_MARGIN, PDF_MARGIN, PDF_MARGIN, PDF_MARGIN],
+      pageMargins: PDF_PAGE_MARGINS,
       content: content,
       styles: {
           headerTableTitle: { fontSize: 12, bold: true, alignment: 'center', margin: [0, 1, 0, 1] },
@@ -315,7 +318,7 @@ export const exportMultipleLessonsAsDocx = async (lessonPlans: LessonPlan[], fil
             properties: {
                 page: {
                     size: { width: A4_PAGE_WIDTH, height: A4_PAGE_HEIGHT },
-                    margin: { top: A4_MARGIN, right: A4_MARGIN, bottom: A4_MARGIN, left: A4_MARGIN }
+                    margin: DOCX_PAGE_MARGINS
                 },
             },
             pageBreakBefore: index > 0,
@@ -340,7 +343,7 @@ export const exportMultipleLessonsAsPdf = async (lessonPlans: LessonPlan[], file
 
     const docDefinition: any = {
         pageSize: { width: PDF_A4_WIDTH, height: PDF_A4_HEIGHT },
-        pageMargins: [PDF_MARGIN, PDF_MARGIN, PDF_MARGIN, PDF_MARGIN],
+        pageMargins: PDF_PAGE_MARGINS,
         content: allContent,
         styles: {
             headerTableTitle: { fontSize: 14, bold: true, alignment: 'center', margin: [0, 2, 0, 2] },
@@ -642,7 +645,7 @@ export const exportPaperAsDocx = async (paper: GeneratedPaper, teacherInfo?: Tea
             properties: {
                 page: {
                     size: { width: A4_PAGE_WIDTH, height: A4_PAGE_HEIGHT },
-                    margin: { top: A4_MARGIN, right: A4_MARGIN, bottom: A4_MARGIN, left: A4_MARGIN }
+                    margin: DOCX_PAGE_MARGINS
                 }
             },
             children: children,
@@ -657,7 +660,7 @@ export const exportPaperAsPdf = async (paper: GeneratedPaper, teacherInfo?: Teac
     const content = await createPaperPdfContent(paper, teacherInfo);
     const docDefinition: any = {
         pageSize: { width: PDF_A4_WIDTH, height: PDF_A4_HEIGHT },
-        pageMargins: [PDF_MARGIN, PDF_MARGIN, PDF_MARGIN, PDF_MARGIN],
+        pageMargins: PDF_PAGE_MARGINS,
         content: content,
         styles: {
             paperHeader: { margin: [0, 0, 0, 4] },
