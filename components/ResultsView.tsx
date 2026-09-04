@@ -156,19 +156,19 @@ const ResultsView: React.FC<ResultsViewProps> = ({
                       <div key={i} className="border-l-2 border-brand-primary pl-4">
                         <div className="flex items-center gap-2 mb-2">
                           <h3 className="font-bold text-brand-text-primary text-sm">{day.day}</h3>
-                          <span className="text-xs text-brand-text-secondary bg-brand-bg px-2 py-0.5 rounded-md">{day.topic}</span>
+                          <KaTeXText text={day.topic} as="span" className="text-xs text-brand-text-secondary bg-brand-bg px-2 py-0.5 rounded-md" />
                         </div>
-                        <p className="text-sm text-brand-text-secondary mb-2">{day.objective}</p>
+                        <KaTeXText text={day.objective} className="text-sm text-brand-text-secondary leading-relaxed" as="p" />
                         <div className="space-y-2">
                           {day.activities.map((activity, j) => (
                             <div key={j} className="text-xs text-brand-text-secondary">
                               <span className="font-semibold">{activity.name}</span>
                               <span className="text-brand-text-secondary ml-2">({activity.duration} mins)</span>
-                              <p className="mt-0.5">{activity.description}</p>
+                              <KaTeXText text={activity.description} className="mt-0.5" as="p" />
                             </div>
                           ))}
                         </div>
-                        <p className="text-xs text-brand-text-secondary mt-2 italic">Homework: {day.homework}</p>
+                        <KaTeXText text={`Homework: ${day.homework}`} className="text-xs text-brand-text-secondary mt-2 italic" as="p" />
                       </div>
                     ))}
                   </div>
