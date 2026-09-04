@@ -764,7 +764,6 @@ Generate a weekly lesson plan with exactly 5 days (Monday-Friday), each with its
       const cleaned = sanitizeStringFields(parsed) as Record<string, unknown>;
       return {
         ...(cleaned as unknown as WeeklyLessonPlan),
-        gradeLevel: gradeLevelContext,
         subject,
         isWeekly: true,
       };
