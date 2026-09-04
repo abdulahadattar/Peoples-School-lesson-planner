@@ -168,10 +168,12 @@ const SUBJECT_ALIASES: Record<string, string> = {
   science: 'Science',
   's.s': 'Social Studies',
   's.st': 'Social Studies',
+  's.s.t': 'Social Studies',
   sst: 'Social Studies',
   'social studies': 'Social Studies',
   islam: 'Islamiat',
   islamiat: 'Islamiat',
+  islamiyat: 'Islamiat',
   art: 'Art',
   'p.e': 'P.E',
   pe: 'P.E',
@@ -186,6 +188,7 @@ const SUBJECT_ALIASES: Record<string, string> = {
   biology: 'Biology',
   ict: 'ICT',
   pst: 'Pak Studies',
+  'p.st': 'Pak Studies',
   'pak studies': 'Pak Studies',
   'pakistan studies': 'Pak Studies',
 };
@@ -222,7 +225,10 @@ export function resolveTeacher(subject: string, section: string, teachers: Teach
     classId && (t.sectionLabels?.[classId] ?? []).includes(section),
   );
   const inClass = candidates.filter(t => classId && (t.classIds ?? []).includes(classId));
-  return inSection[0] ?? inClass[0] ?? candidates[0];
+  // Strict by roster: only assign a teacher that teaches this class/section.
+  // If teachers.json has no matching teacher, the slot shows as unassigned
+  // rather than guessing a wrong teacher.
+  return inSection[0] ?? inClass[0] ?? null;
 }
 
 /** Some cells contain a teacher's name instead of a subject (e.g. "Feroz"). */
