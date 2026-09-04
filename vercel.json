@@ -1,5 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
+  "rewrites": [
+    { "source": "/pdf-proxy/(.*)", "destination": "https://raw.githubusercontent.com/$1" },
+    { "source": "/gh-releases/(.*)", "destination": "https://github.com/$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
   "cleanUrls": true
 }

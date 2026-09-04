@@ -9,6 +9,8 @@ export default defineConfig(() => {
         port: 3000,
         host: '0.0.0.0',
         proxy: {
+          // Production route (vercel.json) must mirror these dev proxies so
+          // /pdf-proxy and /gh-releases work in production as well as locally.
           // Proxy GitHub release downloads to bypass CORS
           '/gh-releases': {
             target: 'https://github.com',
