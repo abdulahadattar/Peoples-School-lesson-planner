@@ -58,7 +58,7 @@ export const formatFileName = (title: string, sloId?: string): string => {
 
 /**
  * Parse text with LaTeX equations and bold/italic markdown.
- * Equations are rendered to images via KaTeX and embedded as ImageRun.
+ * Equations are rendered to images via MathJax and embedded as ImageRun.
  * Bold/italic text is rendered as formatted TextRun.
  */
 const parseTextForDocx = async (text: string): Promise<(TextRun | any)[]> => {

@@ -3,7 +3,7 @@ import { curriculumData } from '../curriculum';
 import { Teacher } from '../types';
 import SelectField from './ui/SelectField';
 import Spinner from './ui/Spinner';
-import { DocumentTextIcon, GraduationCapIcon, BookOpenIcon, ClipboardListIcon, SchoolIcon, SparklesIcon, UserIcon } from './icons/MiscIcons';
+import { DocumentTextIcon, GraduationCapIcon, BookOpenIcon, ClipboardListIcon, SparklesIcon, UserIcon } from './icons/MiscIcons';
 import { PaperConfig } from '../types';
 import {
   autoSelectForTeacher,

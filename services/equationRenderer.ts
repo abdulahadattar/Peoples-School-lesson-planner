@@ -64,16 +64,6 @@ function loadMathJax(): Promise<boolean> {
   return mathJaxPromise;
 }
 
-/** Check whether the web-page KaTeX renderer is loaded (used by the web UI). */
-export function isKatexAvailable(): boolean {
-  return typeof window !== 'undefined' && typeof window.katex?.renderToString === 'function';
-}
-
-/** Check whether export math rendering can work (browser + MathJax). */
-export function isMathRendererAvailable(): boolean {
-  return typeof document !== 'undefined' && !!window.MathJax?.tex2svg;
-}
-
 /**
  * Render a LaTeX string to a self-contained SVG via MathJax and measure it.
  * Returns { svg, width, height } in CSS pixels, or null on any failure.
