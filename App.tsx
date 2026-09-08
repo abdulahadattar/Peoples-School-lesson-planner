@@ -270,7 +270,12 @@ const App: React.FC = () => {
           onOpenSidebar={() => setIsSidebarOpen(true)}
         />
 
-        <div key={view} className="flex-1 overflow-y-auto custom-scrollbar relative animate-fadeIn">
+        <div
+          key={view}
+          className={`flex-1 min-h-0 relative animate-fadeIn ${
+            view === 'results' ? 'overflow-hidden flex flex-col' : 'overflow-y-auto custom-scrollbar'
+          }`}
+        >
           {view === 'home' && (
             <HomeView
               onNavigate={(target) => {

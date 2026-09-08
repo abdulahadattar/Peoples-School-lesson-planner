@@ -12,35 +12,45 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onOpenSidebar }) => {
   return (
-    <header className="h-14 md:h-16 px-4 md:px-6 bg-brand-surface/80 backdrop-blur-xl border-b border-brand-border flex items-center justify-between sticky top-0 z-30">
-      <div className="flex items-center gap-3">
+    <header className="h-14 md:h-16 px-3.5 md:px-6 bg-brand-surface/85 dark:bg-brand-surface/95 backdrop-blur-xl border-b border-brand-border flex items-center justify-between sticky top-0 z-30 shadow-xs">
+      <div className="flex items-center gap-2.5 sm:gap-3.5">
         <button
           onClick={onOpenSidebar}
           aria-label="Open navigation"
-          className="md:hidden p-2 text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg rounded-xl transition-all duration-200 active:scale-90"
+          className="md:hidden p-2 text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg rounded-xl transition-all duration-200 active:scale-90 min-w-[40px] min-h-[40px] flex items-center justify-center"
         >
           <MenuIcon className="w-5 h-5" />
         </button>
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white shadow-card border border-brand-border flex items-center justify-center overflow-hidden">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-white shadow-soft border border-brand-border flex items-center justify-center overflow-hidden flex-shrink-0 p-0.5">
             <PhssjLogo className="w-full h-full" />
           </div>
           <div className="leading-tight">
-            <h1 className="text-sm md:text-base font-bold text-brand-text-primary tracking-tight">
-              PHSSJ Lesson Planner
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-sm md:text-base font-bold text-brand-text-primary tracking-tight truncate">
+                PHSSJ Lesson Planner
+              </h1>
+            </div>
+            <p className="text-[10px] text-brand-text-secondary hidden md:block">
+              Peoples Higher Secondary School Jamshoro
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 sm:gap-2">
         <button
           onClick={onToggleTheme}
           aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-          className="relative p-2.5 rounded-xl text-brand-text-secondary hover:text-brand-primary hover:bg-brand-primary/10 transition-all duration-200 active:scale-90 group"
+          title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+          className="relative p-2.5 rounded-xl text-brand-text-secondary hover:text-brand-primary hover:bg-brand-primary/10 transition-all duration-200 active:scale-90 min-w-[40px] min-h-[40px] flex items-center justify-center group"
         >
           <span className="absolute inset-0 rounded-xl group-hover:ring-1 group-hover:ring-brand-primary/20" />
-          {theme === 'light' ? <MoonIcon className="w-5 h-5" /> : <SunIcon className="w-5 h-5" />}
+          {theme === 'light' ? (
+            <MoonIcon className="w-4.5 h-4.5 transition-transform group-hover:-rotate-12 duration-200" />
+          ) : (
+            <SunIcon className="w-4.5 h-4.5 transition-transform group-hover:rotate-45 duration-200 text-amber-400" />
+          )}
         </button>
       </div>
     </header>

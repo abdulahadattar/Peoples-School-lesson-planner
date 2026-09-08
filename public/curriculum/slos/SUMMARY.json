@@ -34,6 +34,16 @@
         "slos": 51,
         "file": "slos/Grade 10/biology.json"
       },
+      "chemistry": {
+        "chapters": 6,
+        "slos": 31,
+        "file": "slos/Grade 10/chemistry.json"
+      },
+      "mathematics": {
+        "chapters": 10,
+        "slos": 43,
+        "file": "slos/Grade 10/mathematics.json"
+      },
       "physics": {
         "chapters": 11,
         "slos": 152,

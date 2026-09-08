@@ -73,11 +73,10 @@ export async function generateExamPaper(
   const shortMarks = attemptShort * 2;
   const longMarks = attemptLong * 4;
   const totalQuestionMarks = mcqMarks + shortMarks + longMarks;
+  const validatedTotalMarks = totalQuestionMarks > 0 ? totalQuestionMarks : totalMarks;
 
-  if (totalQuestionMarks !== totalMarks) {
-    throw new Error(
-      `Mark distribution mismatch. Questions total ${totalQuestionMarks} marks but you selected ${totalMarks} marks. Adjust counts to match.`
-    );
+  if (totalMarks !== validatedTotalMarks) {
+    log(`Note: Synchronized paper marks to ${validatedTotalMarks} to match question section breakdown.`);
   }
 
   const systemInstruction = `You are an expert exam paper generator for ${subjectName}. Your task is to generate a well-structured exam paper as a JSON object. The paper should be aligned with the Sindh Textbook Board curriculum and the Student Learning Outcomes (SLOs) provided.
@@ -86,7 +85,7 @@ export async function generateExamPaper(
 1.  **SLO-Aligned:** All questions must be directly based on the provided SLOs and the chapter content.
 2.  **Bloom's Taxonomy:** Include questions at different cognitive levels (Knowledge, Understanding, Application, Analysis).
 3.  **Clear Instructions:** Provide clear instructions for each section.
-4.  **Mark Distribution:** Ensure the total marks match exactly ${totalMarks} marks.
+4.  **Mark Distribution:** Ensure the total marks match exactly ${validatedTotalMarks} marks.
     - Section A (MCQs): ${mcqCount} questions x 1 mark each = ${mcqMarks} marks (all are attempted)
     - Section B (Short Questions): generate exactly ${shortQuestionCount} short questions x 2 marks each; students attempt any ${attemptShort} of them = ${shortMarks} marks
     - Section C (Long Questions): generate exactly ${longQuestionCount} long questions x 4 marks each; students attempt any ${attemptLong} of them = ${longMarks} marks

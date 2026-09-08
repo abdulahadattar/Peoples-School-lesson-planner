@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { LessonPlan, GeneratedPaper, TeacherInfo, ExportFormat, PaperQuestion } from '../types';
-import { ArrowLeftIcon, DownloadIcon, ChevronLeftIcon, ChevronRightIcon, RefreshIcon } from './icons/MiscIcons';
+import { ArrowLeftIcon, DownloadIcon, ChevronLeftIcon, ChevronRightIcon, RefreshIcon, SparklesIcon } from './icons/MiscIcons';
 import {
   paperSectionNote,
   sectionInstruction,
@@ -248,11 +248,11 @@ const ResultsView: React.FC<ResultsViewProps> = ({
           </button>
         </div>
 
-        {/* Extra bottom padding keeps the last question clear of the floating revision bar */}
-        <div className={`flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 ${onRevisePaper ? 'pb-36' : ''}`}>
+        {/* Scrollable Questions Area - Clean natural padding without floating obstructions */}
+        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4 md:p-6">
           <div className="max-w-3xl mx-auto animate-fadeInUp">
             <div className="glass-card rounded-xl p-4 mb-6 text-center">
-              <div className="w-14 h-14 rounded-full bg-white border border-brand-border flex items-center justify-center overflow-hidden mx-auto mb-3">
+              <div className="w-14 h-14 rounded-full bg-white border border-brand-border flex items-center justify-center overflow-hidden mx-auto mb-3 shadow-soft">
                 <PhssjLogo className="w-full h-full" />
               </div>
               <h1 className="text-lg font-bold text-brand-text-primary mb-1">{schoolName}</h1>
@@ -296,7 +296,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
                     <button
                       type="button"
                       onClick={() => handleAddQuestion(sIdx)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-brand-primary hover:bg-brand-primary/10 border border-dashed border-brand-primary/40 transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-brand-primary hover:bg-brand-primary/10 border border-dashed border-brand-primary/40 transition-colors active:scale-95"
                     >
                       <span>+</span> Add Question to {section.title}
                     </button>
@@ -304,36 +304,78 @@ const ResultsView: React.FC<ResultsViewProps> = ({
                 </div>
               );
             })}
+
+            {/* Bottom spacer ensuring clean scroll buffer */}
+            <div className="h-6" />
           </div>
         </div>
 
-        {/* Floating Revision Bar */}
+        {/* Docked Revision Bar - Sits cleanly below scroll area so it never covers document text */}
         {onRevisePaper && (
-          <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
-            <div className="w-full max-w-2xl mx-4 mb-4 pointer-events-auto">
+          <div className="flex-shrink-0 border-t border-brand-border bg-brand-surface/95 dark:bg-brand-surface backdrop-blur-xl px-4 py-3 z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
+            <div className="max-w-3xl mx-auto">
               {!showRevision ? (
-                <button
-                  onClick={() => setShowRevision(true)}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 glass-card rounded-full shadow-glass hover:-translate-y-0.5 hover:border-brand-primary/30 transition-all duration-200 active:scale-[0.99]"
-                >
-                  <RefreshIcon className="w-4 h-4 text-brand-primary flex-shrink-0" />
-                  <span className="text-sm text-brand-text-secondary">Revise this paper...</span>
-                </button>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                  <button
+                    onClick={() => setShowRevision(true)}
+                    className="flex-1 flex items-center gap-3 px-4 py-2.5 bg-brand-bg hover:bg-brand-bg/80 border border-brand-border rounded-xl text-left transition-all duration-200 group active:scale-[0.99]"
+                  >
+                    <div className="w-7 h-7 rounded-lg brand-gradient flex items-center justify-center text-white flex-shrink-0 shadow-soft">
+                      <RefreshIcon className="w-3.5 h-3.5" />
+                    </div>
+                    <span className="text-xs sm:text-sm text-brand-text-secondary group-hover:text-brand-text-primary transition-colors truncate">
+                      Revise paper with AI (e.g., add MCQs, change marks, regenerate section)...
+                    </span>
+                    <span className="hidden sm:inline-flex text-[11px] font-semibold text-brand-primary bg-brand-primary/10 px-2.5 py-1 rounded-lg ml-auto border border-brand-primary/20">
+                      Revise
+                    </span>
+                  </button>
+
+                  <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar py-0.5 sm:py-0">
+                    <button
+                      type="button"
+                      onClick={() => { setRevisionPrompt('Add 5 more MCQs to Section A'); setShowRevision(true); }}
+                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-brand-bg border border-brand-border text-brand-text-secondary hover:text-brand-primary hover:border-brand-primary/40 whitespace-nowrap transition-all"
+                    >
+                      + 5 MCQs
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setRevisionPrompt('Add 2 more short questions with optional choices'); setShowRevision(true); }}
+                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-brand-bg border border-brand-border text-brand-text-secondary hover:text-brand-primary hover:border-brand-primary/40 whitespace-nowrap transition-all"
+                    >
+                      + 2 Short Qs
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setRevisionPrompt('Make the questions slightly more challenging and conceptually oriented'); setShowRevision(true); }}
+                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-brand-bg border border-brand-border text-brand-text-secondary hover:text-brand-primary hover:border-brand-primary/40 whitespace-nowrap transition-all hidden md:inline-block"
+                    >
+                      Higher Rigor
+                    </button>
+                  </div>
+                </div>
               ) : (
-                <div className="glass-card rounded-2xl shadow-glass overflow-hidden transition-all animate-scaleIn">
+                <div className="glass-card rounded-2xl border border-brand-primary/30 shadow-card overflow-hidden transition-all animate-scaleIn">
                   <div className="px-4 pt-3 pb-2">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold text-brand-primary uppercase tracking-wider">Revise Paper</span>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-brand-primary animate-pulse" />
+                        <span className="text-xs font-bold text-brand-primary uppercase tracking-wider">
+                          AI Paper Revision
+                        </span>
+                      </div>
                       <button
                         onClick={() => { setShowRevision(false); setRevisionPrompt(''); }}
                         aria-label="Close revision"
-                        className="text-brand-text-secondary hover:text-brand-text-primary transition-colors active:scale-90"
+                        className="p-1 rounded-lg text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg transition-colors active:scale-90"
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                       </button>
                     </div>
+
                     <textarea
                       value={revisionPrompt}
                       onChange={e => setRevisionPrompt(e.target.value)}
@@ -347,34 +389,67 @@ const ResultsView: React.FC<ResultsViewProps> = ({
                           }
                         }
                       }}
-                      placeholder="Describe any changes you want to make..."
-                      className="w-full h-16 px-1 py-1 bg-transparent text-sm text-brand-text-primary placeholder:text-brand-text-secondary/50 focus:outline-none resize-none"
+                      placeholder="Describe what to change (e.g. 'Add 5 MCQs about vectors, replace question 3 with a numerical problem, rebalance total marks to 50')..."
+                      className="w-full h-18 px-3 py-2 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text-primary placeholder:text-brand-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary resize-none transition-all"
                       disabled={isRevising}
                       autoFocus
                     />
+
+                    {/* Quick suggestion prompt chips */}
+                    <div className="flex items-center gap-1.5 mt-2 overflow-x-auto custom-scrollbar pb-1">
+                      <span className="text-[10px] text-brand-text-secondary flex-shrink-0">Quick presets:</span>
+                      {[
+                        'Add 5 more MCQs',
+                        'Add 2 conceptual short questions',
+                        'Add 1 numerical question to Section C',
+                        'Simplify question wording for Grade 9',
+                      ].map(preset => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setRevisionPrompt(prev => prev ? `${prev}, ${preset.toLowerCase()}` : preset)}
+                          className="px-2 py-0.5 rounded-md text-[10px] bg-brand-bg border border-brand-border text-brand-text-secondary hover:text-brand-primary hover:border-brand-primary/40 whitespace-nowrap transition-all"
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between px-4 py-2 border-t border-brand-border bg-brand-bg/50">
+
+                  <div className="flex items-center justify-between px-4 py-2.5 border-t border-brand-border bg-brand-bg/60">
                     <p className="text-[10px] text-brand-text-secondary">
-                      e.g. Add MCQs about thermodynamics, remove q3, change marks
+                      Press <kbd className="px-1 py-0.5 bg-brand-surface rounded border border-brand-border font-mono text-[9px]">Enter</kbd> to revise, <kbd className="px-1 py-0.5 bg-brand-surface rounded border border-brand-border font-mono text-[9px]">Shift+Enter</kbd> for new line
                     </p>
-                    <button
-                      onClick={async () => {
-                        if (!revisionPrompt.trim() || isRevising) return;
-                        const result = await onRevisePaper(revisionPrompt);
-                        if (result) { setRevisionPrompt(''); setShowRevision(false); }
-                      }}
-                      disabled={isRevising || !revisionPrompt.trim()}
-                      aria-label="Send revision"
-                      className="flex items-center justify-center w-8 h-8 rounded-full brand-gradient text-white hover:shadow-glass disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 active:scale-90 flex-shrink-0"
-                    >
-                      {isRevising ? (
-                        <Spinner className="w-4 h-4" />
-                      ) : (
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                        </svg>
-                      )}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { setShowRevision(false); setRevisionPrompt(''); }}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium text-brand-text-secondary hover:bg-brand-surface transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!revisionPrompt.trim() || isRevising) return;
+                          const result = await onRevisePaper(revisionPrompt);
+                          if (result) { setRevisionPrompt(''); setShowRevision(false); }
+                        }}
+                        disabled={isRevising || !revisionPrompt.trim()}
+                        className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl brand-gradient text-white text-xs font-semibold hover:shadow-glass disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 active:scale-95"
+                      >
+                        {isRevising ? (
+                          <>
+                            <Spinner className="w-3.5 h-3.5" />
+                            <span>Revising Paper...</span>
+                          </>
+                        ) : (
+                          <>
+                            <SparklesIcon className="w-3.5 h-3.5" />
+                            <span>Apply Revision</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

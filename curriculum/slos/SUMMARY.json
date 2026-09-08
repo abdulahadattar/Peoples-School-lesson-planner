@@ -33,6 +33,21 @@
         "chapters": 8,
         "slos": 51,
         "file": "slos/Grade 10/biology.json"
+      },
+      "chemistry": {
+        "chapters": 6,
+        "slos": 31,
+        "file": "slos/Grade 10/chemistry.json"
+      },
+      "mathematics": {
+        "chapters": 10,
+        "slos": 43,
+        "file": "slos/Grade 10/mathematics.json"
+      },
+      "physics": {
+        "chapters": 11,
+        "slos": 152,
+        "file": "slos/Grade 10/physics.json"
       }
     },
     "Grade 11": {
@@ -58,7 +73,7 @@
       },
       "physics": {
         "chapters": 14,
-        "slos": 70,
+        "slos": 196,
         "file": "slos/Grade 11/physics.json"
       }
     },
@@ -80,7 +95,7 @@
       },
       "physics": {
         "chapters": 14,
-        "slos": 76,
+        "slos": 223,
         "file": "slos/Grade 12/physics.json"
       }
     }
