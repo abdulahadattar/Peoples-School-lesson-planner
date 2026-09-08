@@ -18,6 +18,8 @@ import {
 } from '../services/timetable';
 import { canonicalName, subjectNames } from '../services/teacherRoster';
 import { ChevronLeftIcon, ChevronRightIcon, LockIcon, RefreshIcon, UserIcon } from './icons/MiscIcons';
+import { SubstitutionManager } from './SubstitutionManager';
+import { SubstitutionAssignment, getStoredSubstitutions } from '../services/storageService';
 
 const ACCESS_CODE = 'phssj'; // fixed for now — principal / coordinator access
 
@@ -108,7 +110,9 @@ const ClassCard: React.FC<{
   live: boolean;
   teachers: Teacher[];
   now: Date;
-}> = ({ entry, day, periodIndex, live, teachers, now }) => {
+  substitutions?: SubstitutionAssignment[];
+  absentTeacherIds?: string[];
+}> = ({ entry, day, periodIndex, live, teachers, now, substitutions = [], absentTeacherIds = [] }) => {
   // In live mode each class locates its own current period (VII has its own
   // Friday times). In preview mode the chosen period index applies to all.
   const loc = useMemo(() => {
@@ -123,6 +127,18 @@ const ClassCard: React.FC<{
   );
   const period = effIndex >= 0 ? entry.periods[effIndex] : null;
   const time = period ? periodTimeRange(period, day) : null;
+
+  const activeSub = useMemo(() => {
+    if (!period) return null;
+    return substitutions.find(
+      s => s.periodNo === period.no && s.classLabel === entry.label
+    );
+  }, [period, substitutions, entry.label]);
+
+  const isAbsent = useMemo(() => {
+    if (!slot || absentTeacherIds.length === 0) return false;
+    return slot.teachers.some(t => absentTeacherIds.includes(t.id));
+  }, [slot, absentTeacherIds]);
 
   let state: 'busy' | 'break' | 'free' | 'closed' = 'busy';
   let stateText = '';
@@ -187,23 +203,43 @@ const ClassCard: React.FC<{
             </p>
             {slot.teachers.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
-                {slot.teachers.map(t => (
-                  <span
-                    key={t.id}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-white dark:bg-brand-panel border border-brand-border px-2 py-1"
-                  >
-                    <Avatar name={t.name} />
-                    <span className="text-[11px] font-medium text-brand-text-primary">
-                      {t.name}
-                      {t.designation ? (
-                        <span className="text-brand-text-tertiary"> · {t.designation}</span>
-                      ) : null}
+                {slot.teachers.map(t => {
+                  const teacherIsAbsent = absentTeacherIds.includes(t.id);
+                  return (
+                    <span
+                      key={t.id}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 ${
+                        teacherIsAbsent
+                          ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 line-through opacity-75'
+                          : 'bg-white dark:bg-brand-panel border-brand-border text-brand-text-primary'
+                      }`}
+                    >
+                      <Avatar name={t.name} />
+                      <span className="text-[11px] font-medium">
+                        {t.name}
+                        {t.designation ? (
+                          <span className="text-brand-text-tertiary"> · {t.designation}</span>
+                        ) : null}
+                      </span>
                     </span>
-                  </span>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="text-[11px] text-brand-text-tertiary">Subject only — teacher not assigned</p>
+            )}
+
+            {/* Substitution / Absence Indicator */}
+            {activeSub && (
+              <div className="mt-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700/60 flex items-center justify-between text-[11px] font-semibold text-emerald-800 dark:text-emerald-300">
+                <span>🔄 Proxy: {activeSub.proxyTeacherName}</span>
+                <span className="text-[9px] font-normal text-emerald-600 dark:text-emerald-400">cov. {activeSub.absentTeacherName}</span>
+              </div>
+            )}
+            {!activeSub && isAbsent && (
+              <div className="mt-1 px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-700/60 text-[11px] font-semibold text-rose-700 dark:text-rose-300 flex items-center gap-1">
+                <span>⚠️ Teacher Absent — Proxy Needed</span>
+              </div>
             )}
           </>
         )}
@@ -233,6 +269,9 @@ const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => {
   // previewDay / previewPeriod === null  → live mode
   const [previewDay, setPreviewDay] = useState<DayKey | null>(null);
   const [previewPeriod, setPreviewPeriod] = useState<number | null>(null);
+  const [monitorMode, setMonitorMode] = useState<'classes' | 'substitutions'>('classes');
+  const [substitutions, setSubstitutions] = useState<SubstitutionAssignment[]>([]);
+  const [absentTeacherIds, setAbsentTeacherIds] = useState<string[]>([]);
 
   const liveDay = dayKeyForDate(now);
   const day: DayKey | null = previewDay ?? liveDay;
@@ -243,6 +282,16 @@ const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => {
     loadTimetable()
       .then(setTimetable)
       .catch(err => setLoadError(err instanceof Error ? err.message : 'Failed to load timetable'));
+  }, [unlocked]);
+
+  // Load today's substitutions and absent teachers
+  useEffect(() => {
+    if (!unlocked) return;
+    const todayKey = new Date().toISOString().split('T')[0];
+    getStoredSubstitutions(todayKey).then(stored => {
+      setAbsentTeacherIds(stored.absentTeacherIds);
+      setSubstitutions(stored.assignments);
+    }).catch(console.error);
   }, [unlocked]);
 
   // Live clock + auto period rollover
@@ -359,8 +408,53 @@ const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:py-8 space-y-5 animate-fadeIn">
-      {/* Header */}
-      <div className="glass-card rounded-2xl p-5">
+      {/* View Mode Switcher */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center bg-brand-bg dark:bg-brand-panel p-1 rounded-xl border border-brand-border">
+          <button
+            type="button"
+            onClick={() => setMonitorMode('classes')}
+            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+              monitorMode === 'classes'
+                ? 'bg-white dark:bg-brand-surface text-brand-primary shadow-sm'
+                : 'text-brand-text-secondary hover:text-brand-text-primary'
+            }`}
+          >
+            ⚡ Live Classes & Staff Room
+          </button>
+          <button
+            type="button"
+            onClick={() => setMonitorMode('substitutions')}
+            className={`inline-flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+              monitorMode === 'substitutions'
+                ? 'bg-white dark:bg-brand-surface text-brand-primary shadow-sm'
+                : 'text-brand-text-secondary hover:text-brand-text-primary'
+            }`}
+          >
+            <span>🔄 Teacher Substitution & Proxy</span>
+            {absentTeacherIds.length > 0 && (
+              <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-rose-500 text-white leading-none">
+                {absentTeacherIds.length}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {monitorMode === 'substitutions' ? (
+        <SubstitutionManager
+          timetable={timetable}
+          teachers={teachers}
+          day={day || 'mon'}
+          onSubstitutionsChanged={(newSubs, newAbsent) => {
+            setSubstitutions(newSubs);
+            setAbsentTeacherIds(newAbsent);
+          }}
+        />
+      ) : (
+        <>
+          {/* Header */}
+          <div className="glass-card rounded-2xl p-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2.5 mb-1">
@@ -501,6 +595,8 @@ const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => {
               live={isLive}
               teachers={teachers}
               now={now}
+              substitutions={substitutions}
+              absentTeacherIds={absentTeacherIds}
             />
           ))}
         </div>
@@ -578,6 +674,8 @@ const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => {
             </div>
           )}
         </div>
+      )}
+        </>
       )}
     </div>
   );

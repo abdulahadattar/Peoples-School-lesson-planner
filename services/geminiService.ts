@@ -42,7 +42,14 @@ function getApiKeyPool(): string[] {
   }
 
   // Deduplicate while preserving order
-  return [...new Set(keys)];
+  const uniqueKeys = [...new Set(keys)];
+
+  // If no client-side keys are configured, use the server-side API proxy
+  if (uniqueKeys.length === 0) {
+    uniqueKeys.push("server-proxy");
+  }
+
+  return uniqueKeys;
 }
 
 // Module-level round-robin index across the key pool
@@ -103,6 +110,7 @@ export const DEFAULT_MODEL = "gemini-3.5-flash-lite";
 export const MODEL_CHAIN: string[] = [
   "gemini-3.5-flash-lite",
   "gemini-3.1-flash-lite",
+  "gemini-2.5-flash",
   "gemma-4-31b-it",
 ];
 
@@ -264,6 +272,40 @@ export async function callGeminiAPI(
     console.log(`[geminiService.callGeminiAPI] ${msg}`);
     logCallback?.(msg);
   };
+
+  // If using the server proxy (or when apiKey is 'server-proxy'), route through the secure server endpoint
+  if (apiKey === 'server-proxy' || !apiKey) {
+    log(`Calling server-side Gemini endpoint (/api/gemini)...`);
+    const response = await fetch('/api/gemini', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        systemInstruction,
+        userPrompt,
+        schema,
+        temperature,
+        contextParts,
+      }),
+    });
+
+    log(`Received server response. Status: ${response.status} ${response.statusText}`);
+    if (!response.ok) {
+      const errorJson = await response.json().catch(() => null);
+      const errorMsg = errorJson?.error || `HTTP ${response.status}: ${response.statusText}`;
+      log(`ERROR: Server API request failed: ${errorMsg}`);
+      throw new Error(errorMsg);
+    }
+
+    const data = await response.json();
+    if (data?.text) {
+      log(`Extracted content from server response (${data.text.length} chars).`);
+      return data.text;
+    }
+    throw new Error('No content in server API response');
+  }
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
   log(`Initiating fetch to: ${url}`);

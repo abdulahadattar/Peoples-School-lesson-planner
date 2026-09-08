@@ -1,19 +1,15 @@
 import React, { useState } from 'react';
-import { LessonPlan, GeneratedPaper, TeacherInfo, ExportFormat } from '../types';
+import { LessonPlan, GeneratedPaper, TeacherInfo, ExportFormat, PaperQuestion } from '../types';
 import { ArrowLeftIcon, DownloadIcon, ChevronLeftIcon, ChevronRightIcon, RefreshIcon } from './icons/MiscIcons';
-import { exportPaperAsDocx, exportPaperAsPdf } from '../services/exportService';
 import {
-  hasOptions,
-  layoutOptions,
-  OPTION_CIRCLE,
-  optionLetter,
   paperSectionNote,
-  questionNumber,
   sectionInstruction,
 } from '../services/paperLayout';
 import KaTeXText from './KaTeXText';
 import { PhssjLogo } from './Logo';
 import Spinner from './ui/Spinner';
+import { QuestionEditor } from './QuestionEditor';
+import { saveExamPaperToDb } from '../services/storageService';
 
 interface ResultsViewProps {
   lessonPlans: LessonPlan[];
@@ -25,6 +21,7 @@ interface ResultsViewProps {
   onExportPlan?: (plan: LessonPlan) => void;
   onRevisePaper?: (prompt: string) => Promise<GeneratedPaper | null>;
   isRevising?: boolean;
+  onUpdatePaper?: (updatedPaper: GeneratedPaper) => void;
 }
 
 const chipClass = 'px-2 py-1 bg-brand-bg rounded-md border border-brand-border text-[11px]';
@@ -39,14 +36,66 @@ const ResultsView: React.FC<ResultsViewProps> = ({
   onExportPlan,
   onRevisePaper,
   isRevising = false,
+  onUpdatePaper,
 }) => {
   const [selectedPlanIndex, setSelectedPlanIndex] = useState(0);
   const [revisionPrompt, setRevisionPrompt] = useState('');
   const [showRevision, setShowRevision] = useState(false);
 
+  const handleUpdateQuestion = (sIdx: number, qIdx: number, updatedQuestion: PaperQuestion) => {
+    if (!papers || papers.length === 0) return;
+    const paper = papers[0];
+    const newPaper: GeneratedPaper = JSON.parse(JSON.stringify(paper));
+    newPaper.sections[sIdx].questions[qIdx] = updatedQuestion;
+    const calculatedMarks = newPaper.sections.reduce((acc, sec) =>
+      acc + sec.questions.reduce((qAcc, q) => qAcc + (Number(q.marks) || 0), 0), 0
+    );
+    newPaper.totalMarks = calculatedMarks;
+    onUpdatePaper?.(newPaper);
+    saveExamPaperToDb(newPaper).catch(console.error);
+  };
+
+  const handleDeleteQuestion = (sIdx: number, qIdx: number) => {
+    if (!papers || papers.length === 0) return;
+    if (!confirm('Are you sure you want to remove this question?')) return;
+    const paper = papers[0];
+    const newPaper: GeneratedPaper = JSON.parse(JSON.stringify(paper));
+    newPaper.sections[sIdx].questions.splice(qIdx, 1);
+    const calculatedMarks = newPaper.sections.reduce((acc, sec) =>
+      acc + sec.questions.reduce((qAcc, q) => qAcc + (Number(q.marks) || 0), 0), 0
+    );
+    newPaper.totalMarks = calculatedMarks;
+    onUpdatePaper?.(newPaper);
+    saveExamPaperToDb(newPaper).catch(console.error);
+  };
+
+  const handleAddQuestion = (sIdx: number) => {
+    if (!papers || papers.length === 0) return;
+    const paper = papers[0];
+    const newPaper: GeneratedPaper = JSON.parse(JSON.stringify(paper));
+    const section = newPaper.sections[sIdx];
+    const isMcq = section.title.toLowerCase().includes('multiple') || section.title.toLowerCase().includes('mcq');
+    const defaultMarks = isMcq ? 1 : (section.title.toLowerCase().includes('short') ? 4 : 8);
+    const newQ: PaperQuestion = {
+      id: `q_${Date.now()}`,
+      type: isMcq ? 'mcq' : (section.title.toLowerCase().includes('short') ? 'short' : 'long'),
+      question: 'New question text goes here (click edit to modify or regenerate with AI)',
+      marks: defaultMarks,
+      options: isMcq ? ['Option A', 'Option B', 'Option C', 'Option D'] : undefined,
+    };
+    section.questions.push(newQ);
+    const calculatedMarks = newPaper.sections.reduce((acc, sec) =>
+      acc + sec.questions.reduce((qAcc, q) => qAcc + (Number(q.marks) || 0), 0), 0
+    );
+    newPaper.totalMarks = calculatedMarks;
+    onUpdatePaper?.(newPaper);
+    saveExamPaperToDb(newPaper).catch(console.error);
+  };
+
   const handleExportPaper = async (paper: GeneratedPaper) => {
     try {
       const teacherInfo = { name: teacherName, schoolName };
+      const { exportPaperAsDocx, exportPaperAsPdf } = await import('../services/exportService');
       if (exportFormat === 'pdf') {
         await exportPaperAsPdf(paper, teacherInfo);
       } else if (exportFormat === 'docx') {
@@ -226,41 +275,31 @@ const ResultsView: React.FC<ResultsViewProps> = ({
                   {markingNote && (
                     <p className="text-sm font-semibold text-brand-primary mb-4">{markingNote}</p>
                   )}
-                  <div className="space-y-4">
+                  <div className="space-y-2">
                     {section.questions.map((q, qIdx) => (
-                      <div key={`${sIdx}-${qIdx}`} className="text-sm text-brand-text-primary">
-                        <div className="flex items-start">
-                          <span className="font-semibold mr-1.5">{questionNumber(qIdx)}.</span>
-                          <KaTeXText text={q.question} />
-                        </div>
-                        {hasOptions(q) && (
-                          <div className="mt-2 space-y-1.5">
-                            {layoutOptions(q.options || []).map((row, rIdx) =>
-                              row.options.length === 2 ? (
-                                // Two short options share one line with fixed alignment
-                                <div key={rIdx} className="grid grid-cols-2 gap-x-8 items-start">
-                                  {row.options.map(o => (
-                                    <div key={o.index} className="flex items-start">
-                                      <span className="text-brand-text-secondary mr-1.5 whitespace-nowrap">
-                                        {OPTION_CIRCLE} {optionLetter(o.index)})
-                                      </span>
-                                      <KaTeXText text={o.text} className="text-brand-text-secondary" />
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <div key={rIdx} className="flex items-start">
-                                  <span className="text-brand-text-secondary mr-1.5 whitespace-nowrap">
-                                    {OPTION_CIRCLE} {optionLetter(row.options[0].index)})
-                                  </span>
-                                  <KaTeXText text={row.options[0].text} className="text-brand-text-secondary" />
-                                </div>
-                              )
-                            )}
-                          </div>
-                        )}
-                      </div>
+                      <QuestionEditor
+                        key={q.id || `${sIdx}-${qIdx}`}
+                        question={q}
+                        index={qIdx}
+                        sectionIndex={sIdx}
+                        paper={paper}
+                        onUpdateQuestion={(updated) => handleUpdateQuestion(sIdx, qIdx, updated)}
+                        onDeleteQuestion={() => handleDeleteQuestion(sIdx, qIdx)}
+                      />
                     ))}
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-brand-border/60 flex items-center justify-between">
+                    <span className="text-xs text-brand-text-secondary">
+                      {section.questions.length} questions in this section
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleAddQuestion(sIdx)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-brand-primary hover:bg-brand-primary/10 border border-dashed border-brand-primary/40 transition-colors"
+                    >
+                      <span>+</span> Add Question to {section.title}
+                    </button>
                   </div>
                 </div>
               );

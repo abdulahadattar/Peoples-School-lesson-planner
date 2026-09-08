@@ -1,13 +1,103 @@
 import path from 'path';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+
+function geminiServerPlugin(): Plugin {
+  return {
+    name: 'gemini-server-plugin',
+    configureServer(server) {
+      server.middlewares.use('/api/health', (_req, res) => {
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ status: 'ok' }));
+      });
+
+      server.middlewares.use('/api/gemini', (req, res) => {
+        if (req.method !== 'POST') {
+          res.statusCode = 405;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: 'Method not allowed' }));
+          return;
+        }
+
+        let body = '';
+        req.on('data', chunk => {
+          body += chunk;
+        });
+
+        req.on('end', async () => {
+          try {
+            const { model, systemInstruction, userPrompt, schema, temperature, contextParts } = JSON.parse(body || '{}');
+            const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_API_KEY;
+
+            if (!apiKey) {
+              res.statusCode = 401;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({
+                error: 'GEMINI_API_KEY is not configured on the server. Please set GEMINI_API_KEY in your environment.'
+              }));
+              return;
+            }
+
+            const parts: any[] = [];
+            if (contextParts && Array.isArray(contextParts)) {
+              for (const part of contextParts) {
+                parts.push(part);
+              }
+            }
+            if (userPrompt) {
+              parts.push({ text: userPrompt });
+            }
+
+            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+            const response = await fetch(geminiUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-goog-api-key': apiKey,
+              },
+              body: JSON.stringify({
+                contents: [{ parts }],
+                generationConfig: {
+                  temperature: temperature ?? 0.2,
+                  responseMimeType: 'application/json',
+                  responseSchema: schema,
+                },
+                systemInstruction: systemInstruction ? {
+                  parts: [{ text: systemInstruction }],
+                } : undefined,
+              }),
+            });
+
+            if (!response.ok) {
+              const errText = await response.text();
+              res.statusCode = response.status;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ error: errText }));
+              return;
+            }
+
+            const data = await response.json();
+            const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ text }));
+          } catch (err) {
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: (err as Error).message }));
+          }
+        });
+      });
+    },
+  };
+}
 
 export default defineConfig(() => {
     return {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        allowedHosts: true,
         proxy: {
           // Proxy GitHub release downloads to bypass CORS
           '/gh-releases': {
@@ -29,7 +119,7 @@ export default defineConfig(() => {
           },
         },
       },
-      plugins: [react(), tailwindcss()],
+      plugins: [react(), tailwindcss(), geminiServerPlugin()],
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),

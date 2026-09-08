@@ -319,3 +319,78 @@ Please return the complete revised exam paper as a JSON object.`;
     failMessage: (lastError) => `Failed to revise exam paper: ${lastError.message}`,
   });
 }
+
+/**
+ * Regenerate a single question within an exam paper without altering other questions.
+ */
+export async function regenerateSingleQuestion(
+  paper: GeneratedPaper,
+  targetQuestion: PaperQuestion,
+  customInstruction?: string,
+  logCallback?: LogCallback
+): Promise<PaperQuestion> {
+  const log = (msg: string) => {
+    console.log(`[paperService] ${msg}`);
+    logCallback?.(msg);
+  };
+
+  const systemInstruction = `You are an expert examination paper setter for Peoples Higher Secondary School Jamshoro (PHSSJ) under the Ziauddin University Examination Board (ZUEB) curriculum.
+Generate ONE single replacement question matching:
+- Subject: ${paper.subject}
+- Class/Grade: ${paper.gradeLevel}
+- Chapter/Topic: ${paper.chapterName || 'Standard curriculum'}
+- Question Type: ${targetQuestion.type.toUpperCase()}
+- Marks: ${targetQuestion.marks}
+
+RULES:
+1. Generate an entirely new, syllabus-accurate question.
+2. If MCQ: provide exactly 4 clear options (A, B, C, D) in the 'options' array.
+3. If Short or Long question: do NOT supply options.
+4. Use standard LaTeX delimiters ($...$ inline) ONLY for mathematical equations, powers, and scientific formulas. Never wrap plain text in dollar signs.
+5. Strictly output JSON matching the provided schema.`;
+
+  const questionSchema = {
+    type: Type.OBJECT,
+    properties: {
+      id: { type: Type.STRING },
+      type: { type: Type.STRING, enum: ['mcq', 'short', 'long'] },
+      question: { type: Type.STRING },
+      options: { type: Type.ARRAY, items: { type: Type.STRING } },
+      marks: { type: Type.INTEGER },
+      topic: { type: Type.STRING },
+    },
+    required: ['id', 'type', 'question', 'marks'],
+  };
+
+  const userPrompt = `Replace this question:
+"${targetQuestion.question}"
+${targetQuestion.options && targetQuestion.options.length > 0 ? `Current options:\n${targetQuestion.options.map((o, i) => `(${String.fromCharCode(65 + i)}) ${o}`).join('\n')}` : ''}
+
+${customInstruction ? `Teacher's specific preference for the replacement: "${customInstruction}"` : 'Please generate an alternative question with appropriate cognitive depth.'}
+
+Provide only the single replacement question JSON object.`;
+
+  return requestJsonWithRetry<PaperQuestion>({
+    operationName: 'regenerating question',
+    firstAttemptLog: `Regenerating ${targetQuestion.type} question...`,
+    retryLabel: 'Retrying question regeneration',
+    systemInstruction,
+    userPrompt,
+    schema: questionSchema,
+    temperature: 0.4,
+    log,
+    parse: (raw) => {
+      const parsed = cleanAndParseJson(raw);
+      const cleaned = sanitizeStringFields(parsed) as PaperQuestion;
+      if (!cleaned.id) {
+        cleaned.id = targetQuestion.id || `q_${Date.now()}`;
+      }
+      cleaned.type = targetQuestion.type;
+      cleaned.marks = targetQuestion.marks;
+      log(`✓ Single question regenerated successfully.`);
+      return cleaned;
+    },
+    failMessage: (lastError) => `Failed to regenerate question: ${lastError.message}`,
+  });
+}
+

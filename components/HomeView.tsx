@@ -1,22 +1,23 @@
 import React from 'react';
-import { BookOpenIcon, DocumentTextIcon } from './icons/MiscIcons';
+import { BookOpenIcon, DocumentTextIcon, PulseIcon, ArchiveIcon } from './icons/MiscIcons';
 import { PhssjLogo, ZiauddinLogo } from './Logo';
+import { View } from '../types';
 
 interface HomeViewProps {
-  onNavigate?: (view: 'lesson' | 'paper') => void;
+  onNavigate?: (view: View) => void;
 }
 
 /** Feature cards data — one source instead of copy-pasted markup. */
 const FEATURES = [
   {
-    view: 'lesson' as const,
+    view: 'lesson' as View,
     title: 'Lesson Plans',
     description: 'Generate curriculum-aligned lesson plans for any topic, SLO or whole chapter.',
     icon: BookOpenIcon,
     accent: 'text-brand-primary bg-brand-primary/10 group-hover:bg-brand-primary group-hover:text-white',
   },
   {
-    view: 'paper' as const,
+    view: 'paper' as View,
     title: 'Exam Papers',
     description: 'Create structured, mark-balanced assessments with MCQs, short and long questions.',
     icon: DocumentTextIcon,
@@ -61,7 +62,7 @@ const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
         </div>
 
         {/* Feature cards */}
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4">
           {FEATURES.map((feature, i) => (
             <button
               key={feature.view}
@@ -79,6 +80,26 @@ const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
               </div>
             </button>
           ))}
+        </div>
+
+        {/* Quick Utilities */}
+        <div className="flex flex-wrap items-center justify-center gap-2.5 mb-8 animate-fadeInUp" style={{ animationDelay: '400ms' }}>
+          <button
+            type="button"
+            onClick={() => onNavigate?.('live')}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-brand-surface border border-brand-border text-brand-text-primary hover:border-brand-primary/40 hover:text-brand-primary shadow-soft transition-all"
+          >
+            <PulseIcon className="w-4 h-4 text-emerald-500" />
+            <span>Live Monitor & Substitution</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onNavigate?.('history')}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-brand-surface border border-brand-border text-brand-text-primary hover:border-brand-primary/40 hover:text-brand-primary shadow-soft transition-all"
+          >
+            <ArchiveIcon className="w-4 h-4 text-brand-accent" />
+            <span>Saved History Archive</span>
+          </button>
         </div>
 
         {/* Affiliation strip */}

@@ -175,3 +175,11 @@ export const PulseIcon: React.FC<IconProps> = (props) => (
     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
   </svg>
 );
+
+export const ArchiveIcon: React.FC<IconProps> = (props) => (
+  <svg {...props} {...base}>
+    <polyline points="21 8 21 21 3 21 3 8" />
+    <rect x="1" y="3" width="22" height="5" />
+    <line x1="10" y1="12" x2="14" y2="12" />
+  </svg>
+);

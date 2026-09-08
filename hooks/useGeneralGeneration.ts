@@ -3,9 +3,9 @@ import { Part } from '@google/genai';
 import { LessonPlan, GeneratedPaper, PaperConfig, TeacherInfo, ExportOption, SLO } from '../types';
 import { generateLessonPlan as generateGeminiLessonPlan, downloadPdfAsPart } from '../services/geminiService';
 import { generateExamPaper, reviseExamPaper } from '../services/paperService';
-import { exportAsDocx, exportAsPdf, exportMultipleLessonsAsDocx, exportMultipleLessonsAsPdf, formatFileName } from '../services/exportService';
 import { curriculumData, getSubjectById, getChapterById } from '../curriculum';
 import { loadSloChapter } from '../services/sloData';
+import { saveLessonPlanToDb, saveExamPaperToDb } from '../services/storageService';
 
 export type GenerationMode = 'single-slo' | 'whole-chapter' | 'topic';
 export type UiExportFormat = 'docx' | 'pdf' | 'both';
@@ -227,13 +227,18 @@ export const useGeneralGeneration = () => {
           plan.subject = subject.name;
           plan.chapterName = chapterName;
 
-          allGeneratedPlans.push(plan);
-          addLog(`✓ Done: "${plan.title}"`);
+           allGeneratedPlans.push(plan);
+           addLog(`✓ Done: "${plan.title}"`);
+           // Auto-save generated lesson plan to IndexedDB
+           saveLessonPlanToDb(plan, slo.SLO_ID, teacherInfo).catch(err =>
+             console.error('Failed to auto-save plan to DB:', err)
+           );
 
            // Export based on format (skip if cancelled)
            if (isIndividualExport && !isCancelledRef.current) {
              addLog(`Exporting (${uiExportFormat})...`);
              try {
+               const { exportAsDocx, exportAsPdf } = await import('../services/exportService');
                if (uiExportFormat === 'docx') {
                  await withTimeout(exportAsDocx(plan, slo.SLO_ID, teacherInfo), 30000, 'DOCX export timed out');
                } else if (uiExportFormat === 'pdf') {
@@ -264,6 +269,7 @@ export const useGeneralGeneration = () => {
 
       // Batch export if not individual (skip if cancelled)
       if (exportOption !== 'individual' && allGeneratedPlans.length > 0 && !isCancelledRef.current) {
+        const { exportMultipleLessonsAsDocx, exportMultipleLessonsAsPdf, formatFileName } = await import('../services/exportService');
         const fileName = formatFileName(`${cls.name} ${subject.name} ${chapterName}`);
         addLog(`\nExporting ${allGeneratedPlans.length} plans...`);
 
@@ -362,6 +368,10 @@ export const useGeneralGeneration = () => {
       addLog('Progress 3/3: Paper generation complete!');
 
       setGeneratedPapers([paper]);
+      // Auto-save generated exam paper to IndexedDB
+      saveExamPaperToDb(paper).catch(err =>
+        console.error('Failed to auto-save paper to DB:', err)
+      );
       setIsLoading(false);
       setGenerationProgress(null);
       setShowStatusPanel(true);
@@ -381,6 +391,7 @@ export const useGeneralGeneration = () => {
 
    const exportPlan = useCallback(async (plan: LessonPlan, teacherInfo: TeacherInfo, exportFormatOption?: UiExportFormat) => {
     try {
+      const { exportAsDocx, exportAsPdf } = await import('../services/exportService');
       const fmt = exportFormatOption || 'both';
       if (fmt === 'docx') {
         await exportAsDocx(plan, undefined, teacherInfo);
@@ -438,6 +449,10 @@ export const useGeneralGeneration = () => {
       addLog(`Revision instructions: "${revisionPrompt}"`);
       const revised = await reviseExamPaper(currentPaper, revisionPrompt, addLog);
       setGeneratedPapers([revised]);
+      // Auto-save revised paper to IndexedDB
+      saveExamPaperToDb(revised).catch(err =>
+        console.error('Failed to auto-save revised paper to DB:', err)
+      );
       addLog('\n✓ Paper revised successfully!');
       setIsLoading(false);
       return revised;
@@ -457,6 +472,8 @@ export const useGeneralGeneration = () => {
     logMessages,
     generatedPlans,
     generatedPapers,
+    setGeneratedPlans,
+    setGeneratedPapers,
     error,
     showStatusPanel,
     setShowStatusPanel,

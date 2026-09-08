@@ -76,6 +76,7 @@ const parseTextForDocx = async (text: string): Promise<(TextRun | any)[]> => {
       // (measured in CSS px before the 2x rasterization).
       const base64 = dataUrlToBase64(seg.image);
       runs.push(new ImageRun({
+        type: 'png',
         data: base64,
         transformation: {
           width: Math.min(seg.width || 120, 400),

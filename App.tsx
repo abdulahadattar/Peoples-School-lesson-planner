@@ -7,8 +7,9 @@ import PaperPanel from './components/PaperPanel';
 import ResultsView from './components/ResultsView';
 import GenerationStatusPanel from './components/GenerationStatusPanel';
 import LiveMonitor from './components/LiveMonitor';
+import { HistoryView } from './components/HistoryView';
 import { PhssjLogo, ZiauddinLogo } from './components/Logo';
-import { BookOpenIcon, CloseIcon, DocumentTextIcon, HomeIcon, PulseIcon } from './components/icons/MiscIcons';
+import { BookOpenIcon, CloseIcon, DocumentTextIcon, HomeIcon, PulseIcon, ArchiveIcon } from './components/icons/MiscIcons';
 import { useGeneralGeneration, GenerationMode } from './hooks/useGeneralGeneration';
 import { useSelection } from './hooks/useSelection';
 import { loadSloChapter } from './services/sloData';
@@ -26,6 +27,7 @@ const NAV_ITEMS: NavItem[] = [
   { view: 'lesson', label: 'Lesson Plans', icon: BookOpenIcon, activeViews: ['lesson', 'results'] },
   { view: 'paper', label: 'Exam Papers', icon: DocumentTextIcon, activeViews: ['paper'] },
   { view: 'live', label: 'Live Monitor', icon: PulseIcon, activeViews: ['live'] },
+  { view: 'history', label: 'History Archive', icon: ArchiveIcon, activeViews: ['history'] },
 ];
 
 const App: React.FC = () => {
@@ -55,6 +57,8 @@ const App: React.FC = () => {
     logMessages,
     generatedPlans,
     generatedPapers,
+    setGeneratedPlans,
+    setGeneratedPapers,
     error,
     showStatusPanel,
     setShowStatusPanel,
@@ -227,6 +231,7 @@ const App: React.FC = () => {
                   onClick={() => {
                     if (item.view === 'home') handleBackToHome();
                     else if (item.view === 'live') navigate('live');
+                    else if (item.view === 'history') navigate('history');
                     else handleNavigate(item.view === 'lesson' ? 'lesson' : 'paper');
                   }}
                   className={`relative w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${
@@ -266,7 +271,17 @@ const App: React.FC = () => {
         />
 
         <div key={view} className="flex-1 overflow-y-auto custom-scrollbar relative animate-fadeIn">
-          {view === 'home' && <HomeView onNavigate={handleNavigate} />}
+          {view === 'home' && (
+            <HomeView
+              onNavigate={(target) => {
+                if (target === 'live' || target === 'history') {
+                  navigate(target);
+                } else if (target === 'lesson' || target === 'paper') {
+                  handleNavigate(target);
+                }
+              }}
+            />
+          )}
 
           {view === 'lesson' && (
             <div className="max-w-2xl mx-auto px-4 py-6 md:py-8">
@@ -300,6 +315,22 @@ const App: React.FC = () => {
 
           {view === 'live' && <LiveMonitor teachers={teachers} />}
 
+          {view === 'history' && (
+            <HistoryView
+              onOpenLessonPlan={(plan) => {
+                setGeneratedPlans([plan]);
+                setGeneratedPapers([]);
+                setView('results');
+              }}
+              onOpenPaper={(paper) => {
+                setGeneratedPapers([paper]);
+                setGeneratedPlans([]);
+                setView('results');
+              }}
+              onBack={handleBackToHome}
+            />
+          )}
+
           {view === 'results' && (
             <ResultsView
               lessonPlans={generatedPlans}
@@ -311,6 +342,7 @@ const App: React.FC = () => {
               exportFormat={exportFormat}
               onRevisePaper={revisePaper}
               isRevising={isLoading}
+              onUpdatePaper={(updated) => setGeneratedPapers([updated])}
             />
           )}
         </div>
