@@ -33,6 +33,26 @@ export interface DailyAttendanceRecord {
   classes: Record<string, { presentBoys: number; presentGirls: number; classTeacher?: string }>;
 }
 
+export function cleanAttendanceInCharge(val?: string): string {
+  if (!val) return 'Miss Shahida';
+  const trimmed = val.trim();
+  const lower = trimmed.toLowerCase();
+  if (
+    lower === 'class in-charge' ||
+    lower === 'class in charge' ||
+    lower === 'class teacher' ||
+    lower === 'in-charge' ||
+    lower === 'in charge' ||
+    lower === 'incharge' ||
+    lower === 'teacher' ||
+    lower === 'class incharge' ||
+    lower === ''
+  ) {
+    return 'Miss Shahida';
+  }
+  return trimmed;
+}
+
 export interface SchoolAttendanceSummary {
   totalEnrolled: number;
   enrolledBoys: number;
@@ -154,6 +174,9 @@ export function buildAttendanceRows(
     if (matchingClasses.length > 0) {
       const teachers = Array.from(new Set(matchingClasses.map(c => c.classTeacher).filter(Boolean)));
       defaultTeacher = teachers.join(' / ');
+    } else {
+      // Placeholder for early grades (ECCE, Grade 1 to Grade 3)
+      defaultTeacher = '(To be added)';
     }
 
     return {
@@ -305,7 +328,7 @@ export function exportAttendanceCSV(date: string, rows: ClassAttendanceRow[], su
   ]);
 
   data.push([
-    'WHOLE SCHOOL',
+    'TOTAL ATTENDANCE',
     summary.enrolledBoys,
     summary.enrolledGirls,
     summary.totalEnrolled,

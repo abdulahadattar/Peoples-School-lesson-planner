@@ -536,7 +536,7 @@ export async function syncAttendanceToSheet(
     
     const rowsToAppend = record.rows.map(r => [
       record.date,
-      r.classTeacher || record.recordedBy || 'Class Teacher',
+      r.classTeacher || 'Class Teacher',
       r.displayName,
       r.enrolledBoys,
       r.enrolledGirls,
@@ -553,8 +553,8 @@ export async function syncAttendanceToSheet(
     // Add the summary row at the end
     rowsToAppend.push([
       record.date,
-      record.recordedBy || 'Class Teacher',
-      'WHOLE SCHOOL',
+      record.recordedBy || 'Miss Shahida',
+      'TOTAL ATTENDANCE',
       '',
       '',
       `${record.summary.overallPercentage}%`,

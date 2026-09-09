@@ -333,7 +333,7 @@ async function startServer() {
         date,
         classes,
         notes: notes || '',
-        recordedBy: recordedBy || 'Class Teacher',
+        recordedBy: recordedBy || 'Miss Shahida',
         updatedAt: Date.now(),
       };
       saveAttendanceStore(store);

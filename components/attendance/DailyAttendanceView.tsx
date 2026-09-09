@@ -32,6 +32,7 @@ import {
   loadAttendanceRecord,
   loadAttendanceDates,
   exportAttendanceCSV,
+  cleanAttendanceInCharge,
 } from '../../services/attendanceService';
 import { fetchSheetData, StudentRecord, syncAttendanceToSheet } from '../../services/googleSheetsService';
 import { getAccessToken } from '../../services/googleAuth';
@@ -50,7 +51,7 @@ export const DailyAttendanceView: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>(getTodayStr());
   const [enrollments, setEnrollments] = useState<ClassEnrollment[]>(DEFAULT_GRADE_ENROLLMENTS);
   const [inputs, setInputs] = useState<Record<string, { presentBoys: number | ''; presentGirls: number | ''; classTeacher?: string }>>({});
-  const [recordedBy, setRecordedBy] = useState<string>('Class Teacher');
+  const [recordedBy, setRecordedBy] = useState<string>('Miss Shahida');
   const [notes, setNotes] = useState<string>('');
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -109,7 +110,7 @@ export const DailyAttendanceView: React.FC = () => {
           };
         });
         setInputs(loadedInputs);
-        setRecordedBy(record.recordedBy || 'Class Teacher');
+        setRecordedBy(cleanAttendanceInCharge(record.recordedBy));
         setNotes(record.notes || '');
         setLastSavedTime(record.updatedAt ? new Date(record.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null);
         setHasUnsavedChanges(false);
@@ -210,9 +211,10 @@ export const DailyAttendanceView: React.FC = () => {
         };
       });
 
+      const inChargeName = cleanAttendanceInCharge(recordedBy);
       const record: DailyAttendanceRecord = {
         date: selectedDate,
-        recordedBy,
+        recordedBy: inChargeName,
         notes,
         updatedAt: Date.now(),
         classes: classesData,
@@ -224,7 +226,7 @@ export const DailyAttendanceView: React.FC = () => {
         const token = await getAccessToken();
         await syncAttendanceToSheet({
           date: selectedDate,
-          recordedBy,
+          recordedBy: inChargeName,
           notes,
           summary: {
             totalEnrolled: schoolSummary.totalEnrolled,
@@ -276,11 +278,16 @@ export const DailyAttendanceView: React.FC = () => {
       year: 'numeric',
     });
 
+    const inChargeName = cleanAttendanceInCharge(recordedBy);
+
     const rowsHtml = attendanceRows
       .map(
         r => `
       <tr>
-        <td><strong>${r.displayName}</strong></td>
+        <td>
+          <strong>${r.displayName}</strong>
+          ${r.classTeacher ? `<div style="font-size:9.5px; color:#475569; font-weight:normal; margin-top:1px;">Teacher: ${r.classTeacher}</div>` : ''}
+        </td>
         <td style="text-align:center;">${r.enrolledBoys}</td>
         <td style="text-align:center;">${r.enrolledGirls}</td>
         <td style="text-align:center; font-weight:600;">${r.totalEnrolled}</td>
@@ -328,7 +335,7 @@ export const DailyAttendanceView: React.FC = () => {
         <div class="meta">
           <div><strong>Date:</strong> ${formattedDate} (${selectedDate})</div>
           <div><strong>Active Enrollment:</strong> ${schoolSummary.totalEnrolled} Students</div>
-          <div><strong>Recorded By:</strong> ${recordedBy || 'In-Charge'}</div>
+          <div><strong>Attendance In-Charge:</strong> ${inChargeName}</div>
         </div>
 
         <div class="kpi-cards">
@@ -371,7 +378,7 @@ export const DailyAttendanceView: React.FC = () => {
           <tbody>
             ${rowsHtml}
             <tr class="total-row">
-              <td><strong>WHOLE SCHOOL</strong></td>
+              <td><strong>TOTAL ATTENDANCE</strong></td>
               <td style="text-align:center;">${schoolSummary.enrolledBoys}</td>
               <td style="text-align:center;">${schoolSummary.enrolledGirls}</td>
               <td style="text-align:center;">${schoolSummary.totalEnrolled}</td>
@@ -387,7 +394,10 @@ export const DailyAttendanceView: React.FC = () => {
         ${notes ? `<p style="font-size:11px; margin-top:8px;"><strong>Remarks / Notes:</strong> ${notes}</p>` : ''}
 
         <div class="signatures">
-          <div class="sign-col">Attendance In-Charge</div>
+          <div class="sign-col">
+            Attendance In-Charge
+            <div style="font-size:10px; font-weight:normal; color:#475569; margin-top:2px;">(${inChargeName})</div>
+          </div>
           <div class="sign-col">Vice Principal</div>
           <div class="sign-col">Principal / Headmaster</div>
         </div>
@@ -542,7 +552,7 @@ export const DailyAttendanceView: React.FC = () => {
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
             <h3 className="text-sm font-bold uppercase tracking-wider text-brand-text-primary">
-              Whole School Attendance Overview
+              Total Attendance Overview
             </h3>
             <span className="text-xs text-brand-text-secondary">
               ({new Date(selectedDate).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })})
@@ -569,7 +579,7 @@ export const DailyAttendanceView: React.FC = () => {
                 {schoolSummary.overallPercentage}%
               </span>
               <span className="text-xs sm:text-sm font-semibold text-brand-text-secondary">
-                Overall School Attendance
+                Total Attendance
               </span>
             </div>
 
@@ -734,7 +744,7 @@ export const DailyAttendanceView: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs text-brand-text-secondary">Teacher / Recorded By:</span>
+            <span className="text-xs text-brand-text-secondary font-medium">Attendance In-Charge:</span>
             <input
               type="text"
               value={recordedBy}
@@ -742,7 +752,7 @@ export const DailyAttendanceView: React.FC = () => {
                 setRecordedBy(e.target.value);
                 setHasUnsavedChanges(true);
               }}
-              placeholder="Teacher name"
+              placeholder="Miss Shahida"
               className="h-8 px-2.5 text-xs rounded-lg bg-brand-bg border border-brand-border text-brand-text-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
             />
           </div>
@@ -915,13 +925,13 @@ export const DailyAttendanceView: React.FC = () => {
               })}
             </tbody>
 
-            {/* Whole School Total Row */}
+            {/* Total Attendance Row */}
             <tfoot>
               <tr className="bg-brand-bg/90 border-t-2 border-brand-border font-bold text-brand-text-primary text-xs">
                 <td className="py-4 px-4 font-black">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-brand-primary" />
-                    <span>WHOLE SCHOOL TOTAL</span>
+                    <span>TOTAL ATTENDANCE</span>
                   </div>
                 </td>
                 <td className="py-4 px-3 text-center font-extrabold text-sm">
