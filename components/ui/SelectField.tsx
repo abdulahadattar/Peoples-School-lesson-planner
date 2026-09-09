@@ -23,6 +23,25 @@ export interface SelectFieldProps extends Omit<React.SelectHTMLAttributes<HTMLSe
 }
 
 /**
+ * Recursively extracts text from React children without comma-joining arrays.
+ */
+function getTextFromReactChildren(children: React.ReactNode): string {
+  if (children === null || children === undefined || typeof children === 'boolean') {
+    return '';
+  }
+  if (typeof children === 'string' || typeof children === 'number') {
+    return String(children);
+  }
+  if (Array.isArray(children)) {
+    return children.map(getTextFromReactChildren).join('');
+  }
+  if (React.isValidElement(children)) {
+    return getTextFromReactChildren((children.props as any)?.children);
+  }
+  return '';
+}
+
+/**
  * Parses raw text from <option> into structured label, sublabel, and badges.
  * E.g. "Sir Ahmed — Physics, Chemistry" -> { label: "Sir Ahmed", sublabel: "Physics, Chemistry" }
  * E.g. "Chapter 1: Physical Quantities" -> { label: "Physical Quantities", badge: "Ch 1" }
@@ -45,21 +64,27 @@ function parseOptionText(raw: string): { label: string; sublabel?: string; badge
   // Check for dash separator: "Name — Subject1, Subject2"
   if (trimmed.includes('—')) {
     const [main, ...rest] = trimmed.split('—');
-    return { label: main.trim(), sublabel: rest.join('—').trim() };
+    const label = main.trim().replace(/,+$/, '').trim();
+    const sublabel = rest.join('—').trim().replace(/^,+/, '').trim();
+    return { label, sublabel };
   }
   if (trimmed.includes(' – ')) {
     const [main, ...rest] = trimmed.split(' – ');
-    return { label: main.trim(), sublabel: rest.join(' – ').trim() };
+    const label = main.trim().replace(/,+$/, '').trim();
+    const sublabel = rest.join(' – ').trim().replace(/^,+/, '').trim();
+    return { label, sublabel };
   }
   if (trimmed.includes(' - ') && !trimmed.toLowerCase().includes('class')) {
     const [main, ...rest] = trimmed.split(' - ');
-    return { label: main.trim(), sublabel: rest.join(' - ').trim() };
+    const label = main.trim().replace(/,+$/, '').trim();
+    const sublabel = rest.join(' - ').trim().replace(/^,+/, '').trim();
+    return { label, sublabel };
   }
 
   // Check for parenthesis: "Name (Designation)"
   const parenMatch = trimmed.match(/^(.+?)\s*\((.+?)\)$/);
   if (parenMatch) {
-    return { label: parenMatch[1].trim(), badge: parenMatch[2].trim() };
+    return { label: parenMatch[1].trim().replace(/,+$/, '').trim(), badge: parenMatch[2].trim() };
   }
 
   return { label: trimmed };
@@ -74,7 +99,7 @@ function extractOptionsFromChildren(children: React.ReactNode): SelectOptionItem
     if (!React.isValidElement(child)) return;
     if (child.type === 'option') {
       const { value = '', disabled = false, children: textContent } = child.props as any;
-      const rawText = typeof textContent === 'string' ? textContent : String(textContent ?? value);
+      const rawText = getTextFromReactChildren(textContent) || String(value ?? '');
       const parsed = parseOptionText(rawText);
       items.push({
         value: String(value),

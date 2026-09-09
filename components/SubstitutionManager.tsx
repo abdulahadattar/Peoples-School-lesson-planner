@@ -289,7 +289,7 @@ export const SubstitutionManager: React.FC<SubstitutionManagerProps> = ({
                 .sort((a, b) => a.name.localeCompare(b.name))
                 .map(t => (
                   <option key={t.id} value={t.id}>
-                    {t.name} ({t.designation || 'Teacher'})
+                    {`${t.name} (${t.designation || 'Teacher'})`}
                   </option>
                 ))}
             </SelectField>

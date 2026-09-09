@@ -382,7 +382,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
               <option value="">-- Choose a teacher --</option>
               {teacherChoices.map(t => (
                 <option key={t.id} value={t.id}>
-                  {t.name} — {subjectNames(t).join(', ')}
+                  {`${t.name} — ${subjectNames(t).join(', ')}`}
                 </option>
               ))}
             </SelectField>
