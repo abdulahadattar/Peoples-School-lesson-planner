@@ -117,12 +117,27 @@ export function parseTimeToMinutes(t: string): number {
 /**
  * Format minutes-since-midnight into a 12-hour time string (e.g. "8:15 AM").
  */
-export function formatMinutes(min: number): string {
-  const h24 = Math.floor(min / 60);
-  const m = min % 60;
+export function formatMinutes(min?: number | null): string {
+  if (min === undefined || min === null || typeof min !== 'number' || Number.isNaN(min)) {
+    return '--:--';
+  }
+  const safeMin = Math.max(0, Math.floor(min));
+  const h24 = Math.floor(safeMin / 60) % 24;
+  const m = safeMin % 60;
   const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
   const ap = h24 >= 12 ? 'PM' : 'AM';
   return `${h12}:${String(m).padStart(2, '0')} ${ap}`;
+}
+
+/** Returns current Date in Pakistan Standard Time (Asia/Karachi, UTC+5). */
+export function getPakistanDate(baseDate: Date = new Date()): Date {
+  try {
+    const pktString = baseDate.toLocaleString('en-US', { timeZone: 'Asia/Karachi' });
+    return new Date(pktString);
+  } catch {
+    const utc = baseDate.getTime() + baseDate.getTimezoneOffset() * 60000;
+    return new Date(utc + 5 * 3600000);
+  }
 }
 
 /** Start/end minutes for a period on a given day (Friday uses friStart/friEnd when present). */
@@ -145,33 +160,41 @@ export function locatePeriod(entry: TimetableClassEntry, day: DayKey, minutes: n
     if (minutes < start) {
       const prevEnd = i > 0 ? times[i - 1].end : -1;
       if (i > 0 && minutes >= prevEnd && minutes < start) {
-        return { index: -1, state: 'break', label: 'Break' };
+        return { index: i, state: 'break', label: 'Recess Break' };
       }
-      return { index: -1, state: 'before', label: 'Before school' };
+      return { index: 0, state: 'before', label: 'Before school' };
     }
   }
-  return { index: -1, state: 'after', label: 'School over' };
+  return { index: times.length - 1, state: 'after', label: 'School over' };
 }
 
 /** Reference (school-wide) schedule — the first class's periods, used by the header. */
 export function standardSchedule(classes: TimetableClassEntry[], day?: DayKey) {
-  const entry = classes[0];
-  if (!entry) return [];
   const targetDay = day ?? 'mon';
-  return entry.periods.map(p => {
-    const time = periodTimeRange(p, targetDay);
-    return {
-      no: p.no,
-      start: p.start,
-      end: p.end,
-      friStart: p.friStart,
-      friEnd: p.friEnd,
-      startMin: time.start,
-      endMin: time.end,
-      formattedRange: `${formatMinutes(time.start)} – ${formatMinutes(time.end)}`,
-    };
-  });
+  // On Friday, prioritize class with explicit Friday timings (like Class VII) if present
+  const entry = (targetDay === 'fri' && classes.find(c => c.periods.some(p => p.friStart))) || classes[0];
+  if (!entry) return [];
+  return entry.periods
+    .filter(p => {
+      if (targetDay === 'fri' && !p.friStart && !p.friEnd && p.no === 7) return false;
+      return true;
+    })
+    .map(p => {
+      const time = periodTimeRange(p, targetDay);
+      return {
+        no: p.no,
+        start: p.start,
+        end: p.end,
+        friStart: p.friStart,
+        friEnd: p.friEnd,
+        startMin: time.start,
+        endMin: time.end,
+        formattedRange: `${formatMinutes(time.start)} – ${formatMinutes(time.end)}`,
+      };
+    });
 }
+
+export type StandardPeriod = ReturnType<typeof standardSchedule>[number];
 
 export interface SchoolTimeStatus {
   state: 'in_period' | 'break' | 'before_school' | 'after_school' | 'closed';
@@ -185,6 +208,8 @@ export interface SchoolTimeStatus {
   progressPercent: number;
   nextPeriodNo: number | null;
   nextPeriodStartMinutes: number | null;
+  firstPeriodStart: number;
+  lastPeriodEnd: number;
 }
 
 /**
@@ -208,11 +233,13 @@ export function getSchoolStatus(
       progressPercent: 0,
       nextPeriodNo: 1,
       nextPeriodStartMinutes: 495,
+      firstPeriodStart: 495,
+      lastPeriodEnd: 870,
     };
   }
 
-  const entry = classes[0];
-  const times = entry.periods.map(p => periodTimeRange(p, day));
+  const entry = (day === 'fri' && classes.find(c => c.periods.some(p => p.friStart))) || classes[0];
+  const times = entry.periods.map(p => periodTimeRange(p, day)).filter(t => !Number.isNaN(t.start) && !Number.isNaN(t.end));
   const firstStart = times[0]?.start ?? 495;
   const lastEnd = times[times.length - 1]?.end ?? 870;
 
@@ -230,6 +257,8 @@ export function getSchoolStatus(
       progressPercent: 0,
       nextPeriodNo: 1,
       nextPeriodStartMinutes: firstStart,
+      firstPeriodStart: firstStart,
+      lastPeriodEnd: lastEnd,
     };
   }
 
@@ -246,6 +275,8 @@ export function getSchoolStatus(
       progressPercent: 100,
       nextPeriodNo: null,
       nextPeriodStartMinutes: null,
+      firstPeriodStart: firstStart,
+      lastPeriodEnd: lastEnd,
     };
   }
 
@@ -268,6 +299,8 @@ export function getSchoolStatus(
         progressPercent: pct,
         nextPeriodNo: nextP ? nextP.no : null,
         nextPeriodStartMinutes: i + 1 < times.length ? times[i + 1].start : null,
+        firstPeriodStart: firstStart,
+        lastPeriodEnd: lastEnd,
       };
     }
     if (i < times.length - 1) {
@@ -288,6 +321,8 @@ export function getSchoolStatus(
           progressPercent: breakPct,
           nextPeriodNo: entry.periods[i + 1].no,
           nextPeriodStartMinutes: nextStart,
+          firstPeriodStart: firstStart,
+          lastPeriodEnd: lastEnd,
         };
       }
     }
@@ -305,6 +340,8 @@ export function getSchoolStatus(
     progressPercent: 100,
     nextPeriodNo: null,
     nextPeriodStartMinutes: null,
+    firstPeriodStart: firstStart,
+    lastPeriodEnd: lastEnd,
   };
 }
 
