@@ -220,8 +220,8 @@ export function getSchoolStatus(
     const rem = firstStart - minutes;
     return {
       state: 'before_school',
-      periodIndex: 0,
-      periodNo: entry.periods[0]?.no ?? 1,
+      periodIndex: -1,
+      periodNo: null,
       periodLabel: 'Before School Hours',
       startMinutes: 0,
       endMinutes: firstStart,
@@ -236,8 +236,8 @@ export function getSchoolStatus(
   if (minutes >= lastEnd) {
     return {
       state: 'after_school',
-      periodIndex: times.length - 1,
-      periodNo: entry.periods[times.length - 1]?.no ?? times.length,
+      periodIndex: -1,
+      periodNo: null,
       periodLabel: 'School Hours Completed for Today',
       startMinutes: lastEnd,
       endMinutes: 1440,
