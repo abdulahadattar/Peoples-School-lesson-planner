@@ -154,18 +154,23 @@ export function locatePeriod(entry: TimetableClassEntry, day: DayKey, minutes: n
 }
 
 /** Reference (school-wide) schedule — the first class's periods, used by the header. */
-export function standardSchedule(classes: TimetableClassEntry[]) {
+export function standardSchedule(classes: TimetableClassEntry[], day?: DayKey) {
   const entry = classes[0];
   if (!entry) return [];
-  return entry.periods.map(p => ({
-    no: p.no,
-    start: p.start,
-    end: p.end,
-    friStart: p.friStart,
-    friEnd: p.friEnd,
-    startMin: parseTimeToMinutes(p.start),
-    endMin: parseTimeToMinutes(p.end),
-  }));
+  const targetDay = day ?? 'mon';
+  return entry.periods.map(p => {
+    const time = periodTimeRange(p, targetDay);
+    return {
+      no: p.no,
+      start: p.start,
+      end: p.end,
+      friStart: p.friStart,
+      friEnd: p.friEnd,
+      startMin: time.start,
+      endMin: time.end,
+      formattedRange: `${formatMinutes(time.start)} – ${formatMinutes(time.end)}`,
+    };
+  });
 }
 
 export interface SchoolTimeStatus {

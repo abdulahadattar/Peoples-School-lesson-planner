@@ -266,9 +266,13 @@ const ClassCard: React.FC<{
 export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => {
   const [timetable, setTimetable] = useState<TimetableData | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [now, setNow] = useState(() => new Date());
+  const [realNow, setRealNow] = useState(() => new Date());
   
-  // previewDay / previewPeriod === null -> synced to live clock
+  // Simulated time (in minutes from midnight, or null for real live clock)
+  const [simulatedMinutes, setSimulatedMinutes] = useState<number | null>(null);
+  const [showTimeTester, setShowTimeTester] = useState(false);
+  
+  // previewDay / previewPeriod === null -> synced to live/simulated clock
   const [previewDay, setPreviewDay] = useState<DayKey | null>(null);
   const [previewPeriod, setPreviewPeriod] = useState<number | null>(null);
   
@@ -281,10 +285,18 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => 
   // Live timer: updates every 1 second to keep clock and periods synced
   useEffect(() => {
     const timer = window.setInterval(() => {
-      setNow(new Date());
+      setRealNow(new Date());
     }, 1000);
     return () => window.clearInterval(timer);
   }, []);
+
+  // Compute effective 'now' Date object (either real or simulated time)
+  const now = useMemo(() => {
+    if (simulatedMinutes === null) return realNow;
+    const d = new Date(realNow);
+    d.setHours(Math.floor(simulatedMinutes / 60), simulatedMinutes % 60, realNow.getSeconds());
+    return d;
+  }, [realNow, simulatedMinutes]);
 
   // Load timetable data
   useEffect(() => {
@@ -312,17 +324,17 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => 
   const effectiveDay: DayKey = previewDay ?? (liveDay ?? 'mon');
 
   const schedule = useMemo(
-    () => (timetable ? standardSchedule(timetable.classes) : []),
-    [timetable],
+    () => (timetable ? standardSchedule(timetable.classes, effectiveDay) : []),
+    [timetable, effectiveDay],
   );
 
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
-  // Compute school status for current real time
+  // Compute school status for current time (real or simulated)
   const schoolStatus = useMemo(() => {
     if (!timetable) return null;
-    return getSchoolStatus(timetable.classes, liveDay, nowMinutes);
-  }, [timetable, liveDay, nowMinutes]);
+    return getSchoolStatus(timetable.classes, effectiveDay, nowMinutes);
+  }, [timetable, effectiveDay, nowMinutes]);
 
   // Live active period index (if inside a period)
   const livePeriodIndex = schoolStatus?.state === 'in_period' ? schoolStatus.periodIndex : -1;
@@ -351,7 +363,7 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => 
       const lbl = c.label.toUpperCase();
       if (classFilter === 'primary') return lbl.startsWith('IV') || lbl.startsWith('V');
       if (classFilter === 'middle') return lbl.startsWith('VI') || lbl.startsWith('VII') || lbl.startsWith('VIII');
-      if (classFilter === 'secondary') return lbl.startsWith('IX') || lbl.startsWith('X');
+      if (classFilter === 'secondary') return lbl.startsWith('IX') || lbl.startsWith('X') || lbl.startsWith('XI') || lbl.startsWith('XII');
       return true;
     });
   }, [timetable, classFilter]);
@@ -359,7 +371,13 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => 
   const goLive = () => {
     setPreviewDay(null);
     setPreviewPeriod(null);
-    setNow(new Date());
+    setSimulatedMinutes(null);
+    setRealNow(new Date());
+  };
+
+  const setSimulation = (minutes: number | null) => {
+    setSimulatedMinutes(minutes);
+    setPreviewPeriod(null);
   };
 
   const stepPeriod = (dir: 1 | -1) => {
@@ -412,11 +430,27 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => 
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
+    hour12: true,
   });
+
+  const isSimulated = simulatedMinutes !== null;
+  const isPMHour = now.getHours() >= 12;
+
+  // Preset time options for quick simulation / period testing
+  const SIMULATION_PRESETS = [
+    { label: '8:30 AM · Period 1', minutes: 8 * 60 + 30, period: 1 },
+    { label: '9:15 AM · Period 2', minutes: 9 * 60 + 15, period: 2 },
+    { label: '10:00 AM · Period 3', minutes: 10 * 60 + 0, period: 3, highlight: true },
+    { label: '10:45 AM · Period 4', minutes: 10 * 60 + 45, period: 4 },
+    { label: '11:30 AM · Break', minutes: 11 * 60 + 30, period: null },
+    { label: '12:15 PM · Period 5', minutes: 12 * 60 + 15, period: 5 },
+    { label: '1:00 PM · Period 6', minutes: 13 * 60 + 0, period: 6 },
+    { label: '1:45 PM · Period 7', minutes: 13 * 60 + 45, period: 7 },
+  ];
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:py-8 space-y-5 animate-fadeIn">
-      {/* Top Banner: Mode & Navigation Switcher */}
+      {/* Top Banner: Mode & Live Status */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center bg-brand-bg dark:bg-brand-panel p-1 rounded-xl border border-brand-border">
           <button
@@ -448,24 +482,94 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => 
           </button>
         </div>
 
-        {/* Live status badge */}
-        <div className="flex items-center gap-2">
-          {isLive ? (
+        {/* Live sync / Simulation status badge & Time Tester Toggle */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setShowTimeTester(prev => !prev)}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border shadow-sm ${
+              showTimeTester || isSimulated
+                ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300'
+                : 'bg-white dark:bg-brand-panel border-brand-border text-brand-text-secondary hover:text-brand-text-primary'
+            }`}
+            title="Toggle Period & Time Simulation bar"
+          >
+            <span>⏱️ {isSimulated ? `Simulating ${formatMinutes(simulatedMinutes)}` : 'Test Specific Time'}</span>
+          </button>
+
+          {isLive && !isSimulated ? (
             <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-300 dark:border-emerald-500/30 text-xs font-bold text-emerald-700 dark:text-emerald-300 shadow-sm">
               <LiveDot />
-              <span>SYNCED WITH CURRENT TIME</span>
+              <span>SYNCED WITH SYSTEM TIME</span>
             </span>
           ) : (
             <button
               onClick={goLive}
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/30 text-xs font-bold text-amber-700 dark:text-amber-300 hover:bg-amber-100 transition-all shadow-sm"
+              title="Click to reset to real-time clock"
             >
               <RefreshIcon className="w-3.5 h-3.5 animate-spin" />
-              <span>PREVIEW MODE — Click to Return Live</span>
+              <span>{isSimulated ? 'Exit Simulation (Return to Live)' : 'PREVIEW MODE — Return to Live'}</span>
             </button>
           )}
         </div>
       </div>
+
+      {/* Time Simulation / Period Quick Tester Drawer */}
+      {(showTimeTester || isSimulated) && (
+        <div className="glass-card rounded-2xl p-4 border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/40 dark:bg-indigo-950/20 animate-fadeIn space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-indigo-900 dark:text-indigo-200 flex items-center gap-2">
+                <span>⏱️ Clock Simulation & Period Jump Tester</span>
+                {isSimulated && (
+                  <span className="px-2 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-bold">
+                    Active: {formatMinutes(simulatedMinutes)}
+                  </span>
+                )}
+              </h4>
+              <p className="text-[11px] text-brand-text-secondary mt-0.5">
+                Jump to any school period to test exact class schedules, in-session badges, remaining time, and staff room status.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {isSimulated && (
+                <button
+                  type="button"
+                  onClick={() => setSimulation(null)}
+                  className="px-3 py-1 rounded-lg text-xs font-bold bg-white dark:bg-brand-panel border border-brand-border text-brand-text-primary hover:bg-brand-bg transition-all"
+                >
+                  Reset to Live Clock
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+            <span className="text-[11px] font-bold text-brand-text-tertiary mr-1">Quick Periods:</span>
+            {SIMULATION_PRESETS.map(preset => {
+              const isActive = simulatedMinutes === preset.minutes;
+              return (
+                <button
+                  key={preset.minutes}
+                  type="button"
+                  onClick={() => setSimulation(preset.minutes)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    isActive
+                      ? 'bg-indigo-600 text-white shadow-card ring-2 ring-indigo-400'
+                      : preset.highlight
+                        ? 'bg-emerald-100 dark:bg-emerald-950/50 border border-emerald-400 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-200'
+                        : 'bg-white dark:bg-brand-panel border border-brand-border text-brand-text-primary hover:border-indigo-300'
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {monitorMode === 'substitutions' ? (
         <SubstitutionManager
@@ -491,17 +595,29 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => 
                   <span className="px-2.5 py-0.5 rounded-md bg-brand-primary-soft text-brand-primary dark:bg-brand-primary/20 dark:text-blue-300 text-[11px] font-bold">
                     {DAY_LABELS[effectiveDay]}
                   </span>
+                  {isSimulated && (
+                    <span className="px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold uppercase tracking-wider">
+                      Simulated
+                    </span>
+                  )}
                 </div>
 
-                <p className="text-xs md:text-sm text-brand-text-secondary flex items-center gap-2 font-medium">
+                <div className="flex items-center gap-2 text-xs md:text-sm text-brand-text-secondary font-medium flex-wrap">
                   <span>📅 {formattedDate}</span>
                   <span>·</span>
-                  <span className="font-mono font-bold text-brand-text-primary">🕒 {formattedTime}</span>
-                </p>
+                  <span className="font-mono font-bold text-brand-text-primary inline-flex items-center gap-1">
+                    <span>🕒 {formattedTime}</span>
+                    <span className={`px-1.5 py-0.2 rounded text-[10px] font-extrabold uppercase ${
+                      isPMHour ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300' : 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300'
+                    }`}>
+                      {isPMHour ? 'PM (Afternoon/Night)' : 'AM (Morning)'}
+                    </span>
+                  </span>
+                </div>
 
                 {/* Real-time status bar */}
-                {isLive && schoolStatus && (
-                  <div className="mt-3 inline-flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white dark:bg-brand-panel border border-brand-border text-xs font-medium">
+                {schoolStatus && (
+                  <div className="mt-3 inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-white dark:bg-brand-panel border border-brand-border text-xs font-medium flex-wrap">
                     {schoolStatus.state === 'in_period' && (
                       <>
                         <LiveDot />
@@ -511,7 +627,7 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => 
                         <span className="text-brand-text-secondary">
                           ({formatMinutes(schoolStatus.startMinutes)} – {formatMinutes(schoolStatus.endMinutes)})
                         </span>
-                        <span className="text-[11px] font-bold text-brand-primary bg-brand-primary-soft dark:bg-brand-primary/20 px-2 py-0.5 rounded-full">
+                        <span className="text-[11px] font-bold text-brand-primary bg-brand-primary-soft dark:bg-brand-primary/20 px-2.5 py-0.5 rounded-full">
                           ⏱️ {schoolStatus.remainingMinutes} min remaining
                         </span>
                       </>
@@ -544,8 +660,15 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => 
                       <>
                         <span className="text-slate-600 dark:text-slate-400 font-bold">🌙 School Day Completed</span>
                         <span className="text-brand-text-secondary">
-                          Classes ended at 2:30 PM · Viewing schedule overview
+                          Classes ended at 2:30 PM
                         </span>
+                        <button
+                          type="button"
+                          onClick={() => setSimulation(10 * 60)}
+                          className="px-2 py-0.5 rounded-md bg-brand-primary-soft text-brand-primary text-[10px] font-bold hover:bg-brand-primary hover:text-white transition-all ml-1"
+                        >
+                          ⚡ Test at 10:00 AM
+                        </button>
                       </>
                     )}
 
@@ -581,7 +704,7 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => 
                   <ChevronLeftIcon className="w-4 h-4" />
                 </button>
 
-                <div className="px-4 py-2 rounded-xl bg-brand-bg dark:bg-brand-panel border border-brand-border text-center shadow-inner">
+                <div className="px-4 py-2 rounded-xl bg-brand-bg dark:bg-brand-panel border border-brand-border text-center shadow-inner min-w-[140px]">
                   <p className="text-xs font-bold text-brand-text-primary">
                     {currentPeriodInfo
                       ? `Period ${currentPeriodInfo.no}`
@@ -589,7 +712,7 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => 
                   </p>
                   {currentPeriodInfo && (
                     <p className="text-[10px] text-brand-text-secondary">
-                      {currentPeriodInfo.start} – {currentPeriodInfo.end}
+                      {currentPeriodInfo.formattedRange || `${currentPeriodInfo.start} – ${currentPeriodInfo.end}`}
                     </p>
                   )}
                 </div>
@@ -612,7 +735,7 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => 
                   <ChevronRightIcon className="w-4 h-4" />
                 </button>
 
-                {!isLive && (
+                {(!isLive || isSimulated) && (
                   <button
                     type="button"
                     onClick={goLive}
@@ -663,7 +786,7 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => 
                 </span>
                 {schedule.map((p, i) => {
                   const isSelected = activePeriodIndex === i;
-                  const isLiveInThisPeriod = isLive && livePeriodIndex === i;
+                  const isLiveInThisPeriod = livePeriodIndex === i;
                   return (
                     <button
                       key={p.no}
@@ -672,16 +795,22 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => 
                         setPreviewPeriod(i);
                         if (previewDay === null) setPreviewDay(effectiveDay);
                       }}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      className={`relative px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                         isSelected
                           ? 'bg-brand-primary text-white shadow-card'
                           : isLiveInThisPeriod
-                            ? 'bg-emerald-100 dark:bg-emerald-950/50 border border-emerald-400 text-emerald-800 dark:text-emerald-300'
+                            ? 'bg-emerald-100 dark:bg-emerald-950/50 border border-emerald-400 text-emerald-800 dark:text-emerald-300 font-extrabold'
                             : 'bg-white dark:bg-brand-panel border border-brand-border text-brand-text-secondary hover:text-brand-text-primary'
                       }`}
-                      title={`${p.start} – ${p.end}`}
+                      title={p.formattedRange || `${p.start} – ${p.end}`}
                     >
                       <span>P{p.no}</span>
+                      {isLiveInThisPeriod && (
+                        <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -720,8 +849,30 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => 
             </div>
           </div>
 
+          {/* Evening / After-hours helper banner if viewing at night */}
+          {schoolStatus?.state === 'after_school' && !isSimulated && (
+            <div className="rounded-2xl border border-blue-200 dark:border-blue-800/60 bg-blue-50/60 dark:bg-blue-950/30 p-4 text-xs text-blue-900 dark:text-blue-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
+              <div className="space-y-0.5">
+                <p className="font-bold flex items-center gap-1.5">
+                  <span>🌙 School hours for today concluded at 2:30 PM</span>
+                  <span className="text-[11px] font-normal opacity-80">(Device time: {formattedTime})</span>
+                </p>
+                <p className="text-[11px] text-blue-800 dark:text-blue-300">
+                  To view what was or will be taught at 10:00 AM (Period 3), you can jump to 10:00 AM or select any period above.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSimulation(10 * 60)}
+                className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm shrink-0 transition-all active:scale-95"
+              >
+                ⚡ View 10:00 AM (Period 3)
+              </button>
+            </div>
+          )}
+
           {/* Sunday Notice */}
-          {isSunday && isLive && (
+          {isSunday && isLive && !isSimulated && (
             <div className="rounded-2xl border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-xs md:text-sm text-amber-800 dark:text-amber-200 flex items-center justify-between gap-3">
               <span>
                 🏫 <strong>Sunday Notice:</strong> School is closed today. The monitor is displaying Monday's timetable for planning.
@@ -765,7 +916,7 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => 
                   <div>
                     <h3 className="text-base font-bold text-brand-text-primary">Staff Room Availability</h3>
                     <p className="text-xs text-brand-text-secondary">
-                      Teacher status for {DAY_LABELS[effectiveDay]} · Period {schedule[activePeriodIndex]?.no ?? 1}
+                      Teacher status for {DAY_LABELS[effectiveDay]} · Period {schedule[activePeriodIndex]?.no ?? 1} ({schedule[activePeriodIndex]?.formattedRange || `${schedule[activePeriodIndex]?.start} – ${schedule[activePeriodIndex]?.end}`})
                     </p>
                   </div>
                 </div>
