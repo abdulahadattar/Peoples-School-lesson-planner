@@ -27,6 +27,8 @@ import {
   paperSectionNote,
   questionNumber,
   sectionInstruction,
+  cleanQuestionText,
+  cleanOptionText,
 } from './paperLayout';
 
 declare const pdfMake: any;
@@ -64,23 +66,25 @@ export const formatFileName = (title: string, sloId?: string): string => {
  * Equations are rendered to images via KaTeX and embedded as ImageRun.
  * Bold/italic text is rendered as formatted TextRun.
  */
-const parseTextForDocx = async (text: string): Promise<(TextRun | any)[]> => {
+const parseTextForDocx = async (text: string, mathScale: number = 100): Promise<(TextRun | any)[]> => {
   const runs: (TextRun | any)[] = [];
 
   // Parse equations through the browser-safe MathJax pipeline (falls back to
   // plain text automatically when no renderer is available).
-  const segments = await parseTextWithEquations(text, 14);
+  const baseFontSize = Math.round(14 * (mathScale / 100));
+  const segments = await parseTextWithEquations(text, baseFontSize);
   for (const seg of segments) {
     if (seg.type === 'equation' && seg.image) {
       // Convert data URL to base64 and create an ImageRun at its natural size
       // (measured in CSS px before the 2x rasterization).
       const base64 = dataUrlToBase64(seg.image);
+      const scaleMultiplier = mathScale / 100;
       runs.push(new ImageRun({
         type: 'png',
         data: base64,
         transformation: {
-          width: Math.min(seg.width || 120, 400),
-          height: Math.min(seg.height || 24, 60),
+          width: Math.min(Math.round((seg.width || 120) * scaleMultiplier), 480),
+          height: Math.min(Math.round((seg.height || 24) * scaleMultiplier), 140),
         },
       }));
     } else {
@@ -394,7 +398,7 @@ const renderPdfRichText = async (
   text: string,
   style: string = 'body',
   prefix?: string,
-  fontSize: number = 12
+  fontSize: number = 11
 ): Promise<any[]> => {
   const segments = await parseTextWithEquations(text, fontSize);
   const items: any[] = [];
@@ -409,22 +413,37 @@ const renderPdfRichText = async (
   };
 
   for (const seg of segments) {
-    if (seg.type === 'equation' && seg.image && seg.display) {
-      // Standalone display equation: raster image on its own centered block
+    if (seg.type === 'equation' && seg.image) {
+      const val = seg.value || '';
+      // If it's a simple single symbol/variable without fractions/matrices/powers/ops, flow inline as text
+      const isSimpleInline = !seg.display &&
+        !/\\begin|matrix|pmatrix|bmatrix|vmatrix|frac|sqrt|sum|int|prod|array|aligned/i.test(val) &&
+        !val.includes('\\\\') &&
+        val.length <= 4 &&
+        !val.includes('=');
+
+      if (isSimpleInline) {
+        runs.push(latexToUnicodeText(val));
+        continue;
+      }
+
+      // Standalone or complex math equation / matrix / formula: embed crisp rendered raster image
       flush();
       const base64 = dataUrlToBase64(seg.image);
-      const natural = (seg.width || 200) * 0.75;
+      const isBlock = seg.display || /\\begin|matrix|pmatrix|bmatrix|vmatrix|array|aligned/i.test(val) || (seg.height && seg.height > 22);
+      const naturalWidth = seg.width || 120;
+      const targetWidth = Math.max(16, Math.min(Math.round(naturalWidth * 0.9), 450));
+
       items.push({
         image: `data:image/png;base64,${base64}`,
-        width: Math.max(8, Math.min(Math.round(natural), 380)),
-        alignment: 'center' as const,
-        margin: [0, 2, 0, 2],
+        width: targetWidth,
+        alignment: isBlock ? ('center' as const) : ('left' as const),
+        margin: isBlock ? [0, 4, 0, 4] : [0, 2, 0, 2],
         style,
       });
       continue;
     }
     if (seg.type === 'equation') {
-      // Inline math -> unicode text at the exact size of surrounding text
       runs.push(latexToUnicodeText(seg.value || ''));
       continue;
     }
@@ -435,7 +454,7 @@ const renderPdfRichText = async (
   return items.length > 0 ? items : [{ text: runs.length > 0 ? runs : [text], style }];
 };
 
-const createPaperPdfContent = async (paper: GeneratedPaper, teacherInfo?: TeacherInfo): Promise<any[]> => {
+const createPaperPdfContent = async (paper: GeneratedPaper, teacherInfo?: TeacherInfo, mathScale: number = 85): Promise<any[]> => {
     const schoolName = teacherInfo?.schoolName || "Peoples Higher Secondary School Jamshoro";
     const teacherName = teacherInfo?.name || "";
 
@@ -445,6 +464,8 @@ const createPaperPdfContent = async (paper: GeneratedPaper, teacherInfo?: Teache
         { text: `Subject: ${paper.subject}    |    Class: ${paper.gradeLevel}    |    Total Marks: ${paper.totalMarks}    |    Duration: ${paper.durationMinutes} minutes`, style: 'paperHeader', alignment: 'center', fontSize: 10, margin: [0, 0, 0, 3] },
         teacherName ? { text: `Teacher: ${teacherName}`, style: 'paperHeader', alignment: 'center', fontSize: 10, margin: [0, 0, 0, 2] } : null,
     ].filter(Boolean);
+
+    const pdfMathFontSize = Math.round(13 * (mathScale / 100));
 
     const sectionsContent: any[] = [];
     for (let sIdx = 0; sIdx < paper.sections.length; sIdx++) {
@@ -462,9 +483,10 @@ const createPaperPdfContent = async (paper: GeneratedPaper, teacherInfo?: Teache
         for (let qIdx = 0; qIdx < section.questions.length; qIdx++) {
             const q = section.questions[qIdx];
             // Marks are NOT repeated per question — only the section note above says them
-            const qText = `${questionNumber(qIdx)}. ${q.question}`;
+            const cleanedQ = cleanQuestionText(q.question);
+            const qText = `${questionNumber(qIdx)}. ${cleanedQ}`;
             if (hasOptions(q)) {
-                const qItems = await renderPdfRichText(qText, 'questionText');
+                const qItems = await renderPdfRichText(qText, 'questionText', undefined, pdfMathFontSize);
                 sectionsContent.push(...qItems.map((item: any) => ({ ...item, margin: item.margin || [0, 4, 0, 2] })));
                 const rows = layoutOptions(q.options || []);
                 for (const row of rows) {
@@ -477,7 +499,8 @@ const createPaperPdfContent = async (paper: GeneratedPaper, teacherInfo?: Teache
                         const optLines = await renderPdfRichText(
                             o.text || '',
                             'optionText',
-                            `${optionLetter(o.index)}) `
+                            `${optionLetter(o.index)}) `,
+                            pdfMathFontSize
                         );
                         const optionBlock: any = {
                             columns: [
@@ -495,7 +518,7 @@ const createPaperPdfContent = async (paper: GeneratedPaper, teacherInfo?: Teache
                     });
                 }
             } else {
-                const qItems = await renderPdfRichText(qText, 'questionText');
+                const qItems = await renderPdfRichText(qText, 'questionText', undefined, pdfMathFontSize);
                 sectionsContent.push(...qItems.map((item: any) => ({ ...item, margin: item.margin || [0, 4, 0, 6] })));
             }
         }
@@ -514,7 +537,7 @@ const createPaperPdfContent = async (paper: GeneratedPaper, teacherInfo?: Teache
 /**
  * Export an exam paper as a DOCX file and trigger a browser download.
  */
-export const exportPaperAsDocx = async (paper: GeneratedPaper, teacherInfo?: TeacherInfo): Promise<void> => {
+export const exportPaperAsDocx = async (paper: GeneratedPaper, teacherInfo?: TeacherInfo, mathScale: number = 85): Promise<void> => {
     const fileName = `${formatFileName(paper.title)}.docx`;
     const schoolName = teacherInfo?.schoolName || "Peoples Higher Secondary School Jamshoro";
 
@@ -574,7 +597,7 @@ export const exportPaperAsDocx = async (paper: GeneratedPaper, teacherInfo?: Tea
     const optionCell = async (o: { index: number; text: string }): Promise<TableCell> => new TableCell({
         children: [
             new Paragraph({
-                children: await parseTextForDocx(optionLine(o.index, o.text)),
+                children: await parseTextForDocx(optionLine(o.index, o.text), mathScale),
                 spacing: { after: 30 },
                 indent: { left: 80 },
             }),
@@ -613,7 +636,8 @@ export const exportPaperAsDocx = async (paper: GeneratedPaper, teacherInfo?: Tea
         for (let qIdx = 0; qIdx < section.questions.length; qIdx++) {
             const q = section.questions[qIdx];
             // Deterministic Q1/Q2 numbering (per section) — never the AI's id or marks
-            const qRuns = await parseTextForDocx(`${questionNumber(qIdx)}. ${q.question}`);
+            const cleanedQ = cleanQuestionText(q.question);
+            const qRuns = await parseTextForDocx(`${questionNumber(qIdx)}. ${cleanedQ}`, mathScale);
             children.push(new Paragraph({
                 children: qRuns,
                 spacing: { after: hasOptions(q) ? 60 : 120 },
@@ -638,7 +662,7 @@ export const exportPaperAsDocx = async (paper: GeneratedPaper, teacherInfo?: Tea
                                 children: [await new TableCell({
                                     children: [
                                         new Paragraph({
-                                            children: await parseTextForDocx(optionLine(row.options[0].index, row.options[0].text)),
+                                            children: await parseTextForDocx(optionLine(row.options[0].index, row.options[0].text), mathScale),
                                             spacing: { after: 30 },
                                             indent: { left: 80 },
                                         }),
@@ -680,9 +704,9 @@ export const exportPaperAsDocx = async (paper: GeneratedPaper, teacherInfo?: Tea
 /**
  * Export an exam paper as a PDF file and trigger a browser download.
  */
-export const exportPaperAsPdf = async (paper: GeneratedPaper, teacherInfo?: TeacherInfo): Promise<void> => {
+export const exportPaperAsPdf = async (paper: GeneratedPaper, teacherInfo?: TeacherInfo, mathScale: number = 85): Promise<void> => {
     const fileName = `${formatFileName(paper.title)}.pdf`;
-    const content = await createPaperPdfContent(paper, teacherInfo);
+    const content = await createPaperPdfContent(paper, teacherInfo, mathScale);
     const docDefinition: any = {
         pageSize: { width: PDF_A4_WIDTH, height: PDF_A4_HEIGHT },
         pageMargins: PDF_PAGE_MARGINS,

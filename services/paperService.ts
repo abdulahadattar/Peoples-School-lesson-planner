@@ -1,6 +1,7 @@
 import { Part, Type } from "@google/genai";
 import { GeneratedPaper, PaperSection, PaperQuestion, PaperSectionBlueprint, PaperDifficulty } from "../types";
 import { sanitizeStringFields } from './latexSanitizer';
+import { sanitizeSingleQuestion } from './paperLayout';
 import { curriculumData } from "../curriculum";
 import { requestJsonWithRetry, downloadPdfAsPart, LogCallback } from "./geminiService";
 import { cleanAndParseJson } from './jsonHelpers';
@@ -54,7 +55,10 @@ export async function generateExamPaper(
   longAttemptCount: number,
   durationMinutes: number,
   difficulty: PaperDifficulty = 'medium',
-  logCallback?: LogCallback
+  logCallback?: LogCallback,
+  shortMarksPerQuestion: number = 2,
+  longMarksPerQuestion: number = 4,
+  mcqMarksPerQuestion: number = 1
 ): Promise<GeneratedPaper> {
   const log = (msg: string) => {
     console.log(`[paperService] ${msg}`);
@@ -69,14 +73,29 @@ export async function generateExamPaper(
   // and long questions — marks are earned by what is attempted.
   const attemptShort = Math.min(shortAttemptCount, shortQuestionCount);
   const attemptLong = Math.min(longAttemptCount, longQuestionCount);
-  const mcqMarks = mcqCount * 1;
-  const shortMarks = attemptShort * 2;
-  const longMarks = attemptLong * 4;
+  const mcqMarks = mcqCount * mcqMarksPerQuestion;
+  const shortMarks = attemptShort * shortMarksPerQuestion;
+  const longMarks = attemptLong * longMarksPerQuestion;
   const totalQuestionMarks = mcqMarks + shortMarks + longMarks;
   const validatedTotalMarks = totalQuestionMarks > 0 ? totalQuestionMarks : totalMarks;
 
   if (totalMarks !== validatedTotalMarks) {
     log(`Note: Synchronized paper marks to ${validatedTotalMarks} to match question section breakdown.`);
+  }
+
+  const isMcqOnly = shortQuestionCount === 0 && longQuestionCount === 0;
+
+  let sectionRules = '';
+  if (isMcqOnly) {
+    sectionRules = `
+    - Section A (MCQs Only): Generate exactly ${mcqCount} high-quality Multiple Choice Questions covering all concepts/SLOs of the whole chapter. Each question carries ${mcqMarksPerQuestion} mark. Total = ${mcqMarks} marks.
+    - Do NOT generate Section B or Section C. Output only Section A in the sections array.`;
+  } else {
+    sectionRules = `
+    - Section A (MCQs): ${mcqCount} questions x ${mcqMarksPerQuestion} mark each = ${mcqMarks} marks (all are attempted).
+    ${shortQuestionCount > 0 ? `- Section B (Short Questions): generate exactly ${shortQuestionCount} short questions x ${shortMarksPerQuestion} marks each; students attempt any ${attemptShort} of them = ${shortMarks} marks.` : ''}
+    ${longQuestionCount > 0 ? `- Section C (Long Questions): generate exactly ${longQuestionCount} long questions x ${longMarksPerQuestion} marks each; students attempt any ${attemptLong} of them = ${longMarks} marks.` : ''}
+    ${shortQuestionCount - attemptShort > 0 || longQuestionCount - attemptLong > 0 ? `- The optional (non-attempted) questions (${shortQuestionCount - attemptShort > 0 ? `${shortQuestionCount - attemptShort} short optional` : ''}${shortQuestionCount - attemptShort > 0 && longQuestionCount - attemptLong > 0 ? ', ' : ''}${longQuestionCount - attemptLong > 0 ? `${longQuestionCount - attemptLong} long optional` : ''}) still appear on the paper for student choice.` : ''}`;
   }
 
   const systemInstruction = `You are an expert exam paper generator for ${subjectName}. Your task is to generate a well-structured exam paper as a JSON object. The paper should be aligned with the Sindh Textbook Board curriculum and the Student Learning Outcomes (SLOs) provided.
@@ -85,18 +104,16 @@ export async function generateExamPaper(
 1.  **SLO-Aligned:** All questions must be directly based on the provided SLOs and the chapter content.
 2.  **Bloom's Taxonomy:** Include questions at different cognitive levels (Knowledge, Understanding, Application, Analysis).
 3.  **Clear Instructions:** Provide clear instructions for each section.
-4.  **Mark Distribution:** Ensure the total marks match exactly ${validatedTotalMarks} marks.
-    - Section A (MCQs): ${mcqCount} questions x 1 mark each = ${mcqMarks} marks (all are attempted)
-    - Section B (Short Questions): generate exactly ${shortQuestionCount} short questions x 2 marks each; students attempt any ${attemptShort} of them = ${shortMarks} marks
-    - Section C (Long Questions): generate exactly ${longQuestionCount} long questions x 4 marks each; students attempt any ${attemptLong} of them = ${longMarks} marks
-    - The optional (non-attempted) questions ${shortQuestionCount - attemptShort > 0 ? `(${shortQuestionCount - attemptShort} short and ` : ''}${longQuestionCount - attemptLong > 0 ? `${longQuestionCount - attemptLong} long` : ''}${shortQuestionCount - attemptShort > 0 || longQuestionCount - attemptLong > 0 ? ')' : ''} still appear on the paper for choice.
-5.  **No per-question marks:** Never place mark values inside individual questions. Marks appear ONLY in each section's instruction line, e.g. "Answer any ${attemptShort} of the ${shortQuestionCount} questions. Each question carries 2 marks." When a section requires every question, write "Answer all questions. Each question carries N marks."
-6.  **MANDATORY JSON OUTPUT:** The output must ONLY be a valid JSON object matching the provided schema. Do not add any extra text or markdown.
-6.  **EQUATIONS — ONLY for real math, NEVER for text:** Wrap mathematical equations, formulas and expressions in LaTeX delimiters, and NOTHING else:
+4.  **Mark Distribution:** Ensure the total marks match exactly ${validatedTotalMarks} marks.${sectionRules}
+5.  **No per-question marks in question text:** Never place mark values or labels inside individual questions. Marks appear ONLY in each section's instruction line.
+6.  **Clean Question Text:** NEVER write question numbers or prefixes (like "1.", "Q1:", "Question 1:", "(a)") in the 'question' field. The system automatically numbers every question. Write ONLY the question content.
+7.  **Clean MCQ Options:** For MCQs, the 'options' array MUST contain exactly 4 clean choice texts WITHOUT prefixes (do NOT write "A)", "(A)", "a.", "○ A)"). The renderer automatically prefixes choices with circles and letters. Never put options inside the 'question' text.
+8.  **MANDATORY JSON OUTPUT:** The output must ONLY be a valid JSON object matching the provided schema. Do not add any extra text or markdown.
+9.  **EQUATIONS — ONLY for real math, NEVER for text:** Wrap mathematical equations, formulas and expressions in LaTeX delimiters, and NOTHING else:
     - Inline equations use single dollar signs: $E = mc^2$, $PV = nRT$, $F = ma$
-    - Display equations use double dollar signs: $$\frac{3}{2}kT$$
-    - Includes fractions (3/2) → $\frac{3}{2}$, powers v^2 → $v^2$, Greek letters rho → $\rho$, units like $g/cm^3$, $kg/m^3$, $10^{23}$
-    - Example option: "$P = \frac{1}{3} \rho v^2$"
+    - Display equations use double dollar signs: $$\\frac{3}{2}kT$$
+    - Includes fractions (3/2) → $\\frac{3}{2}$, powers v^2 → $v^2$, Greek letters rho → $\\rho$, units like $g/cm^3$, $kg/m^3$, $10^{23}$
+    - Example option: "$P = \\frac{1}{3} \\rho v^2$"
     - FORBIDDEN — ordinary words, names and emphasis must NEVER go inside dollar signs. Wrong: "define $biology$", "$carbon$ cycle", "$Newton's$ law", "the $first$ law". Keep those as plain text.`;
 
   const paperSchema = {
@@ -207,14 +224,46 @@ Ensure questions cover all major topics from the chapter and align with the SLOs
     parse: (raw) => {
       const parsed = cleanAndParseJson(raw);
       const cleaned = sanitizeStringFields(parsed) as GeneratedPaper;
+      // Sanitize every question in every section to eliminate hallucinated numbering & prefixes
+      if (Array.isArray(cleaned.sections)) {
+        cleaned.sections.forEach(sec => {
+          if (Array.isArray(sec.questions)) {
+            sec.questions = sec.questions.map(q => sanitizeSingleQuestion(q));
+          }
+        });
+      }
       // Attach the marking blueprint (single source of truth for the printed
       // section marks line) — index-aligned with the three sections.
-      if (Array.isArray(cleaned.sections) && cleaned.sections.length === 3) {
-        const blueprints: PaperSectionBlueprint[] = [
-          { questionCount: mcqCount, attemptCount: mcqCount, perQuestionMarks: 1 },
-          { questionCount: shortQuestionCount, attemptCount: attemptShort, perQuestionMarks: 2 },
-          { questionCount: longQuestionCount, attemptCount: attemptLong, perQuestionMarks: 4 },
-        ];
+      if (Array.isArray(cleaned.sections)) {
+        const blueprints: PaperSectionBlueprint[] = [];
+        cleaned.sections.forEach(sec => {
+          const title = sec.title.toLowerCase();
+          if (title.includes('multiple') || title.includes('mcq') || title.includes('section a')) {
+            blueprints.push({
+              questionCount: sec.questions?.length || mcqCount,
+              attemptCount: sec.questions?.length || mcqCount,
+              perQuestionMarks: mcqMarksPerQuestion,
+            });
+          } else if (title.includes('short') || title.includes('section b')) {
+            blueprints.push({
+              questionCount: sec.questions?.length || shortQuestionCount,
+              attemptCount: Math.min(attemptShort, sec.questions?.length || shortQuestionCount),
+              perQuestionMarks: shortMarksPerQuestion,
+            });
+          } else if (title.includes('long') || title.includes('detailed') || title.includes('section c')) {
+            blueprints.push({
+              questionCount: sec.questions?.length || longQuestionCount,
+              attemptCount: Math.min(attemptLong, sec.questions?.length || longQuestionCount),
+              perQuestionMarks: longMarksPerQuestion,
+            });
+          } else {
+            blueprints.push({
+              questionCount: sec.questions?.length || 1,
+              attemptCount: sec.questions?.length || 1,
+              perQuestionMarks: sec.questions?.[0]?.marks || 1,
+            });
+          }
+        });
         cleaned.sectionBlueprints = blueprints;
       }
       return cleaned;
@@ -312,6 +361,13 @@ Please return the complete revised exam paper as a JSON object.`;
     parse: (raw) => {
       const parsed = cleanAndParseJson(raw);
       const cleaned = sanitizeStringFields(parsed) as GeneratedPaper;
+      if (Array.isArray(cleaned.sections)) {
+        cleaned.sections.forEach(sec => {
+          if (Array.isArray(sec.questions)) {
+            sec.questions = sec.questions.map(q => sanitizeSingleQuestion(q));
+          }
+        });
+      }
       log(`Revised paper received: ${cleaned.sections?.length || 0} sections`);
       return cleaned;
     },
@@ -380,7 +436,7 @@ Provide only the single replacement question JSON object.`;
     log,
     parse: (raw) => {
       const parsed = cleanAndParseJson(raw);
-      const cleaned = sanitizeStringFields(parsed) as PaperQuestion;
+      const cleaned = sanitizeSingleQuestion(sanitizeStringFields(parsed) as PaperQuestion);
       if (!cleaned.id) {
         cleaned.id = targetQuestion.id || `q_${Date.now()}`;
       }

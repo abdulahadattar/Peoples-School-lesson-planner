@@ -105,12 +105,16 @@ async function renderLatexToSvg(
     if (rect.width > MAX_RENDER_WIDTH || rect.height > MAX_RENDER_HEIGHT) return null;
     const width = Math.round(rect.width);
     const height = Math.round(rect.height);
-    // Force px dimensions (attribute + style) so the SVG rasterizes at a
-    // known intrinsic size when loaded through an <img>.
     clone.setAttribute('width', `${width}`);
     clone.setAttribute('height', `${height}`);
+    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    clone.setAttribute('color', '#000000');
+    clone.style.color = '#000000';
     clone.style.width = `${width}px`;
     clone.style.height = `${height}px`;
+    if (!clone.getAttribute('viewBox') && width > 0 && height > 0) {
+      clone.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    }
     const svg = new XMLSerializer().serializeToString(clone);
     return { svg, width, height };
   } catch {

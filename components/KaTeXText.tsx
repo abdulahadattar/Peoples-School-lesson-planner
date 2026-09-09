@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { isFormulaText, MATH_REGEX } from '../services/mathDetection';
 
 declare global {
@@ -13,21 +13,37 @@ interface KaTeXTextProps {
   text: string;
   className?: string;
   as?: 'p' | 'span' | 'div' | 'li';
+  mathScale?: number;
 }
-
-
 
 /**
  * Renders text with inline KaTeX equation support.
- *
- * Splits the text into prose and $...$/$$...$$ math segments and renders each
- * math segment with KaTeX directly (no dependence on the auto-render script).
- * If the KaTeX CDN has not finished loading when a segment renders, it retries
- * briefly; if KaTeX is permanently unavailable the math degrades to readable
- * plain text (delimiters removed) rather than showing raw LaTeX.
+ * Supports dynamic manual font scaling for equations.
  */
-const KaTeXText: React.FC<KaTeXTextProps> = ({ text, className = '', as: Tag = 'span' }) => {
+const KaTeXText: React.FC<KaTeXTextProps> = ({ text, className = '', as: Tag = 'span', mathScale }) => {
   const ref = useRef<HTMLElement>(null);
+  const [scale, setScale] = useState<number>(() => {
+    if (mathScale !== undefined) return mathScale;
+    const saved = localStorage.getItem('phssj_math_scale');
+    return saved ? Number(saved) || 85 : 85;
+  });
+
+  useEffect(() => {
+    if (mathScale !== undefined) {
+      setScale(mathScale);
+    }
+  }, [mathScale]);
+
+  useEffect(() => {
+    const handleScaleChange = (e: any) => {
+      const newScale = e.detail?.scale || Number(localStorage.getItem('phssj_math_scale')) || 85;
+      if (mathScale === undefined) {
+        setScale(newScale);
+      }
+    };
+    window.addEventListener('phssj-math-scale-changed', handleScaleChange);
+    return () => window.removeEventListener('phssj-math-scale-changed', handleScaleChange);
+  }, [mathScale]);
 
   useEffect(() => {
     const el = ref.current;
@@ -49,8 +65,7 @@ const KaTeXText: React.FC<KaTeXTextProps> = ({ text, className = '', as: Tag = '
         const display = token.startsWith('$$');
         const latex = display ? token.slice(2, -2) : token.slice(1, -1);
 
-        // Prose wrongly wrapped in delimiters ("$Bios$") must stay text —
-        // same gate the DOCX/PDF exporters apply, so surfaces never disagree.
+        // Prose wrongly wrapped in delimiters ("$Bios$") must stay text
         if (!isFormulaText(latex) && /[A-Za-z]/.test(latex)) {
           frag.appendChild(document.createTextNode(latex));
           last = m.index + token.length;
@@ -64,11 +79,18 @@ const KaTeXText: React.FC<KaTeXTextProps> = ({ text, className = '', as: Tag = '
             strict: 'ignore',
           });
           const span = document.createElement('span');
+          span.className = 'inline-katex-container';
           span.innerHTML = html;
+          const scaleMultiplier = (scale || 100) / 100;
+          span.style.fontSize = `${scaleMultiplier * 1.05}em`;
+          span.style.verticalAlign = 'middle';
           if (display) {
             span.style.display = 'block';
             span.style.textAlign = 'center';
-            span.style.margin = '4px 0';
+            span.style.margin = '6px 0';
+          } else {
+            span.style.display = 'inline-block';
+            span.style.padding = '0 2px';
           }
           frag.appendChild(span);
         } else {
@@ -94,7 +116,7 @@ const KaTeXText: React.FC<KaTeXTextProps> = ({ text, className = '', as: Tag = '
     return () => {
       if (timer !== undefined) window.clearTimeout(timer);
     };
-  }, [text]);
+  }, [text, scale]);
 
   return <Tag ref={ref as any} className={className} />;
 };

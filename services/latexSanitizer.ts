@@ -218,12 +218,39 @@ function convertBlock(c: Cursor): string {
     const ch = s[c.i];
     if (ch === '}') { c.i += 1; break; }
     if (ch === '{') { c.i += 1; out += convertBlock(c); continue; }
+    if (ch === '&') { c.i += 1; out += '  '; continue; }
     if (ch === '\\') {
+      if (s[c.i + 1] === '\\') {
+        c.i += 2;
+        out += ' ; ';
+        continue;
+      }
       c.i += 1;
       const nameStart = c.i;
       while (c.i < s.length && /[A-Za-z]/.test(s[c.i])) c.i += 1;
       const name = s.slice(nameStart, c.i);
       if (!name) continue;
+      if (name === 'begin' || name === 'end') {
+        while (c.i < s.length && s[c.i] === ' ') c.i += 1;
+        let env = '';
+        if (s[c.i] === '{') { c.i += 1; env = convertBlock(c); } else env = readToken(c);
+        if (name === 'begin') {
+          if (env === 'pmatrix') out += '( ';
+          else if (env === 'vmatrix') out += '| ';
+          else if (env === 'Vmatrix') out += '|| ';
+          else out += '[ ';
+        } else {
+          if (env === 'pmatrix') out += ' )';
+          else if (env === 'vmatrix') out += ' |';
+          else if (env === 'Vmatrix') out += ' ||';
+          else out += ' ]';
+        }
+        continue;
+      }
+      if (name === 'det') {
+        out += 'det ';
+        continue;
+      }
       if (name === 'frac' || name === 'dfrac' || name === 'tfrac') {
         while (c.i < s.length && s[c.i] === ' ') c.i += 1;
         let num = '';
@@ -248,7 +275,7 @@ function convertBlock(c: Cursor): string {
         else out += `mean(${readToken(c)})`;
         continue;
       }
-      if (name === 'text' || name === 'mathrm' || name === 'textbf' || name === 'textit') {
+      if (name === 'text' || name === 'mathrm' || name === 'textbf' || name === 'textit' || name === 'mathbf' || name === 'mathit') {
         while (c.i < s.length && s[c.i] === ' ') c.i += 1;
         if (s[c.i] === '{') { c.i += 1; out += convertBlock(c); }
         continue;
@@ -261,6 +288,7 @@ function convertBlock(c: Cursor): string {
       }
       if (name === 'sum') { out += 'Σ'; continue; }
       if (name === 'int') { out += '∫'; continue; }
+      if (name === 'quad' || name === 'qquad') { out += '  '; continue; }
       if (NAMED_FUNCS.has(name)) { out += `${name} `; continue; }
       if (GREEK[name]) { out += GREEK[name]; continue; }
       if (SIMPLE_CMDS[name]) { out += SIMPLE_CMDS[name]; continue; }

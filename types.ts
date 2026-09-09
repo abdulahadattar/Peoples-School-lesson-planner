@@ -68,10 +68,14 @@ export interface PaperConfig {
   shortQuestionCount: number;
   /** Number of short questions students must attempt (<= shortQuestionCount). */
   shortAttemptCount: number;
+  /** Marks per short question (default 2 for quiz/class test, 4 for mid/board). */
+  shortMarksPerQuestion?: number;
   /** Number of long questions listed on the paper (students attempt `longAttemptCount`). */
   longQuestionCount: number;
   /** Number of long questions students must attempt (<= longQuestionCount). */
   longAttemptCount: number;
+  /** Marks per long question (default 4 for class test, 8 or 10 for mid/board). */
+  longMarksPerQuestion?: number;
   durationMinutes: number;
 }
 

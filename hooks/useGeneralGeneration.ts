@@ -356,7 +356,10 @@ export const useGeneralGeneration = () => {
         config.longAttemptCount,
         config.durationMinutes,
         config.difficulty || 'medium',
-        addLog
+        addLog,
+        config.shortMarksPerQuestion || 2,
+        config.longMarksPerQuestion || 4,
+        1
       );
 
       setGenerationProgress({ current: 2, total: 3 });

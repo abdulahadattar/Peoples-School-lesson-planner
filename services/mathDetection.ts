@@ -24,11 +24,15 @@ export const LATEX_COMMANDS =
   'frac|dfrac|tfrac|cfrac|binom|overline|underline|sqrt|times|div|cdot|left|right|big|Big|bigg|Bigg|' +
   'sum|int|prod|oint|approx|sim|cong|rightarrow|leftarrow|Leftarrow|Rightarrow|leftrightarrow|Leftrightarrow|' +
   'neq|leq|geq|pm|mp|partial|infty|vec|bar|hat|dot|ddot|ldots|cdots|vdots|ddots|' +
-  'mathrm|text|textbf|textit|log|ln|sin|cos|tan|cot|sec|csc|exp|lim|max|min|mod|' +
+  'mathrm|mathbf|boldsymbol|mathit|mathbb|mathcal|text|textbf|textit|log|ln|sin|cos|tan|cot|sec|csc|exp|lim|max|min|mod|det|' +
+  'begin|end|matrix|pmatrix|bmatrix|vmatrix|Vmatrix|cases|aligned|gathered|array|' +
   'displaystyle|textstyle|qquad|quad|textsuperscript';
 
 /** Math symbols that make a fragment "real math". */
 const MATHY_SYMBOLS = /[√∑∫∏πρσαβγδθλμτωΩΔ±×÷≥≤≠≈∞→←]/;
+
+/** Units and scientific symbols that indicate real formula context */
+const SCIENTIFIC_UNITS = /\b(?:\d+(?:\.\d+)?\s*)?(?:m\/s|m\/s\^2|km\/h|g\/cm\^3|kg\/m\^3|N\/m\^2|J\/K|mol|cal|eV|kPa|MPa|GPa|Hz|kHz|MHz|GHz|mV|kV|mA|µA|pF|nF|µF|m\^2|m\^3|cm\^2|cm\^3|mm\^2|mm\^3)\b/i;
 
 /**
  * Decide whether a $...$-delimited fragment is genuine math or prose that a
@@ -40,16 +44,21 @@ export function isFormulaText(fragment: string): boolean {
   const t = fragment.trim();
   if (t.length === 0) return false;
   // Whole prose sentences are never sent to a math renderer
-  if (t.length > 160) return false;
+  if (t.length > 250) return false;
   // A real LaTeX command (backslash + letters). A bare "\ " escape-space or a
   // trailing backslash is NOT math — it is usually an italic name or emphasis.
   if (/\\(?:[A-Za-z]{2,}|[{}\^_])/.test(t)) return true; // LaTeX command present
   if (/[{}\^_]/.test(t)) return true;     // sub/superscript or groups
   if (MATHY_SYMBOLS.test(t)) return true; // math operators/greek
-  // A fragment with operators but no real words ("F = ma", "PV = nRT",
-  // "x + y", "3/4") is formula-like. English words (≥3 lower letters)
-  // veto it, so a sentence like "Water = 2 hydrogen + 1 oxygen" stays prose.
-  if (/[=+\-*/]/.test(t) && !/[a-z]{3,}/.test(t)) return true;
+  if (SCIENTIFIC_UNITS.test(t)) return true; // scientific units
+  // A fragment with operators or numbers ("F = ma", "PV = nRT", "x + y", "3/4", "10 m/s")
+  if (/[=+\-*/<>]/.test(t)) {
+    // If it doesn't contain multiple prose English words, it's a formula
+    const words = t.match(/\b[a-zA-Z]{3,}\b/g) || [];
+    if (words.length <= 2) return true;
+  }
+  // Pure numbers, standalone single variable, or power
+  if (/^[\d.]+\s*(?:[A-Za-z]+(?:\^[\d.+\-]+)?)?$/.test(t)) return true;
   return false;
 }
 

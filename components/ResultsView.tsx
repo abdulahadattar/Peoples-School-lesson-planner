@@ -41,6 +41,17 @@ const ResultsView: React.FC<ResultsViewProps> = ({
   const [selectedPlanIndex, setSelectedPlanIndex] = useState(0);
   const [revisionPrompt, setRevisionPrompt] = useState('');
   const [showRevision, setShowRevision] = useState(false);
+  const [mathScale, setMathScale] = useState<number>(() => {
+    const saved = localStorage.getItem('phssj_math_scale');
+    return saved ? Number(saved) || 85 : 85;
+  });
+
+  const handleMathScaleChange = (newScale: number) => {
+    const clamped = Math.max(70, Math.min(200, newScale));
+    setMathScale(clamped);
+    localStorage.setItem('phssj_math_scale', String(clamped));
+    window.dispatchEvent(new CustomEvent('phssj-math-scale-changed', { detail: { scale: clamped } }));
+  };
 
   const handleUpdateQuestion = (sIdx: number, qIdx: number, updatedQuestion: PaperQuestion) => {
     if (!papers || papers.length === 0) return;
@@ -97,14 +108,14 @@ const ResultsView: React.FC<ResultsViewProps> = ({
       const teacherInfo = { name: teacherName, schoolName };
       const { exportPaperAsDocx, exportPaperAsPdf } = await import('../services/exportService');
       if (exportFormat === 'pdf') {
-        await exportPaperAsPdf(paper, teacherInfo);
+        await exportPaperAsPdf(paper, teacherInfo, mathScale);
       } else if (exportFormat === 'docx') {
-        await exportPaperAsDocx(paper, teacherInfo);
+        await exportPaperAsDocx(paper, teacherInfo, mathScale);
       } else {
         // Both
-        await exportPaperAsDocx(paper, teacherInfo);
+        await exportPaperAsDocx(paper, teacherInfo, mathScale);
         await new Promise(resolve => setTimeout(resolve, 250));
-        await exportPaperAsPdf(paper, teacherInfo);
+        await exportPaperAsPdf(paper, teacherInfo, mathScale);
       }
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Failed to export. Please try again.');
@@ -231,7 +242,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
     const paper = papers[0];
     return (
       <div className="h-full flex flex-col bg-brand-bg">
-        <div className="flex-shrink-0 px-4 py-3 bg-brand-surface/80 backdrop-blur-xl border-b border-brand-border flex items-center justify-between sticky top-0 z-10">
+        <div className="flex-shrink-0 px-4 py-3 bg-brand-surface/80 backdrop-blur-xl border-b border-brand-border flex items-center justify-between gap-3 sticky top-0 z-10">
           <button
             onClick={onBack}
             className="flex items-center gap-2 text-brand-text-secondary hover:text-brand-primary transition-all duration-200 text-sm font-semibold active:scale-95"
@@ -239,13 +250,51 @@ const ResultsView: React.FC<ResultsViewProps> = ({
             <ArrowLeftIcon className="w-4 h-4" />
             Back
           </button>
-          <button
-            onClick={() => handleExportPaper(paper)}
-            className="flex items-center gap-1.5 px-3 py-1.5 brand-gradient text-white rounded-lg text-xs font-semibold hover:shadow-glass transition-all duration-200 active:scale-95"
-          >
-            <DownloadIcon className="w-3.5 h-3.5" />
-            Export {exportFormat === 'both' ? 'DOCX + PDF' : exportFormat.toUpperCase()}
-          </button>
+
+          <div className="flex items-center gap-3">
+            {/* Manual LaTeX Equation Size Controller */}
+            <div className="flex items-center gap-1.5 bg-brand-bg/80 border border-brand-border/80 rounded-xl px-2.5 py-1 text-xs shadow-sm">
+              <span className="text-brand-text-tertiary font-medium hidden sm:inline">LaTeX Size:</span>
+              <button
+                onClick={() => handleMathScaleChange(mathScale - 10)}
+                title="Decrease LaTeX equation font size"
+                className="w-6 h-6 rounded-lg flex items-center justify-center font-bold text-brand-text-secondary hover:text-brand-primary hover:bg-brand-surface transition-colors active:scale-90"
+              >
+                -
+              </button>
+              <span className="font-mono font-bold text-brand-primary min-w-[44px] text-center">{mathScale}%</span>
+              <button
+                onClick={() => handleMathScaleChange(mathScale + 10)}
+                title="Increase LaTeX equation font size"
+                className="w-6 h-6 rounded-lg flex items-center justify-center font-bold text-brand-text-secondary hover:text-brand-primary hover:bg-brand-surface transition-colors active:scale-90"
+              >
+                +
+              </button>
+              <div className="hidden md:flex items-center gap-1 ml-1.5 border-l border-brand-border/60 pl-2">
+                {[85, 100, 115, 130].map(s => (
+                  <button
+                    key={s}
+                    onClick={() => handleMathScaleChange(s)}
+                    className={`px-2 py-0.5 rounded-md text-[11px] font-semibold transition-all ${
+                      mathScale === s
+                        ? 'brand-gradient text-white shadow-xs'
+                        : 'text-brand-text-tertiary hover:text-brand-text-primary hover:bg-brand-surface'
+                    }`}
+                  >
+                    {s === 85 ? 'Compact (Default)' : s === 100 ? 'Standard' : s === 115 ? 'Large' : 'XL'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={() => handleExportPaper(paper)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 brand-gradient text-white rounded-xl text-xs font-semibold hover:shadow-glass transition-all duration-200 active:scale-95"
+            >
+              <DownloadIcon className="w-3.5 h-3.5" />
+              Export {exportFormat === 'both' ? 'DOCX + PDF' : exportFormat.toUpperCase()}
+            </button>
+          </div>
         </div>
 
         {/* Scrollable Questions Area - Clean natural padding without floating obstructions */}

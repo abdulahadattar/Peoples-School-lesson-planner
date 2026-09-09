@@ -171,6 +171,7 @@ const App: React.FC = () => {
 
     if (plans && plans.length > 0) {
       setView('results');
+      setShowStatusPanel(false);
     }
   };
 
@@ -178,6 +179,7 @@ const App: React.FC = () => {
     const paper = await generatePaper(config);
     if (paper) {
       setView('results');
+      setShowStatusPanel(false);
     }
   };
 
@@ -359,7 +361,12 @@ const App: React.FC = () => {
             logMessages={logMessages}
             statusMessage={statusMessage}
             generationProgress={generationProgress || undefined}
-            onClose={() => { clearResults(); }}
+            onClose={() => {
+              setShowStatusPanel(false);
+              if (generatedPlans.length > 0 || generatedPapers.length > 0) {
+                setView('results');
+              }
+            }}
             onStop={stopGeneration}
             onViewResults={() => { setShowStatusPanel(false); setView('results'); }}
             error={error}

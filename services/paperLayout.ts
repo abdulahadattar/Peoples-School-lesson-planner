@@ -27,8 +27,100 @@ export const optionLetter = (index: number): string => String.fromCharCode(97 + 
 /** Rendered text label for an option: "○ a) ". */
 export const optionPrefix = (index: number): string => `${OPTION_CIRCLE} ${optionLetter(index)}) `;
 
-/** Full display line for an option (prefix + text). */
-export const optionLine = (index: number, text: string): string => `${optionPrefix(index)}${text}`;
+/**
+ * Strips AI-generated question numbering, prefixes, and trailing mark labels.
+ * E.g.:
+ *  - "1. What is pressure?" -> "What is pressure?"
+ *  - "Q1: State Newton's first law." -> "State Newton's first law."
+ *  - "Question 2. Define acceleration (2 Marks)" -> "Define acceleration"
+ *  - "(i) Calculate velocity" -> "Calculate velocity"
+ */
+export function cleanQuestionText(text: string): string {
+  if (!text) return '';
+  let cleaned = text.trim();
+
+  // Strip Markdown bold wrappers around question numbering like "**Question 1:**", "**1.**", "**Q1.**"
+  cleaned = cleaned.replace(/^\*\*(?:Question\s*\d+|Q\s*\d+|\d+)\s*[:.)-]?\*\*\s*/i, '');
+  cleaned = cleaned.replace(/^\*(?:Question\s*\d+|Q\s*\d+|\d+)\s*[:.)-]?\*\s*/i, '');
+
+  // Strip leading question labels like "Question 1:", "Q1.", "Q1:", "1.", "1)", "(1)", "(i)", "i."
+  cleaned = cleaned.replace(/^(?:Question\s*\d+\s*[:.)-]?|Q\s*\d+\s*[:.)-]?|\d+\s*[:.)-]\s*|\(\d+\)\s*|\([a-zA-Z0-9ivxlcdm]+\)\s*|[a-zA-Z0-9ivxlcdm]+\s*[:.)-]\s*)/i, '');
+
+  // Strip trailing marks annotations like "(2 Marks)", "[4 marks]", "(1 Mark)", "--- 2 Marks", "(2M)"
+  cleaned = cleaned.replace(/\s*(?:[\(\[\{]\s*\d+\s*(?:marks?|mark|m)\s*[\)\]\}]|\s*[-–—]\s*\d+\s*(?:marks?|mark|m))\s*$/i, '');
+
+  // Strip wrapping quotes if any
+  cleaned = cleaned.replace(/^["'`]|["'`]$/g, '');
+
+  return cleaned.trim();
+}
+
+/**
+ * Strips AI-generated option prefixes (A, B, C, D, circles, etc.) from an option string.
+ * E.g.:
+ *  - "A) 12 m/s" -> "12 m/s"
+ *  - "(b) 24 m/s" -> "24 m/s"
+ *  - "C. 36 m/s" -> "36 m/s"
+ *  - "○ D) 48 m/s" -> "48 m/s"
+ *  - "Option A: 10 m/s" -> "10 m/s"
+ */
+export function cleanOptionText(text: string): string {
+  if (!text) return '';
+  let cleaned = text.trim();
+
+  // Strip leading "○ a) ", "• A) ", "Option A: ", "(A) ", "A) ", "A. ", "1) ", "(1) ", "[A] "
+  cleaned = cleaned.replace(/^(?:[○•\-\*]\s*)?(?:\([a-dA-D1-4]\)|[a-dA-D1-4]\s*[\)\.:\-–]|Option\s+[a-dA-D1-4]\s*[:.)\-–]|\[[a-dA-D1-4]\])\s*/i, '');
+
+  // Strip wrapping quotes if any
+  cleaned = cleaned.replace(/^["'`]|["'`]$/g, '');
+
+  return cleaned.trim();
+}
+
+/** Full display line for an option (clean prefix + clean text). */
+export const optionLine = (index: number, text: string): string => {
+  const clean = cleanOptionText(text);
+  return `${optionPrefix(index)}${clean}`;
+};
+
+/**
+ * Ensures a single question object has pristine structure, clean text without
+ * numbering/mark hallucinations, and clean MCQ options.
+ */
+export function sanitizeSingleQuestion(q: PaperQuestion): PaperQuestion {
+  const cleanedText = cleanQuestionText(q.question);
+  let options = q.options;
+
+  if (q.type === 'mcq') {
+    // If AI crammed options into the question text (e.g. "What is...? A) x B) y C) z D) w")
+    if ((!options || options.length === 0) && /[A-D]\)/i.test(cleanedText)) {
+      const parts = cleanedText.split(/(?=[A-D]\))/i);
+      if (parts.length > 1) {
+        const baseQuestion = cleanQuestionText(parts[0]);
+        const extractedOptions = parts.slice(1).map(cleanOptionText).filter(Boolean);
+        if (extractedOptions.length >= 2) {
+          return {
+            ...q,
+            question: baseQuestion,
+            options: extractedOptions,
+          };
+        }
+      }
+    }
+
+    if (Array.isArray(options)) {
+      options = options.map(cleanOptionText).filter(Boolean);
+    }
+  } else {
+    options = undefined;
+  }
+
+  return {
+    ...q,
+    question: cleanedText,
+    options,
+  };
+}
 
 /** Estimate of the on-page width of an option's plain text (equations are wide). */
 const plainTextLength = (text: string): number => {
@@ -49,11 +141,12 @@ export interface OptionRow {
  */
 export const layoutOptions = (options: string[]): OptionRow[] => {
   const rows: OptionRow[] = [];
+  const cleanOptions = options.map(cleanOptionText);
   let i = 0;
-  while (i < options.length) {
-    const first = { index: i, text: options[i] };
-    if (i + 1 < options.length && plainTextLength(first.text) <= OPTION_COLUMN_BUDGET) {
-      const second = { index: i + 1, text: options[i + 1] };
+  while (i < cleanOptions.length) {
+    const first = { index: i, text: cleanOptions[i] };
+    if (i + 1 < cleanOptions.length && plainTextLength(first.text) <= OPTION_COLUMN_BUDGET) {
+      const second = { index: i + 1, text: cleanOptions[i + 1] };
       if (plainTextLength(second.text) <= OPTION_COLUMN_BUDGET) {
         rows.push({ options: [first, second] });
         i += 2;
