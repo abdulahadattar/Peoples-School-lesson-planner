@@ -275,7 +275,7 @@ const App: React.FC = () => {
         <div
           key={view}
           className={`flex-1 min-h-0 relative animate-fadeIn ${
-            view === 'results' ? 'overflow-hidden flex flex-col' : 'overflow-y-auto custom-scrollbar'
+            view === 'results' ? 'overflow-hidden flex flex-col' : 'overflow-y-auto overflow-x-hidden custom-scrollbar'
           }`}
         >
           {view === 'home' && (
@@ -291,7 +291,7 @@ const App: React.FC = () => {
           )}
 
           {view === 'lesson' && (
-            <div className="max-w-2xl mx-auto px-4 py-6 md:py-8">
+            <div className="w-full max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-8">
               <SubjectSelector
                 selection={selection}
                 generationMode={generationMode}

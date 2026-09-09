@@ -103,15 +103,16 @@ export const DEFAULT_MODEL = "gemini-3.5-flash-lite";
 
 /**
  * Model fallback hierarchy. Every request tries the first model with ALL
- * healthy keys; if every key fails on it, it moves to the next model, and so
- * on. Only when all models × all keys fail does the request fail (and the
- * round-robin index has advanced, so the next request starts from a fresh key).
+ * healthy keys; if every key fails on it, it moves to the next model on all keys,
+ * and so on.
+ * Chain: Gemini 3.5 Flash Lite -> Gemini 3.1 Flash Lite -> Gemini 2.5 Flash Lite -> Gemma 4 31B -> Gemma 4 26B
  */
 export const MODEL_CHAIN: string[] = [
   "gemini-3.5-flash-lite",
   "gemini-3.1-flash-lite",
-  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
   "gemma-4-31b-it",
+  "gemma-4-26b-it",
 ];
 
 function isAuthOrQuotaError(error: any): boolean {
@@ -121,15 +122,21 @@ function isAuthOrQuotaError(error: any): boolean {
       message.includes("401") ||
       message.includes("403") ||
       message.includes("429") ||
+      message.includes("500") ||
+      message.includes("503") ||
+      message.includes("504") ||
       message.includes("unauthenticated") ||
       message.includes("permission denied") ||
       message.includes("quota exceeded") ||
+      message.includes("quota") ||
       message.includes("rate limit") ||
-      message.includes("resource exhausted")
+      message.includes("resource exhausted") ||
+      message.includes("overloaded") ||
+      message.includes("service unavailable")
     );
   }
   if (error?.code) {
-    return error.code === 401 || error.code === 403 || error.code === 429;
+    return [401, 403, 429, 500, 503, 504].includes(Number(error.code));
   }
   return false;
 }
@@ -150,19 +157,11 @@ export function isKeyPermanentlyBlocked(error: unknown): boolean {
 
 /**
  * Calls the model API via REST, trying every model in MODEL_CHAIN with every
- * healthy key:
+ * healthy key in order:
  *
- *   for each model (gemini-3.5-flash-lite → gemini-3.1-flash-lite → gemma-4-31b-it)
- *     for each key (round-robin, skipping cooled-down keys)
- *       attempt operation(key, model)
- *
- * - Key-level failures (timeout / auth / quota / blocked) rotate to the next
- *   key on the SAME model; a key that fails auth/quota on EVERY model is
- *   marked unhealthy and put in cooldown.
- * - Model-level failures (model not found, PDF input unsupported, etc.) skip
- *   the remaining keys and fall through to the next model.
- * - When all models × all keys fail, the round-robin index has advanced, so
- *   the next request starts from a fresh key (automatic key rotation).
+ *   for each model (gemini-3.5-flash-lite → gemini-3.1-flash-lite → gemini-2.5-flash-lite → gemma-4-31b-it → gemma-4-26b-it)
+ *     try ALL api keys for this single model
+ *     if all keys are exhausted on this model, try the second model on ALL api keys, and so on.
  */
 export async function withKeyRotation<T>(operation: (apiKey: string, model: string) => Promise<T>): Promise<T> {
   if (keyPool.length === 0) {
@@ -176,14 +175,14 @@ export async function withKeyRotation<T>(operation: (apiKey: string, model: stri
 
   let lastError: unknown;
   let anyKeyAttempted = false;
-  // Health tracker: consecutive auth/quota failures per key across the model
-  // chain. A key that fails on every model is unhealthy — cooldown it.
   const keyFailures = new Map<string, number>();
 
   for (const model of MODEL_CHAIN) {
     let attempts = 0;
     let modelAttempted = false;
+    let modelNotFoundOrUnsupported = false;
 
+    // Try all keys in the pool for the current model
     while (attempts < keyPool.length) {
       const currentKey = keyPool[keyIndex % keyPool.length];
       keyIndex = (keyIndex + 1) % keyPool.length;
@@ -210,11 +209,16 @@ export async function withKeyRotation<T>(operation: (apiKey: string, model: stri
         const msg = (error as Error)?.message || String(error);
 
         if (msg.includes("timed out")) {
-          console.warn(`[geminiService.withKeyRotation] Timeout on API key (prefix: ${currentKey.slice(0, 7)}...) with ${model}. Rotating to next key.`);
+          console.warn(`[geminiService.withKeyRotation] Timeout on API key (prefix: ${currentKey.slice(0, 7)}...) with model ${model}. Rotating to next key on same model.`);
         } else if (isKeyPermanentlyBlocked(error)) {
           console.warn(`[geminiService.withKeyRotation] API key blocked (suspended/disabled/invalid), cooling down for 3h before retry:`, msg.slice(0, 80));
           addKeyToCooldown(currentKey);
           keyFailures.delete(currentKey);
+        } else if (msg.includes("404") || msg.includes("not found") || msg.includes("is not supported") || msg.includes("does not support")) {
+          // Model is not available or unsupported by API — skip remaining keys for this model and advance to next model
+          console.warn(`[geminiService.withKeyRotation] Model ${model} is not available or unsupported (${msg.slice(0, 80)}). Moving to next model.`);
+          modelNotFoundOrUnsupported = true;
+          break;
         } else if (isAuthOrQuotaError(error)) {
           const failures = (keyFailures.get(currentKey) ?? 0) + 1;
           if (failures >= MODEL_CHAIN.length) {
@@ -223,19 +227,22 @@ export async function withKeyRotation<T>(operation: (apiKey: string, model: stri
             keyFailures.delete(currentKey);
           } else {
             keyFailures.set(currentKey, failures);
-            console.warn(`[geminiService.withKeyRotation] API key failed (auth/quota) with ${model}, rotating to next key:`, msg.slice(0, 80));
+            console.warn(`[geminiService.withKeyRotation] API key failed on ${model} (attempt ${attempts}/${keyPool.length}), rotating to next key for ${model}:`, msg.slice(0, 80));
           }
         } else {
-          // Model-level or unknown failure — no point exhausting the remaining
-          // keys on this model; fall through to the next model in the chain.
-          console.warn(`[geminiService.withKeyRotation] Model ${model} failed (${msg.slice(0, 120)}). Trying next model.`);
-          break;
+          console.warn(`[geminiService.withKeyRotation] Error on ${model} with key (${currentKey.slice(0, 7)}...): ${msg.slice(0, 80)}. Trying next key.`);
         }
       }
     }
 
-    // All keys were in cooldown for this model — move to the next model.
-    if (!modelAttempted) continue;
+    if (modelNotFoundOrUnsupported) {
+      continue;
+    }
+
+    // All keys were tried for this model without success, moving to next model
+    if (modelAttempted) {
+      console.warn(`[geminiService.withKeyRotation] Exhausted all API keys for model ${model}. Falling back to next model in chain.`);
+    }
   }
 
   if (!anyKeyAttempted) {

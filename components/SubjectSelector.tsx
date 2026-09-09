@@ -99,20 +99,20 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
     'w-full h-11 px-4 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text-primary placeholder:text-brand-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all duration-200';
 
   return (
-    <div className="w-full max-w-2xl mx-auto animate-fadeInUp">
-      <div className="glass-card rounded-2xl overflow-hidden">
-        <div className="p-5 sm:p-6 space-y-5">
+    <div className="w-full max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto animate-fadeInUp">
+      <div className="glass-card rounded-2xl border border-brand-border/80 shadow-soft">
+        <div className="p-5 sm:p-6 md:p-8 space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl brand-gradient flex items-center justify-center text-white shadow-card-hover">
+              <div className="w-10 h-10 rounded-xl brand-gradient flex items-center justify-center text-white shadow-card-hover flex-shrink-0">
                 <ClipboardListIcon className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-base font-bold text-brand-text-primary tracking-tight leading-tight">
+                <h2 className="text-base sm:text-lg font-bold text-brand-text-primary tracking-tight leading-tight">
                   Lesson Planner
                 </h2>
-                <p className="text-[11px] font-medium text-brand-text-secondary mt-0.5">
+                <p className="text-xs font-medium text-brand-text-secondary mt-0.5">
                   Create structured lesson plans
                 </p>
               </div>
@@ -124,12 +124,12 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
           </div>
 
           {/* Teacher accordion */}
-          <div className="bg-brand-bg rounded-xl border border-brand-border overflow-hidden">
+          <div className="bg-brand-bg rounded-xl border border-brand-border">
             <button
               type="button"
               onClick={() => setIsTeacherInfoOpen(prev => !prev)}
               aria-expanded={isTeacherInfoOpen}
-              className="w-full flex items-center justify-between p-4 text-left hover:bg-brand-surface/50 active:bg-brand-surface transition-all duration-200 min-h-[48px]"
+              className="w-full flex items-center justify-between p-4 text-left hover:bg-brand-surface/50 active:bg-brand-surface transition-all duration-200 min-h-[48px] rounded-xl"
             >
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-8 h-8 rounded-lg bg-brand-primary/10 flex items-center justify-center flex-shrink-0">
@@ -150,97 +150,106 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({
             </button>
 
             <div
-              className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                isTeacherInfoOpen ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'
+              className={`transition-all duration-300 ease-in-out ${
+                isTeacherInfoOpen ? 'max-h-none opacity-100 overflow-visible' : 'max-h-0 opacity-0 overflow-hidden pointer-events-none'
               }`}
             >
               <div className="px-4 pb-4 space-y-3">
-                <SelectField
-                  id="teacher-select"
-                  label="Teacher Name"
-                  icon={<UserIcon className="w-3.5 h-3.5" />}
-              value={selectedTeacherId}
-              onChange={e => handleTeacherChange(e.target.value)}
-              className="h-11"
-                >
-                  <option value="">Choose a teacher...</option>
-                  {teacherChoices.map(t => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} — {subjectNames(t).join(', ')}
-                    </option>
-                  ))}
-                </SelectField>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 items-start">
+                  <div>
+                    <SelectField
+                      id="teacher-select"
+                      label="Teacher Name"
+                      icon={<UserIcon className="w-3.5 h-3.5" />}
+                      value={selectedTeacherId}
+                      onChange={e => handleTeacherChange(e.target.value)}
+                      className="h-11"
+                    >
+                      <option value="">Choose a teacher...</option>
+                      {teacherChoices.map(t => (
+                        <option key={t.id} value={t.id}>
+                          {t.name} — {subjectNames(t).join(', ')}
+                        </option>
+                      ))}
+                    </SelectField>
 
-                {selectedTeacher && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {Object.entries(sectionsByClass(selectedTeacher)).map(([cid, labels]) =>
-                      labels.map(label => (
-                        <span key={`${cid}-${label}`} className="text-[10px] font-medium text-brand-primary bg-brand-primary/10 px-2 py-0.5 rounded-md border border-brand-primary/15">
-                          {label}
-                        </span>
-                      )),
+                    {selectedTeacher && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {Object.entries(sectionsByClass(selectedTeacher)).map(([cid, labels]) =>
+                          labels.map(label => (
+                            <span key={`${cid}-${label}`} className="text-[10px] font-medium text-brand-primary bg-brand-primary/10 px-2 py-0.5 rounded-md border border-brand-primary/15">
+                              {label}
+                            </span>
+                          )),
+                        )}
+                      </div>
                     )}
                   </div>
-                )}
 
-                <div>
-                  <label className="flex items-center gap-1.5 text-[11px] font-semibold text-brand-text-secondary mb-2 uppercase tracking-wide">
-                    <SchoolIcon className="w-3.5 h-3.5" />
-                    School Name
-                  </label>
-                  <input
-                    type="text"
-                    value={schoolName}
-                    onChange={e => setSchoolName(e.target.value)}
-                    placeholder="Enter school name"
-                    className={inputClass}
-                  />
+                  <div>
+                    <label className="flex items-center gap-1.5 text-[11px] font-semibold text-brand-text-secondary mb-2 uppercase tracking-wide">
+                      <SchoolIcon className="w-3.5 h-3.5" />
+                      School Name
+                    </label>
+                    <input
+                      type="text"
+                      value={schoolName}
+                      onChange={e => setSchoolName(e.target.value)}
+                      placeholder="Enter school name"
+                      className={inputClass}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="space-y-3">
-            <SelectField
-              id="class-select"
-              label="Select Class"
-              icon={<GraduationCapIcon className="w-3.5 h-3.5" />}
-              value={selectedClassId}
-              onChange={e => handleClassChange(e.target.value)}
-            >
-              <option value="">Choose a class</option>
-              {(selectedTeacher ? availableClasses : classes).map(cls => (
-                <option key={cls.id} value={cls.id}>{cls.name}</option>
-              ))}
-            </SelectField>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              <SelectField
+                id="class-select"
+                label="Select Class"
+                icon={<GraduationCapIcon className="w-3.5 h-3.5" />}
+                value={selectedClassId}
+                onChange={e => handleClassChange(e.target.value)}
+              >
+                <option value="">Choose a class</option>
+                {(selectedTeacher ? availableClasses : classes).map(cls => (
+                  <option key={cls.id} value={cls.id}>{cls.name}</option>
+                ))}
+              </SelectField>
 
-            <SelectField
-              id="subject-select"
-              label="Select Subject"
-              icon={<BookOpenIcon className="w-3.5 h-3.5" />}
-              value={selectedSubjectId}
-              onChange={e => handleSubjectChange(e.target.value)}
-              disabled={!selectedClassId || availableSubjects.length === 0}
-            >
-              <option value="">Choose a subject</option>
-              {availableSubjects.map(subject => (
-                <option key={subject.id} value={subject.id}>{subject.name}</option>
-              ))}
-            </SelectField>
+              <SelectField
+                id="subject-select"
+                label="Select Subject"
+                icon={<BookOpenIcon className="w-3.5 h-3.5" />}
+                value={selectedSubjectId}
+                onChange={e => handleSubjectChange(e.target.value)}
+                disabled={!selectedClassId || availableSubjects.length === 0}
+              >
+                <option value="">Choose a subject</option>
+                {availableSubjects.map(subject => (
+                  <option key={subject.id} value={subject.id}>{subject.name}</option>
+                ))}
+              </SelectField>
 
-            <SelectField
-              id="chapter-select"
-              label="Select Chapter"
-              icon={<ClipboardListIcon className="w-3.5 h-3.5" />}
-              value={selectedChapterId}
-              onChange={e => handleChapterChange(e.target.value)}
-              disabled={!selectedSubjectId || availableChapters.length === 0}
-            >
-              <option value="">Choose a chapter</option>
-              {availableChapters.map(chapter => (
-                <option key={chapter.id} value={chapter.id}>{chapter.name}</option>
-              ))}
-            </SelectField>
+              <div className="sm:col-span-2 lg:col-span-1">
+                <SelectField
+                  id="chapter-select"
+                  label="Select Chapter"
+                  icon={<ClipboardListIcon className="w-3.5 h-3.5" />}
+                  value={selectedChapterId}
+                  onChange={e => handleChapterChange(e.target.value)}
+                  disabled={!selectedSubjectId || availableChapters.length === 0}
+                  dropdownWidth="xl"
+                >
+                  <option value="">Choose a chapter</option>
+                  {availableChapters.map(chapter => (
+                    <option key={chapter.id} value={chapter.id}>{chapter.name}</option>
+                  ))}
+                </SelectField>
+              </div>
+            </div>
 
             {/* Generation mode */}
             <div>

@@ -14,15 +14,30 @@ async function startServer() {
     res.json({ status: 'ok' });
   });
 
-  // Proxy endpoint for Gemini to keep GEMINI_API_KEY secure on server
+  // Unified endpoint for Gemini to keep API keys secure on server with key rotation and model fallback
   app.post('/api/gemini', async (req, res) => {
     try {
-      const { model = 'gemini-2.5-flash', systemInstruction, userPrompt, schema, temperature, contextParts } = req.body;
-      const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_API_KEY;
+      const {
+        model = 'gemini-3.5-flash-lite',
+        systemInstruction,
+        userPrompt,
+        schema,
+        temperature,
+        contextParts,
+      } = req.body || {};
 
-      if (!apiKey) {
+      // Collect all configured server-side keys
+      const rawKeys: string[] = [];
+      if (process.env.GEMINI_API_KEY) rawKeys.push(process.env.GEMINI_API_KEY);
+      if (process.env.GEMINI_API_KEYS) rawKeys.push(...process.env.GEMINI_API_KEYS.split(','));
+      if (process.env.VITE_API_KEY) rawKeys.push(process.env.VITE_API_KEY);
+      if (process.env.VITE_API_KEYS) rawKeys.push(...process.env.VITE_API_KEYS.split(','));
+
+      const serverKeys = Array.from(new Set(rawKeys.map(k => k.trim()).filter(Boolean)));
+
+      if (serverKeys.length === 0) {
         res.status(401).json({
-          error: 'GEMINI_API_KEY is not configured on the server. Please provide an API key.',
+          error: 'GEMINI_API_KEY is not configured on the server. Please provide an API key in your environment.',
         });
         return;
       }
@@ -37,110 +52,51 @@ async function startServer() {
         parts.push({ text: userPrompt });
       }
 
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-      const response = await fetch(geminiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey,
+      const requestBody = JSON.stringify({
+        contents: [{ parts }],
+        generationConfig: {
+          temperature: temperature ?? 0.2,
+          responseMimeType: 'application/json',
+          responseSchema: schema,
         },
-        body: JSON.stringify({
-          contents: [{ parts }],
-          generationConfig: {
-            temperature: temperature ?? 0.2,
-            responseMimeType: 'application/json',
-            responseSchema: schema,
-          },
-          systemInstruction: systemInstruction
-            ? { parts: [{ text: systemInstruction }] }
-            : undefined,
-        }),
+        systemInstruction: systemInstruction
+          ? { parts: [{ text: systemInstruction }] }
+          : undefined,
       });
 
-      if (!response.ok) {
-        const errText = await response.text();
-        res.status(response.status).json({ error: errText });
-        return;
+      // Try all keys for the requested model
+      let lastErrText = '';
+      let lastStatus = 500;
+
+      for (const key of serverKeys) {
+        try {
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+          const response = await fetch(geminiUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': key,
+            },
+            body: requestBody,
+          });
+
+          if (response.ok) {
+            const data = (await response.json()) as any;
+            const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            res.json({ text });
+            return;
+          }
+
+          lastStatus = response.status;
+          lastErrText = await response.text();
+          console.warn(`[server.ts] Model ${model} failed with key (status ${lastStatus}): ${lastErrText.slice(0, 100)}`);
+        } catch (fetchErr) {
+          lastErrText = (fetchErr as Error).message;
+          console.warn(`[server.ts] Network error on model ${model}: ${lastErrText}`);
+        }
       }
 
-      const data = (await response.json()) as any;
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      res.json({ text });
-    } catch (err) {
-      res.status(500).json({ error: (err as Error).message });
-    }
-  });
-
-  // Dedicated single-question regeneration endpoint
-  app.post('/api/regenerate-question', async (req, res) => {
-    try {
-      const {
-        gradeLevel,
-        subject,
-        chapterName,
-        questionType, // 'mcq' | 'short' | 'long'
-        marks,
-        currentQuestion,
-        customInstruction,
-      } = req.body;
-
-      const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_API_KEY;
-      if (!apiKey) {
-        res.status(401).json({ error: 'GEMINI_API_KEY is not configured on server.' });
-        return;
-      }
-
-      const isMcq = questionType === 'mcq';
-      const prompt = `You are a Ziauddin University Examination Board (ZUEB) senior paper setter for Peoples Higher Secondary School Jamshoro.
-Generate ONE replacement question for:
-- Grade: ${gradeLevel}
-- Subject: ${subject}
-- Chapter/Topic: ${chapterName || 'Standard syllabus'}
-- Question Type: ${questionType.toUpperCase()}
-- Marks: ${marks}
-- Current Question being replaced: "${currentQuestion || 'N/A'}"
-${customInstruction ? `- Teacher's specific instruction: "${customInstruction}"` : ''}
-
-CRITICAL RULES:
-1. Provide a completely fresh, high-quality curriculum-aligned question.
-2. Use LaTeX for math/chemical equations (e.g. $F = ma$, $\\text{H}_2\\text{SO}_4$).
-3. If MCQ: provide exactly 4 options labeled A, B, C, D and indicate correctOptionIndex (0-3).
-4. If Short/Long question: do NOT provide options; provide concise scoring guidelines/marking criteria.
-
-Return strictly valid JSON with this schema:
-{
-  "question": "question text",
-  "marks": ${marks},
-  ${isMcq ? '"options": ["option A", "option B", "option C", "option D"],\n  "correctOptionIndex": 0,' : ''}
-  "markingGuide": "concise answer key or criteria"
-}`;
-
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
-      const response = await fetch(geminiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey,
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.3,
-            responseMimeType: 'application/json',
-          },
-        }),
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        res.status(response.status).json({ error: errText });
-        return;
-      }
-
-      const data = (await response.json()) as any;
-      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      const questionObj = JSON.parse(rawText);
-      res.json({ question: questionObj });
+      res.status(lastStatus).json({ error: lastErrText || `Failed with model ${model} across all available API keys.` });
     } catch (err) {
       res.status(500).json({ error: (err as Error).message });
     }

@@ -12,6 +12,8 @@ import {
   saveStoredSubstitutions,
   SubstitutionAssignment,
 } from '../services/storageService';
+import SelectField from './ui/SelectField';
+import { UserIcon } from './icons/MiscIcons';
 
 interface SubstitutionManagerProps {
   timetable: TimetableData;
@@ -270,30 +272,33 @@ export const SubstitutionManager: React.FC<SubstitutionManagerProps> = ({
         </div>
 
         {/* Mark Teacher Absent Input */}
-        <div className="pt-3 border-t border-brand-border flex flex-wrap items-center gap-3">
-          <label className="text-xs font-semibold text-brand-text-secondary">
-            Mark Teacher Absent Today:
-          </label>
-          <select
-            value={selectedTeacherToAdd}
-            onChange={e => setSelectedTeacherToAdd(e.target.value)}
-            className="px-3 py-1.5 text-xs rounded-xl border border-brand-border bg-white dark:bg-brand-panel text-brand-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
-          >
-            <option value="">Select teacher...</option>
-            {teachers
-              .filter(t => !absentTeacherIds.includes(t.id))
-              .sort((a, b) => a.name.localeCompare(b.name))
-              .map(t => (
-                <option key={t.id} value={t.id}>
-                  {t.name} ({t.designation || 'Teacher'})
-                </option>
-              ))}
-          </select>
+        <div className="pt-3 border-t border-brand-border flex flex-col sm:flex-row sm:items-end gap-3">
+          <div className="flex-1 min-w-[240px]">
+            <SelectField
+              id="absent-teacher-select"
+              label="Mark Teacher Absent Today"
+              icon={<UserIcon className="w-3.5 h-3.5" />}
+              value={selectedTeacherToAdd}
+              onChange={e => setSelectedTeacherToAdd(e.target.value)}
+              className="h-10 text-xs"
+              placeholder="Select absent teacher..."
+            >
+              <option value="">Select teacher...</option>
+              {teachers
+                .filter(t => !absentTeacherIds.includes(t.id))
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({t.designation || 'Teacher'})
+                  </option>
+                ))}
+            </SelectField>
+          </div>
           <button
             type="button"
             onClick={handleMarkAbsent}
             disabled={!selectedTeacherToAdd}
-            className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-40 transition-colors shadow-sm"
+            className="h-10 px-4 text-xs font-semibold rounded-xl bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-40 transition-colors shadow-sm shrink-0"
           >
             + Add Absence
           </button>
@@ -410,30 +415,33 @@ export const SubstitutionManager: React.FC<SubstitutionManagerProps> = ({
                         </button>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2">
-                        <select
-                          defaultValue=""
-                          onChange={e => {
-                            if (e.target.value) {
-                              handleAssignProxy(slot, e.target.value);
-                            }
-                          }}
-                          className="px-3 py-1.5 text-xs rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/20 text-brand-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
-                        >
-                          <option value="">Assign Free Teacher ({slot.freeTeachers.length} available)...</option>
-                          {slot.freeTeachers.map(freeTeacher => {
-                            // Check if free teacher teaches same subject
-                            const teachesSameSubject = freeTeacher.subjects.some(
-                              sub => slot.subjectName.toLowerCase().includes(sub.name.toLowerCase())
-                            );
-                            return (
-                              <option key={freeTeacher.id} value={freeTeacher.id}>
-                                {freeTeacher.name} {teachesSameSubject ? '⭐ (Subject Match)' : ''}
-                              </option>
-                            );
-                          })}
-                        </select>
-                        <span className="px-2 py-1 text-[11px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-100/50 dark:bg-amber-900/30 rounded-lg">
+                      <div className="flex items-center gap-2 min-w-[260px]">
+                        <div className="flex-1">
+                          <SelectField
+                            id={`proxy-select-${slot.periodNo}-${slot.classLabel}`}
+                            value=""
+                            onChange={e => {
+                              if (e.target.value) {
+                                handleAssignProxy(slot, e.target.value);
+                              }
+                            }}
+                            className="min-h-9 h-9 text-xs py-1"
+                            placeholder={`Assign Free Teacher (${slot.freeTeachers.length} available)...`}
+                          >
+                            <option value="">Assign Free Teacher ({slot.freeTeachers.length} available)...</option>
+                            {slot.freeTeachers.map(freeTeacher => {
+                              const teachesSameSubject = freeTeacher.subjects.some(
+                                sub => slot.subjectName.toLowerCase().includes(sub.name.toLowerCase())
+                              );
+                              return (
+                                <option key={freeTeacher.id} value={freeTeacher.id}>
+                                  {freeTeacher.name} {teachesSameSubject ? '— ⭐ Subject Match' : ''}
+                                </option>
+                              );
+                            })}
+                          </SelectField>
+                        </div>
+                        <span className="shrink-0 px-2 py-1 text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-100/60 dark:bg-amber-900/30 rounded-lg uppercase tracking-wide">
                           Unassigned
                         </span>
                       </div>

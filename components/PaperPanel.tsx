@@ -348,7 +348,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
   const longOptionalCount = Math.max(0, longQuestionCount - longAttemptCount);
 
   return (
-    <div className="w-full max-w-3xl mx-auto px-4 py-6 md:py-8 animate-fadeInUp">
+    <div className="w-full max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-8 animate-fadeInUp">
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 rounded-xl brand-gradient flex items-center justify-center flex-shrink-0 text-white shadow-card-hover">
           <DocumentTextIcon className="w-5 h-5" />
@@ -363,10 +363,10 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
         </div>
       </div>
 
-      <div className="glass-card rounded-2xl overflow-hidden shadow-soft border border-brand-border/80">
-        <div className="p-4 sm:p-6 space-y-6">
+      <div className="glass-card rounded-2xl shadow-soft border border-brand-border/80">
+        <div className="p-5 sm:p-6 md:p-8 space-y-6">
           {/* Selectors Section */}
-          <div className="space-y-3.5 bg-brand-bg/40 p-4 rounded-xl border border-brand-border/60">
+          <div className="space-y-3.5 bg-brand-bg/40 p-4 sm:p-5 rounded-xl border border-brand-border/60">
             <h2 className="text-xs font-bold text-brand-text-secondary uppercase tracking-wider flex items-center gap-1.5">
               <span>1. Curriculum Selection</span>
             </h2>
@@ -399,7 +399,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
               <SelectField
                 id="paper-class-select"
                 label="Select Class"
@@ -427,19 +427,22 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
                 ))}
               </SelectField>
 
-              <SelectField
-                id="paper-chapter-select"
-                label="Select Chapter"
-                icon={<ClipboardListIcon className="w-3.5 h-3.5" />}
-                value={selectedChapterId}
-                onChange={e => handleChapterChange(e.target.value)}
-                disabled={!selectedSubjectId}
-              >
-                <option value="">-- Choose a chapter --</option>
-                {chapters.map(chapter => (
-                  <option key={chapter.id} value={chapter.id}>{chapter.name}</option>
-                ))}
-              </SelectField>
+              <div className="sm:col-span-2 lg:col-span-1">
+                <SelectField
+                  id="paper-chapter-select"
+                  label="Select Chapter"
+                  icon={<ClipboardListIcon className="w-3.5 h-3.5" />}
+                  value={selectedChapterId}
+                  onChange={e => handleChapterChange(e.target.value)}
+                  disabled={!selectedSubjectId}
+                  dropdownWidth="xl"
+                >
+                  <option value="">-- Choose a chapter --</option>
+                  {chapters.map(chapter => (
+                    <option key={chapter.id} value={chapter.id}>{chapter.name}</option>
+                  ))}
+                </SelectField>
+              </div>
             </div>
           </div>
 

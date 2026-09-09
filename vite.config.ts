@@ -27,10 +27,16 @@ function geminiServerPlugin(): Plugin {
 
         req.on('end', async () => {
           try {
-            const { model, systemInstruction, userPrompt, schema, temperature, contextParts } = JSON.parse(body || '{}');
-            const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_API_KEY;
+            const { model = 'gemini-3.5-flash-lite', systemInstruction, userPrompt, schema, temperature, contextParts } = JSON.parse(body || '{}');
+            const rawKeys: string[] = [];
+            if (process.env.GEMINI_API_KEY) rawKeys.push(process.env.GEMINI_API_KEY);
+            if (process.env.GEMINI_API_KEYS) rawKeys.push(...process.env.GEMINI_API_KEYS.split(','));
+            if (process.env.VITE_API_KEY) rawKeys.push(process.env.VITE_API_KEY);
+            if (process.env.VITE_API_KEYS) rawKeys.push(...process.env.VITE_API_KEYS.split(','));
 
-            if (!apiKey) {
+            const serverKeys = Array.from(new Set(rawKeys.map(k => k.trim()).filter(Boolean)));
+
+            if (serverKeys.length === 0) {
               res.statusCode = 401;
               res.setHeader('Content-Type', 'application/json');
               res.end(JSON.stringify({
@@ -49,38 +55,51 @@ function geminiServerPlugin(): Plugin {
               parts.push({ text: userPrompt });
             }
 
-            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-            const response = await fetch(geminiUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'x-goog-api-key': apiKey,
+            const reqBody = JSON.stringify({
+              contents: [{ parts }],
+              generationConfig: {
+                temperature: temperature ?? 0.2,
+                responseMimeType: 'application/json',
+                responseSchema: schema,
               },
-              body: JSON.stringify({
-                contents: [{ parts }],
-                generationConfig: {
-                  temperature: temperature ?? 0.2,
-                  responseMimeType: 'application/json',
-                  responseSchema: schema,
-                },
-                systemInstruction: systemInstruction ? {
-                  parts: [{ text: systemInstruction }],
-                } : undefined,
-              }),
+              systemInstruction: systemInstruction ? {
+                parts: [{ text: systemInstruction }],
+              } : undefined,
             });
 
-            if (!response.ok) {
-              const errText = await response.text();
-              res.statusCode = response.status;
-              res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({ error: errText }));
-              return;
+            let lastErrText = '';
+            let lastStatus = 500;
+
+            for (const key of serverKeys) {
+              try {
+                const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+                const response = await fetch(geminiUrl, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'x-goog-api-key': key,
+                  },
+                  body: reqBody,
+                });
+
+                if (response.ok) {
+                  const data = await response.json();
+                  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({ text }));
+                  return;
+                }
+
+                lastStatus = response.status;
+                lastErrText = await response.text();
+              } catch (fetchErr) {
+                lastErrText = (fetchErr as Error).message;
+              }
             }
 
-            const data = await response.json();
-            const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            res.statusCode = lastStatus;
             res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ text }));
+            res.end(JSON.stringify({ error: lastErrText || `Failed with model ${model} across all available API keys.` }));
           } catch (err) {
             res.statusCode = 500;
             res.setHeader('Content-Type', 'application/json');
