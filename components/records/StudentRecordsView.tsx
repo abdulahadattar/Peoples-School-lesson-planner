@@ -1,0 +1,1019 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Search,
+  Filter,
+  RefreshCw,
+  Plus,
+  Download,
+  ExternalLink,
+  Edit2,
+  Eye,
+  CheckCircle2,
+  AlertCircle,
+  Users,
+  GraduationCap,
+  FileSpreadsheet,
+  X,
+  Phone,
+  ChevronLeft,
+  ChevronRight,
+  SlidersHorizontal,
+} from 'lucide-react';
+import {
+  StudentRecord,
+  DEFAULT_SPREADSHEET_URL,
+  DEFAULT_SPREADSHEET_ID,
+  DEFAULT_GID,
+  DEFAULT_SHEET_TITLE,
+  fetchSheetData,
+  updateSheetRecord,
+  addSheetRecord,
+  exportRecordsToCSV,
+} from '../../services/googleSheetsService';
+import {
+  initAuth,
+  googleSignIn,
+  logout,
+  getAccessToken,
+  getCurrentUser,
+} from '../../services/googleAuth';
+import { GoogleSignInButton } from './GoogleSignInButton';
+import { StudentDetailModal } from './StudentDetailModal';
+import { StudentEditModal } from './StudentEditModal';
+import { ConfirmationModal, DiffItem } from './ConfirmationModal';
+import { User } from 'firebase/auth';
+
+export const StudentRecordsView: React.FC = () => {
+  const [records, setRecords] = useState<StudentRecord[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lastSynced, setLastSynced] = useState<Date | null>(null);
+
+  // Google Auth state
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(false);
+
+  // Search & Filters
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedClass, setSelectedClass] = useState<string>('all');
+  const [selectedSection, setSelectedSection] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [selectedGender, setSelectedGender] = useState<string>('all');
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(50);
+
+  // Modals
+  const [detailStudent, setDetailStudent] = useState<StudentRecord | null>(null);
+  const [editStudent, setEditStudent] = useState<StudentRecord | null>(null);
+  const [isAddMode, setIsAddMode] = useState<boolean>(false);
+
+  // Confirmation modal state
+  const [confirmationState, setConfirmationState] = useState<{
+    isOpen: boolean;
+    title: string;
+    student: StudentRecord | null;
+    diffs: DiffItem[];
+    isAdd: boolean;
+    isSubmitting: boolean;
+  }>({
+    isOpen: false,
+    title: '',
+    student: null,
+    diffs: [],
+    isAdd: false,
+    isSubmitting: false,
+  });
+
+  // Notifications
+  const [notification, setNotification] = useState<{
+    type: 'success' | 'error' | 'info';
+    message: string;
+  } | null>(null);
+
+  const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setNotification({ type, message });
+    setTimeout(() => {
+      setNotification(null);
+    }, 5000);
+  };
+
+  // Init Auth on mount
+  useEffect(() => {
+    const unsubscribe = initAuth(
+      (user, token) => {
+        setAuthUser(user);
+        setAuthToken(token);
+      },
+      () => {
+        setAuthUser(null);
+        setAuthToken(null);
+      }
+    );
+
+    const current = getCurrentUser();
+    if (current) setAuthUser(current);
+
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, []);
+
+  // Fetch initial sheet data
+  const loadRecords = async (isManualRefresh = false) => {
+    if (isManualRefresh) setIsRefreshing(true);
+    else setIsLoading(true);
+    setError(null);
+
+    try {
+      const token = authToken || (await getAccessToken());
+      const result = await fetchSheetData(DEFAULT_SPREADSHEET_ID, DEFAULT_GID, token);
+      setRecords(result.records);
+      setLastSynced(result.lastSynced);
+      if (isManualRefresh) {
+        showNotification(`Successfully synchronized ${result.records.length} records from Google Sheet.`);
+      }
+    } catch (err: any) {
+      console.error('Failed to load Google Sheet data:', err);
+      setError(err?.message || 'Failed to load records from Google Sheet.');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRecords();
+  }, []);
+
+  const handleSignIn = async () => {
+    setIsAuthLoading(true);
+    try {
+      const res = await googleSignIn();
+      if (res) {
+        setAuthUser(res.user);
+        setAuthToken(res.accessToken);
+        showNotification(`Signed in as ${res.user.displayName || res.user.email}. Direct Google Sheets sync enabled!`);
+      }
+    } catch (err: any) {
+      showNotification(err?.message || 'Google Sign-In failed.', 'error');
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await logout();
+      setAuthUser(null);
+      setAuthToken(null);
+      showNotification('Disconnected from Google Account.', 'info');
+    } catch (err: any) {
+      console.error('Sign out error:', err);
+    }
+  };
+
+  // Unique options for filters extracted from actual data
+  const classOptions = useMemo(() => {
+    const set = new Set<string>();
+    records.forEach((r) => {
+      if (r.currentClass) set.add(r.currentClass.trim());
+    });
+    return Array.from(set).sort();
+  }, [records]);
+
+  const sectionOptions = useMemo(() => {
+    const set = new Set<string>();
+    records.forEach((r) => {
+      if (r.section) set.add(r.section.trim());
+    });
+    return Array.from(set).sort();
+  }, [records]);
+
+  const statusOptions = useMemo(() => {
+    const set = new Set<string>();
+    records.forEach((r) => {
+      if (r.status) set.add(r.status.trim());
+    });
+    return Array.from(set).sort();
+  }, [records]);
+
+  // Filtered records
+  const filteredRecords = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+
+    return records.filter((r) => {
+      // Search query matching
+      if (q) {
+        const matchesName = r.studentName.toLowerCase().includes(q);
+        const matchesFather = r.fatherName.toLowerCase().includes(q);
+        const matchesGr = r.grNo.toLowerCase().includes(q);
+        const matchesContact =
+          r.parentContact.toLowerCase().includes(q) ||
+          r.emergencyContact.toLowerCase().includes(q) ||
+          r.partnerContact.toLowerCase().includes(q);
+        const matchesBform = r.bFormNo.toLowerCase().includes(q);
+        const matchesCnic = r.parentCnic.toLowerCase().includes(q);
+        const matchesAddress = r.address.toLowerCase().includes(q);
+
+        if (
+          !matchesName &&
+          !matchesFather &&
+          !matchesGr &&
+          !matchesContact &&
+          !matchesBform &&
+          !matchesCnic &&
+          !matchesAddress
+        ) {
+          return false;
+        }
+      }
+
+      // Class filter
+      if (selectedClass !== 'all' && r.currentClass.trim() !== selectedClass) {
+        return false;
+      }
+
+      // Section filter
+      if (selectedSection !== 'all' && r.section.trim() !== selectedSection) {
+        return false;
+      }
+
+      // Status filter
+      if (selectedStatus !== 'all' && r.status.trim() !== selectedStatus) {
+        return false;
+      }
+
+      // Gender filter
+      if (selectedGender !== 'all' && r.gender.toLowerCase() !== selectedGender.toLowerCase()) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [records, searchQuery, selectedClass, selectedSection, selectedStatus, selectedGender]);
+
+  // Statistics
+  const stats = useMemo(() => {
+    let promoted = 0;
+    let newEnrollment = 0;
+    let dropOut = 0;
+    let male = 0;
+    let female = 0;
+
+    records.forEach((r) => {
+      const s = (r.status || '').toLowerCase();
+      if (s.includes('promot') || s.includes('active')) promoted++;
+      else if (s.includes('new') || s.includes('enroll')) newEnrollment++;
+      else if (s.includes('drop') || s.includes('struck') || s.includes('left')) dropOut++;
+
+      const g = (r.gender || '').toLowerCase();
+      if (g.startsWith('m')) male++;
+      else if (g.startsWith('f')) female++;
+    });
+
+    return {
+      total: records.length,
+      promoted,
+      newEnrollment,
+      dropOut,
+      male,
+      female,
+    };
+  }, [records]);
+
+  // Pagination calculation
+  const totalPages = Math.ceil(filteredRecords.length / pageSize) || 1;
+  const paginatedRecords = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredRecords.slice(start, start + pageSize);
+  }, [filteredRecords, currentPage, pageSize]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedClass, selectedSection, selectedStatus, selectedGender, pageSize]);
+
+  // Open Edit flow
+  const handleOpenEdit = (student: StudentRecord) => {
+    setIsAddMode(false);
+    setEditStudent(student);
+  };
+
+  // Open Add Student flow
+  const handleOpenAdd = () => {
+    setIsAddMode(true);
+    setEditStudent(null);
+  };
+
+  // Request Confirmation before mutating (Mandatory per Workspace skill)
+  const handleRequestConfirm = (
+    updatedRecord: StudentRecord,
+    diffs: DiffItem[],
+    isAdd: boolean
+  ) => {
+    setEditStudent(null);
+    setConfirmationState({
+      isOpen: true,
+      title: isAdd ? 'Confirm Adding New Student Record' : 'Confirm Updating Student Record',
+      student: updatedRecord,
+      diffs,
+      isAdd,
+      isSubmitting: false,
+    });
+  };
+
+  // Execute Confirmed Mutation
+  const handleExecuteConfirm = async () => {
+    const { student, isAdd } = confirmationState;
+    if (!student) return;
+
+    setConfirmationState((prev) => ({ ...prev, isSubmitting: true }));
+
+    try {
+      const token = authToken || (await getAccessToken());
+
+      if (token) {
+        // Authenticated with Google: sync directly to spreadsheet!
+        if (isAdd) {
+          await addSheetRecord(student, token, DEFAULT_SPREADSHEET_ID, DEFAULT_SHEET_TITLE);
+          showNotification(`Student ${student.studentName} added successfully to Google Sheet!`);
+        } else {
+          await updateSheetRecord(student, token, DEFAULT_SPREADSHEET_ID, DEFAULT_SHEET_TITLE);
+          showNotification(`Row #${student.rowNumber} (${student.studentName}) updated successfully in Google Sheet!`);
+        }
+        // Reload fresh data from Google Sheet
+        await loadRecords(true);
+      } else {
+        // Not authenticated with Google: apply update locally and explain how to sync to cloud
+        if (isAdd) {
+          const newStudentWithRow = {
+            ...student,
+            rowNumber: records.length + 2,
+          };
+          setRecords((prev) => [newStudentWithRow, ...prev]);
+          showNotification(
+            `Added ${student.studentName} to local records. Sign in with Google above to push edits directly to your spreadsheet.`,
+            'info'
+          );
+        } else {
+          setRecords((prev) =>
+            prev.map((item) => (item.rowNumber === student.rowNumber ? student : item))
+          );
+          showNotification(
+            `Updated ${student.studentName} locally. Sign in with Google above to push edits directly to your spreadsheet.`,
+            'info'
+          );
+        }
+      }
+
+      setConfirmationState({
+        isOpen: false,
+        title: '',
+        student: null,
+        diffs: [],
+        isAdd: false,
+        isSubmitting: false,
+      });
+    } catch (err: any) {
+      console.error('Error saving record:', err);
+      showNotification(err?.message || 'Failed to update Google Sheet.', 'error');
+      setConfirmationState((prev) => ({ ...prev, isSubmitting: false }));
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    const s = (status || '').toLowerCase();
+    if (s.includes('promot') || s.includes('active')) {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+          {status}
+        </span>
+      );
+    }
+    if (s.includes('new') || s.includes('enroll')) {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+          {status}
+        </span>
+      );
+    }
+    if (s.includes('drop') || s.includes('struck') || s.includes('left')) {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+          {status}
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+        {status || 'Active'}
+      </span>
+    );
+  };
+
+  return (
+    <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-8 py-6 space-y-6">
+      {/* Toast Notification */}
+      {notification && (
+        <div
+          className={`fixed top-20 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-glass border text-xs font-semibold animate-fadeInUp ${
+            notification.type === 'error'
+              ? 'bg-rose-50 dark:bg-rose-950/90 text-rose-800 dark:text-rose-200 border-rose-200 dark:border-rose-800'
+              : notification.type === 'info'
+              ? 'bg-amber-50 dark:bg-amber-950/90 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-800'
+              : 'bg-emerald-50 dark:bg-emerald-950/90 text-emerald-800 dark:text-emerald-200 border-emerald-200 dark:border-emerald-800'
+          }`}
+        >
+          {notification.type === 'error' ? (
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          ) : (
+            <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+          )}
+          <span>{notification.message}</span>
+          <button
+            type="button"
+            onClick={() => setNotification(null)}
+            className="ml-2 hover:opacity-75"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Top Header Card */}
+      <div className="rounded-2xl glass-card p-5 sm:p-6 border border-brand-border shadow-card flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="px-2.5 py-1 rounded-lg bg-brand-primary/10 text-brand-primary text-xs font-bold border border-brand-primary/20 flex items-center gap-1.5">
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Google Sheets Integration</span>
+            </span>
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Live Synced</span>
+            </span>
+            {lastSynced && (
+              <span className="text-[11px] text-brand-text-secondary">
+                Last updated: {lastSynced.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+          </div>
+          <h1 className="text-xl sm:text-2xl font-extrabold text-brand-text-primary tracking-tight">
+            School Student Records & Register
+          </h1>
+          <p className="text-xs text-brand-text-secondary max-w-2xl leading-relaxed">
+            Connected to official Peoples Higher Secondary School spreadsheet. Filter, search students by name, father name, or contact number, and edit records with automatic two-way cloud sync.
+          </p>
+        </div>
+
+        {/* Action Controls & Auth */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <GoogleSignInButton
+            user={authUser}
+            isLoading={isAuthLoading}
+            onSignIn={handleSignIn}
+            onSignOut={handleSignOut}
+          />
+
+          <button
+            type="button"
+            onClick={() => loadRecords(true)}
+            disabled={isRefreshing || isLoading}
+            title="Refresh from Google Sheet"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-brand-surface border border-brand-border text-brand-text-primary hover:border-brand-primary/40 hover:text-brand-primary shadow-soft active:scale-95 transition-all disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-brand-primary' : ''}`} />
+            <span>{isRefreshing ? 'Syncing...' : 'Sync Sheet'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleOpenAdd}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-all"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Student</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => exportRecordsToCSV(filteredRecords)}
+            title="Export filtered records as CSV"
+            className="inline-flex items-center gap-1.5 p-2 rounded-xl text-xs font-semibold bg-white dark:bg-brand-surface border border-brand-border text-brand-text-secondary hover:text-brand-text-primary hover:border-brand-border shadow-soft transition-all"
+          >
+            <Download className="w-4 h-4" />
+          </button>
+
+          <a
+            href={DEFAULT_SPREADSHEET_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open original spreadsheet in Google Sheets"
+            className="inline-flex items-center gap-1.5 p-2 rounded-xl text-xs font-semibold bg-white dark:bg-brand-surface border border-brand-border text-brand-text-secondary hover:text-brand-text-primary hover:border-brand-border shadow-soft transition-all"
+          >
+            <ExternalLink className="w-4 h-4" />
+          </a>
+        </div>
+      </div>
+
+      {/* Statistics Strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="p-3.5 rounded-xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft">
+          <span className="text-[10px] uppercase tracking-wider font-bold text-brand-text-secondary block">
+            Total Students
+          </span>
+          <span className="text-xl font-extrabold text-brand-text-primary font-mono mt-0.5 block">
+            {stats.total.toLocaleString()}
+          </span>
+        </div>
+        <div className="p-3.5 rounded-xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft">
+          <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-600 dark:text-emerald-400 block">
+            Promoted / Active
+          </span>
+          <span className="text-xl font-extrabold text-emerald-700 dark:text-emerald-300 font-mono mt-0.5 block">
+            {stats.promoted.toLocaleString()}
+          </span>
+        </div>
+        <div className="p-3.5 rounded-xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft">
+          <span className="text-[10px] uppercase tracking-wider font-bold text-sky-600 dark:text-sky-400 block">
+            New Enrollment
+          </span>
+          <span className="text-xl font-extrabold text-sky-700 dark:text-sky-300 font-mono mt-0.5 block">
+            {stats.newEnrollment.toLocaleString()}
+          </span>
+        </div>
+        <div className="p-3.5 rounded-xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft">
+          <span className="text-[10px] uppercase tracking-wider font-bold text-rose-600 dark:text-rose-400 block">
+            Drop Outs
+          </span>
+          <span className="text-xl font-extrabold text-rose-700 dark:text-rose-300 font-mono mt-0.5 block">
+            {stats.dropOut.toLocaleString()}
+          </span>
+        </div>
+        <div className="p-3.5 rounded-xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft">
+          <span className="text-[10px] uppercase tracking-wider font-bold text-brand-text-secondary block">
+            Male Students
+          </span>
+          <span className="text-xl font-extrabold text-brand-text-primary font-mono mt-0.5 block">
+            {stats.male.toLocaleString()}
+          </span>
+        </div>
+        <div className="p-3.5 rounded-xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft">
+          <span className="text-[10px] uppercase tracking-wider font-bold text-brand-text-secondary block">
+            Female Students
+          </span>
+          <span className="text-xl font-extrabold text-brand-text-primary font-mono mt-0.5 block">
+            {stats.female.toLocaleString()}
+          </span>
+        </div>
+      </div>
+
+      {/* Search and Filters Toolbar */}
+      <div className="p-4 rounded-2xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft space-y-3">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+          {/* Main Search Input */}
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-text-secondary" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Find student name, father name, contact number, GR#, B.Form, CNIC..."
+              className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-brand-bg border border-brand-border focus:outline-hidden focus:ring-1 focus:ring-brand-primary text-xs text-brand-text-primary placeholder:text-brand-text-secondary"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-secondary hover:text-brand-text-primary p-1 rounded-md"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Filter Dropdowns */}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            {/* Class Filter */}
+            <div className="flex items-center gap-1 bg-brand-bg border border-brand-border rounded-xl px-2.5 py-1.5">
+              <span className="text-brand-text-secondary font-medium">Class:</span>
+              <select
+                value={selectedClass}
+                onChange={(e) => setSelectedClass(e.target.value)}
+                className="bg-transparent border-0 font-semibold text-brand-text-primary focus:outline-hidden cursor-pointer"
+              >
+                <option value="all">All</option>
+                {classOptions.map((c) => (
+                  <option key={c} value={c}>
+                    Class {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Section Filter */}
+            <div className="flex items-center gap-1 bg-brand-bg border border-brand-border rounded-xl px-2.5 py-1.5">
+              <span className="text-brand-text-secondary font-medium">Sec:</span>
+              <select
+                value={selectedSection}
+                onChange={(e) => setSelectedSection(e.target.value)}
+                className="bg-transparent border-0 font-semibold text-brand-text-primary focus:outline-hidden cursor-pointer"
+              >
+                <option value="all">All</option>
+                {sectionOptions.map((s) => (
+                  <option key={s} value={s}>
+                    Sec {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Status Filter */}
+            <div className="flex items-center gap-1 bg-brand-bg border border-brand-border rounded-xl px-2.5 py-1.5">
+              <span className="text-brand-text-secondary font-medium">Status:</span>
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="bg-transparent border-0 font-semibold text-brand-text-primary focus:outline-hidden cursor-pointer"
+              >
+                <option value="all">All</option>
+                {statusOptions.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Gender Filter */}
+            <div className="flex items-center gap-1 bg-brand-bg border border-brand-border rounded-xl px-2.5 py-1.5">
+              <span className="text-brand-text-secondary font-medium">Gender:</span>
+              <select
+                value={selectedGender}
+                onChange={(e) => setSelectedGender(e.target.value)}
+                className="bg-transparent border-0 font-semibold text-brand-text-primary focus:outline-hidden cursor-pointer"
+              >
+                <option value="all">All</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+              </select>
+            </div>
+
+            {(selectedClass !== 'all' ||
+              selectedSection !== 'all' ||
+              selectedStatus !== 'all' ||
+              selectedGender !== 'all' ||
+              searchQuery) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedClass('all');
+                  setSelectedSection('all');
+                  setSelectedStatus('all');
+                  setSelectedGender('all');
+                }}
+                className="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+              >
+                Clear Filters
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Results summary bar */}
+        <div className="flex items-center justify-between text-xs text-brand-text-secondary pt-1 border-t border-brand-border/60">
+          <span>
+            Showing <strong className="text-brand-text-primary">{filteredRecords.length}</strong> of{' '}
+            <strong className="text-brand-text-primary">{records.length}</strong> school records
+          </span>
+          <div className="flex items-center gap-2">
+            <span>Rows per page:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              className="bg-brand-bg border border-brand-border rounded-lg px-2 py-0.5 text-xs text-brand-text-primary focus:outline-hidden"
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Records Table Container */}
+      <div className="rounded-2xl bg-white dark:bg-brand-surface border border-brand-border shadow-card overflow-hidden">
+        {isLoading ? (
+          <div className="py-24 flex flex-col items-center justify-center gap-3">
+            <RefreshCw className="w-7 h-7 text-brand-primary animate-spin" />
+            <p className="text-sm font-semibold text-brand-text-primary">Loading records from Google Sheet...</p>
+            <p className="text-xs text-brand-text-secondary">Connecting to Jamshoro South Final SPD (2)...</p>
+          </div>
+        ) : error ? (
+          <div className="py-16 px-6 text-center max-w-md mx-auto space-y-3">
+            <div className="w-12 h-12 mx-auto rounded-full bg-rose-50 dark:bg-rose-950/50 text-rose-600 flex items-center justify-center">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <h3 className="text-sm font-bold text-brand-text-primary">Failed to load Google Sheet records</h3>
+            <p className="text-xs text-rose-600 dark:text-rose-400">{error}</p>
+            <button
+              type="button"
+              onClick={() => loadRecords(true)}
+              className="px-4 py-2 rounded-xl text-xs font-semibold bg-brand-primary text-white hover:bg-brand-primary/90 shadow-soft"
+            >
+              Try Again
+            </button>
+          </div>
+        ) : paginatedRecords.length === 0 ? (
+          <div className="py-16 px-6 text-center max-w-md mx-auto space-y-2">
+            <Users className="w-10 h-10 mx-auto text-brand-text-secondary/50" />
+            <h3 className="text-sm font-bold text-brand-text-primary">No matching student records found</h3>
+            <p className="text-xs text-brand-text-secondary">
+              Try adjusting your search query or reset the class/status filters.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery('');
+                setSelectedClass('all');
+                setSelectedSection('all');
+                setSelectedStatus('all');
+                setSelectedGender('all');
+              }}
+              className="mt-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-brand-bg border border-brand-border text-brand-text-primary hover:bg-brand-border transition-colors"
+            >
+              Reset Filters
+            </button>
+          </div>
+        ) : (
+          <div className="overflow-x-auto custom-scrollbar">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-brand-border bg-slate-50/80 dark:bg-slate-900/60 font-semibold text-brand-text-secondary uppercase tracking-wider text-[10px]">
+                  {/* Sticky left columns */}
+                  <th className="py-3 px-3.5 sticky left-0 z-20 bg-slate-50 dark:bg-slate-900 border-r border-brand-border shadow-xs w-20">
+                    GR#
+                  </th>
+                  <th className="py-3 px-4 sticky left-20 z-20 bg-slate-50 dark:bg-slate-900 border-r border-brand-border shadow-xs min-w-[180px]">
+                    Name of Student
+                  </th>
+                  <th className="py-3 px-4 min-w-[160px]">Father / Guardian Name</th>
+                  <th className="py-3 px-3 text-center min-w-[90px]">Class & Sec</th>
+                  <th className="py-3 px-3 text-center min-w-[70px]">Gender</th>
+                  <th className="py-3 px-3 text-center min-w-[100px]">DOB (D/M/Y)</th>
+                  <th className="py-3 px-4 min-w-[150px]">Parent Contact</th>
+                  <th className="py-3 px-4 min-w-[150px]">Emergency Contact</th>
+                  <th className="py-3 px-3 text-center min-w-[120px]">Status</th>
+                  <th className="py-3 px-4 min-w-[140px]">B.Form No.</th>
+                  <th className="py-3 px-4 min-w-[140px]">Parent CNIC</th>
+                  <th className="py-3 px-4 min-w-[200px]">Address</th>
+                  <th className="py-3 px-3 text-center min-w-[100px]">Class Admitted</th>
+                  <th className="py-3 px-3 text-center min-w-[110px]">Admission Date</th>
+                  <th className="py-3 px-4 min-w-[140px]">Partner Contact</th>
+                  <th className="py-3 px-3 text-center min-w-[80px]">Shift</th>
+                  <th className="py-3 px-3 text-center min-w-[90px]">Medium</th>
+                  <th className="py-3 px-3 text-center min-w-[70px]">Picture</th>
+                  <th className="py-3 px-3 text-center sticky right-0 z-20 bg-slate-50 dark:bg-slate-900 border-l border-brand-border shadow-xs w-24">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-brand-border/60">
+                {paginatedRecords.map((student) => (
+                  <tr
+                    key={student.rowNumber}
+                    className="hover:bg-brand-bg/80 transition-colors group"
+                  >
+                    {/* Sticky GR# */}
+                    <td className="py-2.5 px-3.5 sticky left-0 z-10 bg-white dark:bg-brand-surface group-hover:bg-brand-bg border-r border-brand-border font-mono font-bold text-brand-primary">
+                      {student.grNo || '—'}
+                    </td>
+
+                    {/* Sticky Student Name */}
+                    <td className="py-2.5 px-4 sticky left-20 z-10 bg-white dark:bg-brand-surface group-hover:bg-brand-bg border-r border-brand-border">
+                      <button
+                        type="button"
+                        onClick={() => setDetailStudent(student)}
+                        className="font-bold text-brand-text-primary hover:text-brand-primary text-left truncate block max-w-[200px] transition-colors"
+                        title={student.studentName}
+                      >
+                        {student.studentName || '—'}
+                      </button>
+                    </td>
+
+                    <td className="py-2.5 px-4 text-brand-text-primary font-medium truncate max-w-[180px]">
+                      {student.fatherName || '—'}
+                    </td>
+
+                    <td className="py-2.5 px-3 text-center">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md font-mono text-[11px] font-bold bg-brand-bg border border-brand-border text-brand-text-primary">
+                        {student.currentClass || '—'}
+                        {student.section ? `-${student.section}` : ''}
+                      </span>
+                    </td>
+
+                    <td className="py-2.5 px-3 text-center text-brand-text-secondary">
+                      {student.gender || '—'}
+                    </td>
+
+                    <td className="py-2.5 px-3 text-center font-mono text-[11px] text-brand-text-secondary">
+                      {student.dobDay && student.dobMonth && student.dobYear
+                        ? `${student.dobDay}/${student.dobMonth}/${student.dobYear}`
+                        : '—'}
+                    </td>
+
+                    <td className="py-2.5 px-4 font-mono text-[11px]">
+                      {student.parentContact && student.parentContact !== 'NA' && student.parentContact !== 'N/A' ? (
+                        <a
+                          href={`tel:${student.parentContact}`}
+                          className="text-brand-primary hover:underline flex items-center gap-1"
+                        >
+                          <Phone className="w-3 h-3 flex-shrink-0" />
+                          <span>{student.parentContact}</span>
+                        </a>
+                      ) : (
+                        <span className="text-brand-text-secondary">NA</span>
+                      )}
+                    </td>
+
+                    <td className="py-2.5 px-4 font-mono text-[11px]">
+                      {student.emergencyContact && student.emergencyContact !== 'NA' && student.emergencyContact !== 'N/A' ? (
+                        <span className="text-brand-text-primary">{student.emergencyContact}</span>
+                      ) : (
+                        <span className="text-brand-text-secondary">NA</span>
+                      )}
+                    </td>
+
+                    <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                      {getStatusBadge(student.status)}
+                    </td>
+
+                    <td className="py-2.5 px-4 font-mono text-[11px] text-brand-text-secondary truncate max-w-[140px]">
+                      {student.bFormNo || '—'}
+                    </td>
+
+                    <td className="py-2.5 px-4 font-mono text-[11px] text-brand-text-secondary truncate max-w-[140px]">
+                      {student.parentCnic || '—'}
+                    </td>
+
+                    <td className="py-2.5 px-4 text-brand-text-secondary text-[11px] truncate max-w-[220px]" title={student.address}>
+                      {student.address || '—'}
+                    </td>
+
+                    <td className="py-2.5 px-3 text-center font-mono text-[11px] text-brand-text-secondary">
+                      {student.classAdmitted || '—'}
+                    </td>
+
+                    <td className="py-2.5 px-3 text-center font-mono text-[11px] text-brand-text-secondary">
+                      {student.admissionDay && student.admissionMonth && student.admissionYear
+                        ? `${student.admissionDay}/${student.admissionMonth}/${student.admissionYear}`
+                        : '—'}
+                    </td>
+
+                    <td className="py-2.5 px-4 font-mono text-[11px] text-brand-text-secondary truncate max-w-[140px]">
+                      {student.partnerContact || '—'}
+                    </td>
+
+                    <td className="py-2.5 px-3 text-center text-brand-text-secondary">
+                      {student.shift || 'Morning'}
+                    </td>
+
+                    <td className="py-2.5 px-3 text-center text-brand-text-secondary">
+                      {student.medium || 'English'}
+                    </td>
+
+                    <td className="py-2.5 px-3 text-center font-semibold text-[10px] text-brand-text-secondary">
+                      {student.picture || 'YES'}
+                    </td>
+
+                    {/* Actions */}
+                    <td className="py-2.5 px-3 text-center sticky right-0 z-10 bg-white dark:bg-brand-surface group-hover:bg-brand-bg border-l border-brand-border">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setDetailStudent(student)}
+                          title="View Profile"
+                          className="p-1.5 rounded-lg text-brand-text-secondary hover:text-brand-primary hover:bg-brand-surface transition-colors"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEdit(student)}
+                          title="Edit Student Record"
+                          className="p-1.5 rounded-lg text-brand-text-secondary hover:text-brand-primary hover:bg-brand-surface transition-colors"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Pagination Bar */}
+        {filteredRecords.length > 0 && (
+          <div className="py-3.5 px-4 border-t border-brand-border bg-slate-50/50 dark:bg-slate-900/40 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            <span className="text-brand-text-secondary">
+              Page <strong className="text-brand-text-primary">{currentPage}</strong> of{' '}
+              <strong className="text-brand-text-primary">{totalPages}</strong> (
+              {(currentPage - 1) * pageSize + 1} -{' '}
+              {Math.min(currentPage * pageSize, filteredRecords.length)} of {filteredRecords.length} records)
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage <= 1}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-brand-border bg-white dark:bg-brand-surface text-brand-text-primary font-semibold hover:bg-brand-bg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>Previous</span>
+              </button>
+
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, idx) => {
+                  let pageNum = idx + 1;
+                  if (totalPages > 5 && currentPage > 3) {
+                    pageNum = currentPage - 3 + idx;
+                    if (pageNum > totalPages) pageNum = totalPages - (4 - idx);
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      type="button"
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`w-7 h-7 rounded-lg font-mono font-semibold transition-colors ${
+                        currentPage === pageNum
+                          ? 'bg-brand-primary text-white'
+                          : 'text-brand-text-secondary hover:bg-brand-bg'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= totalPages}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-brand-border bg-white dark:bg-brand-surface text-brand-text-primary font-semibold hover:bg-brand-bg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <span>Next</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Modals */}
+      <StudentDetailModal
+        isOpen={!!detailStudent}
+        student={detailStudent}
+        onClose={() => setDetailStudent(null)}
+        onEdit={(student) => {
+          setDetailStudent(null);
+          handleOpenEdit(student);
+        }}
+      />
+
+      <StudentEditModal
+        isOpen={!!editStudent || isAddMode}
+        student={editStudent}
+        isAddMode={isAddMode}
+        onClose={() => {
+          setEditStudent(null);
+          setIsAddMode(false);
+        }}
+        onRequestConfirm={handleRequestConfirm}
+      />
+
+      <ConfirmationModal
+        isOpen={confirmationState.isOpen}
+        title={confirmationState.title}
+        studentName={confirmationState.student?.studentName || ''}
+        grNo={confirmationState.student?.grNo || ''}
+        rowNumber={confirmationState.student?.rowNumber || 0}
+        diffs={confirmationState.diffs}
+        isSubmitting={confirmationState.isSubmitting}
+        isAdd={confirmationState.isAdd}
+        onConfirm={handleExecuteConfirm}
+        onCancel={() =>
+          setConfirmationState((prev) => ({ ...prev, isOpen: false, isSubmitting: false }))
+        }
+      />
+    </div>
+  );
+};

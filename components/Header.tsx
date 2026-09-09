@@ -1,6 +1,7 @@
 import React from 'react';
 import { MenuIcon, MoonIcon, SunIcon } from './icons/MiscIcons';
 import { PhssjLogo } from './Logo';
+import { View } from '../types';
 
 type Theme = 'light' | 'dark';
 
@@ -8,9 +9,20 @@ interface HeaderProps {
   theme: Theme;
   onToggleTheme: () => void;
   onOpenSidebar: () => void;
+  activeView?: View;
 }
 
-const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onOpenSidebar }) => {
+const VIEW_LABELS: Record<string, string> = {
+  home: 'Home',
+  records: 'Student Records',
+  lesson: 'Lesson Plans',
+  paper: 'Exam Papers',
+  live: 'Live Monitor',
+  history: 'History Archive',
+  results: 'Generation Results',
+};
+
+const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onOpenSidebar, activeView }) => {
   return (
     <header className="h-14 md:h-16 px-3.5 md:px-6 bg-brand-surface/85 dark:bg-brand-surface/95 backdrop-blur-xl border-b border-brand-border flex items-center justify-between sticky top-0 z-30 shadow-xs">
       <div className="flex items-center gap-2.5 sm:gap-3.5">
@@ -28,8 +40,13 @@ const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onOpenSidebar }) 
           <div className="leading-tight">
             <div className="flex items-center gap-2">
               <h1 className="text-sm md:text-base font-bold text-brand-text-primary tracking-tight truncate">
-                PHSSJ Lesson Planner
+                PHSSJ
               </h1>
+              {activeView && activeView !== 'home' && (
+                <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-brand-primary/10 text-brand-primary border border-brand-primary/20">
+                  {VIEW_LABELS[activeView] || activeView}
+                </span>
+              )}
             </div>
             <p className="text-[10px] text-brand-text-secondary hidden md:block">
               Peoples Higher Secondary School Jamshoro

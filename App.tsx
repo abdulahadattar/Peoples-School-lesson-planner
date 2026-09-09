@@ -8,8 +8,9 @@ import ResultsView from './components/ResultsView';
 import GenerationStatusPanel from './components/GenerationStatusPanel';
 import LiveMonitor from './components/LiveMonitor';
 import { HistoryView } from './components/HistoryView';
+import { StudentRecordsView } from './components/records/StudentRecordsView';
 import { PhssjLogo, ZiauddinLogo } from './components/Logo';
-import { BookOpenIcon, CloseIcon, DocumentTextIcon, HomeIcon, PulseIcon, ArchiveIcon } from './components/icons/MiscIcons';
+import { BookOpenIcon, CloseIcon, DocumentTextIcon, HomeIcon, PulseIcon, ArchiveIcon, SpreadsheetIcon } from './components/icons/MiscIcons';
 import { useGeneralGeneration, GenerationMode } from './hooks/useGeneralGeneration';
 import { useSelection } from './hooks/useSelection';
 import { loadSloChapter } from './services/sloData';
@@ -24,6 +25,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { view: 'home', label: 'Home', icon: HomeIcon, activeViews: ['home'] },
+  { view: 'records', label: 'Student Records', icon: SpreadsheetIcon, activeViews: ['records'] },
   { view: 'lesson', label: 'Lesson Plans', icon: BookOpenIcon, activeViews: ['lesson', 'results'] },
   { view: 'paper', label: 'Exam Papers', icon: DocumentTextIcon, activeViews: ['paper'] },
   { view: 'live', label: 'Live Monitor', icon: PulseIcon, activeViews: ['live'] },
@@ -230,11 +232,16 @@ const App: React.FC = () => {
               return (
                 <button
                   key={item.view}
+                  id={`nav-${item.view}`}
+                  type="button"
                   onClick={() => {
                     if (item.view === 'home') handleBackToHome();
+                    else if (item.view === 'records') navigate('records');
                     else if (item.view === 'live') navigate('live');
                     else if (item.view === 'history') navigate('history');
-                    else handleNavigate(item.view === 'lesson' ? 'lesson' : 'paper');
+                    else if (item.view === 'lesson') handleNavigate('lesson');
+                    else if (item.view === 'paper') handleNavigate('paper');
+                    else navigate(item.view);
                   }}
                   className={`relative w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${
                     isActive
@@ -268,6 +275,7 @@ const App: React.FC = () => {
       <main className="flex-1 flex flex-col h-full overflow-hidden relative">
         <Header
           theme={theme}
+          activeView={view}
           onToggleTheme={toggleTheme}
           onOpenSidebar={() => setIsSidebarOpen(true)}
         />
@@ -281,10 +289,14 @@ const App: React.FC = () => {
           {view === 'home' && (
             <HomeView
               onNavigate={(target) => {
-                if (target === 'live' || target === 'history') {
+                if (target === 'records') {
+                  navigate('records');
+                } else if (target === 'live' || target === 'history') {
                   navigate(target);
                 } else if (target === 'lesson' || target === 'paper') {
                   handleNavigate(target);
+                } else {
+                  navigate(target);
                 }
               }}
             />
@@ -319,6 +331,8 @@ const App: React.FC = () => {
               onExportFormatChange={setExportFormat}
             />
           )}
+
+          {view === 'records' && <StudentRecordsView />}
 
           {view === 'live' && <LiveMonitor teachers={teachers} />}
 

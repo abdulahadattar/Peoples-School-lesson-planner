@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpenIcon, DocumentTextIcon, PulseIcon, ArchiveIcon } from './icons/MiscIcons';
+import { BookOpenIcon, DocumentTextIcon, PulseIcon, ArchiveIcon, SpreadsheetIcon } from './icons/MiscIcons';
 import { PhssjLogo, ZiauddinLogo } from './Logo';
 import { View } from '../types';
 
@@ -9,6 +9,13 @@ interface HomeViewProps {
 
 /** Feature cards data — one source instead of copy-pasted markup. */
 const FEATURES = [
+  {
+    view: 'records' as View,
+    title: 'Student Records',
+    description: 'Live Google Sheets register, GR# profiles, search, filters, and two-way sync.',
+    icon: SpreadsheetIcon,
+    accent: 'text-emerald-600 bg-emerald-500/10 group-hover:bg-emerald-600 group-hover:text-white',
+  },
   {
     view: 'lesson' as View,
     title: 'Lesson Plans',
@@ -43,7 +50,7 @@ const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
         }}
       />
 
-      <div className="w-full max-w-lg relative z-10">
+      <div className="w-full max-w-3xl relative z-10">
         {/* Hero */}
         <div className="text-center mb-10 md:mb-12 animate-fadeInUp">
           <div className="relative mx-auto mb-6 w-fit animate-floatSlow">
@@ -86,11 +93,19 @@ const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
         <div className="flex flex-wrap items-center justify-center gap-2.5 mb-8 animate-fadeInUp" style={{ animationDelay: '400ms' }}>
           <button
             type="button"
+            onClick={() => onNavigate?.('records')}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-brand-primary/10 text-brand-primary border border-brand-primary/30 hover:bg-brand-primary hover:text-white shadow-soft transition-all"
+          >
+            <SpreadsheetIcon className="w-4 h-4" />
+            <span>Student Records (Google Sheets)</span>
+          </button>
+          <button
+            type="button"
             onClick={() => onNavigate?.('live')}
             className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-brand-surface border border-brand-border text-brand-text-primary hover:border-brand-primary/40 hover:text-brand-primary shadow-soft transition-all"
           >
             <PulseIcon className="w-4 h-4 text-emerald-500" />
-            <span>Live Monitor & Substitution</span>
+            <span>Live Monitor</span>
           </button>
           <button
             type="button"
@@ -98,7 +113,7 @@ const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
             className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-brand-surface border border-brand-border text-brand-text-primary hover:border-brand-primary/40 hover:text-brand-primary shadow-soft transition-all"
           >
             <ArchiveIcon className="w-4 h-4 text-brand-accent" />
-            <span>Saved History Archive</span>
+            <span>History Archive</span>
           </button>
         </div>
 
