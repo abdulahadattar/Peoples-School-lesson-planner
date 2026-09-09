@@ -14,15 +14,12 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
 
 export const SCOPES = [
-  'https://www.googleapis.com/auth/drive',
-  'https://www.googleapis.com/auth/drive.file',
-  'https://www.googleapis.com/auth/drive.readonly',
   'https://www.googleapis.com/auth/spreadsheets',
-  'https://www.googleapis.com/auth/spreadsheets.readonly',
+  'https://www.googleapis.com/auth/drive.file',
 ];
 
 const provider = new GoogleAuthProvider();
-// Request Google Workspace Sheets & Drive scopes
+// Request Google Workspace Sheets scopes
 SCOPES.forEach((scope) => provider.addScope(scope));
 provider.setCustomParameters({
   prompt: 'select_account',
@@ -58,7 +55,7 @@ export const initAuth = (
 
 /**
  * Trigger Google Sign-In with popup.
- * Must be called from a user action (e.g. button click).
+ * Handles user cancellations and popup closures gracefully without throwing fatal errors.
  */
 export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
   try {
@@ -66,14 +63,31 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
     const result = await signInWithPopup(auth, provider);
     const credential = GoogleAuthProvider.credentialFromResult(result);
     if (!credential?.accessToken) {
-      throw new Error('Failed to get access token from Google Auth.');
+      throw new Error('Failed to obtain Google Sheets access token.');
     }
 
     cachedAccessToken = credential.accessToken;
     currentUser = result.user;
     return { user: result.user, accessToken: cachedAccessToken };
   } catch (error: any) {
-    console.error('Google Sign In Error:', error);
+    // User deliberately closed the popup or cancelled the prompt - normal interaction, not an app error
+    if (
+      error?.code === 'auth/popup-closed-by-user' ||
+      error?.code === 'auth/cancelled-popup-request' ||
+      error?.code === 'auth/user-cancelled'
+    ) {
+      return null;
+    }
+
+    // Popup was blocked by browser or iframe sandbox policy
+    if (error?.code === 'auth/popup-blocked') {
+      throw new Error(
+        'Sign-in pop-up was blocked by your browser. Please allow pop-ups for this site or open the app in a new window.'
+      );
+    }
+
+    // Log unexpected errors cleanly
+    console.warn('Google Sign In:', error?.message || error);
     throw error;
   } finally {
     isSigningIn = false;

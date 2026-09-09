@@ -18,6 +18,10 @@ import {
   ChevronLeft,
   ChevronRight,
   SlidersHorizontal,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  BarChart3,
 } from 'lucide-react';
 import {
   StudentRecord,
@@ -41,7 +45,24 @@ import { GoogleSignInButton } from './GoogleSignInButton';
 import { StudentDetailModal } from './StudentDetailModal';
 import { StudentEditModal } from './StudentEditModal';
 import { ConfirmationModal, DiffItem } from './ConfirmationModal';
+import { ClassAnalyticsCharts, CLASS_ORDER } from './ClassAnalyticsCharts';
 import { User } from 'firebase/auth';
+
+export type SortField =
+  | 'grNo'
+  | 'studentName'
+  | 'fatherName'
+  | 'currentClass'
+  | 'gender'
+  | 'dob'
+  | 'parentContact'
+  | 'emergencyContact'
+  | 'status'
+  | 'bFormNo'
+  | 'parentCnic'
+  | 'address';
+
+export type SortDirection = 'asc' | 'desc';
 
 export const StudentRecordsView: React.FC = () => {
   const [records, setRecords] = useState<StudentRecord[]>([]);
@@ -61,6 +82,32 @@ export const StudentRecordsView: React.FC = () => {
   const [selectedSection, setSelectedSection] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedGender, setSelectedGender] = useState<string>('all');
+
+  // Sorting state
+  const [sortField, setSortField] = useState<SortField>('grNo');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const renderSortIndicator = (field: SortField) => {
+    if (sortField !== field) {
+      return (
+        <ArrowUpDown className="w-3 h-3 text-brand-text-secondary/40 opacity-0 group-hover/th:opacity-100 transition-opacity ml-1 flex-shrink-0" />
+      );
+    }
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="w-3.5 h-3.5 text-brand-primary ml-1 flex-shrink-0" />
+    ) : (
+      <ArrowDown className="w-3.5 h-3.5 text-brand-primary ml-1 flex-shrink-0" />
+    );
+  };
 
   // Pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -158,7 +205,15 @@ export const StudentRecordsView: React.FC = () => {
         setAuthToken(res.accessToken);
         showNotification(`Signed in as ${res.user.displayName || res.user.email}. Direct Google Sheets sync enabled!`);
       }
+      // If res is null, the user deliberately closed or dismissed the prompt, so no error notification is needed.
     } catch (err: any) {
+      if (
+        err?.code === 'auth/popup-closed-by-user' ||
+        err?.code === 'auth/cancelled-popup-request' ||
+        err?.code === 'auth/user-cancelled'
+      ) {
+        return;
+      }
       showNotification(err?.message || 'Google Sign-In failed.', 'error');
     } finally {
       setIsAuthLoading(false);
@@ -256,6 +311,79 @@ export const StudentRecordsView: React.FC = () => {
     });
   }, [records, searchQuery, selectedClass, selectedSection, selectedStatus, selectedGender]);
 
+  // Sorted and Filtered records
+  const sortedAndFilteredRecords = useMemo(() => {
+    const list = [...filteredRecords];
+    list.sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case 'grNo': {
+          const numA = parseInt((a.grNo || '').replace(/\D/g, ''), 10);
+          const numB = parseInt((b.grNo || '').replace(/\D/g, ''), 10);
+          if (!isNaN(numA) && !isNaN(numB)) {
+            cmp = numA - numB;
+          } else {
+            cmp = (a.grNo || '').localeCompare(b.grNo || '', undefined, { numeric: true });
+          }
+          break;
+        }
+        case 'studentName':
+          cmp = (a.studentName || '').localeCompare(b.studentName || '', undefined, { sensitivity: 'base' });
+          break;
+        case 'fatherName':
+          cmp = (a.fatherName || '').localeCompare(b.fatherName || '', undefined, { sensitivity: 'base' });
+          break;
+        case 'currentClass': {
+          const orderA = CLASS_ORDER[(a.currentClass || '').trim().toUpperCase()] ?? 99;
+          const orderB = CLASS_ORDER[(b.currentClass || '').trim().toUpperCase()] ?? 99;
+          if (orderA !== orderB) {
+            cmp = orderA - orderB;
+          } else {
+            cmp = (a.section || '').localeCompare(b.section || '');
+          }
+          break;
+        }
+        case 'gender':
+          cmp = (a.gender || '').localeCompare(b.gender || '');
+          break;
+        case 'dob': {
+          const yA = parseInt(a.dobYear, 10) || 0;
+          const mA = parseInt(a.dobMonth, 10) || 0;
+          const dA = parseInt(a.dobDay, 10) || 0;
+          const yB = parseInt(b.dobYear, 10) || 0;
+          const mB = parseInt(b.dobMonth, 10) || 0;
+          const dB = parseInt(b.dobDay, 10) || 0;
+          cmp = (yA * 10000 + mA * 100 + dA) - (yB * 10000 + mB * 100 + dB);
+          break;
+        }
+        case 'parentContact':
+          cmp = (a.parentContact || '').localeCompare(b.parentContact || '');
+          break;
+        case 'emergencyContact':
+          cmp = (a.emergencyContact || '').localeCompare(b.emergencyContact || '');
+          break;
+        case 'status':
+          cmp = (a.status || '').localeCompare(b.status || '');
+          break;
+        case 'bFormNo':
+          cmp = (a.bFormNo || '').localeCompare(b.bFormNo || '');
+          break;
+        case 'parentCnic':
+          cmp = (a.parentCnic || '').localeCompare(b.parentCnic || '');
+          break;
+        case 'address':
+          cmp = (a.address || '').localeCompare(b.address || '');
+          break;
+        default:
+          cmp = 0;
+      }
+
+      return sortDirection === 'desc' ? -cmp : cmp;
+    });
+
+    return list;
+  }, [filteredRecords, sortField, sortDirection]);
+
   // Statistics
   const stats = useMemo(() => {
     let promoted = 0;
@@ -286,16 +414,16 @@ export const StudentRecordsView: React.FC = () => {
   }, [records]);
 
   // Pagination calculation
-  const totalPages = Math.ceil(filteredRecords.length / pageSize) || 1;
+  const totalPages = Math.ceil(sortedAndFilteredRecords.length / pageSize) || 1;
   const paginatedRecords = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return filteredRecords.slice(start, start + pageSize);
-  }, [filteredRecords, currentPage, pageSize]);
+    return sortedAndFilteredRecords.slice(start, start + pageSize);
+  }, [sortedAndFilteredRecords, currentPage, pageSize]);
 
-  // Reset page when filters change
+  // Reset page when filters or sorting change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedClass, selectedSection, selectedStatus, selectedGender, pageSize]);
+  }, [searchQuery, selectedClass, selectedSection, selectedStatus, selectedGender, pageSize, sortField, sortDirection]);
 
   // Open Edit flow
   const handleOpenEdit = (student: StudentRecord) => {
@@ -572,6 +700,13 @@ export const StudentRecordsView: React.FC = () => {
         </div>
       </div>
 
+      {/* Class Analytics & Visualizations Section */}
+      <ClassAnalyticsCharts
+        records={records}
+        selectedClass={selectedClass}
+        onSelectClass={setSelectedClass}
+      />
+
       {/* Search and Filters Toolbar */}
       <div className="p-4 rounded-2xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft space-y-3">
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
@@ -756,23 +891,149 @@ export const StudentRecordsView: React.FC = () => {
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="border-b border-brand-border bg-slate-50/80 dark:bg-slate-900/60 font-semibold text-brand-text-secondary uppercase tracking-wider text-[10px]">
-                  {/* Sticky left columns */}
-                  <th className="py-3 px-3.5 sticky left-0 z-20 bg-slate-50 dark:bg-slate-900 border-r border-brand-border shadow-xs w-20">
-                    GR#
+                  {/* Sticky GR# column only - with clean separator */}
+                  <th
+                    onClick={() => handleSort('grNo')}
+                    className="py-3 px-3.5 sticky left-0 z-20 bg-slate-50 dark:bg-slate-900 border-r border-brand-border shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] w-20 min-w-[72px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
+                    title="Click to sort by GR#"
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span>GR#</span>
+                      {renderSortIndicator('grNo')}
+                    </div>
                   </th>
-                  <th className="py-3 px-4 sticky left-20 z-20 bg-slate-50 dark:bg-slate-900 border-r border-brand-border shadow-xs min-w-[180px]">
-                    Name of Student
+
+                  {/* Name of Student - Non-sticky so adjacent columns never slide under it */}
+                  <th
+                    onClick={() => handleSort('studentName')}
+                    className="py-3 px-4 min-w-[200px] border-r border-brand-border/40 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
+                    title="Click to sort by Name of Student"
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span>Name of Student</span>
+                      {renderSortIndicator('studentName')}
+                    </div>
                   </th>
-                  <th className="py-3 px-4 min-w-[160px]">Father / Guardian Name</th>
-                  <th className="py-3 px-3 text-center min-w-[90px]">Class & Sec</th>
-                  <th className="py-3 px-3 text-center min-w-[70px]">Gender</th>
-                  <th className="py-3 px-3 text-center min-w-[100px]">DOB (D/M/Y)</th>
-                  <th className="py-3 px-4 min-w-[150px]">Parent Contact</th>
-                  <th className="py-3 px-4 min-w-[150px]">Emergency Contact</th>
-                  <th className="py-3 px-3 text-center min-w-[120px]">Status</th>
-                  <th className="py-3 px-4 min-w-[140px]">B.Form No.</th>
-                  <th className="py-3 px-4 min-w-[140px]">Parent CNIC</th>
-                  <th className="py-3 px-4 min-w-[200px]">Address</th>
+
+                  {/* Father / Guardian Name - Clean, unobstructed */}
+                  <th
+                    onClick={() => handleSort('fatherName')}
+                    className="py-3 px-4 min-w-[210px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
+                    title="Click to sort by Father / Guardian Name"
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span>Father / Guardian Name</span>
+                      {renderSortIndicator('fatherName')}
+                    </div>
+                  </th>
+
+                  {/* Class & Sec */}
+                  <th
+                    onClick={() => handleSort('currentClass')}
+                    className="py-3 px-3 text-center min-w-[105px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
+                    title="Click to sort by Class & Section"
+                  >
+                    <div className="flex items-center justify-center gap-1">
+                      <span>Class & Sec</span>
+                      {renderSortIndicator('currentClass')}
+                    </div>
+                  </th>
+
+                  {/* Gender */}
+                  <th
+                    onClick={() => handleSort('gender')}
+                    className="py-3 px-3 text-center min-w-[80px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
+                    title="Click to sort by Gender"
+                  >
+                    <div className="flex items-center justify-center gap-1">
+                      <span>Gender</span>
+                      {renderSortIndicator('gender')}
+                    </div>
+                  </th>
+
+                  {/* DOB */}
+                  <th
+                    onClick={() => handleSort('dob')}
+                    className="py-3 px-3 text-center min-w-[105px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
+                    title="Click to sort by Date of Birth"
+                  >
+                    <div className="flex items-center justify-center gap-1">
+                      <span>DOB (D/M/Y)</span>
+                      {renderSortIndicator('dob')}
+                    </div>
+                  </th>
+
+                  {/* Parent Contact */}
+                  <th
+                    onClick={() => handleSort('parentContact')}
+                    className="py-3 px-4 min-w-[150px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
+                    title="Click to sort by Parent Contact"
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span>Parent Contact</span>
+                      {renderSortIndicator('parentContact')}
+                    </div>
+                  </th>
+
+                  {/* Emergency Contact */}
+                  <th
+                    onClick={() => handleSort('emergencyContact')}
+                    className="py-3 px-4 min-w-[150px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
+                    title="Click to sort by Emergency Contact"
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span>Emergency Contact</span>
+                      {renderSortIndicator('emergencyContact')}
+                    </div>
+                  </th>
+
+                  {/* Status */}
+                  <th
+                    onClick={() => handleSort('status')}
+                    className="py-3 px-3 text-center min-w-[120px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
+                    title="Click to sort by Status"
+                  >
+                    <div className="flex items-center justify-center gap-1">
+                      <span>Status</span>
+                      {renderSortIndicator('status')}
+                    </div>
+                  </th>
+
+                  {/* B.Form No. */}
+                  <th
+                    onClick={() => handleSort('bFormNo')}
+                    className="py-3 px-4 min-w-[140px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
+                    title="Click to sort by B.Form No."
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span>B.Form No.</span>
+                      {renderSortIndicator('bFormNo')}
+                    </div>
+                  </th>
+
+                  {/* Parent CNIC */}
+                  <th
+                    onClick={() => handleSort('parentCnic')}
+                    className="py-3 px-4 min-w-[140px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
+                    title="Click to sort by Parent CNIC"
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span>Parent CNIC</span>
+                      {renderSortIndicator('parentCnic')}
+                    </div>
+                  </th>
+
+                  {/* Address */}
+                  <th
+                    onClick={() => handleSort('address')}
+                    className="py-3 px-4 min-w-[200px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
+                    title="Click to sort by Address"
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span>Address</span>
+                      {renderSortIndicator('address')}
+                    </div>
+                  </th>
                   <th className="py-3 px-3 text-center min-w-[100px]">Class Admitted</th>
                   <th className="py-3 px-3 text-center min-w-[110px]">Admission Date</th>
                   <th className="py-3 px-4 min-w-[140px]">Partner Contact</th>
@@ -791,23 +1052,24 @@ export const StudentRecordsView: React.FC = () => {
                     className="hover:bg-brand-bg/80 transition-colors group"
                   >
                     {/* Sticky GR# */}
-                    <td className="py-2.5 px-3.5 sticky left-0 z-10 bg-white dark:bg-brand-surface group-hover:bg-brand-bg border-r border-brand-border font-mono font-bold text-brand-primary">
+                    <td className="py-2.5 px-3.5 sticky left-0 z-10 bg-white dark:bg-brand-surface group-hover:bg-brand-bg border-r border-brand-border shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] font-mono font-bold text-brand-primary whitespace-nowrap">
                       {student.grNo || '—'}
                     </td>
 
-                    {/* Sticky Student Name */}
-                    <td className="py-2.5 px-4 sticky left-20 z-10 bg-white dark:bg-brand-surface group-hover:bg-brand-bg border-r border-brand-border">
+                    {/* Student Name - Non-sticky so it never clips or overlaps father name */}
+                    <td className="py-2.5 px-4 bg-white dark:bg-brand-surface group-hover:bg-brand-bg border-r border-brand-border/40 whitespace-nowrap">
                       <button
                         type="button"
                         onClick={() => setDetailStudent(student)}
-                        className="font-bold text-brand-text-primary hover:text-brand-primary text-left truncate block max-w-[200px] transition-colors"
+                        className="font-bold text-brand-text-primary hover:text-brand-primary text-left truncate block max-w-[220px] transition-colors"
                         title={student.studentName}
                       >
                         {student.studentName || '—'}
                       </button>
                     </td>
 
-                    <td className="py-2.5 px-4 text-brand-text-primary font-medium truncate max-w-[180px]">
+                    {/* Father / Guardian Name - Completely visible and never cut off */}
+                    <td className="py-2.5 px-4 text-brand-text-primary font-medium whitespace-nowrap min-w-[210px]" title={student.fatherName}>
                       {student.fatherName || '—'}
                     </td>
 

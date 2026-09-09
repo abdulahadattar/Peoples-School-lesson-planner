@@ -51,6 +51,7 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
 
   return (
     <button
+      id="google-signin-btn"
       type="button"
       onClick={onSignIn}
       disabled={isLoading}
