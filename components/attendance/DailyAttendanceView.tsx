@@ -49,8 +49,8 @@ export const DailyAttendanceView: React.FC = () => {
 
   const [selectedDate, setSelectedDate] = useState<string>(getTodayStr());
   const [enrollments, setEnrollments] = useState<ClassEnrollment[]>(DEFAULT_GRADE_ENROLLMENTS);
-  const [inputs, setInputs] = useState<Record<string, { presentBoys: number | ''; presentGirls: number | '' }>>({});
-  const [recordedBy, setRecordedBy] = useState<string>('Class In-Charge');
+  const [inputs, setInputs] = useState<Record<string, { presentBoys: number | ''; presentGirls: number | ''; classTeacher?: string }>>({});
+  const [recordedBy, setRecordedBy] = useState<string>('Class Teacher');
   const [notes, setNotes] = useState<string>('');
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -69,28 +69,29 @@ export const DailyAttendanceView: React.FC = () => {
     setTimeout(() => setNotification(null), 4000);
   };
 
-  // 1. Load live active enrollment from Google Sheets student records (excluding dropouts)
-  useEffect(() => {
-    let isMounted = true;
+  const refreshEnrollments = useCallback(async (force = false) => {
     setIsSyncingEnrollment(true);
-    fetchSheetData()
-      .then(res => {
-        if (isMounted && res.records && res.records.length > 0) {
-          const liveEnrollments = computeEnrollmentsFromRecords(res.records);
-          setEnrollments(liveEnrollments);
+    try {
+      const token = await getAccessToken();
+      const res = await fetchSheetData(undefined, undefined, token, force);
+      if (res.records && res.records.length > 0) {
+        const liveEnrollments = computeEnrollmentsFromRecords(res.records);
+        setEnrollments(liveEnrollments);
+        if (force) {
+          showToast('Live enrollment sync complete!', 'success');
         }
-      })
-      .catch(err => {
-        console.warn('Falling back to default verified school enrollment:', err);
-      })
-      .finally(() => {
-        if (isMounted) setIsSyncingEnrollment(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
+      }
+    } catch (err) {
+      console.warn('Falling back to default verified school enrollment:', err);
+    } finally {
+      setIsSyncingEnrollment(false);
+    }
   }, []);
+
+  // 1. Load live active enrollment from Google Sheets student records
+  useEffect(() => {
+    refreshEnrollments();
+  }, [refreshEnrollments]);
 
   // 2. Load attendance for the selected date
   const loadDateAttendance = useCallback(async (date: string) => {
@@ -99,15 +100,16 @@ export const DailyAttendanceView: React.FC = () => {
     try {
       const record = await loadAttendanceRecord(date);
       if (record && record.classes && Object.keys(record.classes).length > 0) {
-        const loadedInputs: Record<string, { presentBoys: number | ''; presentGirls: number | '' }> = {};
+        const loadedInputs: Record<string, { presentBoys: number | ''; presentGirls: number | ''; classTeacher?: string }> = {};
         Object.entries(record.classes).forEach(([key, val]) => {
           loadedInputs[key] = {
             presentBoys: typeof val.presentBoys === 'number' ? val.presentBoys : '',
             presentGirls: typeof val.presentGirls === 'number' ? val.presentGirls : '',
+            classTeacher: val.classTeacher || '',
           };
         });
         setInputs(loadedInputs);
-        setRecordedBy(record.recordedBy || 'Class In-Charge');
+        setRecordedBy(record.recordedBy || 'Class Teacher');
         setNotes(record.notes || '');
         setLastSavedTime(record.updatedAt ? new Date(record.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null);
         setHasUnsavedChanges(false);
@@ -199,11 +201,12 @@ export const DailyAttendanceView: React.FC = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const classesData: Record<string, { presentBoys: number; presentGirls: number }> = {};
+      const classesData: Record<string, { presentBoys: number; presentGirls: number; classTeacher?: string }> = {};
       attendanceRows.forEach(row => {
         classesData[row.classKey] = {
           presentBoys: typeof row.presentBoys === 'number' ? row.presentBoys : 0,
           presentGirls: typeof row.presentGirls === 'number' ? row.presentGirls : 0,
+          classTeacher: row.classTeacher || '',
         };
       });
 
@@ -229,6 +232,7 @@ export const DailyAttendanceView: React.FC = () => {
             totalAbsent: schoolSummary.totalAbsent,
             overallPercentage: schoolSummary.overallPercentage,
           },
+          rows: attendanceRows,
         }, token);
       } catch (syncErr) {
         console.warn('Google Sheet attendance sync note:', syncErr);
@@ -323,7 +327,7 @@ export const DailyAttendanceView: React.FC = () => {
 
         <div class="meta">
           <div><strong>Date:</strong> ${formattedDate} (${selectedDate})</div>
-          <div><strong>Active Enrollment:</strong> ${schoolSummary.totalEnrolled} Students (Dropouts Excluded)</div>
+          <div><strong>Active Enrollment:</strong> ${schoolSummary.totalEnrolled} Students</div>
           <div><strong>Recorded By:</strong> ${recordedBy || 'In-Charge'}</div>
         </div>
 
@@ -460,8 +464,17 @@ export const DailyAttendanceView: React.FC = () => {
                 ECCE to Grade 12
               </span>
             </div>
-            <p className="text-xs text-brand-text-secondary mt-0.5">
+            <p className="text-xs text-brand-text-secondary mt-0.5 flex items-center gap-2">
               Enter Boys and Girls present for each grade. Formulas auto-sum totals, percentages, and progress bars.
+              <button 
+                onClick={() => refreshEnrollments(true)}
+                disabled={isSyncingEnrollment}
+                className="inline-flex items-center gap-1 hover:text-brand-primary transition-colors disabled:opacity-50"
+                title="Force refresh live enrollments from Google Sheets"
+              >
+                <RefreshCw className={`w-3 h-3 ${isSyncingEnrollment ? 'animate-spin' : ''}`} />
+                {isSyncingEnrollment ? 'Syncing...' : 'Sync Enrollments'}
+              </button>
             </p>
           </div>
         </div>
@@ -539,10 +552,6 @@ export const DailyAttendanceView: React.FC = () => {
           <div className="flex items-center gap-3 text-xs text-brand-text-secondary">
             <span>
               Active Roster: <strong className="text-brand-text-primary">{schoolSummary.totalEnrolled}</strong>
-            </span>
-            <span>•</span>
-            <span className="text-emerald-700 dark:text-emerald-400 font-medium">
-              Dropouts Excluded
             </span>
             {isSyncingEnrollment && (
               <span className="inline-flex items-center gap-1 text-[10px] text-brand-primary">
@@ -771,17 +780,19 @@ export const DailyAttendanceView: React.FC = () => {
                   >
                     {/* Grade Name */}
                     <td className="py-3 px-4 font-semibold text-brand-text-primary">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-lg bg-brand-primary/10 text-brand-primary flex items-center justify-center text-[10px] font-bold shrink-0">
-                          {row.romanName}
-                        </span>
-                        <div>
-                          <div className="font-bold text-xs">{row.displayName}</div>
-                          {isGrade9 && (
-                            <span className="text-[10px] text-brand-primary font-medium">
-                              Example: Enrolled 66
-                            </span>
-                          )}
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-lg bg-brand-primary/10 text-brand-primary flex items-center justify-center text-[10px] font-bold shrink-0">
+                            {row.romanName}
+                          </span>
+                          <div>
+                            <div className="font-bold text-xs">{row.displayName}</div>
+                            {row.classTeacher && (
+                              <div className="text-[10px] text-brand-text-secondary mt-0.5">
+                                Teacher: {row.classTeacher}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>

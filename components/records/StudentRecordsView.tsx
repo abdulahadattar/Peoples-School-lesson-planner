@@ -177,7 +177,7 @@ export const StudentRecordsView: React.FC = () => {
 
     try {
       const token = authToken || (await getAccessToken());
-      const result = await fetchSheetData(DEFAULT_SPREADSHEET_ID, DEFAULT_GID, token);
+      const result = await fetchSheetData(DEFAULT_SPREADSHEET_ID, DEFAULT_GID, token, isManualRefresh);
       setRecords(result.records);
       setLastSynced(result.lastSynced);
       if (isManualRefresh) {
@@ -590,6 +590,14 @@ export const StudentRecordsView: React.FC = () => {
                 Last updated: {lastSynced.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
+            <button
+              onClick={() => loadRecords(true)}
+              disabled={isRefreshing || isLoading}
+              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-bg border border-brand-border text-brand-text-secondary hover:text-brand-primary transition-colors text-xs font-semibold disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Syncing...' : 'Sync Now'}
+            </button>
           </div>
           <h1 className="text-xl sm:text-2xl font-extrabold text-brand-text-primary tracking-tight">
             School Student Records & Register

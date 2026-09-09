@@ -1,14 +1,14 @@
 /**
  * Google Sheets Service for Peoples Higher Secondary School Jamshoro (PHSSJ)
  * Synchronizes with Google Sheets file:
- * https://docs.google.com/spreadsheets/d/1DwEZIS__2T8KVCH140229nrGChgu03n8/edit?gid=1397470354#gid=1397470354
+ * https://docs.google.com/spreadsheets/d/11AMKZ-HXUQg4cKsEiEmKgmjfxPMPe4RTnVGlwB_Y7g0/edit?gid=1397470354#gid=1397470354
  */
 
-export const DEFAULT_SPREADSHEET_ID = '1DwEZIS__2T8KVCH140229nrGChgu03n8';
+export const DEFAULT_SPREADSHEET_ID = '11AMKZ-HXUQg4cKsEiEmKgmjfxPMPe4RTnVGlwB_Y7g0';
 export const DEFAULT_GID = '1397470354';
 export const DEFAULT_SHEET_TITLE = 'Jamshoro South Final SPD (2)';
 export const DEFAULT_SPREADSHEET_URL =
-  'https://docs.google.com/spreadsheets/d/1DwEZIS__2T8KVCH140229nrGChgu03n8/edit?gid=1397470354#gid=1397470354';
+  'https://docs.google.com/spreadsheets/d/11AMKZ-HXUQg4cKsEiEmKgmjfxPMPe4RTnVGlwB_Y7g0/edit?gid=1397470354#gid=1397470354';
 export const ATTENDANCE_SPREADSHEET_ID = '1J5eEmFnpqzgrNCZkV0e3bYOdTBE2B-pjczeBq_OYfbA';
 
 export interface StudentRecord {
@@ -232,11 +232,21 @@ export interface FetchSheetResult {
  * Uses the server-side proxy route `/api/sheets/data` which fetches the live sheet,
  * or direct Google Sheets API if an access token is provided.
  */
+let sheetDataCache: Record<string, { timestamp: number; data: FetchSheetResult }> = {};
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 export async function fetchSheetData(
   spreadsheetId: string = DEFAULT_SPREADSHEET_ID,
   gid: string = DEFAULT_GID,
-  accessToken?: string | null
+  accessToken?: string | null,
+  forceRefresh: boolean = false
 ): Promise<FetchSheetResult> {
+  const cacheKey = `${spreadsheetId}-${gid}-${accessToken ? 'auth' : 'public'}`;
+  
+  if (!forceRefresh && sheetDataCache[cacheKey] && Date.now() - sheetDataCache[cacheKey].timestamp < CACHE_TTL) {
+    return sheetDataCache[cacheKey].data;
+  }
+
   try {
     // 1. Try server-side proxy
     const headers: Record<string, string> = {};
@@ -252,7 +262,7 @@ export async function fetchSheetData(
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data.records)) {
-        return {
+        const result = {
           records: data.records,
           spreadsheetId,
           gid,
@@ -260,6 +270,8 @@ export async function fetchSheetData(
           lastSynced: new Date(),
           isLive: true,
         };
+        sheetDataCache[cacheKey] = { timestamp: Date.now(), data: result };
+        return result;
       }
     }
   } catch (err) {
@@ -277,7 +289,7 @@ export async function fetchSheetData(
     const rows = parseCSV(csvText);
 
     if (rows.length <= 1) {
-      return {
+      const emptyResult = {
         records: [],
         spreadsheetId,
         gid,
@@ -285,6 +297,8 @@ export async function fetchSheetData(
         lastSynced: new Date(),
         isLive: true,
       };
+      sheetDataCache[cacheKey] = { timestamp: Date.now(), data: emptyResult };
+      return emptyResult;
     }
 
     // Header is row 0; data starts at row 1 -> rowNumber = index + 1
@@ -296,7 +310,7 @@ export async function fetchSheetData(
       }
     }
 
-    return {
+    const result = {
       records,
       spreadsheetId,
       gid,
@@ -304,6 +318,8 @@ export async function fetchSheetData(
       lastSynced: new Date(),
       isLive: true,
     };
+    sheetDataCache[cacheKey] = { timestamp: Date.now(), data: result };
+    return result;
   } catch (fallbackErr) {
     console.warn('All sheet fetch methods failed, returning empty records:', fallbackErr);
     return {
@@ -355,6 +371,9 @@ export async function updateSheetRecord(
 
   if (!response.ok) {
     const errorText = await response.text();
+    if (errorText.includes('Office file') || errorText.includes('FAILED_PRECONDITION')) {
+      throw new Error('This operation is not supported because the spreadsheet is an Excel file. Please open the file in Google Drive and select "Save as Google Sheets".');
+    }
     // Fallback to server proxy route
     try {
       const serverRes = await fetch('/api/sheets/update', {
@@ -422,6 +441,9 @@ export async function addSheetRecord(
 
   if (!response.ok) {
     const errorText = await response.text();
+    if (errorText.includes('Office file') || errorText.includes('FAILED_PRECONDITION')) {
+      throw new Error('This operation is not supported because the spreadsheet is an Excel file. Please open the file in Google Drive and select "Save as Google Sheets".');
+    }
     // Fallback to server proxy
     try {
       const serverRes = await fetch('/api/sheets/add', {
@@ -505,26 +527,78 @@ export async function syncAttendanceToSheet(
       totalAbsent: number;
       overallPercentage: number;
     };
+    rows: any[];
   },
   accessToken?: string | null
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const rowValues = [
+    const headerValues = ['Date', 'Recorded By', 'Class', 'Enrolled Boys', 'Enrolled Girls', 'Attendance %', 'Total Enrolled', 'Present Boys', 'Present Girls', 'Total Present', 'Total Absent', 'Notes', 'Timestamp'];
+    
+    const rowsToAppend = record.rows.map(r => [
+      record.date,
+      r.classTeacher || record.recordedBy || 'Class Teacher',
+      r.displayName,
+      r.enrolledBoys,
+      r.enrolledGirls,
+      `${r.percentage}%`,
+      r.totalEnrolled,
+      typeof r.presentBoys === 'number' ? r.presentBoys : 0,
+      typeof r.presentGirls === 'number' ? r.presentGirls : 0,
+      r.totalPresent,
+      r.absentTotal,
+      record.notes || '',
+      new Date().toISOString()
+    ]);
+
+    // Add the summary row at the end
+    rowsToAppend.push([
       record.date,
       record.recordedBy || 'Class Teacher',
+      'WHOLE SCHOOL',
+      '',
+      '',
+      `${record.summary.overallPercentage}%`,
       record.summary.totalEnrolled,
+      '',
+      '',
       record.summary.totalPresent,
       record.summary.totalAbsent,
-      `${record.summary.overallPercentage}%`,
       record.notes || '',
-      new Date().toISOString(),
-    ];
+      new Date().toISOString()
+    ]);
 
     if (accessToken) {
-      const range = `'Sheet1'!A:H`;
+      // 1. Check headers
+      try {
+        const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${ATTENDANCE_SPREADSHEET_ID}/values/${encodeURIComponent(`'Sheet1'!A1:M1`)}`;
+        const getRes = await fetch(getUrl, {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        if (getRes.ok) {
+          const getData = await getRes.json();
+          const firstHeader = getData.values?.[0]?.[2];
+          // If headers are missing, or if it has the OLD headers (where Col C was 'Total Enrolled' instead of 'Class')
+          if (!getData.values || getData.values.length === 0 || getData.values[0].length === 0 || firstHeader !== 'Class') {
+            // Write new expanded headers
+            const updateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${ATTENDANCE_SPREADSHEET_ID}/values/${encodeURIComponent(`'Sheet1'!A1:M1`)}?valueInputOption=USER_ENTERED`;
+            await fetch(updateUrl, {
+              method: 'PUT',
+              headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ range: `'Sheet1'!A1:M1`, majorDimension: 'ROWS', values: [headerValues] }),
+            });
+            
+            // Wait a moment before appending to ensure headers are flushed, though usually synchronous
+          }
+        }
+      } catch (err) {
+        console.warn('Could not check/update headers', err);
+      }
+
+      // 2. Append rows
+      const range = `'Sheet1'!A:A`;
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${ATTENDANCE_SPREADSHEET_ID}/values/${encodeURIComponent(
         range
-      )}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
+      )}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
 
       const response = await fetch(url, {
         method: 'POST',
@@ -535,15 +609,21 @@ export async function syncAttendanceToSheet(
         body: JSON.stringify({
           range,
           majorDimension: 'ROWS',
-          values: [rowValues],
+          values: rowsToAppend,
         }),
       });
 
       if (response.ok) {
         return { success: true, message: 'Attendance synced successfully to Google Sheet!' };
+      } else {
+        const errorText = await response.text();
+        if (errorText.includes('Office file') || errorText.includes('FAILED_PRECONDITION')) {
+          throw new Error('This operation is not supported because the spreadsheet is an Excel file. Please open the file in Google Drive and select "Save as Google Sheets".');
+        }
       }
     }
 
+    // Fallback to server route
     const serverRes = await fetch('/api/attendance/sync-sheet', {
       method: 'POST',
       headers: {
@@ -552,7 +632,7 @@ export async function syncAttendanceToSheet(
       },
       body: JSON.stringify({
         spreadsheetId: ATTENDANCE_SPREADSHEET_ID,
-        rowValues,
+        rowValues: rowsToAppend,
       }),
     });
 

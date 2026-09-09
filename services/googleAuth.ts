@@ -22,8 +22,18 @@ provider.setCustomParameters({
 });
 
 let isSigningIn = false;
-// Cache the access token in memory (never localStorage per workspace skill)
-let cachedAccessToken: string | null = null;
+// Cache the access token in memory and localStorage for reuse
+let cachedAccessToken: string | null = localStorage.getItem('google_access_token') || null;
+const expiryStr = localStorage.getItem('google_token_expiry');
+const tokenExpiry: number | null = expiryStr ? parseInt(expiryStr, 10) : null;
+
+if (cachedAccessToken && tokenExpiry && Date.now() > tokenExpiry) {
+  // Token expired
+  cachedAccessToken = null;
+  localStorage.removeItem('google_access_token');
+  localStorage.removeItem('google_token_expiry');
+}
+
 let currentUser: User | null = null;
 
 /**
@@ -54,11 +64,17 @@ export const initAuth = (
  * Handles user cancellations and popup closures gracefully without throwing fatal errors.
  */
 export const googleSignIn = async (): Promise<{ user: User; accessToken: string | null } | null> => {
+  if (isSigningIn) return null;
   try {
     isSigningIn = true;
     const result = await signInWithPopup(auth, provider);
     const credential = GoogleAuthProvider.credentialFromResult(result);
     cachedAccessToken = credential?.accessToken || null;
+    if (cachedAccessToken) {
+      localStorage.setItem('google_access_token', cachedAccessToken);
+      // OAuth tokens usually last 1 hour (3600 seconds), expire it slightly early (55 min)
+      localStorage.setItem('google_token_expiry', (Date.now() + 55 * 60 * 1000).toString());
+    }
     currentUser = result.user;
     return { user: result.user, accessToken: cachedAccessToken };
   } catch (error: any) {
@@ -112,6 +128,8 @@ export const getCurrentUser = (): User | null => {
 export const logout = async (): Promise<void> => {
   await signOut(auth);
   cachedAccessToken = null;
+  localStorage.removeItem('google_access_token');
+  localStorage.removeItem('google_token_expiry');
   currentUser = null;
 };
 

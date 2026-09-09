@@ -9,8 +9,9 @@ import GenerationStatusPanel from './components/GenerationStatusPanel';
 import LiveMonitor from './components/LiveMonitor';
 import { HistoryView } from './components/HistoryView';
 import { StudentRecordsView } from './components/records/StudentRecordsView';
+import { DailyAttendanceView } from './components/attendance/DailyAttendanceView';
 import { PhssjLogo, ZiauddinLogo } from './components/Logo';
-import { BookOpenIcon, CloseIcon, DocumentTextIcon, HomeIcon, PulseIcon, ArchiveIcon, SpreadsheetIcon } from './components/icons/MiscIcons';
+import { BookOpenIcon, CloseIcon, DocumentTextIcon, HomeIcon, PulseIcon, ArchiveIcon, SpreadsheetIcon, UserGroupIcon } from './components/icons/MiscIcons';
 import { useGeneralGeneration, GenerationMode } from './hooks/useGeneralGeneration';
 import { useSelection } from './hooks/useSelection';
 import { loadSloChapter } from './services/sloData';
@@ -26,6 +27,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { view: 'home', label: 'Home', icon: HomeIcon, activeViews: ['home'] },
   { view: 'records', label: 'Student Records', icon: SpreadsheetIcon, activeViews: ['records'] },
+  { view: 'attendance', label: 'Daily Attendance', icon: UserGroupIcon, activeViews: ['attendance'] },
   { view: 'lesson', label: 'Lesson Plans', icon: BookOpenIcon, activeViews: ['lesson', 'results'] },
   { view: 'paper', label: 'Exam Papers', icon: DocumentTextIcon, activeViews: ['paper'] },
   { view: 'live', label: 'Live Monitor', icon: PulseIcon, activeViews: ['live'] },
@@ -237,6 +239,7 @@ const App: React.FC = () => {
                   onClick={() => {
                     if (item.view === 'home') handleBackToHome();
                     else if (item.view === 'records') navigate('records');
+                    else if (item.view === 'attendance') navigate('attendance');
                     else if (item.view === 'live') navigate('live');
                     else if (item.view === 'history') navigate('history');
                     else if (item.view === 'lesson') handleNavigate('lesson');
@@ -291,6 +294,8 @@ const App: React.FC = () => {
               onNavigate={(target) => {
                 if (target === 'records') {
                   navigate('records');
+                } else if (target === 'attendance') {
+                  navigate('attendance');
                 } else if (target === 'live' || target === 'history') {
                   navigate(target);
                 } else if (target === 'lesson' || target === 'paper') {
@@ -333,6 +338,8 @@ const App: React.FC = () => {
           )}
 
           {view === 'records' && <StudentRecordsView />}
+
+          {view === 'attendance' && <DailyAttendanceView />}
 
           {view === 'live' && <LiveMonitor teachers={teachers} />}
 

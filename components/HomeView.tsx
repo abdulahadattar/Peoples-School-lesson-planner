@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpenIcon, DocumentTextIcon, PulseIcon, ArchiveIcon, SpreadsheetIcon } from './icons/MiscIcons';
+import { BookOpenIcon, DocumentTextIcon, PulseIcon, ArchiveIcon, SpreadsheetIcon, UserGroupIcon } from './icons/MiscIcons';
 import { PhssjLogo, ZiauddinLogo } from './Logo';
 import { View } from '../types';
 
@@ -15,6 +15,13 @@ const FEATURES = [
     description: 'Live Google Sheets register, GR# profiles, search, filters, and two-way sync.',
     icon: SpreadsheetIcon,
     accent: 'text-emerald-600 bg-emerald-500/10 group-hover:bg-emerald-600 group-hover:text-white',
+  },
+  {
+    view: 'attendance' as View,
+    title: 'Daily Attendance',
+    description: 'Mark daily attendance directly onto Google Sheets with an intuitive interface.',
+    icon: UserGroupIcon,
+    accent: 'text-amber-600 bg-amber-500/10 group-hover:bg-amber-600 group-hover:text-white',
   },
   {
     view: 'lesson' as View,
@@ -69,7 +76,7 @@ const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
         </div>
 
         {/* Feature cards */}
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
           {FEATURES.map((feature, i) => (
             <button
               key={feature.view}

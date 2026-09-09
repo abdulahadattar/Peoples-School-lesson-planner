@@ -110,7 +110,7 @@ async function startServer() {
   // Google Sheets Proxy Endpoints
   app.get('/api/sheets/data', async (req, res) => {
     try {
-      const spreadsheetId = (req.query.spreadsheetId as string) || '1DwEZIS__2T8KVCH140229nrGChgu03n8';
+      const spreadsheetId = (req.query.spreadsheetId as string) || '11AMKZ-HXUQg4cKsEiEmKgmjfxPMPe4RTnVGlwB_Y7g0';
       const gid = (req.query.gid as string) || '1397470354';
       const authHeader = req.headers.authorization;
 
@@ -240,7 +240,7 @@ async function startServer() {
       }
 
       const {
-        spreadsheetId = '1DwEZIS__2T8KVCH140229nrGChgu03n8',
+        spreadsheetId = '11AMKZ-HXUQg4cKsEiEmKgmjfxPMPe4RTnVGlwB_Y7g0',
         sheetTitle = 'Jamshoro South Final SPD (2)',
         rowNumber,
         rowValues,
@@ -363,17 +363,19 @@ async function startServer() {
 
       // Check if sheet is empty / needs headers
       try {
-        const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(`'${sheetTitle}'!A1:H1`)}`;
+        const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(`'${sheetTitle}'!A1:M1`)}`;
         const getRes = await fetch(getUrl, { headers: reqHeaders });
         if (getRes.ok) {
           const getData = await getRes.json();
-          if (!getData.values || getData.values.length === 0 || getData.values[0].length === 0) {
-            const headerValues = ['Date', 'Recorded By', 'Total Enrolled', 'Total Present', 'Total Absent', 'Overall %', 'Notes', 'Timestamp'];
-            const updateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(`'${sheetTitle}'!A1:H1`)}?valueInputOption=USER_ENTERED`;
+          const firstHeader = getData.values?.[0]?.[2];
+          const sixthHeader = getData.values?.[0]?.[5];
+          if (!getData.values || getData.values.length === 0 || getData.values[0].length === 0 || firstHeader !== 'Class' || sixthHeader !== 'Attendance %') {
+            const headerValues = ['Date', 'Recorded By', 'Class', 'Enrolled Boys', 'Enrolled Girls', 'Attendance %', 'Total Enrolled', 'Present Boys', 'Present Girls', 'Total Present', 'Total Absent', 'Notes', 'Timestamp'];
+            const updateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(`'${sheetTitle}'!A1:M1`)}?valueInputOption=USER_ENTERED`;
             await fetch(updateUrl, {
               method: 'PUT',
               headers: reqHeaders,
-              body: JSON.stringify({ range: `'${sheetTitle}'!A1:H1`, majorDimension: 'ROWS', values: [headerValues] }),
+              body: JSON.stringify({ range: `'${sheetTitle}'!A1:M1`, majorDimension: 'ROWS', values: [headerValues] }),
             });
           }
         }
@@ -381,10 +383,14 @@ async function startServer() {
         console.warn('Header initialization check warning:', headerErr);
       }
 
-      const range = `'${sheetTitle}'!A:H`;
+      const range = `'${sheetTitle}'!A:A`;
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
         range
-      )}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
+      )}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
+
+      // Handle both 1D and 2D arrays gracefully
+      const is2D = Array.isArray(rowValues[0]);
+      const valuesToAppend = is2D ? rowValues : [rowValues];
 
       const gRes = await fetch(url, {
         method: 'POST',
@@ -392,7 +398,7 @@ async function startServer() {
         body: JSON.stringify({
           range,
           majorDimension: 'ROWS',
-          values: [rowValues],
+          values: valuesToAppend,
         }),
       });
 
@@ -443,7 +449,7 @@ async function startServer() {
       }
 
       const {
-        spreadsheetId = '1DwEZIS__2T8KVCH140229nrGChgu03n8',
+        spreadsheetId = '11AMKZ-HXUQg4cKsEiEmKgmjfxPMPe4RTnVGlwB_Y7g0',
         sheetTitle = 'Jamshoro South Final SPD (2)',
         rowValues,
       } = req.body || {};
