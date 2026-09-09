@@ -465,13 +465,14 @@ export const StudentRecordsView: React.FC = () => {
       const token = authToken || (await getAccessToken());
 
       if (token) {
+        const editorName = authUser?.displayName || authUser?.email || 'Authorized Teacher';
         // Authenticated with Google: sync directly to spreadsheet!
         if (isAdd) {
           await addSheetRecord(student, token, DEFAULT_SPREADSHEET_ID, DEFAULT_SHEET_TITLE);
-          showNotification(`Student ${student.studentName} added successfully to Google Sheet!`);
+          showNotification(`Student ${student.studentName} added successfully to Google Sheet (suggestion edit by ${editorName}).`);
         } else {
           await updateSheetRecord(student, token, DEFAULT_SPREADSHEET_ID, DEFAULT_SHEET_TITLE);
-          showNotification(`Row #${student.rowNumber} (${student.studentName}) updated successfully in Google Sheet!`);
+          showNotification(`Row #${student.rowNumber} (${student.studentName}) updated successfully in Google Sheet (suggestion edit by ${editorName}).`);
         }
         // Reload fresh data from Google Sheet
         await loadRecords(true);

@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { MenuIcon, MoonIcon, SunIcon } from './icons/MiscIcons';
 import { PhssjLogo } from './Logo';
 import { View } from '../types';
+import { auth, loginWithGoogle, logoutUser } from '../services/firebase';
+import { onAuthStateChanged, User } from 'firebase/auth';
 
 type Theme = 'light' | 'dark';
 
@@ -14,6 +16,7 @@ interface HeaderProps {
 
 const VIEW_LABELS: Record<string, string> = {
   home: 'Home',
+  attendance: 'Daily Attendance',
   records: 'Student Records',
   lesson: 'Lesson Plans',
   paper: 'Exam Papers',
@@ -23,6 +26,15 @@ const VIEW_LABELS: Record<string, string> = {
 };
 
 const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onOpenSidebar, activeView }) => {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+    });
+    return () => unsubscribe();
+  }, []);
+
   return (
     <header className="h-14 md:h-16 px-3.5 md:px-6 bg-brand-surface/85 dark:bg-brand-surface/95 backdrop-blur-xl border-b border-brand-border flex items-center justify-between sticky top-0 z-30 shadow-xs">
       <div className="flex items-center gap-2.5 sm:gap-3.5">
@@ -55,7 +67,44 @@ const Header: React.FC<HeaderProps> = ({ theme, onToggleTheme, onOpenSidebar, ac
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5 sm:gap-2">
+      <div className="flex items-center gap-2 sm:gap-3">
+        {currentUser ? (
+          <div className="flex items-center gap-2 bg-brand-surface border border-brand-border rounded-xl px-3 py-1.5 shadow-xs">
+            {currentUser.photoURL ? (
+              <img src={currentUser.photoURL} alt={currentUser.displayName || 'User'} className="w-6 h-6 rounded-full" />
+            ) : (
+              <div className="w-6 h-6 rounded-full bg-brand-primary text-white flex items-center justify-center text-xs font-bold">
+                {(currentUser.displayName || currentUser.email || 'U')[0].toUpperCase()}
+              </div>
+            )}
+            <span className="text-xs font-medium text-brand-text-primary hidden sm:inline max-w-[120px] truncate">
+              {currentUser.displayName || currentUser.email}
+            </span>
+            <button
+              onClick={() => logoutUser()}
+              className="text-[11px] text-red-600 hover:text-red-700 font-medium px-2 py-1 rounded hover:bg-red-50 transition-colors"
+              title="Sign Out"
+            >
+              Sign Out
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={async () => {
+              try {
+                await loginWithGoogle();
+              } catch (err: any) {
+                if (err?.code !== 'auth/popup-closed-by-user' && err?.code !== 'auth/cancelled-popup-request') {
+                  console.warn('Sign in issue:', err?.message || err);
+                }
+              }
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-primary text-white text-xs font-medium hover:bg-brand-primary/90 transition-all shadow-xs"
+          >
+            <span>Sign In with Google</span>
+          </button>
+        )}
+
         <button
           onClick={onToggleTheme}
           aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}

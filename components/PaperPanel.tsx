@@ -446,64 +446,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
             </div>
           </div>
 
-          {/* Quick Presets Bar */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-xs font-bold text-brand-text-secondary uppercase tracking-wider">
-                2. Quick Exam Presets
-              </h2>
-              <span className="text-[11px] text-brand-primary font-medium">Click any preset to auto-configure</span>
-            </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-              {PRESETS.map(p => {
-                const isActive =
-                  totalMarks === p.total &&
-                  mcqCount === p.mcq &&
-                  shortAttemptCount === p.shortAttempt &&
-                  longAttemptCount === p.longAttempt;
-                return (
-                  <button
-                    key={p.name}
-                    type="button"
-                    onClick={() => {
-                      setTotalMarks(p.total);
-                      setDurationMinutes(p.duration);
-                      setMcqCount(p.mcq);
-                      setShortQuestionCount(p.shortListed);
-                      setShortAttemptCount(p.shortAttempt);
-                      setShortMarksPerQuestion(p.shortMarks);
-                      setLongQuestionCount(p.longListed);
-                      setLongAttemptCount(p.longAttempt);
-                      setLongMarksPerQuestion(p.longMarks);
-                      setBalanceFeedback(`Applied "${p.name}" preset (${p.total} Marks)!`);
-                      setTimeout(() => setBalanceFeedback(null), 3000);
-                    }}
-                    className={`p-2.5 rounded-xl text-left border transition-all duration-200 active:scale-95 cursor-pointer flex flex-col justify-between min-h-[72px] ${
-                      isActive
-                        ? 'border-brand-primary bg-brand-primary/10 shadow-xs ring-1.5 ring-brand-primary/40'
-                        : 'border-brand-border bg-brand-bg hover:border-brand-text-secondary/40 hover:bg-brand-surface'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-xs font-bold text-brand-text-primary leading-tight">{p.name}</span>
-                        {isActive && <span className="w-2 h-2 rounded-full bg-brand-primary flex-shrink-0" />}
-                      </div>
-                      <div className="text-[10px] text-brand-text-secondary font-mono mt-0.5">
-                        {p.total} Marks
-                      </div>
-                    </div>
-                    {p.badge && (
-                      <span className="text-[9px] font-semibold text-emerald-600 dark:text-emerald-400 mt-1">
-                        {p.badge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
 
           {/* Rigor & Format Controls */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">

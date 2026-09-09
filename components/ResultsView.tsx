@@ -444,25 +444,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
                       autoFocus
                     />
 
-                    {/* Quick suggestion prompt chips */}
-                    <div className="flex items-center gap-1.5 mt-2 overflow-x-auto custom-scrollbar pb-1">
-                      <span className="text-[10px] text-brand-text-secondary flex-shrink-0">Quick presets:</span>
-                      {[
-                        'Add 5 more MCQs',
-                        'Add 2 conceptual short questions',
-                        'Add 1 numerical question to Section C',
-                        'Simplify question wording for Grade 9',
-                      ].map(preset => (
-                        <button
-                          key={preset}
-                          type="button"
-                          onClick={() => setRevisionPrompt(prev => prev ? `${prev}, ${preset.toLowerCase()}` : preset)}
-                          className="px-2 py-0.5 rounded-md text-[10px] bg-brand-bg border border-brand-border text-brand-text-secondary hover:text-brand-primary hover:border-brand-primary/40 whitespace-nowrap transition-all"
-                        >
-                          {preset}
-                        </button>
-                      ))}
-                    </div>
+
                   </div>
 
                   <div className="flex items-center justify-between px-4 py-2.5 border-t border-brand-border bg-brand-bg/60">

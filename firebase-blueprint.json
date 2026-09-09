@@ -1,0 +1,39 @@
+{
+  "entities": {
+    "LessonPlan": {
+      "title": "LessonPlan",
+      "description": "Generated lesson plan record",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "objective": { "type": "string" },
+        "gradeLevel": { "type": "string" },
+        "subject": { "type": "string" },
+        "createdAt": { "type": "integer" }
+      },
+      "required": ["userId", "title"]
+    },
+    "AttendanceRecord": {
+      "title": "AttendanceRecord",
+      "description": "Daily attendance record for school",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "recordedBy": { "type": "string" },
+        "updatedAt": { "type": "integer" }
+      },
+      "required": ["date"]
+    }
+  },
+  "firestore": {
+    "/lessonPlans/{planId}": {
+      "schema": { "$ref": "LessonPlan" },
+      "description": "User generated lesson plans"
+    },
+    "/attendanceRecords/{recordId}": {
+      "schema": { "$ref": "AttendanceRecord" },
+      "description": "Daily attendance records"
+    }
+  }
+}

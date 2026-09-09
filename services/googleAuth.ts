@@ -1,17 +1,13 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
-  getAuth,
   signInWithPopup,
   GoogleAuthProvider,
   onAuthStateChanged,
   User,
   signOut,
 } from 'firebase/auth';
-import firebaseConfig from '../firebase-applet-config.json';
+import { auth } from './firebase';
 
-// Initialize Firebase App singleton
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-export const auth = getAuth(app);
+export { auth };
 
 export const SCOPES = [
   'https://www.googleapis.com/auth/spreadsheets',
@@ -57,16 +53,12 @@ export const initAuth = (
  * Trigger Google Sign-In with popup.
  * Handles user cancellations and popup closures gracefully without throwing fatal errors.
  */
-export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
+export const googleSignIn = async (): Promise<{ user: User; accessToken: string | null } | null> => {
   try {
     isSigningIn = true;
     const result = await signInWithPopup(auth, provider);
     const credential = GoogleAuthProvider.credentialFromResult(result);
-    if (!credential?.accessToken) {
-      throw new Error('Failed to obtain Google Sheets access token.');
-    }
-
-    cachedAccessToken = credential.accessToken;
+    cachedAccessToken = credential?.accessToken || null;
     currentUser = result.user;
     return { user: result.user, accessToken: cachedAccessToken };
   } catch (error: any) {
@@ -81,17 +73,23 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
 
     // Popup was blocked by browser or iframe sandbox policy
     if (error?.code === 'auth/popup-blocked') {
-      throw new Error(
+      console.warn(
         'Sign-in pop-up was blocked by your browser. Please allow pop-ups for this site or open the app in a new window.'
       );
+      return null;
     }
 
     // Log unexpected errors cleanly
     console.warn('Google Sign In:', error?.message || error);
-    throw error;
+    return null;
   } finally {
     isSigningIn = false;
   }
+};
+
+export const loginWithGoogle = async (): Promise<User | null> => {
+  const res = await googleSignIn();
+  return res?.user || null;
 };
 
 /**
@@ -116,3 +114,6 @@ export const logout = async (): Promise<void> => {
   cachedAccessToken = null;
   currentUser = null;
 };
+
+export const logoutUser = logout;
+
