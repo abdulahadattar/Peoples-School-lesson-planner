@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Teacher } from '../types';
 import {
   DayKey,
@@ -9,19 +9,17 @@ import {
   computeStaff,
   dayKeyForDate,
   formatMinutes,
+  getSchoolStatus,
   loadTimetable,
   locatePeriod,
-  parseTimeToMinutes,
   periodTimeRange,
   resolveSlot,
   standardSchedule,
 } from '../services/timetable';
 import { canonicalName, subjectNames } from '../services/teacherRoster';
-import { ChevronLeftIcon, ChevronRightIcon, LockIcon, RefreshIcon, UserIcon } from './icons/MiscIcons';
+import { ChevronLeftIcon, ChevronRightIcon, RefreshIcon, UserIcon } from './icons/MiscIcons';
 import { SubstitutionManager } from './SubstitutionManager';
 import { SubstitutionAssignment, getStoredSubstitutions } from '../services/storageService';
-
-const ACCESS_CODE = 'phssj'; // fixed for now — principal / coordinator access
 
 function initials(name: string): string {
   const parts = name.replace(/^(sir|miss|ma'am|mrs|mr)\s+/i, '').trim().split(/\s+/);
@@ -43,65 +41,11 @@ function Avatar({ name, size = 'sm' }: { name: string; size?: 'sm' | 'md' }) {
 function LiveDot({ className = '' }: { className?: string }) {
   return (
     <span className={`relative inline-flex h-2.5 w-2.5 ${className}`}>
-      <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60 animate-ping" />
+      <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
       <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
     </span>
   );
 }
-
-const LOCK_KEY = 'liveAccess';
-
-const AccessGate: React.FC<{ onUnlock: () => void }> = ({ onUnlock }) => {
-  const [code, setCode] = useState('');
-  const [error, setError] = useState(false);
-
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (code.trim().toLowerCase() === ACCESS_CODE) {
-      localStorage.setItem(LOCK_KEY, ACCESS_CODE);
-      onUnlock();
-    } else {
-      setError(true);
-    }
-  };
-
-  return (
-    <div className="max-w-md mx-auto px-4 py-16 flex flex-col items-center animate-fadeInUp">
-      <div className="w-16 h-16 rounded-2xl bg-brand-primary-soft dark:bg-brand-primary/20 flex items-center justify-center mb-5">
-        <LockIcon className="w-8 h-8 text-brand-primary dark:text-blue-300" />
-      </div>
-      <h2 className="text-xl font-bold text-brand-text-primary mb-1">Staff Monitor</h2>
-      <p className="text-sm text-brand-text-secondary text-center mb-8">
-        This view is restricted to the Principal and Coordinators.
-        <br />
-        Enter the access code to continue.
-      </p>
-      <form onSubmit={submit} className="w-full flex gap-2">
-        <input
-          type="password"
-          autoFocus
-          value={code}
-          onChange={e => { setCode(e.target.value); setError(false); }}
-          placeholder="Access code"
-          className={`flex-1 px-4 py-2.5 rounded-xl border text-sm bg-brand-surface dark:bg-brand-panel outline-none transition-colors focus:ring-2 ${
-            error
-              ? 'border-red-400 focus:ring-red-200'
-              : 'border-brand-border focus:ring-brand-primary/30 focus:border-brand-primary'
-          }`}
-        />
-        <button
-          type="submit"
-          className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white brand-gradient hover:opacity-95 active:scale-95 transition-all shadow-card"
-        >
-          Unlock
-        </button>
-      </form>
-      {error && (
-        <p className="mt-3 text-xs text-red-500 animate-fadeIn">Incorrect code — please try again.</p>
-      )}
-    </div>
-  );
-};
 
 const ClassCard: React.FC<{
   entry: TimetableClassEntry;
@@ -112,20 +56,31 @@ const ClassCard: React.FC<{
   now: Date;
   substitutions?: SubstitutionAssignment[];
   absentTeacherIds?: string[];
-}> = ({ entry, day, periodIndex, live, teachers, now, substitutions = [], absentTeacherIds = [] }) => {
-  // In live mode each class locates its own current period (VII has its own
-  // Friday times). In preview mode the chosen period index applies to all.
+  searchQuery?: string;
+}> = ({
+  entry,
+  day,
+  periodIndex,
+  live,
+  teachers,
+  now,
+  substitutions = [],
+  absentTeacherIds = [],
+  searchQuery = '',
+}) => {
+  const minutes = now.getHours() * 60 + now.getMinutes();
   const loc = useMemo(() => {
-    if (!live) return { index: periodIndex, state: 'in' as const, label: '' };
-    return locatePeriod(entry, day, now.getHours() * 60 + now.getMinutes());
-  }, [entry, day, live, periodIndex, now]);
+    if (!live) return { index: periodIndex, state: 'in' as const, label: `Period ${entry.periods[periodIndex]?.no ?? 1}` };
+    return locatePeriod(entry, day, minutes);
+  }, [entry, day, live, periodIndex, minutes]);
 
-  const effIndex = loc.state === 'in' ? loc.index : -1;
+  // When live but outside active period, fallback to showing the selected or period 0
+  const effIndex = loc.state === 'in' ? loc.index : (periodIndex >= 0 ? periodIndex : 0);
   const slot = useMemo(
-    () => (effIndex >= 0 ? resolveSlot(entry, day, effIndex, teachers) : null),
+    () => (effIndex >= 0 && effIndex < entry.periods.length ? resolveSlot(entry, day, effIndex, teachers) : null),
     [entry, day, effIndex, teachers],
   );
-  const period = effIndex >= 0 ? entry.periods[effIndex] : null;
+  const period = effIndex >= 0 && effIndex < entry.periods.length ? entry.periods[effIndex] : null;
   const time = period ? periodTimeRange(period, day) : null;
 
   const activeSub = useMemo(() => {
@@ -140,220 +95,266 @@ const ClassCard: React.FC<{
     return slot.teachers.some(t => absentTeacherIds.includes(t.id));
   }, [slot, absentTeacherIds]);
 
-  let state: 'busy' | 'break' | 'free' | 'closed' = 'busy';
-  let stateText = '';
+  // Determine state display
+  let statusBadge = (
+    <span className="text-[10px] font-semibold text-brand-text-tertiary">Period {period?.no ?? 1}</span>
+  );
+  let isLiveActive = false;
+
   if (live) {
     if (loc.state === 'in') {
-      state = 'busy';
-      stateText = `${loc.label} · ${formatMinutes(time!.start)} – ${formatMinutes(time!.end)}`;
+      isLiveActive = true;
+      statusBadge = (
+        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-300 dark:border-emerald-500/30 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+          <LiveDot />
+          <span>IN SESSION</span>
+        </span>
+      );
     } else if (loc.state === 'break') {
-      state = 'break';
-      stateText = 'Break';
-    } else if (loc.state === 'before' || loc.state === 'after') {
-      state = 'closed';
-      stateText = loc.label;
+      statusBadge = (
+        <span className="px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/30 text-[10px] font-bold text-amber-700 dark:text-amber-300">
+          ☕ RECESS BREAK
+        </span>
+      );
+    } else if (loc.state === 'before') {
+      statusBadge = (
+        <span className="px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 text-[10px] font-bold text-blue-700 dark:text-blue-300">
+          UPCOMING: P1
+        </span>
+      );
+    } else if (loc.state === 'after') {
+      statusBadge = (
+        <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-brand-border text-[10px] font-bold text-brand-text-secondary">
+          SCHEDULE OVER
+        </span>
+      );
     }
-  } else {
-    state = slot?.empty ? 'free' : 'busy';
-    stateText = period
-      ? `Period ${period.no} · ${formatMinutes(time!.start)} – ${formatMinutes(time!.end)}`
-      : 'No period';
   }
+
+  // Filter check
+  const isMatch = useMemo(() => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    if (entry.label.toLowerCase().includes(q)) return true;
+    if (entry.classTeacher.toLowerCase().includes(q)) return true;
+    if (slot?.label.toLowerCase().includes(q)) return true;
+    if (slot?.teachers.some(t => t.name.toLowerCase().includes(q))) return true;
+    if (activeSub?.proxyTeacherName.toLowerCase().includes(q)) return true;
+    return false;
+  }, [entry, slot, activeSub, searchQuery]);
+
+  if (!isMatch) return null;
 
   return (
     <div
-      className={`glass-card rounded-2xl p-4 flex flex-col gap-3 transition-shadow hover:shadow-card-hover ${
-        state === 'busy' ? 'ring-1 ring-brand-primary/10' : ''
+      className={`glass-card rounded-2xl p-4 flex flex-col justify-between gap-3 transition-all hover:shadow-card-hover ${
+        isLiveActive
+          ? 'ring-2 ring-emerald-500/40 border-emerald-400/40 bg-emerald-50/20 dark:bg-emerald-950/10'
+          : 'border-brand-border'
       }`}
     >
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="w-9 h-9 rounded-xl bg-white dark:bg-brand-panel border border-brand-border flex items-center justify-center text-xs font-bold text-brand-text-primary shrink-0">
-            {entry.label}
-          </span>
-          <div className="min-w-0">
-            <p className="text-sm font-bold text-brand-text-primary leading-tight truncate">
-              Class {entry.label}
-            </p>
-            <p className="text-[10px] text-brand-text-secondary truncate flex items-center gap-1">
-              <UserIcon className="w-3 h-3 shrink-0" />
-              {canonicalName(entry.classTeacher, teachers)}
-            </p>
+      <div>
+        <div className="flex items-center justify-between gap-2 mb-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${
+              isLiveActive
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'bg-white dark:bg-brand-panel border border-brand-border text-brand-text-primary'
+            }`}>
+              {entry.label}
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-brand-text-primary leading-tight truncate">
+                Class {entry.label}
+              </p>
+              <p className="text-[10px] text-brand-text-secondary truncate flex items-center gap-1">
+                <UserIcon className="w-3 h-3 shrink-0" />
+                <span>Class Teacher: {canonicalName(entry.classTeacher, teachers)}</span>
+              </p>
+            </div>
           </div>
+          {statusBadge}
         </div>
-        {state === 'busy' && <LiveDot />}
-        {state === 'break' && (
-          <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 shrink-0">BREAK</span>
-        )}
-        {state === 'free' && (
-          <span className="text-[10px] font-semibold text-slate-400 shrink-0">FREE</span>
-        )}
-      </div>
 
-      <div className="flex-1 flex flex-col justify-center gap-2 min-h-[52px]">
-        {state === 'busy' && slot && (
-          <>
-            <p className="text-[13px] font-bold text-brand-text-primary">
-              {slot.label}
-              {slot.parts.length > 1 && (
-                <span className="ml-1.5 text-[9px] font-semibold uppercase tracking-wide text-brand-primary dark:text-blue-300 bg-brand-primary-soft dark:bg-brand-primary/20 rounded px-1.5 py-0.5 align-middle">
-                  parallel
-                </span>
-              )}
-            </p>
-            {slot.teachers.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5">
-                {slot.teachers.map(t => {
-                  const teacherIsAbsent = absentTeacherIds.includes(t.id);
-                  return (
-                    <span
-                      key={t.id}
-                      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 ${
-                        teacherIsAbsent
-                          ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 line-through opacity-75'
-                          : 'bg-white dark:bg-brand-panel border-brand-border text-brand-text-primary'
-                      }`}
-                    >
-                      <Avatar name={t.name} />
-                      <span className="text-[11px] font-medium">
-                        {t.name}
-                        {t.designation ? (
-                          <span className="text-brand-text-tertiary"> · {t.designation}</span>
-                        ) : null}
+        <div className="py-2 px-3 rounded-xl bg-brand-bg/70 dark:bg-brand-panel/60 border border-brand-border/60">
+          <div className="flex items-center justify-between gap-2 mb-1.5">
+            <span className="text-[11px] font-semibold text-brand-text-secondary uppercase tracking-wider">
+              {loc.state === 'break' ? 'Next Subject' : `Period ${period?.no ?? 1}`}
+            </span>
+            {time && (
+              <span className="text-[10px] font-medium text-brand-text-tertiary">
+                {formatMinutes(time.start)} – {formatMinutes(time.end)}
+              </span>
+            )}
+          </div>
+
+          {slot && !slot.empty ? (
+            <div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <p className="text-sm font-bold text-brand-text-primary">
+                  {slot.label}
+                </p>
+                {slot.parts.length > 1 && (
+                  <span className="text-[9px] font-bold uppercase tracking-wide text-brand-primary dark:text-blue-300 bg-brand-primary-soft dark:bg-brand-primary/20 rounded px-1.5 py-0.5">
+                    Parallel
+                  </span>
+                )}
+              </div>
+
+              {slot.teachers.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {slot.teachers.map(t => {
+                    const teacherIsAbsent = absentTeacherIds.includes(t.id);
+                    return (
+                      <span
+                        key={t.id}
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 ${
+                          teacherIsAbsent
+                            ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 line-through opacity-75'
+                            : 'bg-white dark:bg-brand-panel border-brand-border text-brand-text-primary'
+                        }`}
+                      >
+                        <Avatar name={t.name} />
+                        <span className="text-[11px] font-medium">
+                          {t.name}
+                          {t.designation ? (
+                            <span className="text-brand-text-tertiary"> · {t.designation}</span>
+                          ) : null}
+                        </span>
                       </span>
-                    </span>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-[11px] text-brand-text-tertiary">Subject only — teacher not assigned</p>
-            )}
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-[11px] text-brand-text-tertiary mt-1">Teacher unassigned</p>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs font-medium text-brand-text-tertiary py-1">
+              Free Period / No Lesson
+            </p>
+          )}
 
-            {/* Substitution / Absence Indicator */}
-            {activeSub && (
-              <div className="mt-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700/60 flex items-center justify-between text-[11px] font-semibold text-emerald-800 dark:text-emerald-300">
-                <span>🔄 Proxy: {activeSub.proxyTeacherName}</span>
-                <span className="text-[9px] font-normal text-emerald-600 dark:text-emerald-400">cov. {activeSub.absentTeacherName}</span>
-              </div>
-            )}
-            {!activeSub && isAbsent && (
-              <div className="mt-1 px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-700/60 text-[11px] font-semibold text-rose-700 dark:text-rose-300 flex items-center gap-1">
-                <span>⚠️ Teacher Absent — Proxy Needed</span>
-              </div>
-            )}
-          </>
-        )}
-        {state === 'free' && (
-          <p className="text-sm text-brand-text-tertiary">No lesson — free period</p>
-        )}
-        {state === 'break' && (
-          <p className="text-sm text-amber-600 dark:text-amber-400">Recess / break between classes</p>
-        )}
-        {state === 'closed' && (
-          <p className="text-sm text-brand-text-tertiary">{stateText}</p>
-        )}
+          {/* Proxy & Absence Notifications */}
+          {activeSub && (
+            <div className="mt-2 px-2.5 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700/60 flex items-center justify-between text-[11px] font-semibold text-emerald-800 dark:text-emerald-300">
+              <span className="flex items-center gap-1">
+                <span>🔄 Proxy:</span>
+                <span className="font-bold">{activeSub.proxyTeacherName}</span>
+              </span>
+              <span className="text-[9px] font-normal text-emerald-600 dark:text-emerald-400">
+                covering {activeSub.absentTeacherName}
+              </span>
+            </div>
+          )}
+          {!activeSub && isAbsent && (
+            <div className="mt-2 px-2.5 py-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-700/60 text-[11px] font-semibold text-rose-700 dark:text-rose-300 flex items-center gap-1.5">
+              <span>⚠️ Teacher Absent — Proxy Needed</span>
+            </div>
+          )}
+        </div>
       </div>
 
-      <p className="text-[10px] text-brand-text-tertiary border-t border-brand-border pt-2">
-        {stateText}
-      </p>
+      <div className="text-[10px] text-brand-text-tertiary flex items-center justify-between pt-1 border-t border-brand-border/60">
+        <span>Class {entry.label}</span>
+        <span>{entry.periods.length} Total Periods</span>
+      </div>
     </div>
   );
 };
 
-const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => {
-  const [unlocked, setUnlocked] = useState(() => localStorage.getItem(LOCK_KEY) === ACCESS_CODE);
+export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => {
   const [timetable, setTimetable] = useState<TimetableData | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [now, setNow] = useState(() => new Date());
-  // previewDay / previewPeriod === null  → live mode
+  
+  // previewDay / previewPeriod === null -> synced to live clock
   const [previewDay, setPreviewDay] = useState<DayKey | null>(null);
   const [previewPeriod, setPreviewPeriod] = useState<number | null>(null);
+  
   const [monitorMode, setMonitorMode] = useState<'classes' | 'substitutions'>('classes');
   const [substitutions, setSubstitutions] = useState<SubstitutionAssignment[]>([]);
   const [absentTeacherIds, setAbsentTeacherIds] = useState<string[]>([]);
+  const [classFilter, setClassFilter] = useState<'all' | 'primary' | 'middle' | 'secondary'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const liveDay = dayKeyForDate(now);
-  const day: DayKey | null = previewDay ?? liveDay;
-  const isLive = previewDay === null;
-
+  // Live timer: updates every 1 second to keep clock and periods synced
   useEffect(() => {
-    if (!unlocked) return;
+    const timer = window.setInterval(() => {
+      setNow(new Date());
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  // Load timetable data
+  useEffect(() => {
     loadTimetable()
       .then(setTimetable)
       .catch(err => setLoadError(err instanceof Error ? err.message : 'Failed to load timetable'));
-  }, [unlocked]);
+  }, []);
 
-  // Load today's substitutions and absent teachers
+  // Load substitutions for today
   useEffect(() => {
-    if (!unlocked) return;
     const todayKey = new Date().toISOString().split('T')[0];
-    getStoredSubstitutions(todayKey).then(stored => {
-      setAbsentTeacherIds(stored.absentTeacherIds);
-      setSubstitutions(stored.assignments);
-    }).catch(console.error);
-  }, [unlocked]);
+    getStoredSubstitutions(todayKey)
+      .then(stored => {
+        setAbsentTeacherIds(stored.absentTeacherIds);
+        setSubstitutions(stored.assignments);
+      })
+      .catch(console.error);
+  }, []);
 
-  // Live clock + auto period rollover
-  useEffect(() => {
-    if (!isLive) return;
-    const id = window.setInterval(() => setNow(new Date()), 15000);
-    return () => window.clearInterval(id);
-  }, [isLive]);
+  const liveDay = dayKeyForDate(now);
+  const isSunday = liveDay === null;
+  const isLive = previewDay === null && previewPeriod === null;
+
+  // Active day: if user explicitly selected previewDay, use it; otherwise use liveDay, or default to Monday if Sunday
+  const effectiveDay: DayKey = previewDay ?? (liveDay ?? 'mon');
 
   const schedule = useMemo(
     () => (timetable ? standardSchedule(timetable.classes) : []),
     [timetable],
   );
 
-  const livePeriodIndex = useMemo(() => {
-    if (!timetable || !liveDay || timetable.classes.length === 0) return -1;
-    const minutes = now.getHours() * 60 + now.getMinutes();
-    const loc = locatePeriod(timetable.classes[0], liveDay, minutes);
-    return loc.state === 'in' ? loc.index : -1;
-  }, [timetable, liveDay, now]);
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
-  // Effective period index across the grid
-  const periodIndex = previewPeriod ?? livePeriodIndex;
+  // Compute school status for current real time
+  const schoolStatus = useMemo(() => {
+    if (!timetable) return null;
+    return getSchoolStatus(timetable.classes, liveDay, nowMinutes);
+  }, [timetable, liveDay, nowMinutes]);
 
+  // Live active period index (if inside a period)
+  const livePeriodIndex = schoolStatus?.state === 'in_period' ? schoolStatus.periodIndex : -1;
+
+  // Display period index
+  const activePeriodIndex = useMemo(() => {
+    if (previewPeriod !== null) return previewPeriod;
+    if (livePeriodIndex >= 0) return livePeriodIndex;
+    if (schoolStatus?.state === 'before_school') return 0;
+    if (schoolStatus?.state === 'break' && schoolStatus.nextPeriodNo) {
+      return Math.max(0, schoolStatus.nextPeriodNo - 1);
+    }
+    return 0;
+  }, [previewPeriod, livePeriodIndex, schoolStatus]);
+
+  // Compute staff busy & free
   const staff = useMemo(() => {
-    if (!timetable || day === null) return null;
-    const nowMinutes = now.getHours() * 60 + now.getMinutes();
-    if (isLive) {
-      const busyMap = new Map<string, string[]>();
-      for (const entry of timetable.classes) {
-        const loc = locatePeriod(entry, day, nowMinutes);
-        if (loc.state !== 'in') continue;
-        const slot = resolveSlot(entry, day, loc.index, teachers);
-        for (const t of slot.teachers) {
-          const list = busyMap.get(t.id) ?? [];
-          list.push(entry.label);
-          busyMap.set(t.id, list);
-        }
-      }
-      const busy: { teacher: Teacher; busyIn: string[]; status: 'busy' | 'free' }[] = [];
-      for (const [id, classesList] of busyMap) {
-        const teacher = teachers.find(t => t.id === id);
-        if (teacher) busy.push({ teacher, busyIn: classesList, status: 'busy' });
-      }
-      const busyIds = new Set(busyMap.keys());
-      const free = teachers.filter(t => !busyIds.has(t.id));
-      return { busy, free };
-    }
-    if (periodIndex < 0) {
-      // Outside school hours (or preview with no period chosen) — everyone is free.
-      return { busy: [], free: teachers };
-    }
-    return computeStaff(timetable.classes, teachers, day, periodIndex);
-  }, [timetable, teachers, day, periodIndex, isLive, now]);
+    if (!timetable) return null;
+    return computeStaff(timetable.classes, teachers, effectiveDay, activePeriodIndex);
+  }, [timetable, teachers, effectiveDay, activePeriodIndex]);
 
-  const currentPeriodInfo = schedule[periodIndex] ?? null;
-  const isSunday = liveDay === null;
-
-  const lock = () => {
-    localStorage.removeItem(LOCK_KEY);
-    setUnlocked(false);
-  };
+  // Filter classes by group
+  const filteredClasses = useMemo(() => {
+    if (!timetable) return [];
+    return timetable.classes.filter(c => {
+      const lbl = c.label.toUpperCase();
+      if (classFilter === 'primary') return lbl.startsWith('IV') || lbl.startsWith('V');
+      if (classFilter === 'middle') return lbl.startsWith('VI') || lbl.startsWith('VII') || lbl.startsWith('VIII');
+      if (classFilter === 'secondary') return lbl.startsWith('IX') || lbl.startsWith('X');
+      return true;
+    });
+  }, [timetable, classFilter]);
 
   const goLive = () => {
     setPreviewDay(null);
@@ -363,23 +364,20 @@ const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => {
 
   const stepPeriod = (dir: 1 | -1) => {
     if (schedule.length === 0) return;
-    const base = previewPeriod ?? livePeriodIndex;
-    if (base < 0) return;
+    const base = previewPeriod ?? (livePeriodIndex >= 0 ? livePeriodIndex : 0);
     const next = Math.min(schedule.length - 1, Math.max(0, base + dir));
     setPreviewPeriod(next);
-    if (previewDay === null && liveDay !== null) setPreviewDay(liveDay);
+    if (previewDay === null) setPreviewDay(effectiveDay);
   };
 
   const stepDay = (dir: 1 | -1) => {
-    const idx = day ? DAY_KEYS.indexOf(day) : 0;
+    const idx = DAY_KEYS.indexOf(effectiveDay);
     const next = (idx + dir + 6) % 6;
     setPreviewDay(DAY_KEYS[next]);
-    if (previewPeriod === null) setPreviewPeriod(0);
+    if (previewPeriod === null) setPreviewPeriod(activePeriodIndex);
   };
 
-  if (!unlocked) {
-    return <AccessGate onUnlock={() => setUnlocked(true)} />;
-  }
+  const currentPeriodInfo = schedule[activePeriodIndex] ?? null;
 
   if (loadError) {
     return (
@@ -396,20 +394,30 @@ const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => {
         <div className="h-24 glass-card rounded-2xl" />
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-40 skeleton" />
+            <div key={i} className="h-40 glass-card rounded-2xl" />
           ))}
         </div>
       </div>
     );
   }
 
-  const dayLabel = day ? DAY_LABELS[day] : 'Weekend';
-  const clockText = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  // Formatted date and time strings
+  const formattedDate = now.toLocaleDateString(undefined, {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  const formattedTime = now.toLocaleTimeString(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 md:py-8 space-y-5 animate-fadeIn">
-      {/* View Mode Switcher */}
-      <div className="flex items-center justify-between gap-3">
+      {/* Top Banner: Mode & Navigation Switcher */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center bg-brand-bg dark:bg-brand-panel p-1 rounded-xl border border-brand-border">
           <button
             type="button"
@@ -439,13 +447,31 @@ const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => {
             )}
           </button>
         </div>
+
+        {/* Live status badge */}
+        <div className="flex items-center gap-2">
+          {isLive ? (
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-300 dark:border-emerald-500/30 text-xs font-bold text-emerald-700 dark:text-emerald-300 shadow-sm">
+              <LiveDot />
+              <span>SYNCED WITH CURRENT TIME</span>
+            </span>
+          ) : (
+            <button
+              onClick={goLive}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/30 text-xs font-bold text-amber-700 dark:text-amber-300 hover:bg-amber-100 transition-all shadow-sm"
+            >
+              <RefreshIcon className="w-3.5 h-3.5 animate-spin" />
+              <span>PREVIEW MODE — Click to Return Live</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {monitorMode === 'substitutions' ? (
         <SubstitutionManager
           timetable={timetable}
           teachers={teachers}
-          day={day || 'mon'}
+          day={effectiveDay}
           onSubstitutionsChanged={(newSubs, newAbsent) => {
             setSubstitutions(newSubs);
             setAbsentTeacherIds(newAbsent);
@@ -453,228 +479,378 @@ const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers }) => {
         />
       ) : (
         <>
-          {/* Header */}
-          <div className="glass-card rounded-2xl p-5">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2.5 mb-1">
-              <h2 className="text-lg font-bold text-brand-text-primary">Live Classes Monitor</h2>
-              {isLive ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 px-2.5 py-0.5">
-                  <LiveDot />
-                  <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">LIVE</span>
-                </span>
-              ) : (
-                <button
-                  onClick={goLive}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 px-2.5 py-0.5 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors"
-                >
-                  <span className="h-2 w-2 rounded-full bg-amber-500" />
-                  <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300">PREVIEW — back to live</span>
-                </button>
-              )}
-            </div>
-            <p className="text-xs text-brand-text-secondary">
-              {dayLabel} · {clockText}
-              {isLive && isSunday ? ' — school is closed on Sunday' : ''}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => stepDay(-1)}
-              className="p-2 rounded-xl border border-brand-border bg-white dark:bg-brand-panel text-brand-text-secondary hover:text-brand-text-primary transition-colors"
-              title="Previous day"
-            >
-              <ChevronLeftIcon className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => stepPeriod(-1)}
-              disabled={periodIndex <= 0}
-              className="p-2 rounded-xl border border-brand-border bg-white dark:bg-brand-panel text-brand-text-secondary hover:text-brand-text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              title="Previous period"
-            >
-              <ChevronLeftIcon className="w-4 h-4" />
-            </button>
-            <span className="px-3 py-1.5 rounded-xl bg-brand-bg dark:bg-brand-panel border border-brand-border text-sm font-semibold text-brand-text-primary whitespace-nowrap">
-              {currentPeriodInfo
-                ? `Period ${currentPeriodInfo.no} · ${currentPeriodInfo.start} – ${currentPeriodInfo.end}`
-                : isLive
-                  ? 'Outside school hours'
-                  : 'No period selected'}
-            </span>
-            <button
-              onClick={() => stepPeriod(1)}
-              disabled={periodIndex >= schedule.length - 1}
-              className="p-2 rounded-xl border border-brand-border bg-white dark:bg-brand-panel text-brand-text-secondary hover:text-brand-text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              title="Next period"
-            >
-              <ChevronRightIcon className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => stepDay(1)}
-              className="p-2 rounded-xl border border-brand-border bg-white dark:bg-brand-panel text-brand-text-secondary hover:text-brand-text-primary transition-colors"
-              title="Next day"
-            >
-              <ChevronRightIcon className="w-4 h-4" />
-            </button>
-            {!isLive && (
-              <button
-                onClick={goLive}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-white brand-gradient hover:opacity-95 active:scale-95 transition-all shadow-card"
-              >
-                <RefreshIcon className="w-4 h-4" />
-                Live now
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Day + period selector */}
-        <div className="mt-4 pt-4 border-t border-brand-border flex flex-wrap items-center gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-brand-text-tertiary mr-1">Day</span>
-          {DAY_KEYS.map((d, i) => (
-            <button
-              key={d}
-              onClick={() => {
-                setPreviewDay(d);
-                if (previewPeriod === null) setPreviewPeriod(0);
-              }}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
-                day === d
-                  ? 'bg-brand-primary text-white shadow-card'
-                  : 'bg-white dark:bg-brand-panel border border-brand-border text-brand-text-secondary hover:text-brand-text-primary'
-              }`}
-            >
-              {DAY_LABELS[d].slice(0, 3)}
-            </button>
-          ))}
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-brand-text-tertiary ml-4 mr-1">Period</span>
-          {schedule.map((p, i) => (
-            <button
-              key={p.no}
-              onClick={() => {
-                setPreviewPeriod(i);
-                if (previewDay === null && liveDay !== null) setPreviewDay(liveDay);
-              }}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
-                periodIndex === i && !isLive
-                  ? 'bg-brand-primary text-white shadow-card'
-                  : 'bg-white dark:bg-brand-panel border border-brand-border text-brand-text-secondary hover:text-brand-text-primary'
-              }`}
-            >
-              {p.no}
-            </button>
-          ))}
-          <div className="ml-auto">
-            <button
-              onClick={lock}
-              className="text-[11px] text-brand-text-tertiary hover:text-red-500 transition-colors"
-            >
-              Lock monitor
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {isLive && isSunday && (
-        <div className="rounded-2xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
-          School is closed today (Sunday). Use the day selector above to preview any school day.
-        </div>
-      )}
-
-      {/* Class grid */}
-      {day && (
-        <div className="grid sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-          {timetable.classes.map(entry => (
-            <ClassCard
-              key={entry.label}
-              entry={entry}
-              day={day}
-              periodIndex={periodIndex >= 0 ? periodIndex : 0}
-              live={isLive}
-              teachers={teachers}
-              now={now}
-              substitutions={substitutions}
-              absentTeacherIds={absentTeacherIds}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Staff room */}
-      {staff && (
-        <div className="glass-card rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2.5">
-              <span className="w-9 h-9 rounded-xl bg-brand-primary-soft dark:bg-brand-primary/20 flex items-center justify-center">
-                <UserIcon className="w-5 h-5 text-brand-primary dark:text-blue-300" />
-              </span>
+          {/* Main Monitor Header & Live Clock Dashboard */}
+          <div className="glass-card rounded-2xl p-5 md:p-6 shadow-soft border border-brand-border">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              {/* Left Column: Date, Time & Live School Status */}
               <div>
-                <h3 className="text-sm font-bold text-brand-text-primary">Staff Room</h3>
-                <p className="text-[11px] text-brand-text-secondary">
-                  Who is free at {dayLabel}
-                  {currentPeriodInfo ? ` · Period ${currentPeriodInfo.no}` : ''}
+                <div className="flex items-center gap-2.5 mb-1.5">
+                  <h2 className="text-xl font-extrabold text-brand-text-primary tracking-tight">
+                    Live Classes Monitor
+                  </h2>
+                  <span className="px-2.5 py-0.5 rounded-md bg-brand-primary-soft text-brand-primary dark:bg-brand-primary/20 dark:text-blue-300 text-[11px] font-bold">
+                    {DAY_LABELS[effectiveDay]}
+                  </span>
+                </div>
+
+                <p className="text-xs md:text-sm text-brand-text-secondary flex items-center gap-2 font-medium">
+                  <span>📅 {formattedDate}</span>
+                  <span>·</span>
+                  <span className="font-mono font-bold text-brand-text-primary">🕒 {formattedTime}</span>
                 </p>
+
+                {/* Real-time status bar */}
+                {isLive && schoolStatus && (
+                  <div className="mt-3 inline-flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white dark:bg-brand-panel border border-brand-border text-xs font-medium">
+                    {schoolStatus.state === 'in_period' && (
+                      <>
+                        <LiveDot />
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                          {schoolStatus.periodLabel} In Session
+                        </span>
+                        <span className="text-brand-text-secondary">
+                          ({formatMinutes(schoolStatus.startMinutes)} – {formatMinutes(schoolStatus.endMinutes)})
+                        </span>
+                        <span className="text-[11px] font-bold text-brand-primary bg-brand-primary-soft dark:bg-brand-primary/20 px-2 py-0.5 rounded-full">
+                          ⏱️ {schoolStatus.remainingMinutes} min remaining
+                        </span>
+                      </>
+                    )}
+
+                    {schoolStatus.state === 'break' && (
+                      <>
+                        <span className="text-amber-500 font-bold">☕ {schoolStatus.periodLabel}</span>
+                        <span className="text-brand-text-secondary">
+                          ({formatMinutes(schoolStatus.startMinutes)} – {formatMinutes(schoolStatus.endMinutes)})
+                        </span>
+                        {schoolStatus.nextPeriodNo && (
+                          <span className="text-[11px] text-amber-700 dark:text-amber-300 font-semibold">
+                            Period {schoolStatus.nextPeriodNo} starts in {schoolStatus.remainingMinutes} min
+                          </span>
+                        )}
+                      </>
+                    )}
+
+                    {schoolStatus.state === 'before_school' && (
+                      <>
+                        <span className="text-blue-600 dark:text-blue-400 font-bold">🌅 Before School Hours</span>
+                        <span className="text-brand-text-secondary">
+                          Period 1 commences at 8:15 AM (in {schoolStatus.remainingMinutes} min)
+                        </span>
+                      </>
+                    )}
+
+                    {schoolStatus.state === 'after_school' && (
+                      <>
+                        <span className="text-slate-600 dark:text-slate-400 font-bold">🌙 School Day Completed</span>
+                        <span className="text-brand-text-secondary">
+                          Classes ended at 2:30 PM · Viewing schedule overview
+                        </span>
+                      </>
+                    )}
+
+                    {schoolStatus.state === 'closed' && (
+                      <>
+                        <span className="text-amber-600 dark:text-amber-400 font-bold">📅 Weekend (School Closed)</span>
+                        <span className="text-brand-text-secondary">
+                          Previewing Monday schedule
+                        </span>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column: Period Stepper Controls */}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => stepDay(-1)}
+                  className="p-2.5 rounded-xl border border-brand-border bg-white dark:bg-brand-panel text-brand-text-secondary hover:text-brand-text-primary transition-all shadow-sm active:scale-95"
+                  title="Previous day"
+                >
+                  <ChevronLeftIcon className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => stepPeriod(-1)}
+                  disabled={activePeriodIndex <= 0}
+                  className="p-2.5 rounded-xl border border-brand-border bg-white dark:bg-brand-panel text-brand-text-secondary hover:text-brand-text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm active:scale-95"
+                  title="Previous period"
+                >
+                  <ChevronLeftIcon className="w-4 h-4" />
+                </button>
+
+                <div className="px-4 py-2 rounded-xl bg-brand-bg dark:bg-brand-panel border border-brand-border text-center shadow-inner">
+                  <p className="text-xs font-bold text-brand-text-primary">
+                    {currentPeriodInfo
+                      ? `Period ${currentPeriodInfo.no}`
+                      : 'Schedule Overview'}
+                  </p>
+                  {currentPeriodInfo && (
+                    <p className="text-[10px] text-brand-text-secondary">
+                      {currentPeriodInfo.start} – {currentPeriodInfo.end}
+                    </p>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => stepPeriod(1)}
+                  disabled={activePeriodIndex >= schedule.length - 1}
+                  className="p-2.5 rounded-xl border border-brand-border bg-white dark:bg-brand-panel text-brand-text-secondary hover:text-brand-text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm active:scale-95"
+                  title="Next period"
+                >
+                  <ChevronRightIcon className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => stepDay(1)}
+                  className="p-2.5 rounded-xl border border-brand-border bg-white dark:bg-brand-panel text-brand-text-secondary hover:text-brand-text-primary transition-all shadow-sm active:scale-95"
+                  title="Next day"
+                >
+                  <ChevronRightIcon className="w-4 h-4" />
+                </button>
+
+                {!isLive && (
+                  <button
+                    type="button"
+                    onClick={goLive}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white brand-gradient hover:opacity-95 active:scale-95 transition-all shadow-card"
+                  >
+                    <RefreshIcon className="w-3.5 h-3.5" />
+                    <span>Sync Live</span>
+                  </button>
+                )}
               </div>
             </div>
-            <div className="flex gap-2 text-[11px]">
-              <span className="rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 px-2.5 py-1 font-semibold text-emerald-700 dark:text-emerald-300">
-                {staff.free.length} free
-              </span>
-              <span className="rounded-full bg-brand-primary-soft dark:bg-brand-primary/20 border border-brand-primary/20 px-2.5 py-1 font-semibold text-brand-primary dark:text-blue-300">
-                {staff.busy.length} teaching
-              </span>
-            </div>
-          </div>
 
-          {staff.free.length === 0 ? (
-            <p className="text-sm text-brand-text-tertiary">Everyone is teaching right now.</p>
-          ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
-              {staff.free.map(t => (
-                <div
-                  key={t.id}
-                  className="flex items-center gap-2.5 rounded-xl bg-white dark:bg-brand-panel border border-brand-border px-3 py-2.5"
-                >
-                  <Avatar name={t.name} size="md" />
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-brand-text-primary truncate flex items-center gap-1.5">
-                      {t.name}
-                    </p>
-                    <p className="text-[10px] text-brand-text-tertiary truncate">
-                      {t.designation ?? subjectNames(t).join(', ')}
-                    </p>
-                  </div>
-                  <span className="ml-auto h-2 w-2 rounded-full bg-emerald-500 shrink-0" title="Free" />
-                </div>
-              ))}
-            </div>
-          )}
+            {/* Quick Selectors: Day Tabs & Period Pills */}
+            <div className="mt-5 pt-4 border-t border-brand-border flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-brand-text-tertiary mr-1">
+                  Day:
+                </span>
+                {DAY_KEYS.map(d => {
+                  const isCurrentLiveDay = liveDay === d;
+                  const isSelected = effectiveDay === d;
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => {
+                        setPreviewDay(d);
+                        if (previewPeriod === null) setPreviewPeriod(activePeriodIndex);
+                      }}
+                      className={`relative px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                        isSelected
+                          ? 'bg-brand-primary text-white shadow-card'
+                          : 'bg-white dark:bg-brand-panel border border-brand-border text-brand-text-secondary hover:text-brand-text-primary'
+                      }`}
+                    >
+                      {DAY_LABELS[d].slice(0, 3)}
+                      {isCurrentLiveDay && !isSelected && (
+                        <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
 
-          {staff.busy.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-brand-border">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-text-tertiary mb-2">
-                Currently teaching
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {staff.busy.map(s => (
-                  <span
-                    key={s.teacher.id}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-white dark:bg-brand-panel border border-brand-border px-2.5 py-1"
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-brand-text-tertiary mr-1">
+                  Period:
+                </span>
+                {schedule.map((p, i) => {
+                  const isSelected = activePeriodIndex === i;
+                  const isLiveInThisPeriod = isLive && livePeriodIndex === i;
+                  return (
+                    <button
+                      key={p.no}
+                      type="button"
+                      onClick={() => {
+                        setPreviewPeriod(i);
+                        if (previewDay === null) setPreviewDay(effectiveDay);
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                        isSelected
+                          ? 'bg-brand-primary text-white shadow-card'
+                          : isLiveInThisPeriod
+                            ? 'bg-emerald-100 dark:bg-emerald-950/50 border border-emerald-400 text-emerald-800 dark:text-emerald-300'
+                            : 'bg-white dark:bg-brand-panel border border-brand-border text-brand-text-secondary hover:text-brand-text-primary'
+                      }`}
+                      title={`${p.start} – ${p.end}`}
+                    >
+                      <span>P{p.no}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Filter & Search Bar */}
+            <div className="mt-4 pt-4 border-t border-brand-border/60 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                <span className="text-[11px] font-bold text-brand-text-tertiary mr-1">Filter:</span>
+                {(['all', 'primary', 'middle', 'secondary'] as const).map(grp => (
+                  <button
+                    key={grp}
+                    type="button"
+                    onClick={() => setClassFilter(grp)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold capitalize transition-all ${
+                      classFilter === grp
+                        ? 'bg-brand-primary-soft text-brand-primary dark:bg-brand-primary/20 dark:text-blue-300 font-bold'
+                        : 'text-brand-text-secondary hover:text-brand-text-primary'
+                    }`}
                   >
-                    <span className="h-1.5 w-1.5 rounded-full bg-brand-primary" />
-                    <span className="text-[11px] font-medium text-brand-text-primary">{s.teacher.name}</span>
-                    <span className="text-[10px] text-brand-text-tertiary">
-                      in {s.busyIn.join(', ')}
-                    </span>
-                  </span>
+                    {grp === 'all' ? 'All Classes' : grp}
+                  </button>
                 ))}
               </div>
+
+              <div className="w-full sm:w-64">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Search class, subject, or teacher..."
+                  className="w-full px-3 py-1.5 text-xs rounded-xl border border-brand-border bg-white dark:bg-brand-panel text-brand-text-primary placeholder:text-brand-text-tertiary outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Sunday Notice */}
+          {isSunday && isLive && (
+            <div className="rounded-2xl border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-xs md:text-sm text-amber-800 dark:text-amber-200 flex items-center justify-between gap-3">
+              <span>
+                🏫 <strong>Sunday Notice:</strong> School is closed today. The monitor is displaying Monday's timetable for planning.
+              </span>
+              <button
+                type="button"
+                onClick={() => setPreviewDay('mon')}
+                className="px-3 py-1 rounded-lg bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 font-bold text-xs shrink-0"
+              >
+                Plan Monday
+              </button>
             </div>
           )}
-        </div>
-      )}
+
+          {/* Classes Grid */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {filteredClasses.map(entry => (
+              <ClassCard
+                key={entry.label}
+                entry={entry}
+                day={effectiveDay}
+                periodIndex={activePeriodIndex}
+                live={isLive}
+                teachers={teachers}
+                now={now}
+                substitutions={substitutions}
+                absentTeacherIds={absentTeacherIds}
+                searchQuery={searchQuery}
+              />
+            ))}
+          </div>
+
+          {/* Staff Room Live Availability */}
+          {staff && (
+            <div className="glass-card rounded-2xl p-5 md:p-6 shadow-soft border border-brand-border">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+                <div className="flex items-center gap-3">
+                  <span className="w-10 h-10 rounded-xl bg-brand-primary-soft dark:bg-brand-primary/20 flex items-center justify-center">
+                    <UserIcon className="w-5 h-5 text-brand-primary dark:text-blue-300" />
+                  </span>
+                  <div>
+                    <h3 className="text-base font-bold text-brand-text-primary">Staff Room Availability</h3>
+                    <p className="text-xs text-brand-text-secondary">
+                      Teacher status for {DAY_LABELS[effectiveDay]} · Period {schedule[activePeriodIndex]?.no ?? 1}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-300 dark:border-emerald-500/30 px-3 py-1 font-bold text-emerald-700 dark:text-emerald-300">
+                    🟢 {staff.free.length} Free / Available
+                  </span>
+                  <span className="rounded-full bg-brand-primary-soft dark:bg-brand-primary/20 border border-brand-primary/30 px-3 py-1 font-bold text-brand-primary dark:text-blue-300">
+                    📚 {staff.busy.length} Teaching
+                  </span>
+                </div>
+              </div>
+
+              {/* Free Teachers Grid */}
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-brand-text-tertiary mb-2.5">
+                    Available Teachers in Staff Room ({staff.free.length})
+                  </h4>
+                  {staff.free.length === 0 ? (
+                    <p className="text-xs text-brand-text-tertiary italic">
+                      All teachers are currently assigned to classes for this period.
+                    </p>
+                  ) : (
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
+                      {staff.free.map(t => {
+                        const isTeacherAbsent = absentTeacherIds.includes(t.id);
+                        return (
+                          <div
+                            key={t.id}
+                            className={`flex items-center gap-2.5 rounded-xl p-2.5 border transition-all ${
+                              isTeacherAbsent
+                                ? 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900 opacity-60'
+                                : 'bg-white dark:bg-brand-panel border-brand-border'
+                            }`}
+                          >
+                            <Avatar name={t.name} size="md" />
+                            <div className="min-w-0 flex-1">
+                              <p className={`text-xs font-bold truncate ${
+                                isTeacherAbsent ? 'text-rose-700 dark:text-rose-300 line-through' : 'text-brand-text-primary'
+                              }`}>
+                                {t.name}
+                              </p>
+                              <p className="text-[10px] text-brand-text-tertiary truncate">
+                                {isTeacherAbsent ? 'Marked Absent Today' : (t.designation ?? subjectNames(t).join(', '))}
+                              </p>
+                            </div>
+                            {!isTeacherAbsent && (
+                              <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" title="Free" />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Currently Teaching */}
+                {staff.busy.length > 0 && (
+                  <div className="pt-4 border-t border-brand-border">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-brand-text-tertiary mb-2.5">
+                      Currently Teaching ({staff.busy.length})
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {staff.busy.map(s => (
+                        <div
+                          key={s.teacher.id}
+                          className="inline-flex items-center gap-2 rounded-xl bg-white dark:bg-brand-panel border border-brand-border px-3 py-1.5 shadow-sm"
+                        >
+                          <Avatar name={s.teacher.name} />
+                          <div className="text-left">
+                            <span className="text-xs font-semibold text-brand-text-primary">{s.teacher.name}</span>
+                            <span className="text-[10px] text-brand-primary dark:text-blue-300 font-bold ml-1.5">
+                              in {s.busyIn.join(', ')}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

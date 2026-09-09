@@ -161,9 +161,146 @@ export function standardSchedule(classes: TimetableClassEntry[]) {
     no: p.no,
     start: p.start,
     end: p.end,
+    friStart: p.friStart,
+    friEnd: p.friEnd,
     startMin: parseTimeToMinutes(p.start),
     endMin: parseTimeToMinutes(p.end),
   }));
+}
+
+export interface SchoolTimeStatus {
+  state: 'in_period' | 'break' | 'before_school' | 'after_school' | 'closed';
+  periodIndex: number;
+  periodNo: number | null;
+  periodLabel: string;
+  startMinutes: number;
+  endMinutes: number;
+  remainingMinutes: number;
+  totalDurationMinutes: number;
+  progressPercent: number;
+  nextPeriodNo: number | null;
+  nextPeriodStartMinutes: number | null;
+}
+
+/**
+ * Computes comprehensive school status for a given day and minute-of-day.
+ */
+export function getSchoolStatus(
+  classes: TimetableClassEntry[],
+  day: DayKey | null,
+  minutes: number
+): SchoolTimeStatus {
+  if (!day || classes.length === 0) {
+    return {
+      state: 'closed',
+      periodIndex: -1,
+      periodNo: null,
+      periodLabel: 'School Closed (Sunday)',
+      startMinutes: 0,
+      endMinutes: 0,
+      remainingMinutes: 0,
+      totalDurationMinutes: 0,
+      progressPercent: 0,
+      nextPeriodNo: 1,
+      nextPeriodStartMinutes: 495,
+    };
+  }
+
+  const entry = classes[0];
+  const times = entry.periods.map(p => periodTimeRange(p, day));
+  const firstStart = times[0]?.start ?? 495;
+  const lastEnd = times[times.length - 1]?.end ?? 870;
+
+  if (minutes < firstStart) {
+    const rem = firstStart - minutes;
+    return {
+      state: 'before_school',
+      periodIndex: 0,
+      periodNo: entry.periods[0]?.no ?? 1,
+      periodLabel: 'Before School Hours',
+      startMinutes: 0,
+      endMinutes: firstStart,
+      remainingMinutes: rem,
+      totalDurationMinutes: firstStart,
+      progressPercent: 0,
+      nextPeriodNo: 1,
+      nextPeriodStartMinutes: firstStart,
+    };
+  }
+
+  if (minutes >= lastEnd) {
+    return {
+      state: 'after_school',
+      periodIndex: times.length - 1,
+      periodNo: entry.periods[times.length - 1]?.no ?? times.length,
+      periodLabel: 'School Hours Completed for Today',
+      startMinutes: lastEnd,
+      endMinutes: 1440,
+      remainingMinutes: 0,
+      totalDurationMinutes: 0,
+      progressPercent: 100,
+      nextPeriodNo: null,
+      nextPeriodStartMinutes: null,
+    };
+  }
+
+  for (let i = 0; i < times.length; i++) {
+    const { start, end } = times[i];
+    if (minutes >= start && minutes < end) {
+      const dur = end - start;
+      const elapsed = minutes - start;
+      const pct = dur > 0 ? Math.min(100, Math.max(0, Math.round((elapsed / dur) * 100))) : 0;
+      const nextP = i + 1 < times.length ? entry.periods[i + 1] : null;
+      return {
+        state: 'in_period',
+        periodIndex: i,
+        periodNo: entry.periods[i].no,
+        periodLabel: `Period ${entry.periods[i].no}`,
+        startMinutes: start,
+        endMinutes: end,
+        remainingMinutes: end - minutes,
+        totalDurationMinutes: dur,
+        progressPercent: pct,
+        nextPeriodNo: nextP ? nextP.no : null,
+        nextPeriodStartMinutes: i + 1 < times.length ? times[i + 1].start : null,
+      };
+    }
+    if (i < times.length - 1) {
+      const nextStart = times[i + 1].start;
+      if (minutes >= end && minutes < nextStart) {
+        const breakDur = nextStart - end;
+        const breakElapsed = minutes - end;
+        const breakPct = breakDur > 0 ? Math.min(100, Math.max(0, Math.round((breakElapsed / breakDur) * 100))) : 0;
+        return {
+          state: 'break',
+          periodIndex: -1,
+          periodNo: null,
+          periodLabel: 'Recess / Break',
+          startMinutes: end,
+          endMinutes: nextStart,
+          remainingMinutes: nextStart - minutes,
+          totalDurationMinutes: breakDur,
+          progressPercent: breakPct,
+          nextPeriodNo: entry.periods[i + 1].no,
+          nextPeriodStartMinutes: nextStart,
+        };
+      }
+    }
+  }
+
+  return {
+    state: 'after_school',
+    periodIndex: -1,
+    periodNo: null,
+    periodLabel: 'School Day Over',
+    startMinutes: lastEnd,
+    endMinutes: 1440,
+    remainingMinutes: 0,
+    totalDurationMinutes: 0,
+    progressPercent: 100,
+    nextPeriodNo: null,
+    nextPeriodStartMinutes: null,
+  };
 }
 
 /* ── Slot resolution (subject cells → teachers via shared roster) ── */
