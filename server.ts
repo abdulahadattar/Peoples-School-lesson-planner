@@ -157,12 +157,16 @@ async function startServer() {
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 0;
       const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : 0;
 
+      const isForceRefresh =
+        req.query.refresh === 'true' ||
+        req.query.forceRefresh === 'true' ||
+        req.headers['cache-control']?.includes('no-cache');
       const cacheKey = `${spreadsheetId}_${gid}_${authHeader ? 'auth' : 'public'}`;
       let cached = sheetCache[cacheKey];
 
       // Check if server cache is still valid
       const now = Date.now();
-      const isCacheFresh = cached && now - cached.timestamp < SHEET_CACHE_TTL_MS;
+      const isCacheFresh = !isForceRefresh && cached && now - cached.timestamp < SHEET_CACHE_TTL_MS;
 
       if (!isCacheFresh) {
         // Fetch public CSV export or authenticated
@@ -288,7 +292,7 @@ async function startServer() {
 
       // Check client If-None-Match ETag header
       // If client already has latest version, return 304 (0 bytes transferred)
-      if (ifNoneMatch && ifNoneMatch === cached.etag && !filterSearch && !filterClass && !filterSection && !filterStatus && !filterGender && !summaryOnly && limit === 0) {
+      if (!isForceRefresh && ifNoneMatch && ifNoneMatch === cached.etag && !filterSearch && !filterClass && !filterSection && !filterStatus && !filterGender && !summaryOnly && limit === 0) {
         res.status(304).end();
         return;
       }

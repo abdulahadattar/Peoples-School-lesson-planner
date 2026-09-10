@@ -1,4 +1,4 @@
-import { getCachedStudentRecords, setCachedStudentRecords } from './storageService';
+import { getCachedStudentRecords, setCachedStudentRecords, clearCachedStudentRecords } from './storageService';
 
 /**
  * Google Sheets Service for Peoples Higher Secondary School Jamshoro (PHSSJ)
@@ -245,6 +245,12 @@ export interface EnrollmentSummaryResult {
 let inMemorySheetCache: Record<string, { timestamp: number; etag?: string; data: FetchSheetResult }> = {};
 const CLIENT_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
+export async function clearClientSheetCache(spreadsheetId: string = DEFAULT_SPREADSHEET_ID, gid: string = DEFAULT_GID): Promise<void> {
+  const cacheKeySuffix = `${spreadsheetId}_${gid}`;
+  inMemorySheetCache = {};
+  await clearCachedStudentRecords(cacheKeySuffix);
+}
+
 /**
  * Fetch records from Google Sheets with app-level payload minimization & IndexedDB caching.
  * Uses HTTP 304 conditional revalidation, Gzip compression, and compact JSON payloads.
@@ -291,8 +297,15 @@ export async function fetchSheetData(
       headers['If-None-Match'] = existingEtag;
     }
 
+    // If forceRefresh is requested, pass no-cache and refresh flags to bypass server and proxy caches
+    if (forceRefresh) {
+      headers['Cache-Control'] = 'no-cache';
+      headers['Pragma'] = 'no-cache';
+    }
+
+    const refreshQuery = forceRefresh ? '&refresh=true' : '';
     const res = await fetch(
-      `/api/sheets/data?spreadsheetId=${encodeURIComponent(spreadsheetId)}&gid=${encodeURIComponent(gid)}&compact=true`,
+      `/api/sheets/data?spreadsheetId=${encodeURIComponent(spreadsheetId)}&gid=${encodeURIComponent(gid)}&compact=true${refreshQuery}`,
       { headers }
     );
 
@@ -581,6 +594,7 @@ export async function updateSheetRecord(
     throw new Error(`Failed to update Google Sheet: ${errorText || response.statusText}`);
   }
 
+  await clearClientSheetCache(spreadsheetId);
   return { success: true, message: 'Row updated successfully in Google Sheet.' };
 }
 
@@ -642,6 +656,7 @@ export async function addSheetRecord(
         }),
       });
       if (serverRes.ok) {
+        await clearClientSheetCache(spreadsheetId);
         return { success: true, message: 'New student added successfully to Google Sheet.' };
       }
     } catch {
@@ -650,6 +665,7 @@ export async function addSheetRecord(
     throw new Error(`Failed to append to Google Sheet: ${errorText || response.statusText}`);
   }
 
+  await clearClientSheetCache(spreadsheetId);
   return { success: true, message: 'New student added successfully to Google Sheet.' };
 }
 

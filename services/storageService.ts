@@ -67,6 +67,15 @@ export async function setCachedStudentRecords(
   }
 }
 
+export async function clearCachedStudentRecords(cacheKeySuffix: string = 'default'): Promise<void> {
+  try {
+    const { del } = await import('idb-keyval');
+    await del(`${STUDENT_RECORDS_CACHE_KEY}_${cacheKeySuffix}`);
+  } catch (err) {
+    console.warn('Failed to clear cached student records from IndexedDB:', err);
+  }
+}
+
 export async function getSavedPlans(): Promise<SavedLessonPlanItem[]> {
   try {
     const list = await get<SavedLessonPlanItem[]>(PLANS_KEY);

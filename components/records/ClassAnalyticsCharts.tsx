@@ -200,15 +200,9 @@ export const ClassAnalyticsCharts: React.FC<ClassAnalyticsChartsProps> = ({
             <BarChart3 className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-extrabold text-brand-text-primary tracking-tight">
-                Class Distribution & Student Visualizations
-              </h2>
-              <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-brand-primary/10 text-brand-primary">
-                <Sparkles className="w-3 h-3" />
-                Live Data
-              </span>
-            </div>
+            <h2 className="text-base font-extrabold text-brand-text-primary tracking-tight">
+              Class Distribution & Student Visualizations
+            </h2>
             <p className="text-xs text-brand-text-secondary mt-0.5">
               Interactive breakdown across {classData.length} grade levels. Click any bar to instantly filter the records table.
             </p>
