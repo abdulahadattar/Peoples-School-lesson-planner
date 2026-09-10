@@ -161,7 +161,7 @@ export const BreakDutiesPanel: React.FC<{
                       Recess Break Duties Schedule
                     </h4>
                     <span className="text-[10px] text-brand-text-tertiary">
-                      {day === 'fri' ? '10:55 AM – 11:35 AM' : '11:15 AM – 12:05 PM'}
+                      {day === 'fri' ? '10:00 AM – 10:30 AM' : '10:50 AM – 11:20 AM'}
                     </span>
                   </div>
                 </div>
@@ -226,7 +226,7 @@ export const BreakDutiesPanel: React.FC<{
                       Leave Time Duties Schedule
                     </h4>
                     <span className="text-[10px] text-brand-text-tertiary">
-                      {day === 'fri' ? '12:15 PM – 1:00 PM' : '2:15 PM – 2:45 PM'} (School Dismissal)
+                      {day === 'fri' ? '11:50 AM – 12:20 PM' : '1:20 PM – 1:50 PM'} (School Dismissal)
                     </span>
                   </div>
                 </div>

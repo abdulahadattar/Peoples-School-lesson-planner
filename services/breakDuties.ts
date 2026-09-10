@@ -151,15 +151,15 @@ export function resolveDutyStaff(
  */
 export function getActiveDutyStatus(day: DayKey, minutes: number): 'break' | 'leave' | null {
   if (day === 'fri') {
-    // Friday Break: 10:55 AM – 11:35 AM (655 – 695)
-    if (minutes >= 655 && minutes <= 710) return 'break';
-    // Friday Leave: 12:15 PM – 1:00 PM (735 – 780)
-    if (minutes >= 735 && minutes <= 780) return 'leave';
+    // Friday Break: 10:00 AM – 10:30 AM (600 – 630)
+    if (minutes >= 595 && minutes <= 635) return 'break';
+    // Friday Leave: 11:50 AM – 12:25 PM (710 – 745)
+    if (minutes >= 710 && minutes <= 750) return 'leave';
   } else {
-    // Regular Days Break: 11:15 AM – 12:05 PM (675 – 725)
-    if (minutes >= 670 && minutes <= 730) return 'break';
-    // Regular Days Leave: 2:15 PM – 2:50 PM (855 – 890)
-    if (minutes >= 850 && minutes <= 895) return 'leave';
+    // Regular Days Break: 10:50 AM – 11:20 AM (650 – 680)
+    if (minutes >= 645 && minutes <= 685) return 'break';
+    // Regular Days Leave: 1:20 PM – 1:55 PM (800 – 835)
+    if (minutes >= 795 && minutes <= 840) return 'leave';
   }
   return null;
 }

@@ -178,6 +178,27 @@ def parse_sheet(zf: zipfile.ZipFile, name: str) -> dict | None:
         p for p in periods
         if any(p[d].strip() for d in ('mon', 'tue', 'wed', 'thu', 'fri', 'sat'))
     ]
+
+    # Apply official school bell timings
+    bell_timings = {
+        1: {'start': '8:15 AM', 'end': '8:50 AM', 'friStart': '8:15 AM', 'friEnd': '8:50 AM'},
+        2: {'start': '8:50 AM', 'end': '9:30 AM', 'friStart': '8:50 AM', 'friEnd': '9:25 AM'},
+        3: {'start': '9:30 AM', 'end': '10:10 AM', 'friStart': '9:25 AM', 'friEnd': '10:00 AM'},
+        4: {'start': '10:10 AM', 'end': '10:50 AM', 'friStart': '10:30 AM', 'friEnd': '11:10 AM'},
+        5: {'start': '11:20 AM', 'end': '12:00 PM', 'friStart': '11:10 AM', 'friEnd': '11:50 AM'},
+        6: {'start': '12:00 PM', 'end': '12:40 PM', 'friStart': None, 'friEnd': None},
+        7: {'start': '12:40 PM', 'end': '01:20 PM', 'friStart': None, 'friEnd': None},
+    }
+    for p in periods:
+        if p['no'] in bell_timings:
+            bt = bell_timings[p['no']]
+            p['start'] = bt['start']
+            p['end'] = bt['end']
+            p['friStart'] = bt['friStart']
+            p['friEnd'] = bt['friEnd']
+            if p['no'] in (6, 7):
+                p['fri'] = ''
+
     return {'label': label, 'classTeacher': class_teacher, 'periods': periods}
 
 

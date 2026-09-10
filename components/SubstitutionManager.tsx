@@ -87,7 +87,9 @@ export const SubstitutionManager: React.FC<SubstitutionManagerProps> = ({
     }[] = [];
 
     const absentSet = new Set(absentTeacherIds);
-    const maxPeriods = Math.max(...timetable.classes.map(c => c.periods.length));
+    const maxPeriods = day === 'fri'
+      ? 5
+      : Math.max(...timetable.classes.map(c => c.periods.length));
 
     for (let pIdx = 0; pIdx < maxPeriods; pIdx++) {
       const staffStatus = computeStaff(timetable.classes, teachers, day, pIdx);

@@ -142,20 +142,26 @@ export function getPakistanDate(baseDate: Date = new Date()): Date {
 
 /** Start/end minutes for a period on a given day (Friday uses friStart/friEnd when present). */
 export function periodTimeRange(p: TimetablePeriod, day: DayKey): { start: number; end: number } {
-  if (day === 'fri' && p.friStart && p.friEnd) {
-    return { start: parseTimeToMinutes(p.friStart), end: parseTimeToMinutes(p.friEnd) };
+  if (day === 'fri') {
+    if (p.friStart && p.friEnd) {
+      return { start: parseTimeToMinutes(p.friStart), end: parseTimeToMinutes(p.friEnd) };
+    }
+    return { start: NaN, end: NaN };
   }
   return { start: parseTimeToMinutes(p.start), end: parseTimeToMinutes(p.end) };
 }
 
 /** Where a given clock time falls in a class's day. */
 export function locatePeriod(entry: TimetableClassEntry, day: DayKey, minutes: number): PeriodLocation {
-  const times = entry.periods.map(p => periodTimeRange(p, day));
+  const periods = day === 'fri'
+    ? entry.periods.filter(p => p.friStart && p.friEnd)
+    : entry.periods;
+  const times = periods.map(p => periodTimeRange(p, day));
   for (let i = 0; i < times.length; i++) {
     const { start, end } = times[i];
     if (Number.isNaN(start) || Number.isNaN(end)) continue;
     if (minutes >= start && minutes < end) {
-      return { index: i, state: 'in', label: `Period ${entry.periods[i].no}` };
+      return { index: i, state: 'in', label: `Period ${periods[i].no}` };
     }
     if (minutes < start) {
       const prevEnd = i > 0 ? times[i - 1].end : -1;
@@ -176,7 +182,7 @@ export function standardSchedule(classes: TimetableClassEntry[], day?: DayKey) {
   if (!entry) return [];
   return entry.periods
     .filter(p => {
-      if (targetDay === 'fri' && !p.friStart && !p.friEnd && p.no === 7) return false;
+      if (targetDay === 'fri' && (!p.friStart || !p.friEnd)) return false;
       return true;
     })
     .map(p => {
@@ -220,6 +226,7 @@ export function getSchoolStatus(
   day: DayKey | null,
   minutes: number
 ): SchoolTimeStatus {
+  const defaultLastEnd = day === 'fri' ? 710 : 800; // 11:50 AM on Friday (710), 1:20 PM on Mon-Thu & Sat (800)
   if (!day || classes.length === 0) {
     return {
       state: 'closed',
@@ -234,14 +241,17 @@ export function getSchoolStatus(
       nextPeriodNo: 1,
       nextPeriodStartMinutes: 495,
       firstPeriodStart: 495,
-      lastPeriodEnd: 870,
+      lastPeriodEnd: defaultLastEnd,
     };
   }
 
   const entry = (day === 'fri' && classes.find(c => c.periods.some(p => p.friStart))) || classes[0];
-  const times = entry.periods.map(p => periodTimeRange(p, day)).filter(t => !Number.isNaN(t.start) && !Number.isNaN(t.end));
+  const periods = day === 'fri'
+    ? entry.periods.filter(p => p.friStart && p.friEnd)
+    : entry.periods;
+  const times = periods.map(p => periodTimeRange(p, day)).filter(t => !Number.isNaN(t.start) && !Number.isNaN(t.end));
   const firstStart = times[0]?.start ?? 495;
-  const lastEnd = times[times.length - 1]?.end ?? 870;
+  const lastEnd = times[times.length - 1]?.end ?? defaultLastEnd;
 
   if (minutes < firstStart) {
     const rem = firstStart - minutes;
@@ -286,12 +296,12 @@ export function getSchoolStatus(
       const dur = end - start;
       const elapsed = minutes - start;
       const pct = dur > 0 ? Math.min(100, Math.max(0, Math.round((elapsed / dur) * 100))) : 0;
-      const nextP = i + 1 < times.length ? entry.periods[i + 1] : null;
+      const nextP = i + 1 < periods.length ? periods[i + 1] : null;
       return {
         state: 'in_period',
         periodIndex: i,
-        periodNo: entry.periods[i].no,
-        periodLabel: `Period ${entry.periods[i].no}`,
+        periodNo: periods[i].no,
+        periodLabel: `Period ${periods[i].no}`,
         startMinutes: start,
         endMinutes: end,
         remainingMinutes: end - minutes,
@@ -319,7 +329,7 @@ export function getSchoolStatus(
           remainingMinutes: nextStart - minutes,
           totalDurationMinutes: breakDur,
           progressPercent: breakPct,
-          nextPeriodNo: entry.periods[i + 1].no,
+          nextPeriodNo: periods[i + 1].no,
           nextPeriodStartMinutes: nextStart,
           firstPeriodStart: firstStart,
           lastPeriodEnd: lastEnd,
