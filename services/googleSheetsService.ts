@@ -1,3 +1,5 @@
+import { getCachedStudentRecords, setCachedStudentRecords } from './storageService';
+
 /**
  * Google Sheets Service for Peoples Higher Secondary School Jamshoro (PHSSJ)
  * Synchronizes with Google Sheets file:
@@ -13,7 +15,7 @@ export const ATTENDANCE_SPREADSHEET_ID = '1J5eEmFnpqzgrNCZkV0e3bYOdTBE2B-pjczeBq
 
 export interface StudentRecord {
   rowNumber: number; // 1-based row index in the spreadsheet (header is row 1)
-  rawMetadata: string[]; // cols 0 to 16 preserved
+  rawMetadata?: string[]; // cols 0 to 16 preserved (optional in compact mode)
 
   // Visible columns requested for school record:
   grNo: string; // Col 17: GR#
@@ -225,57 +227,154 @@ export interface FetchSheetResult {
   sheetTitle: string;
   lastSynced: Date;
   isLive: boolean;
+  schoolMetadata?: string[];
+  fromCache?: boolean;
+}
+
+export interface EnrollmentSummaryResult {
+  totalEnrolled: number;
+  totalBoys: number;
+  totalGirls: number;
+  classCounts: Record<string, { boys: number; girls: number; total: number }>;
+  count: number;
 }
 
 /**
- * Fetch records from Google Sheets.
- * Uses the server-side proxy route `/api/sheets/data` which fetches the live sheet,
- * or direct Google Sheets API if an access token is provided.
+ * In-memory fallback cache
  */
-let sheetDataCache: Record<string, { timestamp: number; data: FetchSheetResult }> = {};
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+let inMemorySheetCache: Record<string, { timestamp: number; etag?: string; data: FetchSheetResult }> = {};
+const CLIENT_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
+/**
+ * Fetch records from Google Sheets with app-level payload minimization & IndexedDB caching.
+ * Uses HTTP 304 conditional revalidation, Gzip compression, and compact JSON payloads.
+ */
 export async function fetchSheetData(
   spreadsheetId: string = DEFAULT_SPREADSHEET_ID,
   gid: string = DEFAULT_GID,
   accessToken?: string | null,
   forceRefresh: boolean = false
 ): Promise<FetchSheetResult> {
-  const cacheKey = `${spreadsheetId}-${gid}-${accessToken ? 'auth' : 'public'}`;
-  
-  if (!forceRefresh && sheetDataCache[cacheKey] && Date.now() - sheetDataCache[cacheKey].timestamp < CACHE_TTL) {
-    return sheetDataCache[cacheKey].data;
+  const cacheKeySuffix = `${spreadsheetId}_${gid}`;
+  const memoryKey = `${spreadsheetId}-${gid}-${accessToken ? 'auth' : 'public'}`;
+
+  // 1. Check in-memory cache first if not force refresh
+  if (!forceRefresh && inMemorySheetCache[memoryKey] && Date.now() - inMemorySheetCache[memoryKey].timestamp < CLIENT_CACHE_TTL_MS) {
+    return { ...inMemorySheetCache[memoryKey].data, fromCache: true };
+  }
+
+  // 2. Check IndexedDB persistent cache
+  const idbCached = await getCachedStudentRecords(cacheKeySuffix);
+  if (!forceRefresh && idbCached && Date.now() - idbCached.timestamp < CLIENT_CACHE_TTL_MS && idbCached.records.length > 0) {
+    const cachedResult: FetchSheetResult = {
+      records: idbCached.records,
+      spreadsheetId: idbCached.spreadsheetId || spreadsheetId,
+      gid: idbCached.gid || gid,
+      sheetTitle: idbCached.sheetTitle || DEFAULT_SHEET_TITLE,
+      lastSynced: new Date(idbCached.timestamp),
+      isLive: true,
+      fromCache: true,
+    };
+    inMemorySheetCache[memoryKey] = { timestamp: idbCached.timestamp, etag: idbCached.etag, data: cachedResult };
+    return cachedResult;
   }
 
   try {
-    // 1. Try server-side proxy
+    // 3. Request optimized compact payload from server proxy with ETag conditional validation
     const headers: Record<string, string> = {};
     if (accessToken) {
       headers['Authorization'] = `Bearer ${accessToken}`;
     }
+    // If we have an existing cached ETag, send If-None-Match to allow 304 with 0 bytes transferred
+    const existingEtag = idbCached?.etag || inMemorySheetCache[memoryKey]?.etag;
+    if (existingEtag && !forceRefresh) {
+      headers['If-None-Match'] = existingEtag;
+    }
 
     const res = await fetch(
-      `/api/sheets/data?spreadsheetId=${encodeURIComponent(spreadsheetId)}&gid=${encodeURIComponent(gid)}`,
+      `/api/sheets/data?spreadsheetId=${encodeURIComponent(spreadsheetId)}&gid=${encodeURIComponent(gid)}&compact=true`,
       { headers }
     );
+
+    // If 304 Not Modified, reuse our local cached data with zero network payload!
+    if (res.status === 304 && idbCached && idbCached.records.length > 0) {
+      await setCachedStudentRecords(
+        {
+          records: idbCached.records,
+          etag: existingEtag,
+          sheetTitle: idbCached.sheetTitle,
+          spreadsheetId,
+          gid,
+        },
+        cacheKeySuffix
+      );
+      const cachedResult: FetchSheetResult = {
+        records: idbCached.records,
+        spreadsheetId,
+        gid,
+        sheetTitle: idbCached.sheetTitle || DEFAULT_SHEET_TITLE,
+        lastSynced: new Date(),
+        isLive: true,
+        fromCache: true,
+      };
+      inMemorySheetCache[memoryKey] = { timestamp: Date.now(), etag: existingEtag, data: cachedResult };
+      return cachedResult;
+    }
 
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data.records)) {
-        const result = {
-          records: data.records,
+        const responseEtag = res.headers.get('ETag') || data.etag;
+        const schoolMetadata = data.schoolMetadata || [];
+
+        // Normalize student records (populate default school metadata if needed)
+        const normalizedRecords: StudentRecord[] = data.records.map((r: any) => ({
+          ...r,
+          rawMetadata: r.rawMetadata || schoolMetadata,
+        }));
+
+        const result: FetchSheetResult = {
+          records: normalizedRecords,
           spreadsheetId,
           gid,
           sheetTitle: data.sheetTitle || DEFAULT_SHEET_TITLE,
           lastSynced: new Date(),
           isLive: true,
+          schoolMetadata,
         };
-        sheetDataCache[cacheKey] = { timestamp: Date.now(), data: result };
+
+        // Persist into IndexedDB and in-memory cache
+        await setCachedStudentRecords(
+          {
+            records: normalizedRecords,
+            etag: responseEtag,
+            sheetTitle: data.sheetTitle || DEFAULT_SHEET_TITLE,
+            spreadsheetId,
+            gid,
+          },
+          cacheKeySuffix
+        );
+
+        inMemorySheetCache[memoryKey] = { timestamp: Date.now(), etag: responseEtag, data: result };
         return result;
       }
     }
   } catch (err) {
-    console.warn('Server proxy fetch failed, falling back to direct export:', err);
+    console.warn('Server proxy fetch failed, falling back to local cache or direct export:', err);
+  }
+
+  // If network failed but we have stale IndexedDB cache, return it rather than failing
+  if (idbCached && idbCached.records.length > 0) {
+    const fallbackResult: FetchSheetResult = {
+      records: idbCached.records,
+      spreadsheetId,
+      gid,
+      sheetTitle: idbCached.sheetTitle || DEFAULT_SHEET_TITLE,
+      lastSynced: new Date(idbCached.timestamp),
+      isLive: false,
+      fromCache: true,
+    };
+    return fallbackResult;
   }
 
   // Fallback to direct export fetch
@@ -297,7 +396,6 @@ export async function fetchSheetData(
         lastSynced: new Date(),
         isLive: true,
       };
-      sheetDataCache[cacheKey] = { timestamp: Date.now(), data: emptyResult };
       return emptyResult;
     }
 
@@ -310,7 +408,7 @@ export async function fetchSheetData(
       }
     }
 
-    const result = {
+    const result: FetchSheetResult = {
       records,
       spreadsheetId,
       gid,
@@ -318,7 +416,18 @@ export async function fetchSheetData(
       lastSynced: new Date(),
       isLive: true,
     };
-    sheetDataCache[cacheKey] = { timestamp: Date.now(), data: result };
+
+    await setCachedStudentRecords(
+      {
+        records,
+        sheetTitle: DEFAULT_SHEET_TITLE,
+        spreadsheetId,
+        gid,
+      },
+      cacheKeySuffix
+    );
+
+    inMemorySheetCache[memoryKey] = { timestamp: Date.now(), data: result };
     return result;
   } catch (fallbackErr) {
     console.warn('All sheet fetch methods failed, returning empty records:', fallbackErr);
@@ -331,6 +440,80 @@ export async function fetchSheetData(
       isLive: true,
     };
   }
+}
+
+/**
+ * Ultra-compact enrollment summary fetcher.
+ * Retrieves only aggregated class totals (~300 bytes) instead of downloading all 866 student records.
+ */
+export async function fetchEnrollmentSummary(
+  spreadsheetId: string = DEFAULT_SPREADSHEET_ID,
+  gid: string = DEFAULT_GID,
+  accessToken?: string | null,
+  forceRefresh: boolean = false
+): Promise<EnrollmentSummaryResult | null> {
+  // 1. If we already have full records in local cache, calculate summary locally with 0 network bytes!
+  const cacheKeySuffix = `${spreadsheetId}_${gid}`;
+  const idbCached = await getCachedStudentRecords(cacheKeySuffix);
+  if (!forceRefresh && idbCached && idbCached.records.length > 0) {
+    const classCounts: Record<string, { boys: number; girls: number; total: number }> = {};
+    let totalEnrolled = 0;
+    let totalBoys = 0;
+    let totalGirls = 0;
+
+    idbCached.records.forEach((s: any) => {
+      const cls = (s.currentClass || 'Unassigned').trim();
+      const g = (s.gender || '').toUpperCase();
+      const isBoy = g.startsWith('M') || g.startsWith('B') || g === 'BOY';
+      const isGirl = g.startsWith('F') || g.startsWith('G') || g === 'GIRL';
+
+      if (!classCounts[cls]) {
+        classCounts[cls] = { boys: 0, girls: 0, total: 0 };
+      }
+      if (isBoy) {
+        classCounts[cls].boys++;
+        totalBoys++;
+      } else if (isGirl) {
+        classCounts[cls].girls++;
+        totalGirls++;
+      }
+      classCounts[cls].total++;
+      totalEnrolled++;
+    });
+
+    return {
+      totalEnrolled,
+      totalBoys,
+      totalGirls,
+      classCounts,
+      count: idbCached.records.length,
+    };
+  }
+
+  // 2. Otherwise fetch ultra-compact aggregated summary from server (~300 bytes payload)
+  try {
+    const headers: Record<string, string> = {};
+    if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+
+    const res = await fetch(
+      `/api/sheets/data?spreadsheetId=${encodeURIComponent(spreadsheetId)}&gid=${encodeURIComponent(gid)}&summaryOnly=true`,
+      { headers }
+    );
+
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        totalEnrolled: data.totalEnrolled || 0,
+        totalBoys: data.totalBoys || 0,
+        totalGirls: data.totalGirls || 0,
+        classCounts: data.classCounts || {},
+        count: data.count || 0,
+      };
+    }
+  } catch (err) {
+    console.warn('Failed to fetch enrollment summary:', err);
+  }
+  return null;
 }
 
 /**

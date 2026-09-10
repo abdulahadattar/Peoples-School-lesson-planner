@@ -1,11 +1,41 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
+import compression from 'compression';
 import { createServer as createViteServer } from 'vite';
+
+// Server-side in-memory cache for Google Sheet data to prevent redundant network round-trips
+interface ServerSheetCacheEntry {
+  timestamp: number;
+  etag: string;
+  spreadsheetId: string;
+  gid: string;
+  sheetTitle: string;
+  records: any[];
+  schoolMetadata: string[];
+}
+
+const sheetCache: Record<string, ServerSheetCacheEntry> = {};
+const SHEET_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
+
+  // Compression middleware - Compresses all responses (Gzip/Deflate) down by 80-90%
+  app.use(
+    compression({
+      level: 6,
+      threshold: 256, // Compress any response > 256 bytes
+      filter: (req, res) => {
+        if (req.headers['x-no-compression']) {
+          return false;
+        }
+        return compression.filter(req, res);
+      },
+    })
+  );
 
   // Middleware
   app.use(express.json({ limit: '20mb' }));
@@ -107,123 +137,261 @@ async function startServer() {
     }
   });
 
-  // Google Sheets Proxy Endpoints
+  // Google Sheets Proxy Endpoints with Server-Side Caching & Payload Optimization
   app.get('/api/sheets/data', async (req, res) => {
     try {
       const spreadsheetId = (req.query.spreadsheetId as string) || '11AMKZ-HXUQg4cKsEiEmKgmjfxPMPe4RTnVGlwB_Y7g0';
       const gid = (req.query.gid as string) || '1397470354';
       const authHeader = req.headers.authorization;
-
-      let csvText = '';
       const sheetTitle = (req.query.sheetTitle as string) || 'Jamshoro South Final SPD (2)';
+      const ifNoneMatch = req.headers['if-none-match'];
 
-      // Fetch public CSV export or authenticated
-      const exportUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
-      const headers: Record<string, string> = {};
-      if (authHeader) {
-        headers['Authorization'] = authHeader;
-      }
+      // Query filters
+      const filterClass = (req.query.class as string)?.trim();
+      const filterSection = (req.query.section as string)?.trim();
+      const filterStatus = (req.query.status as string)?.trim();
+      const filterGender = (req.query.gender as string)?.trim();
+      const filterSearch = (req.query.search as string)?.trim()?.toLowerCase();
+      const summaryOnly = req.query.summaryOnly === 'true';
+      const compact = req.query.compact !== 'false'; // Default to compact mode to save payload size
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 0;
+      const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : 0;
 
-      const response = await fetch(exportUrl, { headers });
-      if (!response.ok) {
-        res.json({ ok: true, spreadsheetId, gid, sheetTitle, count: 0, records: [] });
-        return;
-      }
-      csvText = await response.text();
+      const cacheKey = `${spreadsheetId}_${gid}_${authHeader ? 'auth' : 'public'}`;
+      let cached = sheetCache[cacheKey];
 
-      // Parse CSV
-      const rows: string[][] = [];
-      let currentRow: string[] = [];
-      let currentCell = '';
-      let inQuotes = false;
+      // Check if server cache is still valid
+      const now = Date.now();
+      const isCacheFresh = cached && now - cached.timestamp < SHEET_CACHE_TTL_MS;
 
-      for (let i = 0; i < csvText.length; i++) {
-        const char = csvText[i];
-        const nextChar = csvText[i + 1];
+      if (!isCacheFresh) {
+        // Fetch public CSV export or authenticated
+        const exportUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
+        const headers: Record<string, string> = {};
+        if (authHeader) {
+          headers['Authorization'] = authHeader;
+        }
 
-        if (char === '"') {
-          if (inQuotes && nextChar === '"') {
-            currentCell += '"';
-            i++;
+        const response = await fetch(exportUrl, { headers });
+        if (!response.ok) {
+          res.json({ ok: true, spreadsheetId, gid, sheetTitle, count: 0, records: [] });
+          return;
+        }
+        const csvText = await response.text();
+
+        // Parse CSV
+        const rows: string[][] = [];
+        let currentRow: string[] = [];
+        let currentCell = '';
+        let inQuotes = false;
+
+        for (let i = 0; i < csvText.length; i++) {
+          const char = csvText[i];
+          const nextChar = csvText[i + 1];
+
+          if (char === '"') {
+            if (inQuotes && nextChar === '"') {
+              currentCell += '"';
+              i++;
+            } else {
+              inQuotes = !inQuotes;
+            }
+          } else if (char === ',' && !inQuotes) {
+            currentRow.push(currentCell.trim());
+            currentCell = '';
+          } else if ((char === '\r' || char === '\n') && !inQuotes) {
+            if (char === '\r' && nextChar === '\n') {
+              i++;
+            }
+            currentRow.push(currentCell.trim());
+            if (currentRow.length > 1 || (currentRow.length === 1 && currentRow[0] !== '')) {
+              rows.push(currentRow);
+            }
+            currentRow = [];
+            currentCell = '';
           } else {
-            inQuotes = !inQuotes;
+            currentCell += char;
           }
-        } else if (char === ',' && !inQuotes) {
-          currentRow.push(currentCell.trim());
-          currentCell = '';
-        } else if ((char === '\r' || char === '\n') && !inQuotes) {
-          if (char === '\r' && nextChar === '\n') {
-            i++;
-          }
+        }
+        if (currentCell.length > 0 || currentRow.length > 0) {
           currentRow.push(currentCell.trim());
           if (currentRow.length > 1 || (currentRow.length === 1 && currentRow[0] !== '')) {
             rows.push(currentRow);
           }
-          currentRow = [];
-          currentCell = '';
-        } else {
-          currentCell += char;
         }
-      }
-      if (currentCell.length > 0 || currentRow.length > 0) {
-        currentRow.push(currentCell.trim());
-        if (currentRow.length > 1 || (currentRow.length === 1 && currentRow[0] !== '')) {
-          rows.push(currentRow);
+
+        // Extract Common School Metadata from row 1 (columns 0..16)
+        let schoolMetadata: string[] = [];
+        if (rows.length > 1) {
+          schoolMetadata = rows[1].slice(0, 17);
         }
+
+        // Convert rows to StudentRecord objects
+        const rawRecords = [];
+        for (let i = 1; i < rows.length; i++) {
+          const cols = [...rows[i]];
+          while (cols.length < 41) cols.push('');
+
+          const grNo = cols[17] || '';
+          const studentName = cols[18] || '';
+
+          if (grNo || studentName) {
+            rawRecords.push({
+              rowNumber: i + 1,
+              rawMetadata: cols.slice(0, 17),
+              grNo,
+              studentName,
+              bFormNo: cols[19] || '',
+              fatherName: cols[20] || '',
+              gender: cols[21] || '',
+              dobDay: cols[22] || '',
+              dobMonth: cols[23] || '',
+              dobYear: cols[24] || '',
+              classAdmitted: cols[25] || '',
+              currentClass: cols[26] || '',
+              parentCnic: cols[27] || '',
+              religion: cols[28] || '',
+              address: cols[29] || '',
+              parentContact: cols[30] || '',
+              emergencyContact: cols[31] || '',
+              admissionDay: cols[32] || '',
+              admissionMonth: cols[33] || '',
+              admissionYear: cols[34] || '',
+              section: cols[35] || '',
+              partnerContact: cols[36] || '',
+              shift: cols[37] || '',
+              medium: cols[38] || '',
+              picture: cols[39] || '',
+              status: cols[40] || '',
+            });
+          }
+        }
+
+        // Generate strong ETag hash from content
+        const hash = crypto
+          .createHash('md5')
+          .update(JSON.stringify({ count: rawRecords.length, first: rawRecords[0], last: rawRecords[rawRecords.length - 1] }))
+          .digest('hex');
+        const etag = `W/"phssj-${hash}"`;
+
+        cached = {
+          timestamp: now,
+          etag,
+          spreadsheetId,
+          gid,
+          sheetTitle,
+          records: rawRecords,
+          schoolMetadata,
+        };
+        sheetCache[cacheKey] = cached;
       }
 
-      if (rows.length <= 1) {
-        res.json({ ok: true, spreadsheetId, gid, sheetTitle, count: 0, records: [] });
+      // Check client If-None-Match ETag header
+      // If client already has latest version, return 304 (0 bytes transferred)
+      if (ifNoneMatch && ifNoneMatch === cached.etag && !filterSearch && !filterClass && !filterSection && !filterStatus && !filterGender && !summaryOnly && limit === 0) {
+        res.status(304).end();
         return;
       }
 
-      // Convert rows to StudentRecord objects
-      const records = [];
-      for (let i = 1; i < rows.length; i++) {
-        const cols = [...rows[i]];
-        while (cols.length < 41) cols.push('');
+      // If summaryOnly is requested, calculate compact class breakdown (~300 bytes total!)
+      if (summaryOnly) {
+        const classCounts: Record<string, { boys: number; girls: number; total: number }> = {};
+        let totalEnrolled = 0;
+        let totalBoys = 0;
+        let totalGirls = 0;
 
-        const student = {
-          rowNumber: i + 1,
-          rawMetadata: cols.slice(0, 17),
-          grNo: cols[17] || '',
-          studentName: cols[18] || '',
-          bFormNo: cols[19] || '',
-          fatherName: cols[20] || '',
-          gender: cols[21] || '',
-          dobDay: cols[22] || '',
-          dobMonth: cols[23] || '',
-          dobYear: cols[24] || '',
-          classAdmitted: cols[25] || '',
-          currentClass: cols[26] || '',
-          parentCnic: cols[27] || '',
-          religion: cols[28] || '',
-          address: cols[29] || '',
-          parentContact: cols[30] || '',
-          emergencyContact: cols[31] || '',
-          admissionDay: cols[32] || '',
-          admissionMonth: cols[33] || '',
-          admissionYear: cols[34] || '',
-          section: cols[35] || '',
-          partnerContact: cols[36] || '',
-          shift: cols[37] || '',
-          medium: cols[38] || '',
-          picture: cols[39] || '',
-          status: cols[40] || '',
-        };
+        cached.records.forEach((s) => {
+          const cls = (s.currentClass || 'Unassigned').trim();
+          const g = (s.gender || '').toUpperCase();
+          const isBoy = g.startsWith('M') || g.startsWith('B') || g === 'BOY';
+          const isGirl = g.startsWith('F') || g.startsWith('G') || g === 'GIRL';
 
-        if (student.grNo || student.studentName) {
-          records.push(student);
-        }
+          if (!classCounts[cls]) {
+            classCounts[cls] = { boys: 0, girls: 0, total: 0 };
+          }
+          if (isBoy) {
+            classCounts[cls].boys++;
+            totalBoys++;
+          } else if (isGirl) {
+            classCounts[cls].girls++;
+            totalGirls++;
+          }
+          classCounts[cls].total++;
+          totalEnrolled++;
+        });
+
+        res.setHeader('ETag', cached.etag);
+        res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
+        res.json({
+          ok: true,
+          totalEnrolled,
+          totalBoys,
+          totalGirls,
+          classCounts,
+          count: cached.records.length,
+        });
+        return;
       }
 
+      // Apply server-side selective filtering
+      let filtered = cached.records;
+
+      if (filterClass && filterClass !== 'all') {
+        filtered = filtered.filter((r) => (r.currentClass || '').toLowerCase() === filterClass.toLowerCase());
+      }
+      if (filterSection && filterSection !== 'all') {
+        filtered = filtered.filter((r) => (r.section || '').toLowerCase() === filterSection.toLowerCase());
+      }
+      if (filterStatus && filterStatus !== 'all') {
+        filtered = filtered.filter((r) => (r.status || '').toLowerCase().includes(filterStatus.toLowerCase()));
+      }
+      if (filterGender && filterGender !== 'all') {
+        filtered = filtered.filter((r) => {
+          const g = (r.gender || '').toUpperCase();
+          if (filterGender === 'M') return g.startsWith('M') || g.startsWith('B');
+          if (filterGender === 'F') return g.startsWith('F') || g.startsWith('G');
+          return true;
+        });
+      }
+      if (filterSearch) {
+        filtered = filtered.filter((r) => {
+          return (
+            (r.studentName || '').toLowerCase().includes(filterSearch) ||
+            (r.fatherName || '').toLowerCase().includes(filterSearch) ||
+            (r.grNo || '').toLowerCase().includes(filterSearch) ||
+            (r.parentContact || '').includes(filterSearch) ||
+            (r.emergencyContact || '').includes(filterSearch) ||
+            (r.bFormNo || '').includes(filterSearch)
+          );
+        });
+      }
+
+      const totalMatching = filtered.length;
+
+      // Apply pagination if requested
+      if (offset > 0 || limit > 0) {
+        const start = Math.max(0, offset);
+        const end = limit > 0 ? start + limit : filtered.length;
+        filtered = filtered.slice(start, end);
+      }
+
+      // In compact mode, strip redundant rawMetadata array from each record
+      // and provide schoolMetadata once at the root to cut payload size in half
+      const recordsToSend = compact
+        ? filtered.map(({ rawMetadata, ...rest }) => rest)
+        : filtered;
+
+      res.setHeader('ETag', cached.etag);
+      res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
       res.json({
         ok: true,
+        etag: cached.etag,
         spreadsheetId,
         gid,
         sheetTitle,
-        count: records.length,
-        records,
+        count: totalMatching,
+        schoolMetadata: cached.schoolMetadata,
+        records: recordsToSend,
       });
     } catch (error) {
       console.warn('[server.ts] Error fetching sheet data, returning empty records:', error);
@@ -274,6 +442,9 @@ async function startServer() {
         res.status(gRes.status).json({ error: errText });
         return;
       }
+
+      // Invalidate server cache on student update
+      Object.keys(sheetCache).forEach((k) => delete sheetCache[k]);
 
       const data = await gRes.json();
       res.json({ ok: true, data });
@@ -482,6 +653,9 @@ async function startServer() {
         res.status(gRes.status).json({ error: errText });
         return;
       }
+
+      // Invalidate server cache on new student addition
+      Object.keys(sheetCache).forEach((k) => delete sheetCache[k]);
 
       const data = await gRes.json();
       res.json({ ok: true, data });

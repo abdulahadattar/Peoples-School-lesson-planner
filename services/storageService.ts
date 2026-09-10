@@ -19,6 +19,53 @@ export interface SavedExamPaperItem {
 const PLANS_KEY = 'phssj_saved_lesson_plans_v1';
 const PAPERS_KEY = 'phssj_saved_exam_papers_v1';
 const SUBSTITUTIONS_KEY = 'phssj_timetable_substitutions_v1';
+const STUDENT_RECORDS_CACHE_KEY = 'phssj_student_records_cache_v2';
+
+export interface CachedStudentRecords {
+  records: any[];
+  etag?: string;
+  timestamp: number;
+  sheetTitle?: string;
+  spreadsheetId?: string;
+  gid?: string;
+}
+
+export async function getCachedStudentRecords(cacheKeySuffix: string = 'default'): Promise<CachedStudentRecords | null> {
+  try {
+    const cached = await get<CachedStudentRecords>(`${STUDENT_RECORDS_CACHE_KEY}_${cacheKeySuffix}`);
+    if (cached && Array.isArray(cached.records) && cached.records.length > 0) {
+      return cached;
+    }
+  } catch (err) {
+    console.warn('Failed to read cached student records from IndexedDB:', err);
+  }
+  return null;
+}
+
+export async function setCachedStudentRecords(
+  data: {
+    records: any[];
+    etag?: string;
+    sheetTitle?: string;
+    spreadsheetId?: string;
+    gid?: string;
+  },
+  cacheKeySuffix: string = 'default'
+): Promise<void> {
+  try {
+    const payload: CachedStudentRecords = {
+      records: data.records,
+      etag: data.etag,
+      timestamp: Date.now(),
+      sheetTitle: data.sheetTitle,
+      spreadsheetId: data.spreadsheetId,
+      gid: data.gid,
+    };
+    await set(`${STUDENT_RECORDS_CACHE_KEY}_${cacheKeySuffix}`, payload);
+  } catch (err) {
+    console.warn('Failed to save student records cache to IndexedDB:', err);
+  }
+}
 
 export async function getSavedPlans(): Promise<SavedLessonPlanItem[]> {
   try {
