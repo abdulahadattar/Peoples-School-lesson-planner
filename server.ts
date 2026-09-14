@@ -460,6 +460,8 @@ async function startServer() {
   // Daily Student Attendance Endpoints
   const ATTENDANCE_FILE = path.join(process.cwd(), 'data', 'daily_attendance.json');
 
+  const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
   const getAttendanceStore = (): Record<string, any> => {
     try {
       if (fs.existsSync(ATTENDANCE_FILE)) {
@@ -487,6 +489,10 @@ async function startServer() {
   app.get('/api/attendance', (req, res) => {
     try {
       const date = (req.query.date as string) || new Date().toISOString().split('T')[0];
+      if (!DATE_REGEX.test(date)) {
+        res.status(400).json({ error: 'Invalid date format. Expected YYYY-MM-DD.' });
+        return;
+      }
       const store = getAttendanceStore();
       const record = store[date] || null;
       res.json({ ok: true, date, record });
@@ -500,6 +506,10 @@ async function startServer() {
       const { date, classes, notes, recordedBy } = req.body || {};
       if (!date || !classes) {
         res.status(400).json({ error: 'Missing date or classes data in body' });
+        return;
+      }
+      if (!DATE_REGEX.test(date)) {
+        res.status(400).json({ error: 'Invalid date format. Expected YYYY-MM-DD.' });
         return;
       }
 
