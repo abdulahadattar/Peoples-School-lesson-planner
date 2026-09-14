@@ -484,9 +484,17 @@ async function startServer() {
     }
   };
 
+  // Date validation helper to prevent path traversal and object key injection
+  const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
   app.get('/api/attendance', (req, res) => {
     try {
       const date = (req.query.date as string) || new Date().toISOString().split('T')[0];
+      // Security: Validate date format to prevent prototype pollution or path traversal patterns
+      if (!DATE_REGEX.test(date)) {
+        res.status(400).json({ error: 'Invalid date format. Expected YYYY-MM-DD.' });
+        return;
+      }
       const store = getAttendanceStore();
       const record = store[date] || null;
       res.json({ ok: true, date, record });
@@ -500,6 +508,11 @@ async function startServer() {
       const { date, classes, notes, recordedBy } = req.body || {};
       if (!date || !classes) {
         res.status(400).json({ error: 'Missing date or classes data in body' });
+        return;
+      }
+      // Security: Validate date format to prevent prototype pollution or path traversal patterns
+      if (!DATE_REGEX.test(date)) {
+        res.status(400).json({ error: 'Invalid date format. Expected YYYY-MM-DD.' });
         return;
       }
 
