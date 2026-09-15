@@ -1,0 +1,199 @@
+{
+  "teachers": [
+    {
+      "id": "teacher-1",
+      "name": "Sir Abdul Ahad",
+      "schoolName": "Peoples Higher Secondary School Jamshoro",
+      "designation": "Subject Specialist",
+      "subjects": [
+        { "name": "Physics", "sections": ["IX", "X-A", "X-B", "XI", "XII"] }
+      ]
+    },
+    {
+      "id": "teacher-2",
+      "name": "Sir Abdul Razzaq",
+      "schoolName": "Peoples Higher Secondary School Jamshoro",
+      "designation": "Co-Ordinator",
+      "subjects": [
+        { "name": "English", "sections": ["X-A", "X-B", "XI", "XII"] }
+      ]
+    },
+    {
+      "id": "teacher-3",
+      "name": "Miss Aneela",
+      "schoolName": "Peoples Higher Secondary School Jamshoro",
+      "designation": "Subject Specialist",
+      "subjects": [
+        { "name": "Sindhi", "sections": ["IV-A", "IV-B", "V", "VI-A", "VI-B"] }
+      ]
+    },
+    {
+      "id": "teacher-4",
+      "name": "Ma'am Arsala",
+      "schoolName": "Peoples Higher Secondary School Jamshoro",
+      "designation": "Principal",
+      "subjects": [
+        { "name": "Asan Urdu", "sections": ["X-A", "XI"] }
+      ]
+    },
+    {
+      "id": "teacher-5",
+      "name": "Miss Asra",
+      "schoolName": "Peoples Higher Secondary School Jamshoro",
+      "designation": "Subject Specialist",
+      "subjects": [
+        { "name": "Biology", "sections": ["IX", "X-A", "X-B", "XI", "XII"] }
+      ]
+    },
+    {
+      "id": "teacher-6",
+      "name": "Sir Atta Muhammad Joyo",
+      "schoolName": "Peoples Higher Secondary School Jamshoro",
+      "designation": "Subject Specialist",
+      "subjects": [
+        { "name": "Mathematics", "sections": ["V-B", "VI-B", "VII", "VIII"] }
+      ]
+    },
+    {
+      "id": "teacher-7",
+      "name": "Sir Abdul Karim",
+      "schoolName": "Peoples Higher Secondary School Jamshoro",
+      "designation": "P.E Instructor",
+      "subjects": [
+        { "name": "P.E", "sections": ["IV-A", "IV-B", "V", "VI-A", "VI-B", "VII", "VIII", "X-A", "X-B", "XI", "XII"] }
+      ]
+    },
+    {
+      "id": "teacher-8",
+      "name": "Sir Bahadur",
+      "schoolName": "Peoples Higher Secondary School Jamshoro",
+      "designation": "Subject Specialist",
+      "subjects": [
+        { "name": "Mathematics", "sections": ["IX", "X-A", "X-B", "XI", "XII"] }
+      ]
+    },
+    {
+      "id": "teacher-9",
+      "name": "Miss Daniya",
+      "schoolName": "Peoples Higher Secondary School Jamshoro",
+      "designation": "Subject Specialist",
+      "subjects": [
+        { "name": "Mathematics", "sections": ["IV-A", "IV-B", "V", "VI-A"] },
+        { "name": "Science", "sections": ["IV-A"] }
+      ]
+    },
+    {
+      "id": "teacher-10",
+      "name": "Sir Faizan Shaikh",
+      "schoolName": "Peoples Higher Secondary School Jamshoro",
+      "designation": "Subject Specialist",
+      "subjects": [
+        { "name": "ICT", "sections": ["IV-A", "IV-B", "V", "VI-A", "VI-B", "VII", "VIII", "IX", "X-A", "X-B", "XI"] }
+      ]
+    },
+    {
+      "id": "teacher-11",
+      "name": "Miss Fatima Qureshi",
+      "schoolName": "Peoples Higher Secondary School Jamshoro",
+      "designation": "Subject Specialist",
+      "subjects": [
+        { "name": "Science", "sections": ["IV-B", "VI-A", "VI-B", "VII", "VIII"] }
+      ]
+    },
+    {
+      "id": "teacher-12",
+      "name": "Sir Feroz",
+      "schoolName": "Peoples Higher Secondary School Jamshoro",
+      "designation": "Subject Specialist",
+      "subjects": [
+        { "name": "Urdu", "sections": ["VI-A", "VI-B", "VII", "VIII", "IX", "X-B", "XI", "XII"] }
+      ]
+    },
+    {
+      "id": "teacher-13",
+      "name": "Sir Hashim",
+      "schoolName": "Peoples Higher Secondary School Jamshoro",
+      "designation": "Subject Specialist",
+      "subjects": [
+        { "name": "English", "sections": ["IV-A", "IV-B", "V", "VI-A"] },
+        { "name": "Library", "sections": ["IV-A", "IV-B", "V", "VI-A"] }
+      ]
+    },
+    {
+      "id": "teacher-14",
+      "name": "Sir Kamran",
+      "schoolName": "Peoples Higher Secondary School Jamshoro",
+      "designation": "Subject Specialist",
+      "subjects": [
+        { "name": "Sindhi", "sections": ["VII", "VIII", "IX", "X-A", "X-B", "XII"] }
+      ]
+    },
+    {
+      "id": "teacher-15",
+      "name": "Miss Madiha",
+      "schoolName": "Peoples Higher Secondary School Jamshoro",
+      "designation": "Subject Specialist",
+      "subjects": [
+        { "name": "Social Studies", "sections": ["IV-A", "IV-B", "V", "VI-A", "VI-B", "VII", "VIII"] },
+        { "name": "Pak Studies", "sections": ["X-A", "X-B"] }
+      ]
+    },
+    {
+      "id": "teacher-16",
+      "name": "Sir Muhammad Rajab",
+      "schoolName": "Peoples Higher Secondary School Jamshoro",
+      "designation": "Subject Specialist",
+      "subjects": [
+        { "name": "Chemistry", "sections": ["IX", "X-A", "X-B", "XI", "XII"] }
+      ]
+    },
+    {
+      "id": "teacher-17",
+      "name": "Ma'am Layla Abrejo",
+      "schoolName": "Peoples Higher Secondary School Jamshoro",
+      "designation": "Vice Principal",
+      "subjects": [
+        { "name": "Pak Studies", "sections": ["XII"] }
+      ]
+    },
+    {
+      "id": "teacher-18",
+      "name": "Miss Narjis",
+      "schoolName": "Peoples Higher Secondary School Jamshoro",
+      "designation": "Co-Ordinator",
+      "subjects": [
+        { "name": "Urdu", "sections": ["IV-A", "IV-B", "V"] },
+        { "name": "Islamiat", "sections": ["IV-A", "V"] },
+        { "name": "Science", "sections": ["V"] }
+      ]
+    },
+    {
+      "id": "teacher-19",
+      "name": "Miss Shagufta",
+      "schoolName": "Peoples Higher Secondary School Jamshoro",
+      "designation": "Subject Specialist",
+      "subjects": [
+        { "name": "Art", "sections": ["IV-A", "IV-B", "V", "VI-A", "VI-B", "VII", "VIII", "X-A", "X-B", "XI"] }
+      ]
+    },
+    {
+      "id": "teacher-20",
+      "name": "Miss Shahida",
+      "schoolName": "Peoples Higher Secondary School Jamshoro",
+      "designation": "Subject Specialist",
+      "subjects": [
+        { "name": "Islamiat", "sections": ["IV-B", "VI-A", "VI-B", "VII", "VIII", "IX", "XI"] }
+      ]
+    },
+    {
+      "id": "teacher-21",
+      "name": "Sir Shuhban",
+      "schoolName": "Peoples Higher Secondary School Jamshoro",
+      "designation": "Subject Specialist",
+      "subjects": [
+        { "name": "English", "sections": ["VI-B", "VII", "VIII", "IX"] },
+        { "name": "Library", "sections": ["VI-B", "VII", "VIII"] }
+      ]
+    }
+  ]
+}

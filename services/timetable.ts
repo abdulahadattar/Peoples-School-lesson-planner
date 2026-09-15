@@ -1,0 +1,428 @@
+/**
+ * timetable.ts — Live Monitor engine.
+ *
+ * Loads the timetable JSON (generated from the school's Excel timetable by
+ * scripts/parse_timetable.py) and combines it with the teacher roster
+ * (data/teachers.json) to answer:
+ *   - who is teaching which class RIGHT NOW (live period detection by clock)
+ *   - who is teaching where at any (day, period) the principal previews
+ *   - which teachers are currently free (staff room)
+ *
+ * Subject cells may contain parallel alternatives separated by '/'
+ * (e.g. "Urdu / Sindhi", "Maths / Biology") — BOTH teachers are present in
+ * the class simultaneously; that is NOT a clash.
+ */
+import timetableData from '../data/timetable.json';
+import { Teacher } from '../types';
+import { isKnownSubject, normalizeSubject, resolveByName, resolveTeacher } from './teacherRoster';
+
+export type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat';
+
+export const DAY_KEYS: DayKey[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+export const DAY_LABELS: Record<DayKey, string> = {
+  mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday',
+  thu: 'Thursday', fri: 'Friday', sat: 'Saturday',
+};
+
+export interface TimetablePeriod {
+  no: number;
+  start: string;
+  end: string;
+  friStart: string | null;
+  friEnd: string | null;
+  mon: string;
+  tue: string;
+  wed: string;
+  thu: string;
+  fri: string;
+  sat: string;
+}
+
+export interface TimetableClassEntry {
+  label: string;
+  classTeacher: string;
+  periods: TimetablePeriod[];
+}
+
+export interface TimetableData {
+  generatedAt: string;
+  classes: TimetableClassEntry[];
+}
+
+export interface SlotPart {
+  subject: string;
+  teacher: Teacher | null;
+}
+
+export interface ResolvedSlot {
+  /** Combined label, e.g. "Urdu / Sindhi". */
+  label: string;
+  /** One entry per parallel subject (split on '/'). */
+  parts: SlotPart[];
+  /** Teachers present in this class at this slot (parallel options both count). */
+  teachers: Teacher[];
+  /** True when the cell is empty (free period for the class). */
+  empty: boolean;
+}
+
+export interface PeriodLocation {
+  /** Index into the class's periods array, or -1 when outside school hours. */
+  index: number;
+  /** 'before' | 'in' | 'break' | 'after' relative to this class's schedule. */
+  state: 'before' | 'in' | 'break' | 'after';
+  /** Label of the current state, e.g. "Period 3", "Break", "Before school". */
+  label: string;
+}
+
+let cache: TimetableData | null = null;
+
+/**
+ * Load timetable JSON from the bundled data and cache it for the session.
+ */
+export async function loadTimetable(): Promise<TimetableData> {
+  if (cache) return cache;
+  cache = timetableData as TimetableData;
+  return cache;
+}
+
+/** Day key (mon..sat) for a Date, or null on Sunday (school closed). */
+export function dayKeyForDate(d: Date): DayKey | null {
+  const day = d.getDay(); // 0 = Sunday
+  if (day === 0) return null;
+  return DAY_KEYS[day - 1];
+}
+
+/**
+ * Parse "8:15 AM" / "01:35 PM" / bare "8:15" / "12:15" into minutes since
+ * midnight. Bare times (no AM/PM) are resolved by school-day context:
+ * 12+ -> PM, 7-11 -> AM, 1-6 -> PM (afternoon slots).
+ */
+export function parseTimeToMinutes(t: string): number {
+  const m = t.trim().toLowerCase().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/);
+  if (!m) return NaN;
+  let h = parseInt(m[1], 10);
+  const min = m[2] ? parseInt(m[2], 10) : 0;
+  const ap = m[3];
+  if (ap === 'pm' && h < 12) h += 12;
+  if (ap === 'am' && h === 12) h = 0;
+  if (!ap) {
+    if (h === 12) h = 12;
+    else if (h >= 7 && h <= 11) h = h;
+    else if (h >= 13) h = h;
+    else h += 12; // 1..6 -> PM
+  }
+  return h * 60 + min;
+}
+
+/**
+ * Format minutes-since-midnight into a 12-hour time string (e.g. "8:15 AM").
+ */
+export function formatMinutes(min?: number | null): string {
+  if (min === undefined || min === null || typeof min !== 'number' || Number.isNaN(min)) {
+    return '--:--';
+  }
+  const safeMin = Math.max(0, Math.floor(min));
+  const h24 = Math.floor(safeMin / 60) % 24;
+  const m = safeMin % 60;
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  const ap = h24 >= 12 ? 'PM' : 'AM';
+  return `${h12}:${String(m).padStart(2, '0')} ${ap}`;
+}
+
+/** Returns current Date in Pakistan Standard Time (Asia/Karachi, UTC+5). */
+export function getPakistanDate(baseDate: Date = new Date()): Date {
+  try {
+    const pktString = baseDate.toLocaleString('en-US', { timeZone: 'Asia/Karachi' });
+    return new Date(pktString);
+  } catch {
+    const utc = baseDate.getTime() + baseDate.getTimezoneOffset() * 60000;
+    return new Date(utc + 5 * 3600000);
+  }
+}
+
+/** Start/end minutes for a period on a given day (Friday uses friStart/friEnd when present). */
+export function periodTimeRange(p: TimetablePeriod, day: DayKey): { start: number; end: number } {
+  if (day === 'fri') {
+    if (p.friStart && p.friEnd) {
+      return { start: parseTimeToMinutes(p.friStart), end: parseTimeToMinutes(p.friEnd) };
+    }
+    return { start: NaN, end: NaN };
+  }
+  return { start: parseTimeToMinutes(p.start), end: parseTimeToMinutes(p.end) };
+}
+
+/** Where a given clock time falls in a class's day. */
+export function locatePeriod(entry: TimetableClassEntry, day: DayKey, minutes: number): PeriodLocation {
+  const periods = day === 'fri'
+    ? entry.periods.filter(p => p.friStart && p.friEnd)
+    : entry.periods;
+  const times = periods.map(p => periodTimeRange(p, day));
+  for (let i = 0; i < times.length; i++) {
+    const { start, end } = times[i];
+    if (Number.isNaN(start) || Number.isNaN(end)) continue;
+    if (minutes >= start && minutes < end) {
+      return { index: i, state: 'in', label: `Period ${periods[i].no}` };
+    }
+    if (minutes < start) {
+      const prevEnd = i > 0 ? times[i - 1].end : -1;
+      if (i > 0 && minutes >= prevEnd && minutes < start) {
+        return { index: i, state: 'break', label: 'Recess Break' };
+      }
+      return { index: 0, state: 'before', label: 'Before school' };
+    }
+  }
+  return { index: times.length - 1, state: 'after', label: 'School over' };
+}
+
+/** Reference (school-wide) schedule — the first class's periods, used by the header. */
+export function standardSchedule(classes: TimetableClassEntry[], day?: DayKey) {
+  const targetDay = day ?? 'mon';
+  // On Friday, prioritize class with explicit Friday timings (like Class VII) if present
+  const entry = (targetDay === 'fri' && classes.find(c => c.periods.some(p => p.friStart))) || classes[0];
+  if (!entry) return [];
+  return entry.periods
+    .filter(p => {
+      if (targetDay === 'fri' && (!p.friStart || !p.friEnd)) return false;
+      return true;
+    })
+    .map(p => {
+      const time = periodTimeRange(p, targetDay);
+      return {
+        no: p.no,
+        start: p.start,
+        end: p.end,
+        friStart: p.friStart,
+        friEnd: p.friEnd,
+        startMin: time.start,
+        endMin: time.end,
+        formattedRange: `${formatMinutes(time.start)} – ${formatMinutes(time.end)}`,
+      };
+    });
+}
+
+export type StandardPeriod = ReturnType<typeof standardSchedule>[number];
+
+export interface SchoolTimeStatus {
+  state: 'in_period' | 'break' | 'before_school' | 'after_school' | 'closed';
+  periodIndex: number;
+  periodNo: number | null;
+  periodLabel: string;
+  startMinutes: number;
+  endMinutes: number;
+  remainingMinutes: number;
+  totalDurationMinutes: number;
+  progressPercent: number;
+  nextPeriodNo: number | null;
+  nextPeriodStartMinutes: number | null;
+  firstPeriodStart: number;
+  lastPeriodEnd: number;
+}
+
+/**
+ * Computes comprehensive school status for a given day and minute-of-day.
+ */
+export function getSchoolStatus(
+  classes: TimetableClassEntry[],
+  day: DayKey | null,
+  minutes: number
+): SchoolTimeStatus {
+  const defaultLastEnd = day === 'fri' ? 710 : 800; // 11:50 AM on Friday (710), 1:20 PM on Mon-Thu & Sat (800)
+  if (!day || classes.length === 0) {
+    return {
+      state: 'closed',
+      periodIndex: -1,
+      periodNo: null,
+      periodLabel: 'School Closed (Sunday)',
+      startMinutes: 0,
+      endMinutes: 0,
+      remainingMinutes: 0,
+      totalDurationMinutes: 0,
+      progressPercent: 0,
+      nextPeriodNo: 1,
+      nextPeriodStartMinutes: 495,
+      firstPeriodStart: 495,
+      lastPeriodEnd: defaultLastEnd,
+    };
+  }
+
+  const entry = (day === 'fri' && classes.find(c => c.periods.some(p => p.friStart))) || classes[0];
+  const periods = day === 'fri'
+    ? entry.periods.filter(p => p.friStart && p.friEnd)
+    : entry.periods;
+  const times = periods.map(p => periodTimeRange(p, day)).filter(t => !Number.isNaN(t.start) && !Number.isNaN(t.end));
+  const firstStart = times[0]?.start ?? 495;
+  const lastEnd = times[times.length - 1]?.end ?? defaultLastEnd;
+
+  if (minutes < firstStart) {
+    const rem = firstStart - minutes;
+    return {
+      state: 'before_school',
+      periodIndex: -1,
+      periodNo: null,
+      periodLabel: 'Before School Hours',
+      startMinutes: 0,
+      endMinutes: firstStart,
+      remainingMinutes: rem,
+      totalDurationMinutes: firstStart,
+      progressPercent: 0,
+      nextPeriodNo: 1,
+      nextPeriodStartMinutes: firstStart,
+      firstPeriodStart: firstStart,
+      lastPeriodEnd: lastEnd,
+    };
+  }
+
+  if (minutes >= lastEnd) {
+    return {
+      state: 'after_school',
+      periodIndex: -1,
+      periodNo: null,
+      periodLabel: 'School Hours Completed for Today',
+      startMinutes: lastEnd,
+      endMinutes: 1440,
+      remainingMinutes: 0,
+      totalDurationMinutes: 0,
+      progressPercent: 100,
+      nextPeriodNo: null,
+      nextPeriodStartMinutes: null,
+      firstPeriodStart: firstStart,
+      lastPeriodEnd: lastEnd,
+    };
+  }
+
+  for (let i = 0; i < times.length; i++) {
+    const { start, end } = times[i];
+    if (minutes >= start && minutes < end) {
+      const dur = end - start;
+      const elapsed = minutes - start;
+      const pct = dur > 0 ? Math.min(100, Math.max(0, Math.round((elapsed / dur) * 100))) : 0;
+      const nextP = i + 1 < periods.length ? periods[i + 1] : null;
+      return {
+        state: 'in_period',
+        periodIndex: i,
+        periodNo: periods[i].no,
+        periodLabel: `Period ${periods[i].no}`,
+        startMinutes: start,
+        endMinutes: end,
+        remainingMinutes: end - minutes,
+        totalDurationMinutes: dur,
+        progressPercent: pct,
+        nextPeriodNo: nextP ? nextP.no : null,
+        nextPeriodStartMinutes: i + 1 < times.length ? times[i + 1].start : null,
+        firstPeriodStart: firstStart,
+        lastPeriodEnd: lastEnd,
+      };
+    }
+    if (i < times.length - 1) {
+      const nextStart = times[i + 1].start;
+      if (minutes >= end && minutes < nextStart) {
+        const breakDur = nextStart - end;
+        const breakElapsed = minutes - end;
+        const breakPct = breakDur > 0 ? Math.min(100, Math.max(0, Math.round((breakElapsed / breakDur) * 100))) : 0;
+        return {
+          state: 'break',
+          periodIndex: -1,
+          periodNo: null,
+          periodLabel: 'Recess / Break',
+          startMinutes: end,
+          endMinutes: nextStart,
+          remainingMinutes: nextStart - minutes,
+          totalDurationMinutes: breakDur,
+          progressPercent: breakPct,
+          nextPeriodNo: periods[i + 1].no,
+          nextPeriodStartMinutes: nextStart,
+          firstPeriodStart: firstStart,
+          lastPeriodEnd: lastEnd,
+        };
+      }
+    }
+  }
+
+  return {
+    state: 'after_school',
+    periodIndex: -1,
+    periodNo: null,
+    periodLabel: 'School Day Over',
+    startMinutes: lastEnd,
+    endMinutes: 1440,
+    remainingMinutes: 0,
+    totalDurationMinutes: 0,
+    progressPercent: 100,
+    nextPeriodNo: null,
+    nextPeriodStartMinutes: null,
+    firstPeriodStart: firstStart,
+    lastPeriodEnd: lastEnd,
+  };
+}
+
+/* ── Slot resolution (subject cells → teachers via shared roster) ── */
+
+/** Resolve a timetable cell into its subject(s) and teacher(s) for a section. */
+export function resolveSlot(
+  entry: TimetableClassEntry,
+  day: DayKey,
+  periodIndex: number,
+  teachers: Teacher[],
+): ResolvedSlot {
+  const period = entry.periods[periodIndex];
+  const raw = period?.[day]?.trim() ?? '';
+  if (!raw) {
+    return { label: 'Free period', parts: [], teachers: [], empty: true };
+  }
+  const subjects = raw.split('/').map(s => s.trim()).filter(Boolean);
+  const parts: SlotPart[] = subjects.map(subjectRaw => {
+    let subject = normalizeSubject(subjectRaw);
+    let teacher = resolveTeacher(subject, entry.label, teachers);
+    if (!teacher) teacher = resolveByName(subjectRaw, teachers);
+    if (teacher && !isKnownSubject(subjectRaw)) {
+      // Cell was a teacher name (e.g. "Feroz") — label it with their subject.
+      subject = teacher.subjects[0]?.name ?? subject;
+    }
+    return { subject, teacher };
+  });
+  const teachersPresent = parts.map(p => p.teacher).filter((t): t is Teacher => !!t);
+  return {
+    label: parts.map(p => p.subject).join(' / '),
+    parts,
+    teachers: teachersPresent,
+    empty: false,
+  };
+}
+
+/* ── Staff room ────────────────────────────────────────────────── */
+
+export interface StaffStatus {
+  teacher: Teacher;
+  /** Classes the teacher is teaching right now (empty = free). */
+  busyIn: string[];
+  /** True when every class slot is a parallel option (both run) — still counts as busy. */
+  status: 'busy' | 'free';
+}
+
+/**
+ * Compute busy and free teachers for a given day and period index.
+ */
+export function computeStaff(
+  classes: TimetableClassEntry[],
+  teachers: Teacher[],
+  day: DayKey,
+  periodIndex: number,
+): { busy: StaffStatus[]; free: Teacher[] } {
+  const busyMap = new Map<string, string[]>();
+  for (const entry of classes) {
+    const slot = resolveSlot(entry, day, periodIndex, teachers);
+    for (const t of slot.teachers) {
+      const list = busyMap.get(t.id) ?? [];
+      list.push(entry.label);
+      busyMap.set(t.id, list);
+    }
+  }
+  const busy: StaffStatus[] = [];
+  for (const [id, classesList] of busyMap) {
+    const teacher = teachers.find(t => t.id === id);
+    if (teacher) busy.push({ teacher, busyIn: classesList, status: 'busy' });
+  }
+  const busyIds = new Set(busyMap.keys());
+  const free = teachers.filter(t => !busyIds.has(t.id));
+  return { busy, free };
+}

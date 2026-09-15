@@ -1,0 +1,582 @@
+{
+  "subject": "Mathematics",
+  "grade": "Grade 9",
+  "total_chapters": 15,
+  "chapters": [
+    {
+      "chapter_number": 1,
+      "chapter_name": "Real and Complex Numbers",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Mathematics/Chapter%2001%20-%20REAL%20AND%20COMPLEX%20NUMBERS.pdf",
+      "slos": [
+        {
+          "id": "math9_ch1_1",
+          "text": "Define rational and irrational numbers",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math9_ch1_2",
+          "text": "Differentiate between rational and irrational numbers with examples",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "math9_ch1_3",
+          "text": "Explain real numbers as union of rational and irrational numbers",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "math9_ch1_4",
+          "text": "Define complex numbers and represent them in the form a + bi",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math9_ch1_5",
+          "text": "Identify real and imaginary parts of complex numbers",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "math9_ch1_6",
+          "text": "Define conjugate of a complex number",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math9_ch1_7",
+          "text": "Perform basic operations (addition, subtraction, multiplication) on complex numbers",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch1_8",
+          "text": "Calculate modulus and argument of complex numbers",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 2,
+      "chapter_name": "Logarithms",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Mathematics/Chapter%2002%20-%20LOGARITHMS.pdf",
+      "slos": [
+        {
+          "id": "math9_ch2_1",
+          "text": "Define logarithm and its relation to exponentiation",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math9_ch2_2",
+          "text": "Convert between exponential and logarithmic forms",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch2_3",
+          "text": "State and apply the laws of logarithms",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch2_4",
+          "text": "Apply product rule: log(ab) = log a + log b",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch2_5",
+          "text": "Apply quotient rule: log(a/b) = log a - log b",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch2_6",
+          "text": "Apply power rule: log(a\u207f) = n log a",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch2_7",
+          "text": "Define common logarithm (base 10) and natural logarithm (base e)",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math9_ch2_8",
+          "text": "Use logarithmic tables to find logarithms and antilogarithms",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 3,
+      "chapter_name": "Algebraic Expressions and Formulas",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Mathematics/Chapter%2003%20-%20ALGEBRAIC%20EXPRESSION%20AND%20FORMULAS.pdf",
+      "slos": [
+        {
+          "id": "math9_ch3_1",
+          "text": "Define algebraic expressions and identify their components",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math9_ch3_2",
+          "text": "Differentiate between polynomial, rational, and irrational expressions",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "math9_ch3_3",
+          "text": "Evaluate algebraic expressions by substituting values",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch3_4",
+          "text": "Apply laws of indices to simplify expressions",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch3_5",
+          "text": "Expand algebraic expressions using formulas",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch3_6",
+          "text": "Apply formula (a + b)\u00b2 = a\u00b2 + 2ab + b\u00b2",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch3_7",
+          "text": "Apply formula (a - b)\u00b2 = a\u00b2 - 2ab + b\u00b2",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch3_8",
+          "text": "Apply formula (a + b + c)\u00b2 = a\u00b2 + b\u00b2 + c\u00b2 + 2ab + 2bc + 2ca",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch3_9",
+          "text": "Apply formula a\u00b2 - b\u00b2 = (a + b)(a - b)",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 4,
+      "chapter_name": "Factorization",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Mathematics/Chapter%2004%20-%20FACTORIZATION.pdf",
+      "slos": [
+        {
+          "id": "math9_ch4_1",
+          "text": "Define factorization and explain its importance",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math9_ch4_2",
+          "text": "Factorize expressions by taking out common factors",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch4_3",
+          "text": "Factorize expressions by grouping",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch4_4",
+          "text": "Factorize quadratic expressions of the form ax\u00b2 + bx + c",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch4_5",
+          "text": "Factorize expressions using difference of squares a\u00b2 - b\u00b2",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch4_6",
+          "text": "Factorize expressions using sum/difference of cubes",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch4_7",
+          "text": "Apply factorization to simplify algebraic fractions",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 5,
+      "chapter_name": "Algebraic Manipulation",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Mathematics/Chapter%2005%20-%20ALGEBRAIC%20MANIPULATION.pdf",
+      "slos": [
+        {
+          "id": "math9_ch5_1",
+          "text": "Find Highest Common Factor (HCF) of algebraic expressions",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch5_2",
+          "text": "Find Least Common Multiple (LCM) of algebraic expressions",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch5_3",
+          "text": "Simplify algebraic fractions by factorization",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch5_4",
+          "text": "Add and subtract algebraic fractions",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch5_5",
+          "text": "Multiply and divide algebraic fractions",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch5_6",
+          "text": "Solve problems involving HCF and LCM of algebraic expressions",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 6,
+      "chapter_name": "Linear Equations and Inequalities",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Mathematics/Chapter%2006%20-%20LINEAR%20EQUATIONS%20AND%20INEQUALITIES.pdf",
+      "slos": [
+        {
+          "id": "math9_ch6_1",
+          "text": "Define linear equation in one variable",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math9_ch6_2",
+          "text": "Solve linear equations in one variable",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch6_3",
+          "text": "Solve linear equations involving fractions",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch6_4",
+          "text": "Solve word problems involving linear equations",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch6_5",
+          "text": "Define linear inequality and its symbols",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math9_ch6_6",
+          "text": "Solve linear inequalities in one variable",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch6_7",
+          "text": "Represent solutions of inequalities on number line",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 7,
+      "chapter_name": "Linear Graphs and Their Applications",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Mathematics/Chapter%2007%20-%20LINEAR%20GRAPH%20AND%20THEIR%20APPLICATION.pdf",
+      "slos": [
+        {
+          "id": "math9_ch7_1",
+          "text": "Define Cartesian coordinate system (x-axis, y-axis, origin)",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math9_ch7_2",
+          "text": "Plot points on Cartesian plane using ordered pairs",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch7_3",
+          "text": "Draw linear graphs from linear equations",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch7_4",
+          "text": "Find gradient (slope) of a line from graph",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch7_5",
+          "text": "Calculate gradient using formula m = (y\u2082 - y\u2081)/(x\u2082 - x\u2081)",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch7_6",
+          "text": "Find equation of a line from two points",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch7_7",
+          "text": "Interpret distance-time graphs",
+          "cognitive_level": "Analysis"
+        }
+      ]
+    },
+    {
+      "chapter_number": 8,
+      "chapter_name": "Quadratic Equations",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Mathematics/Chapter%2008%20-%20QUADRATIC%20EQUATIONS.pdf",
+      "slos": [
+        {
+          "id": "math9_ch8_1",
+          "text": "Define quadratic equation in standard form ax\u00b2 + bx + c = 0",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math9_ch8_2",
+          "text": "Identify coefficients a, b, c in quadratic equations",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "math9_ch8_3",
+          "text": "Solve quadratic equations by factorization method",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch8_4",
+          "text": "Solve quadratic equations by completing the square",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch8_5",
+          "text": "Apply quadratic formula x = (-b \u00b1 \u221a(b\u00b2 - 4ac))/2a",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch8_6",
+          "text": "Solve word problems involving quadratic equations",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 9,
+      "chapter_name": "Congruent Triangles",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Mathematics/Chapter%2009%20-%20CONGRUENT%20TRIANGLES.pdf",
+      "slos": [
+        {
+          "id": "math9_ch9_1",
+          "text": "Define congruent triangles and identify congruent parts",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math9_ch9_2",
+          "text": "Apply SSS (Side-Side-Side) congruence criterion",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch9_3",
+          "text": "Apply SAS (Side-Angle-Side) congruence criterion",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch9_4",
+          "text": "Apply ASA (Angle-Side-Angle) congruence criterion",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch9_5",
+          "text": "Apply RHS (Right angle-Hypotenuse-Side) congruence criterion",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch9_6",
+          "text": "Prove triangles congruent using appropriate criteria",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 10,
+      "chapter_name": "Parallelograms and Triangles",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Mathematics/Chapter%2010%20-%20PARALLELOGRAMS%20AND%20TRIANGLES.pdf",
+      "slos": [
+        {
+          "id": "math9_ch10_1",
+          "text": "Define parallelogram and its properties",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math9_ch10_2",
+          "text": "Prove properties of parallelograms",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch10_3",
+          "text": "Apply theorems related to parallelograms",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch10_4",
+          "text": "Prove theorems about triangles using parallelogram properties",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch10_5",
+          "text": "Solve problems involving parallelograms",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 11,
+      "chapter_name": "Line Bisectors and Angle Bisectors",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Mathematics/Chapter%2011%20-%20LINE%20BISECTORS%20AND%20ANGLE%20BISECTORS.pdf",
+      "slos": [
+        {
+          "id": "math9_ch11_1",
+          "text": "Define perpendicular bisector of a line segment",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math9_ch11_2",
+          "text": "Construct perpendicular bisector using compass",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch11_3",
+          "text": "Prove properties of perpendicular bisector",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch11_4",
+          "text": "Define angle bisector and construct it",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch11_5",
+          "text": "Prove theorems about angle bisectors",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch11_6",
+          "text": "Apply properties of bisectors to solve problems",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 12,
+      "chapter_name": "Sides and Angles of a Triangle",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Mathematics/Chapter%2012%20-%20SIDES%20AND%20ANGLES%20OF%20A%20TRIANGLE.pdf",
+      "slos": [
+        {
+          "id": "math9_ch12_1",
+          "text": "Prove that sum of angles in a triangle is 180\u00b0",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch12_2",
+          "text": "Apply exterior angle theorem",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch12_3",
+          "text": "Prove inequalities in triangles",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch12_4",
+          "text": "Apply theorems relating sides and angles of triangles",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch12_5",
+          "text": "Solve problems using triangle inequality theorems",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 13,
+      "chapter_name": "Practical Geometry - Triangles",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Mathematics/Chapter%2013%20-%20PRACTICAL%20GEOMETRY%20-%20TRIANGLES.pdf",
+      "slos": [
+        {
+          "id": "math9_ch13_1",
+          "text": "Construct a triangle given three sides (SSS)",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch13_2",
+          "text": "Construct a triangle given two sides and included angle (SAS)",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch13_3",
+          "text": "Construct a triangle given two angles and included side (ASA)",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch13_4",
+          "text": "Construct a right triangle given hypotenuse and one side",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch13_5",
+          "text": "Construct triangle with given base, altitude, and base angle",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 14,
+      "chapter_name": "Theorems Related with Area",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Mathematics/Chapter%2014%20-%20THEOREMS%20RELATED%20WITH%20AREA.pdf",
+      "slos": [
+        {
+          "id": "math9_ch14_1",
+          "text": "Define area and its units",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math9_ch14_2",
+          "text": "Calculate area of triangles using formula A = \u00bd \u00d7 base \u00d7 height",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch14_3",
+          "text": "Prove theorems about areas of triangles on same base and between same parallels",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch14_4",
+          "text": "Compare areas of parallelograms on same base",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "math9_ch14_5",
+          "text": "Solve problems related to area of triangles and parallelograms",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 15,
+      "chapter_name": "Projection of a Side of a Triangle",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Mathematics/Chapter%2015%20-%20PROJECTION%20OF%20A%20SIDE%20OF%20A%20TRIANGLE.pdf",
+      "slos": [
+        {
+          "id": "math9_ch15_1",
+          "text": "Define projection of a point and line segment on a line",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "math9_ch15_2",
+          "text": "Calculate projection of sides of a triangle",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch15_3",
+          "text": "Prove theorems related to projection",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "math9_ch15_4",
+          "text": "Apply projection formulas to solve problems",
+          "cognitive_level": "Application"
+        }
+      ]
+    }
+  ]
+}

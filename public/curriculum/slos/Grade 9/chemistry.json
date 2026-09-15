@@ -1,0 +1,238 @@
+{
+  "subject": "Chemistry",
+  "grade": "Grade 9",
+  "total_chapters": 8,
+  "chapters": [
+    {
+      "chapter_number": 1,
+      "chapter_name": "Fundamentals of Chemistry",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Chemistry/Chapter%2001%20-%20FUNDAMENTALS%20OF%20CHEMISTRY.pdf",
+      "slos": [
+        {
+          "id": "chem9_ch1_1",
+          "text": "Define chemistry and explain its branches",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "chem9_ch1_2",
+          "text": "Differentiate between matter, element, compound, and mixture",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem9_ch1_3",
+          "text": "Explain atomic number, mass number, and isotopes",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem9_ch1_4",
+          "text": "Describe the laws of chemical combination",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem9_ch1_5",
+          "text": "Calculate molecular and formula masses",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 2,
+      "chapter_name": "Atomic Structure",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Chemistry/Chapter%2002%20-%20ATOMIC%20STRUCTURE.pdf",
+      "slos": [
+        {
+          "id": "chem9_ch2_1",
+          "text": "Describe the discovery and properties of subatomic particles (electron, proton, neutron)",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "chem9_ch2_2",
+          "text": "Explain Rutherford's atomic model and its limitations",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem9_ch2_3",
+          "text": "Describe Bohr's atomic model",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem9_ch2_4",
+          "text": "Explain electronic configuration and its rules",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 3,
+      "chapter_name": "Periodic Table and Periodicity of Properties",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Chemistry/Chapter%2003%20-%20PERIODIC%20TABLE%20AND%20PERIODICITY%20OF%20PROPERTIES.pdf",
+      "slos": [
+        {
+          "id": "chem9_ch3_1",
+          "text": "Describe the historical development of the periodic table",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "chem9_ch3_2",
+          "text": "Explain the modern periodic law and arrangement of elements",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem9_ch3_3",
+          "text": "Describe groups and periods in the periodic table",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem9_ch3_4",
+          "text": "Explain periodic trends (atomic size, ionization energy, electron affinity, electronegativity)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem9_ch3_5",
+          "text": "Predict properties of elements based on their position in the periodic table",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 4,
+      "chapter_name": "Chemical Bonding",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Chemistry/Chapter%2004%20-%20CHEMICAL%20BONDING.pdf",
+      "slos": [
+        {
+          "id": "chem9_ch4_1",
+          "text": "Define chemical bond and explain why atoms form bonds",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "chem9_ch4_2",
+          "text": "Describe ionic bonding and give examples",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem9_ch4_3",
+          "text": "Explain covalent bonding (single, double, triple bonds)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem9_ch4_4",
+          "text": "Differentiate between ionic and covalent compounds",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "chem9_ch4_5",
+          "text": "Explain coordinate covalent bond",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 5,
+      "chapter_name": "Physical States of Matter",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Chemistry/Chapter%2005%20-%20PHYSICAL%20STATES%20OF%20MATTER.pdf",
+      "slos": [
+        {
+          "id": "chem9_ch5_1",
+          "text": "Describe the three states of matter (solid, liquid, gas)",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "chem9_ch5_2",
+          "text": "Explain the kinetic molecular theory of matter",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem9_ch5_3",
+          "text": "Describe phase transitions (melting, freezing, evaporation, condensation, sublimation)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem9_ch5_4",
+          "text": "Explain gas laws (Boyle's law, Charles's law)",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 6,
+      "chapter_name": "Solutions",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Chemistry/Chapter%2006%20-%20SOLUTIONS.pdf",
+      "slos": [
+        {
+          "id": "chem9_ch6_1",
+          "text": "Define solution, solute, and solvent",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "chem9_ch6_2",
+          "text": "Differentiate between saturated, unsaturated, and supersaturated solutions",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem9_ch6_3",
+          "text": "Explain solubility and factors affecting solubility",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem9_ch6_4",
+          "text": "Calculate concentration of solutions (molarity, percentage)",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 7,
+      "chapter_name": "Electrochemistry",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Chemistry/Chapter%2007%20-%20ELECTROCHEMISTRY.pdf",
+      "slos": [
+        {
+          "id": "chem9_ch7_1",
+          "text": "Define electrochemistry and explain oxidation-reduction reactions",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "chem9_ch7_2",
+          "text": "Describe electrochemical cells (galvanic and electrolytic cells)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem9_ch7_3",
+          "text": "Explain electrolysis and its applications",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem9_ch7_4",
+          "text": "Describe the process of electroplating",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 8,
+      "chapter_name": "Chemical Reactivity",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Chemistry/Chapter%2008%20-%20CHEMICAL%20REACTIVITY.pdf",
+      "slos": [
+        {
+          "id": "chem9_ch8_1",
+          "text": "Describe the reactivity of metals and non-metals",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "chem9_ch8_2",
+          "text": "Explain the reactivity series of metals",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem9_ch8_3",
+          "text": "Describe displacement reactions",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem9_ch8_4",
+          "text": "Explain factors affecting chemical reactivity",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    }
+  ]
+}

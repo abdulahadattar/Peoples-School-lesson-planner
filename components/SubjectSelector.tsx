@@ -1,0 +1,385 @@
+import React, { useState } from 'react';
+import SelectField from './ui/SelectField';
+import Spinner from './ui/Spinner';
+import { SkeletonList } from './ui/Skeleton';
+import {
+  BookOpenIcon,
+  ChevronDownIcon,
+  ClipboardListIcon,
+  GraduationCapIcon,
+  SchoolIcon,
+  SparklesIcon,
+  UserIcon,
+} from './icons/MiscIcons';
+import { SelectionApi } from '../hooks/useSelection';
+import { sectionsByClass, subjectNames } from '../services/teacherRoster';
+import SegmentedControl, { EXPORT_FORMATS } from './ui/SegmentedControl';
+
+interface SubjectSelectorProps {
+  selection: SelectionApi;
+  generationMode: 'single-slo' | 'whole-chapter' | 'topic';
+  onGenerationModeChange: (mode: 'single-slo' | 'whole-chapter' | 'topic') => void;
+  topicInput: string;
+  onTopicInputChange: (value: string) => void;
+  selectedSloIds: string[];
+  onSelectedSloIdsChange: (ids: string[]) => void;
+  exportFormat: 'docx' | 'pdf' | 'both';
+  onExportFormatChange: (format: 'docx' | 'pdf' | 'both') => void;
+  chapterSlos: any[];
+  isLoadingSlos: boolean;
+  onGenerate: () => void;
+  isGenerating: boolean;
+}
+
+const MODES = [
+  { value: 'topic', label: 'Topic' },
+  { value: 'single-slo', label: 'Single SLO' },
+  { value: 'whole-chapter', label: 'Whole Chapter' },
+] as const;
+
+const SubjectSelector: React.FC<SubjectSelectorProps> = ({
+  selection,
+  generationMode,
+  onGenerationModeChange,
+  topicInput,
+  onTopicInputChange,
+  selectedSloIds,
+  onSelectedSloIdsChange,
+  exportFormat,
+  onExportFormatChange,
+  chapterSlos,
+  isLoadingSlos,
+  onGenerate,
+  isGenerating,
+}) => {
+  const [isTeacherInfoOpen, setIsTeacherInfoOpen] = useState(true);
+
+  const {
+    classId: selectedClassId,
+    subjectId: selectedSubjectId,
+    chapterId: selectedChapterId,
+    teacherId: selectedTeacherId,
+    teacher: selectedTeacher,
+    schoolName,
+    classes,
+    teacherChoices,
+    availableClasses,
+    availableSubjects,
+    chapters: availableChapters,
+    selectedChapter,
+    handleClassChange,
+    handleSubjectChange,
+    handleChapterChange,
+    handleTeacherChange,
+    setSchoolName,
+  } = selection;
+
+  const handleSloToggle = (sloId: string) => {
+    onSelectedSloIdsChange(
+      selectedSloIds.includes(sloId)
+        ? selectedSloIds.filter(id => id !== sloId)
+        : [...selectedSloIds, sloId]
+    );
+  };
+
+  const handleSelectAllSlos = () => {
+    onSelectedSloIdsChange(
+      selectedSloIds.length === chapterSlos.length
+        ? []
+        : chapterSlos.map(s => s.uniqueId || s.SLO_ID)
+    );
+  };
+
+  const isGenerateDisabled = isGenerating || !selectedClassId || !selectedSubjectId ||
+    (generationMode === 'whole-chapter' && !selectedChapterId) ||
+    (generationMode === 'single-slo' && (!selectedChapterId || selectedSloIds.length === 0)) ||
+    (generationMode === 'topic' && !topicInput.trim());
+
+  const inputClass =
+    'w-full h-11 px-4 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text-primary placeholder:text-brand-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all duration-200';
+
+  return (
+    <div className="w-full max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto animate-fadeInUp">
+      <div className="glass-card rounded-2xl border border-brand-border/80 shadow-soft">
+        <div className="p-5 sm:p-6 md:p-8 space-y-6">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl brand-gradient flex items-center justify-center text-white shadow-card-hover flex-shrink-0">
+                <ClipboardListIcon className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-brand-text-primary tracking-tight leading-tight">
+                  Lesson Planner
+                </h2>
+                <p className="text-xs font-medium text-brand-text-secondary mt-0.5">
+                  Create structured lesson plans
+                </p>
+              </div>
+            </div>
+            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-medium text-brand-primary bg-brand-primary/10 px-2.5 py-1.5 rounded-lg border border-brand-primary/15">
+              <SparklesIcon className="w-3 h-3" />
+              PHSSJ
+            </span>
+          </div>
+
+          {/* Teacher accordion */}
+          <div className="bg-brand-bg rounded-xl border border-brand-border">
+            <button
+              type="button"
+              onClick={() => setIsTeacherInfoOpen(prev => !prev)}
+              aria-expanded={isTeacherInfoOpen}
+              className="w-full flex items-center justify-between p-4 text-left hover:bg-brand-surface/50 active:bg-brand-surface transition-all duration-200 min-h-[48px] rounded-xl"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-brand-primary/10 flex items-center justify-center flex-shrink-0">
+                  <UserIcon className="w-4 h-4 text-brand-primary" />
+                </div>
+                <span className="text-sm font-semibold text-brand-text-primary truncate">
+                  {selectedTeacher ? selectedTeacher.name : 'Select Teacher'}
+                </span>
+                {selectedTeacher && (
+                  <span className="hidden sm:inline text-[10px] font-medium text-brand-primary bg-brand-primary/10 px-2 py-0.5 rounded-full">
+                    {subjectNames(selectedTeacher).join(', ')}
+                  </span>
+                )}
+              </div>
+              <ChevronDownIcon
+                className={`w-5 h-5 text-brand-text-secondary flex-shrink-0 transition-transform duration-300 ${isTeacherInfoOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+
+            <div
+              className={`transition-all duration-300 ease-in-out ${
+                isTeacherInfoOpen ? 'max-h-none opacity-100 overflow-visible' : 'max-h-0 opacity-0 overflow-hidden pointer-events-none'
+              }`}
+            >
+              <div className="px-4 pb-4 space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 items-start">
+                  <div>
+                    <SelectField
+                      id="teacher-select"
+                      label="Teacher Name"
+                      icon={<UserIcon className="w-3.5 h-3.5" />}
+                      value={selectedTeacherId}
+                      onChange={e => handleTeacherChange(e.target.value)}
+                      className="h-11"
+                    >
+                      <option value="">Choose a teacher...</option>
+                      {teacherChoices.map(t => (
+                        <option key={t.id} value={t.id}>
+                          {`${t.name} — ${subjectNames(t).join(', ')}`}
+                        </option>
+                      ))}
+                    </SelectField>
+
+                    {selectedTeacher && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {Object.entries(sectionsByClass(selectedTeacher)).map(([cid, labels]) =>
+                          labels.map(label => (
+                            <span key={`${cid}-${label}`} className="text-[10px] font-medium text-brand-primary bg-brand-primary/10 px-2 py-0.5 rounded-md border border-brand-primary/15">
+                              {label}
+                            </span>
+                          )),
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="flex items-center gap-1.5 text-[11px] font-semibold text-brand-text-secondary mb-2 uppercase tracking-wide">
+                      <SchoolIcon className="w-3.5 h-3.5" />
+                      School Name
+                    </label>
+                    <input
+                      type="text"
+                      value={schoolName}
+                      onChange={e => setSchoolName(e.target.value)}
+                      placeholder="Enter school name"
+                      className={inputClass}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              <SelectField
+                id="class-select"
+                label="Select Class"
+                icon={<GraduationCapIcon className="w-3.5 h-3.5" />}
+                value={selectedClassId}
+                onChange={e => handleClassChange(e.target.value)}
+              >
+                <option value="">Choose a class</option>
+                {(selectedTeacher ? availableClasses : classes).map(cls => (
+                  <option key={cls.id} value={cls.id}>{cls.name}</option>
+                ))}
+              </SelectField>
+
+              <SelectField
+                id="subject-select"
+                label="Select Subject"
+                icon={<BookOpenIcon className="w-3.5 h-3.5" />}
+                value={selectedSubjectId}
+                onChange={e => handleSubjectChange(e.target.value)}
+                disabled={!selectedClassId || availableSubjects.length === 0}
+              >
+                <option value="">Choose a subject</option>
+                {availableSubjects.map(subject => (
+                  <option key={subject.id} value={subject.id}>{subject.name}</option>
+                ))}
+              </SelectField>
+
+              <div className="sm:col-span-2 lg:col-span-1">
+                <SelectField
+                  id="chapter-select"
+                  label="Select Chapter"
+                  icon={<ClipboardListIcon className="w-3.5 h-3.5" />}
+                  value={selectedChapterId}
+                  onChange={e => handleChapterChange(e.target.value)}
+                  disabled={!selectedSubjectId || availableChapters.length === 0}
+                  dropdownWidth="xl"
+                >
+                  <option value="">Choose a chapter</option>
+                  {availableChapters.map(chapter => (
+                    <option key={chapter.id} value={chapter.id}>{chapter.name}</option>
+                  ))}
+                </SelectField>
+              </div>
+            </div>
+
+            {/* Generation mode */}
+            <div>
+              <label className="block text-[11px] font-semibold text-brand-text-secondary mb-2 uppercase tracking-wide">
+                Generation Mode
+              </label>
+              <SegmentedControl value={generationMode} options={MODES} onChange={onGenerationModeChange} />
+            </div>
+
+            {/* Topic input */}
+            {generationMode === 'topic' && (
+              <div className="animate-fadeIn">
+                <label htmlFor="topic-input" className="block text-[11px] font-semibold text-brand-text-secondary mb-2 uppercase tracking-wide">
+                  Topic Name
+                </label>
+                <input
+                  id="topic-input"
+                  type="text"
+                  value={topicInput}
+                  onChange={e => onTopicInputChange(e.target.value)}
+                  placeholder="Enter topic name (e.g., Newton's Laws, Photosynthesis...)"
+                  className={inputClass}
+                />
+              </div>
+            )}
+
+            {/* SLO selection */}
+            {generationMode === 'single-slo' && selectedChapter && (
+              <div className="animate-fadeIn">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-[11px] font-semibold text-brand-text-secondary uppercase tracking-wide">
+                    Select SLO(s) from {selectedChapter.name}
+                  </label>
+                  {chapterSlos.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleSelectAllSlos}
+                      className="text-[10px] font-semibold text-brand-primary hover:text-brand-primary-hover transition-colors"
+                    >
+                      {selectedSloIds.length === chapterSlos.length ? 'Deselect All' : 'Select All'}
+                    </button>
+                  )}
+                </div>
+
+                <div className="bg-brand-bg border border-brand-border rounded-xl p-3 max-h-64 overflow-y-auto custom-scrollbar">
+                  {isLoadingSlos ? (
+                    <SkeletonList rows={4} />
+                  ) : chapterSlos.length === 0 ? (
+                    <div className="text-sm text-brand-text-secondary text-center py-4">
+                      No SLOs available for this chapter
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {chapterSlos.map((slo, idx) => {
+                        const sloId = slo.uniqueId || slo.SLO_ID || slo.id || `slo-${idx}`;
+                        const isSelected = selectedSloIds.includes(sloId);
+                        return (
+                          <label
+                            key={sloId}
+                            className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                              isSelected
+                                ? 'bg-brand-primary/10 border border-brand-primary/30'
+                                : 'bg-brand-surface border border-brand-border hover:border-brand-text-secondary/40 hover:shadow-soft'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleSloToggle(sloId)}
+                              className="mt-1 w-4 h-4 rounded border-brand-border text-brand-primary focus:ring-brand-primary focus:ring-offset-0 accent-brand-primary"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-brand-text-primary mb-1">
+                                {slo.SLO_Text || slo.text || 'SLO content'}
+                              </div>
+                              <div className="flex items-center gap-2 text-[10px] text-brand-text-secondary">
+                                <span className="px-2 py-0.5 bg-brand-bg rounded-md border border-brand-border font-mono">
+                                  {slo.SLO_ID || slo.id || `SLO-${idx + 1}`}
+                                </span>
+                                {slo.Cognitive_Level_Code && (
+                                  <span className="px-2 py-0.5 bg-brand-primary/10 text-brand-primary rounded-md border border-brand-primary/15 font-semibold">
+                                    {slo.Cognitive_Level_Code}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                {selectedSloIds.length > 0 && (
+                  <div className="mt-2 text-xs text-brand-text-secondary">
+                    {selectedSloIds.length} SLO(s) selected
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Export format */}
+            {generationMode !== 'topic' && (
+              <div className="animate-fadeIn">
+                <label className="block text-[11px] font-semibold text-brand-text-secondary mb-2 uppercase tracking-wide">
+                  Export Format
+                </label>
+                <SegmentedControl value={exportFormat} options={EXPORT_FORMATS} onChange={onExportFormatChange} />
+              </div>
+            )}
+
+            {/* Generate button */}
+            <button
+              type="button"
+              onClick={onGenerate}
+              disabled={isGenerateDisabled}
+              className="w-full flex items-center justify-center gap-3 px-4 py-3.5 brand-gradient text-white rounded-xl font-bold text-sm hover:shadow-glass hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-brand-primary/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none transition-all duration-200 min-h-[48px]"
+            >
+              {isGenerating && <Spinner className="w-4 h-4" />}
+              {isGenerating ? 'Generating...' : (
+                <>
+                  <SparklesIcon className="w-4 h-4" />
+                  Generate Plan
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SubjectSelector;

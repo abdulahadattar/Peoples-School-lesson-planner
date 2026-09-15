@@ -1,0 +1,408 @@
+{
+  "subject": "Chemistry",
+  "grade": "Grade 12",
+  "total_chapters": 13,
+  "chapters": [
+    {
+      "chapter_number": 1,
+      "chapter_name": "Chemistry of Representative Elements",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Chemistry/Chapter%2001%20-%20Chemistry%20of%20Representative%20Elements.pdf",
+      "slos": [
+        {
+          "id": "chem12_ch1_1",
+          "text": "Describe the periodic trends in properties of s and p block elements",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch1_2",
+          "text": "Explain the chemistry of Group 1 (alkali metals) and Group 2 (alkaline earth metals)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch1_3",
+          "text": "Describe the properties and compounds of Group 13 (boron group) and Group 14 (carbon group)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch1_4",
+          "text": "Explain the chemistry of Group 15 (nitrogen group) and Group 16 (oxygen group)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch1_5",
+          "text": "Describe the properties of Group 17 (halogens) and Group 18 (noble gases)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch1_6",
+          "text": "Explain the diagonal relationship and anomalous behavior of first elements",
+          "cognitive_level": "Analysis"
+        }
+      ]
+    },
+    {
+      "chapter_number": 2,
+      "chapter_name": "Chemistry of d-Block Elements",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Chemistry/Chapter%2002%20-%20Chemistry%20of%20Outer%20Transition%20(d-Block)%20Elements.pdf",
+      "slos": [
+        {
+          "id": "chem12_ch2_1",
+          "text": "Define transition elements and their general characteristics",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "chem12_ch2_2",
+          "text": "Explain electronic configuration of d-block elements",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch2_3",
+          "text": "Describe variable oxidation states of transition metals",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch2_4",
+          "text": "Explain complex formation and coordination chemistry",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch2_5",
+          "text": "Describe color and magnetic properties of transition metal compounds",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch2_6",
+          "text": "Explain catalytic properties of transition metals",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 3,
+      "chapter_name": "Sources of Organic Compounds",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Chemistry/Chapter%2003%20-%20Sources%20of%20Organic%20Compounds.pdf",
+      "slos": [
+        {
+          "id": "chem12_ch3_1",
+          "text": "Describe natural sources of organic compounds (coal, petroleum, natural gas)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch3_2",
+          "text": "Explain fractional distillation of petroleum",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch3_3",
+          "text": "Describe cracking and reforming of petroleum fractions",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch3_4",
+          "text": "Explain the classification of organic compounds",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 4,
+      "chapter_name": "Nomenclature of Organic Compounds",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Chemistry/Chapter%2004%20-%20Nomenclature%20of%20Organic%20Compounds.pdf",
+      "slos": [
+        {
+          "id": "chem12_ch4_1",
+          "text": "Apply IUPAC nomenclature for alkanes, alkenes, alkynes",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "chem12_ch4_2",
+          "text": "Name compounds with functional groups (alcohols, aldehydes, ketones, acids, esters)",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "chem12_ch4_3",
+          "text": "Name aromatic compounds and their derivatives",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "chem12_ch4_4",
+          "text": "Describe common/trivial names vs systematic names",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 5,
+      "chapter_name": "Hydrocarbons",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Chemistry/Chapter%2005%20-%20Hydrocarbons.pdf",
+      "slos": [
+        {
+          "id": "chem12_ch5_1",
+          "text": "Describe preparation and properties of alkanes",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch5_2",
+          "text": "Explain reactions of alkenes (addition, oxidation, polymerization)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch5_3",
+          "text": "Describe properties and reactions of alkynes",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch5_4",
+          "text": "Explain the structure and properties of benzene and aromatic compounds",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch5_5",
+          "text": "Describe electrophilic aromatic substitution reactions",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 6,
+      "chapter_name": "Alkyl Halides and Amines",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Chemistry/Chapter%2006%20-%20Alkyl%20Halides%20and%20Amines.pdf",
+      "slos": [
+        {
+          "id": "chem12_ch6_1",
+          "text": "Describe preparation and properties of alkyl halides",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch6_2",
+          "text": "Explain nucleophilic substitution reactions (SN1, SN2)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch6_3",
+          "text": "Explain elimination reactions (E1, E2)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch6_4",
+          "text": "Describe preparation and properties of amines",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch6_5",
+          "text": "Explain basicity of amines and their reactions",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 7,
+      "chapter_name": "Alcohols, Phenols and Ethers",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Chemistry/Chapter%2007%20-%20Alcohols%2C%20Phenols%20and%20Ethers.pdf",
+      "slos": [
+        {
+          "id": "chem12_ch7_1",
+          "text": "Describe preparation and properties of alcohols",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch7_2",
+          "text": "Explain oxidation of primary, secondary, and tertiary alcohols",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "chem12_ch7_3",
+          "text": "Describe properties of phenols and their acidic nature",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch7_4",
+          "text": "Explain preparation and properties of ethers",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 8,
+      "chapter_name": "Carbonyl Compounds I - Aldehydes and Ketones",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Chemistry/Chapter%2008%20-%20Carbonyl%20Compounds%20I%20-%20Aldehydes%20and%20Ketones.pdf",
+      "slos": [
+        {
+          "id": "chem12_ch8_1",
+          "text": "Describe preparation of aldehydes and ketones",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch8_2",
+          "text": "Explain nucleophilic addition reactions of carbonyl compounds",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch8_3",
+          "text": "Describe oxidation and reduction reactions of aldehydes/ketones",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "chem12_ch8_4",
+          "text": "Explain aldol condensation and Cannizzaro reaction",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "chem12_ch8_5",
+          "text": "Differentiate between aldehydes and ketones using chemical tests",
+          "cognitive_level": "Analysis"
+        }
+      ]
+    },
+    {
+      "chapter_number": 9,
+      "chapter_name": "Carbonyl Compounds II - Carboxylic Acids and Derivatives",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Chemistry/Chapter%2009%20-%20Carbonyl%20Compounds%20II%20-%20Carboxylic%20Acid%20and%20Functional%20Derivatives.pdf",
+      "slos": [
+        {
+          "id": "chem12_ch9_1",
+          "text": "Describe preparation and properties of carboxylic acids",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch9_2",
+          "text": "Explain the acidity of carboxylic acids and effect of substituents",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "chem12_ch9_3",
+          "text": "Describe preparation and properties of acid derivatives (acyl chlorides, anhydrides, esters, amides)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch9_4",
+          "text": "Explain hydrolysis of acid derivatives",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 10,
+      "chapter_name": "Biochemistry",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Chemistry/Chapter%2010%20-%20Biochemistry.pdf",
+      "slos": [
+        {
+          "id": "chem12_ch10_1",
+          "text": "Describe the structure and function of carbohydrates (monosaccharides, disaccharides, polysaccharides)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch10_2",
+          "text": "Explain the structure and classification of proteins",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch10_3",
+          "text": "Describe the structure and function of nucleic acids (DNA, RNA)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch10_4",
+          "text": "Explain the structure and function of lipids",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch10_5",
+          "text": "Describe vitamins and their roles",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 11,
+      "chapter_name": "Industrial Chemistry",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Chemistry/Chapter%2011%20-%20Industrial%20Chemistry.pdf",
+      "slos": [
+        {
+          "id": "chem12_ch11_1",
+          "text": "Describe the manufacturing of cement, glass, and ceramics",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch11_2",
+          "text": "Explain the production of fertilizers (urea, ammonium nitrate)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch11_3",
+          "text": "Describe the soap and detergent industry",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch11_4",
+          "text": "Explain the petroleum and petrochemical industry",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 12,
+      "chapter_name": "Environmental Chemistry",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Chemistry/Chapter%2012%20-%20Environmental%20Chemistry.pdf",
+      "slos": [
+        {
+          "id": "chem12_ch12_1",
+          "text": "Describe air pollution (types, sources, effects, control)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch12_2",
+          "text": "Explain water pollution and water treatment processes",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch12_3",
+          "text": "Describe soil pollution and waste management",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch12_4",
+          "text": "Explain the greenhouse effect and ozone depletion",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch12_5",
+          "text": "Analyze environmental impact assessment",
+          "cognitive_level": "Analysis"
+        }
+      ]
+    },
+    {
+      "chapter_number": 13,
+      "chapter_name": "Spectroscopy",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%2012/Chemistry/Chapter%2013%20-%20Spectroscopy.pdf",
+      "slos": [
+        {
+          "id": "chem12_ch13_1",
+          "text": "Explain the electromagnetic spectrum and molecular spectroscopy",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch13_2",
+          "text": "Describe UV-Visible spectroscopy and its applications",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch13_3",
+          "text": "Explain Infrared (IR) spectroscopy and functional group identification",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch13_4",
+          "text": "Describe Nuclear Magnetic Resonance (NMR) spectroscopy",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "chem12_ch13_5",
+          "text": "Explain Mass Spectrometry and its applications",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    }
+  ]
+}
