@@ -10,12 +10,16 @@ import LiveMonitor from './components/LiveMonitor';
 import { HistoryView } from './components/HistoryView';
 import { StudentRecordsView } from './components/records/StudentRecordsView';
 import { DailyAttendanceView } from './components/attendance/DailyAttendanceView';
+import { AnimatedLoginPage } from './components/auth/AnimatedLoginPage';
 import { PhssjLogo, ZiauddinLogo } from './components/Logo';
 import { BookOpenIcon, CloseIcon, DocumentTextIcon, HomeIcon, PulseIcon, ArchiveIcon, SpreadsheetIcon, UserGroupIcon } from './components/icons/MiscIcons';
 import { useGeneralGeneration, GenerationMode } from './hooks/useGeneralGeneration';
 import { useSelection } from './hooks/useSelection';
 import { loadSloChapter } from './services/sloData';
+import { auth } from './services/firebase';
+import { onAuthStateChanged, User } from 'firebase/auth';
 import teachersData from './data/teachers.json';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface NavItem {
   view: View;
@@ -38,6 +42,11 @@ const App: React.FC = () => {
   const [view, setView] = useState<View>('home');
   const [theme, setTheme] = useState<Theme>('light');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(auth.currentUser);
+  const [showLoginGate, setShowLoginGate] = useState<boolean>(() => {
+    const isGuest = sessionStorage.getItem('phssj_guest_mode') === 'true';
+    return !isGuest && !auth.currentUser;
+  });
 
   const [generationMode, setGenerationMode] = useState<GenerationMode>('topic');
   const [topicInput, setTopicInput] = useState('');
@@ -73,6 +82,17 @@ const App: React.FC = () => {
     stopGeneration,
     clearResults,
   } = useGeneralGeneration();
+
+  // Auth listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      if (user) {
+        setShowLoginGate(false);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Load teachers from JSON
   useEffect(() => {
@@ -198,7 +218,32 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-brand-bg text-brand-text-primary font-sans selection:bg-brand-primary selection:text-white antialiased">
+    <div className="flex h-screen bg-brand-bg text-brand-text-primary font-sans selection:bg-brand-primary selection:text-white antialiased overflow-hidden">
+      {/* Animated Google Auth Gate Screen */}
+      <AnimatePresence>
+        {showLoginGate && !currentUser && (
+          <motion.div
+            key="login-gate-overlay"
+            initial={{ opacity: 0, scale: 1.02 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed inset-0 z-[200] overflow-y-auto bg-[#070b14]"
+          >
+            <AnimatedLoginPage
+              onLoginSuccess={(user) => {
+                setCurrentUser(user);
+                setShowLoginGate(false);
+              }}
+              onContinueAsGuest={() => {
+                sessionStorage.setItem('phssj_guest_mode', 'true');
+                setShowLoginGate(false);
+              }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-slate-900/20 dark:bg-black/40 z-[90] md:hidden backdrop-blur-sm animate-fadeIn"
@@ -246,14 +291,18 @@ const App: React.FC = () => {
                     else if (item.view === 'paper') handleNavigate('paper');
                     else navigate(item.view);
                   }}
-                  className={`relative w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${
+                  className={`relative w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors duration-200 group select-none ${
                     isActive
                       ? 'text-white'
                       : 'text-brand-text-secondary hover:bg-brand-bg hover:text-brand-text-primary'
                   }`}
                 >
                   {isActive && (
-                    <span className="absolute inset-0 brand-gradient rounded-xl shadow-card-hover animate-scaleIn" />
+                    <motion.span
+                      layoutId="activeNavPill"
+                      className="absolute inset-0 brand-gradient rounded-xl shadow-md"
+                      transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                    />
                   )}
                   <item.icon className="relative z-10 w-5 h-5 transition-transform duration-200 group-hover:scale-110" />
                   <span className="relative z-10">{item.label}</span>
@@ -283,99 +332,109 @@ const App: React.FC = () => {
           activeView={view}
           onToggleTheme={toggleTheme}
           onOpenSidebar={() => setIsSidebarOpen(true)}
+          onOpenLoginGate={() => {
+            setShowLoginGate(true);
+            sessionStorage.removeItem('phssj_guest_mode');
+          }}
         />
 
-        <div
-          key={view}
-          className={`flex-1 min-h-0 relative animate-fadeIn ${
-            view === 'results' ? 'overflow-hidden flex flex-col' : 'overflow-y-auto overflow-x-hidden custom-scrollbar'
-          }`}
-        >
-          {view === 'home' && (
-            <HomeView
-              onNavigate={(target) => {
-                if (target === 'records') {
-                  navigate('records');
-                } else if (target === 'attendance') {
-                  navigate('attendance');
-                } else if (target === 'live' || target === 'history') {
-                  navigate(target);
-                } else if (target === 'lesson' || target === 'paper') {
-                  handleNavigate(target);
-                } else {
-                  navigate(target);
-                }
-              }}
-            />
-          )}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={view}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className={`flex-1 min-h-0 relative ${
+              view === 'results' ? 'overflow-hidden flex flex-col' : 'overflow-y-auto overflow-x-hidden custom-scrollbar'
+            }`}
+          >
+            {view === 'home' && (
+              <HomeView
+                onNavigate={(target) => {
+                  if (target === 'records') {
+                    navigate('records');
+                  } else if (target === 'attendance') {
+                    navigate('attendance');
+                  } else if (target === 'live' || target === 'history') {
+                    navigate(target);
+                  } else if (target === 'lesson' || target === 'paper') {
+                    handleNavigate(target);
+                  } else {
+                    navigate(target);
+                  }
+                }}
+              />
+            )}
 
-          {view === 'lesson' && (
-            <div className="w-full max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-8">
-              <SubjectSelector
+            {view === 'lesson' && (
+              <div className="w-full max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-8">
+                <SubjectSelector
+                  selection={selection}
+                  generationMode={generationMode}
+                  onGenerationModeChange={setGenerationMode}
+                  topicInput={topicInput}
+                  onTopicInputChange={setTopicInput}
+                  selectedSloIds={selectedSloIds}
+                  onSelectedSloIdsChange={setSelectedSloIds}
+                  exportFormat={exportFormat}
+                  onExportFormatChange={setExportFormat}
+                  chapterSlos={chapterSlos}
+                  isLoadingSlos={isLoadingSlos}
+                  onGenerate={handleGenerateLesson}
+                  isGenerating={isLoading}
+                />
+              </div>
+            )}
+
+            {view === 'paper' && (
+              <PaperPanel
+                onGeneratePaper={handleGeneratePaper}
+                isGenerating={isLoading}
                 selection={selection}
-                generationMode={generationMode}
-                onGenerationModeChange={setGenerationMode}
-                topicInput={topicInput}
-                onTopicInputChange={setTopicInput}
-                selectedSloIds={selectedSloIds}
-                onSelectedSloIdsChange={setSelectedSloIds}
                 exportFormat={exportFormat}
                 onExportFormatChange={setExportFormat}
-                chapterSlos={chapterSlos}
-                isLoadingSlos={isLoadingSlos}
-                onGenerate={handleGenerateLesson}
-                isGenerating={isLoading}
               />
-            </div>
-          )}
+            )}
 
-          {view === 'paper' && (
-            <PaperPanel
-              onGeneratePaper={handleGeneratePaper}
-              isGenerating={isLoading}
-              selection={selection}
-              exportFormat={exportFormat}
-              onExportFormatChange={setExportFormat}
-            />
-          )}
+            {view === 'records' && <StudentRecordsView />}
 
-          {view === 'records' && <StudentRecordsView />}
+            {view === 'attendance' && <DailyAttendanceView />}
 
-          {view === 'attendance' && <DailyAttendanceView />}
+            {view === 'live' && <LiveMonitor teachers={teachers} />}
 
-          {view === 'live' && <LiveMonitor teachers={teachers} />}
+            {view === 'history' && (
+              <HistoryView
+                onOpenLessonPlan={(plan) => {
+                  setGeneratedPlans([plan]);
+                  setGeneratedPapers([]);
+                  setView('results');
+                }}
+                onOpenPaper={(paper) => {
+                  setGeneratedPapers([paper]);
+                  setGeneratedPlans([]);
+                  setView('results');
+                }}
+                onBack={handleBackToHome}
+              />
+            )}
 
-          {view === 'history' && (
-            <HistoryView
-              onOpenLessonPlan={(plan) => {
-                setGeneratedPlans([plan]);
-                setGeneratedPapers([]);
-                setView('results');
-              }}
-              onOpenPaper={(paper) => {
-                setGeneratedPapers([paper]);
-                setGeneratedPlans([]);
-                setView('results');
-              }}
-              onBack={handleBackToHome}
-            />
-          )}
-
-          {view === 'results' && (
-            <ResultsView
-              lessonPlans={generatedPlans}
-              papers={generatedPapers}
-              onBack={handleBackToHome}
-              teacherName={selection.teacherName}
-              schoolName={selection.schoolName}
-              onExportPlan={handleExportPlan}
-              exportFormat={exportFormat}
-              onRevisePaper={revisePaper}
-              isRevising={isLoading}
-              onUpdatePaper={(updated) => setGeneratedPapers([updated])}
-            />
-          )}
-        </div>
+            {view === 'results' && (
+              <ResultsView
+                lessonPlans={generatedPlans}
+                papers={generatedPapers}
+                onBack={handleBackToHome}
+                teacherName={selection.teacherName}
+                schoolName={selection.schoolName}
+                onExportPlan={handleExportPlan}
+                exportFormat={exportFormat}
+                onRevisePaper={revisePaper}
+                isRevising={isLoading}
+                onUpdatePaper={(updated) => setGeneratedPapers([updated])}
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
 
         {showStatusPanel && (
           <GenerationStatusPanel
