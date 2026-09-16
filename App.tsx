@@ -11,14 +11,17 @@ import { HistoryView } from './components/HistoryView';
 import { StudentRecordsView } from './components/records/StudentRecordsView';
 import { DailyAttendanceView } from './components/attendance/DailyAttendanceView';
 import { AnimatedLoginPage } from './components/auth/AnimatedLoginPage';
+import { SchoolSettingsView } from './components/settings/SchoolSettingsView';
 import { PhssjLogo, ZiauddinLogo } from './components/Logo';
 import { BookOpenIcon, CloseIcon, DocumentTextIcon, HomeIcon, PulseIcon, ArchiveIcon, SpreadsheetIcon, UserGroupIcon } from './components/icons/MiscIcons';
+import { Settings as SettingsIcon } from 'lucide-react';
 import { useGeneralGeneration, GenerationMode } from './hooks/useGeneralGeneration';
 import { useSelection } from './hooks/useSelection';
 import { loadSloChapter } from './services/sloData';
 import { auth } from './services/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import teachersData from './data/teachers.json';
+import { useSchoolConfig } from './hooks/useSchoolConfig';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface NavItem {
@@ -36,6 +39,7 @@ const NAV_ITEMS: NavItem[] = [
   { view: 'paper', label: 'Exam Papers', icon: DocumentTextIcon, activeViews: ['paper'] },
   { view: 'live', label: 'Live Monitor', icon: PulseIcon, activeViews: ['live'] },
   { view: 'history', label: 'History Archive', icon: ArchiveIcon, activeViews: ['history'] },
+  { view: 'settings', label: 'School Admin', icon: SettingsIcon, activeViews: ['settings'] },
 ];
 
 const App: React.FC = () => {
@@ -94,10 +98,16 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  // Load teachers from JSON
+  const { config: schoolConfig } = useSchoolConfig();
+
+  // Centralized teachers: synchronize with School Admin config (live updates) or fallback to teachersData
   useEffect(() => {
-    setTeachers((teachersData as { teachers: Teacher[] }).teachers || []);
-  }, []);
+    if (schoolConfig?.teachers && schoolConfig.teachers.length > 0) {
+      setTeachers(schoolConfig.teachers);
+    } else {
+      setTeachers((teachersData as { teachers: Teacher[] }).teachers || []);
+    }
+  }, [schoolConfig?.teachers]);
 
   // Load chapter SLOs when chapter changes
   useEffect(() => {
@@ -269,7 +279,7 @@ const App: React.FC = () => {
             </div>
             <div className="leading-tight">
               <h3 className="text-sm font-bold text-brand-text-primary tracking-tight">PHSSJ</h3>
-              <p className="text-[11px] text-brand-text-secondary">Peoples Higher Secondary School Jamshoro</p>
+              <p className="text-[11px] text-brand-text-secondary">{schoolConfig?.schoolName || 'Peoples Higher Secondary School Jamshoro'}</p>
             </div>
           </div>
 
@@ -432,6 +442,10 @@ const App: React.FC = () => {
                 isRevising={isLoading}
                 onUpdatePaper={(updated) => setGeneratedPapers([updated])}
               />
+            )}
+
+            {view === 'settings' && (
+              <SchoolSettingsView onOpenLoginGate={() => setShowLoginGate(true)} />
             )}
           </motion.div>
         </AnimatePresence>

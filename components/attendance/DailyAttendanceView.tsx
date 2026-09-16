@@ -40,6 +40,7 @@ import { fetchSheetData, StudentRecord, syncAttendanceToSheet } from '../../serv
 import { getAccessToken, getCurrentUser, initAuth } from '../../services/googleAuth';
 import { isUserAdmin } from '../../services/adminService';
 import { EnrollmentEditorModal } from './EnrollmentEditorModal';
+import { useSchoolConfig } from '../../hooks/useSchoolConfig';
 import { User } from 'firebase/auth';
 import { PhssjLogo } from '../Logo';
 
@@ -53,12 +54,13 @@ export const DailyAttendanceView: React.FC = () => {
     return `${year}-${month}-${day}`;
   };
 
+  const { config: schoolConfig, saveConfig } = useSchoolConfig();
   const [selectedDate, setSelectedDate] = useState<string>(getTodayStr());
   const [enrollments, setEnrollments] = useState<ClassEnrollment[]>(DEFAULT_GRADE_ENROLLMENTS);
   const [currentUser, setCurrentUser] = useState<User | null>(getCurrentUser());
   const [showEnrollmentModal, setShowEnrollmentModal] = useState<boolean>(false);
   const [inputs, setInputs] = useState<Record<string, { presentBoys: number | ''; presentGirls: number | ''; classTeacher?: string }>>({});
-  const [recordedBy, setRecordedBy] = useState<string>('Miss Shahida');
+  const [recordedBy, setRecordedBy] = useState<string>(schoolConfig?.classes?.[0]?.classTeacher || 'Miss Shahida');
   const [notes, setNotes] = useState<string>('');
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -74,6 +76,30 @@ export const DailyAttendanceView: React.FC = () => {
 
   const isAdmin = useMemo(() => isUserAdmin(currentUser?.email), [currentUser]);
 
+  // Derive class teachers map from school config
+  const classTeachersMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    if (schoolConfig?.classes) {
+      schoolConfig.classes.forEach((c) => {
+        if (c.classTeacher) map[c.classKey] = c.classTeacher;
+      });
+    }
+    return map;
+  }, [schoolConfig?.classes]);
+
+  // Derive manual enrollments from school config
+  const manualEnrollments: ClassEnrollment[] = useMemo(() => {
+    if (!schoolConfig?.classes?.length) return DEFAULT_GRADE_ENROLLMENTS;
+    return schoolConfig.classes.map((c) => ({
+      classKey: c.classKey,
+      romanName: c.romanName,
+      displayName: c.displayName,
+      enrolledBoys: c.enrolledBoys,
+      enrolledGirls: c.enrolledGirls,
+      totalEnrollment: c.totalEnrollment || c.enrolledBoys + c.enrolledGirls,
+    }));
+  }, [schoolConfig?.classes]);
+
   // Auth listener for admin privileges
   useEffect(() => {
     const unsub = initAuth(
@@ -85,50 +111,48 @@ export const DailyAttendanceView: React.FC = () => {
     };
   }, []);
 
-  // Initial load of official saved enrollments from Firestore
-  useEffect(() => {
-    loadClassEnrollments().then((loaded) => {
-      if (loaded && loaded.length > 0) {
-        setEnrollments(loaded);
-      }
-    });
-  }, []);
-
   const showToast = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 4000);
   };
 
-  const refreshEnrollments = useCallback(async (force = false) => {
-    if (!force) {
-      const saved = await loadClassEnrollments();
-      if (saved && saved.length > 0) {
-        setEnrollments(saved);
+  const refreshEnrollments = useCallback(
+    async (force = false) => {
+      if (schoolConfig?.enrollmentMode === 'manual' && !force) {
+        setEnrollments(manualEnrollments);
         return;
       }
-    }
-    setIsSyncingEnrollment(true);
-    try {
-      const token = await getAccessToken();
-      const res = await fetchSheetData(undefined, undefined, token, force);
-      if (res.records && res.records.length > 0) {
-        const liveEnrollments = computeEnrollmentsFromRecords(res.records);
-        setEnrollments(liveEnrollments);
-        if (force) {
-          showToast('Live enrollment sync complete!', 'success');
+      setIsSyncingEnrollment(true);
+      try {
+        const token = await getAccessToken();
+        const res = await fetchSheetData(undefined, undefined, token, force);
+        if (res.records && res.records.length > 0) {
+          const liveEnrollments = computeEnrollmentsFromRecords(res.records, manualEnrollments);
+          setEnrollments(liveEnrollments);
+          if (force) {
+            showToast('Live enrollment sync complete!', 'success');
+          }
+        } else {
+          setEnrollments(manualEnrollments);
         }
+      } catch (err) {
+        console.warn('Falling back to manual configured school enrollment:', err);
+        setEnrollments(manualEnrollments);
+      } finally {
+        setIsSyncingEnrollment(false);
       }
-    } catch (err) {
-      console.warn('Falling back to default verified school enrollment:', err);
-    } finally {
-      setIsSyncingEnrollment(false);
-    }
-  }, []);
+    },
+    [schoolConfig?.enrollmentMode, manualEnrollments]
+  );
 
-  // 1. Load live active enrollment from Google Sheets student records
+  // Sync enrollments when mode or classes change
   useEffect(() => {
-    refreshEnrollments();
-  }, [refreshEnrollments]);
+    if (schoolConfig?.enrollmentMode === 'manual') {
+      setEnrollments(manualEnrollments);
+    } else {
+      refreshEnrollments();
+    }
+  }, [schoolConfig?.enrollmentMode, manualEnrollments, refreshEnrollments]);
 
   // 2. Load attendance for the selected date
   const loadDateAttendance = useCallback(async (date: string) => {
@@ -180,8 +204,8 @@ export const DailyAttendanceView: React.FC = () => {
 
   // Derived Rows & Summary
   const attendanceRows: ClassAttendanceRow[] = useMemo(() => {
-    return buildAttendanceRows(enrollments, inputs);
-  }, [enrollments, inputs]);
+    return buildAttendanceRows(enrollments, inputs, classTeachersMap);
+  }, [enrollments, inputs, classTeachersMap]);
 
   const schoolSummary: SchoolAttendanceSummary = useMemo(() => {
     return calculateSchoolSummary(selectedDate, attendanceRows);
@@ -584,10 +608,57 @@ export const DailyAttendanceView: React.FC = () => {
             </span>
           </div>
 
-          <div className="flex items-center gap-3 text-xs text-brand-text-secondary">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-brand-text-secondary">
             <span>
               Active Roster: <strong className="text-brand-text-primary">{schoolSummary.totalEnrolled}</strong>
             </span>
+
+            {/* Admin Enrollment Source Mode Toggle */}
+            <div className="inline-flex items-center rounded-xl bg-slate-100 dark:bg-slate-800 p-0.5 border border-brand-border shadow-xs">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (schoolConfig.enrollmentMode !== 'manual') {
+                    if (isAdmin) {
+                      await saveConfig({ ...schoolConfig, enrollmentMode: 'manual' });
+                      showToast('Switched enrollment source to Manual School Register');
+                    } else {
+                      showToast('Admin privilege required to switch global enrollment mode', 'info');
+                    }
+                  }
+                }}
+                className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all ${
+                  schoolConfig.enrollmentMode === 'manual'
+                    ? 'bg-white dark:bg-brand-surface text-brand-primary shadow-xs'
+                    : 'text-brand-text-secondary hover:text-brand-text-primary'
+                }`}
+                title="Use configured manual enrollment register"
+              >
+                Manual
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (schoolConfig.enrollmentMode !== 'google_sheet') {
+                    if (isAdmin) {
+                      await saveConfig({ ...schoolConfig, enrollmentMode: 'google_sheet' });
+                      showToast('Switched enrollment source to Google Sheet Live Extract');
+                    } else {
+                      showToast('Admin privilege required to switch global enrollment mode', 'info');
+                    }
+                  }
+                }}
+                className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all ${
+                  schoolConfig.enrollmentMode === 'google_sheet'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-brand-text-secondary hover:text-brand-text-primary'
+                }`}
+                title="Extract live class counts from Google Sheet records"
+              >
+                Sheet Sync
+              </button>
+            </div>
+
             <button
               type="button"
               id="header-edit-enrollments-btn"

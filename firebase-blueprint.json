@@ -60,6 +60,40 @@
         }
       },
       "required": ["enrollments", "updatedAt"]
+    },
+    "DailySubstitutions": {
+      "title": "DailySubstitutions",
+      "description": "Daily teacher substitutions and proxy coverage roster",
+      "type": "object",
+      "properties": {
+        "dateKey": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "absentTeacherIds": { "type": "array" },
+        "assignments": { "type": "array" },
+        "updatedAt": { "type": "integer" }
+      },
+      "required": ["dateKey", "absentTeacherIds", "assignments"]
+    },
+    "SchoolConfig": {
+      "title": "SchoolConfig",
+      "description": "Master institutional settings, class teachers, enrollment modes, period timings, and Google Sheet edit permissions",
+      "type": "object",
+      "properties": {
+        "schoolName": { "type": "string" },
+        "affiliation": { "type": "string" },
+        "academicSession": { "type": "string" },
+        "principalName": { "type": "string" },
+        "enrollmentMode": { "type": "string", "enum": ["manual", "google_sheet"] },
+        "sheetEditingEnabled": { "type": "boolean" },
+        "sheetEditingLockedMessage": { "type": "string" },
+        "classes": { "type": "array" },
+        "teachers": { "type": "array" },
+        "periods": { "type": "array" },
+        "customTimetable": { "type": "array" },
+        "timetableNote": { "type": "string" },
+        "updatedAt": { "type": "integer" },
+        "updatedBy": { "type": "string" }
+      },
+      "required": ["schoolName", "enrollmentMode", "sheetEditingEnabled", "classes", "periods", "updatedAt"]
     }
   },
   "firestore": {
@@ -75,9 +109,13 @@
       "schema": { "$ref": "AttendanceRecord" },
       "description": "Daily attendance records backup"
     },
+    "/substitutions/{dateKey}": {
+      "schema": { "$ref": "DailySubstitutions" },
+      "description": "Daily teacher substitutions and proxy records"
+    },
     "/settings/{settingId}": {
-      "schema": { "$ref": "SchoolEnrollments" },
-      "description": "School settings including class enrollments"
+      "schema": { "$ref": "SchoolConfig" },
+      "description": "School settings including class enrollments, timetable, and sheet permissions"
     }
   }
 }

@@ -22,7 +22,12 @@ import {
   ArrowDown,
   ArrowUpDown,
   BarChart3,
+  Lock,
+  Unlock,
+  ShieldCheck,
+  ShieldAlert,
 } from 'lucide-react';
+import { useSchoolConfig } from '../../hooks/useSchoolConfig';
 import {
   StudentRecord,
   DEFAULT_SPREADSHEET_URL,
@@ -65,6 +70,7 @@ export type SortField =
 export type SortDirection = 'asc' | 'desc';
 
 export const StudentRecordsView: React.FC = () => {
+  const { config: schoolConfig, isAdmin, saveConfig } = useSchoolConfig();
   const [records, setRecords] = useState<StudentRecord[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -425,14 +431,32 @@ export const StudentRecordsView: React.FC = () => {
     setCurrentPage(1);
   }, [searchQuery, selectedClass, selectedSection, selectedStatus, selectedGender, pageSize, sortField, sortDirection]);
 
+  const isSheetEditingLocked = !schoolConfig.sheetEditingEnabled && !isAdmin;
+
   // Open Edit flow
   const handleOpenEdit = (student: StudentRecord) => {
+    if (isSheetEditingLocked) {
+      showNotification(
+        schoolConfig.sheetEditingLockedMessage ||
+          'Student records editing is locked by School Administration. View-only access is active.',
+        'error'
+      );
+      return;
+    }
     setIsAddMode(false);
     setEditStudent(student);
   };
 
   // Open Add Student flow
   const handleOpenAdd = () => {
+    if (isSheetEditingLocked) {
+      showNotification(
+        schoolConfig.sheetEditingLockedMessage ||
+          'Student records addition is locked by School Administration. View-only access is active.',
+        'error'
+      );
+      return;
+    }
     setIsAddMode(true);
     setEditStudent(null);
   };
@@ -509,7 +533,19 @@ export const StudentRecordsView: React.FC = () => {
       });
     } catch (err: any) {
       console.error('Error saving record:', err);
-      showNotification(err?.message || 'Failed to update Google Sheet.', 'error');
+      const errMsg = err?.message || '';
+      if (
+        errMsg.toLowerCase().includes('permission') ||
+        errMsg.toLowerCase().includes('403') ||
+        errMsg.toLowerCase().includes('protected')
+      ) {
+        showNotification(
+          'Google Sheet is protected or View-Only in Google Drive. You do not have direct write access to this spreadsheet in the cloud.',
+          'error'
+        );
+      } else {
+        showNotification(errMsg || 'Failed to update Google Sheet.', 'error');
+      }
       setConfirmationState((prev) => ({ ...prev, isSubmitting: false }));
     }
   };
@@ -611,9 +647,15 @@ export const StudentRecordsView: React.FC = () => {
           <button
             type="button"
             onClick={handleOpenAdd}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-all"
+            disabled={isSheetEditingLocked}
+            title={isSheetEditingLocked ? 'Editing locked by school admin' : 'Add Student'}
+            className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold shadow-soft transition-all ${
+              isSheetEditingLocked
+                ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                : 'text-white bg-brand-primary hover:bg-brand-primary/90 active:scale-95'
+            }`}
           >
-            <Plus className="w-3.5 h-3.5" />
+            {isSheetEditingLocked ? <Lock className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
             <span>Add Student</span>
           </button>
 
@@ -637,6 +679,64 @@ export const StudentRecordsView: React.FC = () => {
           </a>
         </div>
       </div>
+
+      {/* Administrative Lockout / View-Only Status Banner */}
+      {!schoolConfig.sheetEditingEnabled && (
+        <div
+          className={`p-4 rounded-2xl border shadow-soft flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+            isAdmin
+              ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800'
+              : 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className={`p-2 rounded-xl flex-shrink-0 ${
+                isAdmin
+                  ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300'
+                  : 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300'
+              }`}
+            >
+              {isAdmin ? <ShieldCheck className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+            </div>
+            <div>
+              <h4
+                className={`text-xs font-bold ${
+                  isAdmin ? 'text-emerald-900 dark:text-emerald-200' : 'text-amber-900 dark:text-amber-200'
+                }`}
+              >
+                {isAdmin
+                  ? 'Administrator Edit Override Active'
+                  : 'Google Sheet Records: View-Only Safeguard Active'}
+              </h4>
+              <p
+                className={`text-xs mt-0.5 leading-relaxed ${
+                  isAdmin ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-800 dark:text-amber-300'
+                }`}
+              >
+                {isAdmin
+                  ? 'Editing is currently locked for standard users. You retain full editing privileges as Administrator.'
+                  : schoolConfig.sheetEditingLockedMessage ||
+                    'Student record editing and addition is locked by School Administration. You can view, search, and export student data.'}
+              </p>
+            </div>
+          </div>
+
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={async () => {
+                await saveConfig({ ...schoolConfig, sheetEditingEnabled: true });
+                showNotification('Google Sheet editing enabled for all school users.');
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-emerald-800 dark:text-emerald-200 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/60 dark:hover:bg-emerald-900 transition-colors self-start sm:self-auto flex-shrink-0"
+            >
+              <Unlock className="w-3.5 h-3.5" />
+              <span>Unlock for Everyone</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Statistics Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -1158,10 +1258,15 @@ export const StudentRecordsView: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleOpenEdit(student)}
-                          title="Edit Student Record"
-                          className="p-1.5 rounded-lg text-brand-text-secondary hover:text-brand-primary hover:bg-brand-surface transition-colors"
+                          title={isSheetEditingLocked ? 'Editing locked by school admin' : 'Edit Student Record'}
+                          disabled={isSheetEditingLocked}
+                          className={`p-1.5 rounded-lg transition-colors ${
+                            isSheetEditingLocked
+                              ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
+                              : 'text-brand-text-secondary hover:text-brand-primary hover:bg-brand-surface'
+                          }`}
                         >
-                          <Edit2 className="w-3.5 h-3.5" />
+                          {isSheetEditingLocked ? <Lock className="w-3.5 h-3.5" /> : <Edit2 className="w-3.5 h-3.5" />}
                         </button>
                       </div>
                     </td>

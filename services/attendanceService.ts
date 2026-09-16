@@ -70,28 +70,32 @@ export interface SchoolAttendanceSummary {
 }
 
 export const DEFAULT_GRADE_ENROLLMENTS: ClassEnrollment[] = [
-  { classKey: 'ECCE', romanName: 'Ecce', displayName: 'Ecce', enrolledBoys: 20, enrolledGirls: 15, totalEnrollment: 50 },
-  { classKey: 'IA', romanName: 'IA', displayName: 'IA', enrolledBoys: 22, enrolledGirls: 14, totalEnrollment: 46 },
-  { classKey: 'IB', romanName: 'IB', displayName: 'IB', enrolledBoys: 24, enrolledGirls: 11, totalEnrollment: 47 },
+  { classKey: 'ECCE', romanName: 'ECCE', displayName: 'ECCE', enrolledBoys: 20, enrolledGirls: 15, totalEnrollment: 50 },
+  { classKey: 'IA', romanName: 'I-A', displayName: 'I-A', enrolledBoys: 22, enrolledGirls: 14, totalEnrollment: 46 },
+  { classKey: 'IB', romanName: 'I-B', displayName: 'I-B', enrolledBoys: 24, enrolledGirls: 11, totalEnrollment: 47 },
   { classKey: 'II', romanName: 'II', displayName: 'II', enrolledBoys: 28, enrolledGirls: 17, totalEnrollment: 58 },
-  { classKey: 'IIIA', romanName: 'IIIA', displayName: 'IIIA', enrolledBoys: 15, enrolledGirls: 25, totalEnrollment: 48 },
-  { classKey: 'IIIB', romanName: 'IIIB', displayName: 'IIIB', enrolledBoys: 20, enrolledGirls: 15, totalEnrollment: 47 },
-  { classKey: 'IVA', romanName: 'IVA', displayName: 'IVA', enrolledBoys: 20, enrolledGirls: 12, totalEnrollment: 45 },
-  { classKey: 'IVB', romanName: 'IVB', displayName: 'IVB', enrolledBoys: 18, enrolledGirls: 16, totalEnrollment: 47 },
+  { classKey: 'IIIA', romanName: 'III-A', displayName: 'III-A', enrolledBoys: 15, enrolledGirls: 25, totalEnrollment: 48 },
+  { classKey: 'IIIB', romanName: 'III-B', displayName: 'III-B', enrolledBoys: 20, enrolledGirls: 15, totalEnrollment: 47 },
+  { classKey: 'IVA', romanName: 'IV-A', displayName: 'IV-A', enrolledBoys: 20, enrolledGirls: 12, totalEnrollment: 45 },
+  { classKey: 'IVB', romanName: 'IV-B', displayName: 'IV-B', enrolledBoys: 18, enrolledGirls: 16, totalEnrollment: 47 },
   { classKey: 'V', romanName: 'V', displayName: 'V', enrolledBoys: 21, enrolledGirls: 14, totalEnrollment: 47 },
-  { classKey: 'VIA', romanName: 'VIA', displayName: 'VIA', enrolledBoys: 7, enrolledGirls: 28, totalEnrollment: 45 },
-  { classKey: 'VIB', romanName: 'VIB', displayName: 'VIB', enrolledBoys: 39, enrolledGirls: 0, totalEnrollment: 46 },
+  { classKey: 'VIA', romanName: 'VI-A', displayName: 'VI-A', enrolledBoys: 7, enrolledGirls: 28, totalEnrollment: 45 },
+  { classKey: 'VIB', romanName: 'VI-B', displayName: 'VI-B', enrolledBoys: 39, enrolledGirls: 0, totalEnrollment: 46 },
   { classKey: 'VII', romanName: 'VII', displayName: 'VII', enrolledBoys: 23, enrolledGirls: 16, totalEnrollment: 55 },
   { classKey: 'VIII', romanName: 'VIII', displayName: 'VIII', enrolledBoys: 20, enrolledGirls: 13, totalEnrollment: 44 },
   { classKey: 'IX', romanName: 'IX', displayName: 'IX', enrolledBoys: 31, enrolledGirls: 24, totalEnrollment: 67 },
-  { classKey: 'XA', romanName: 'XA', displayName: 'XA', enrolledBoys: 8, enrolledGirls: 25, totalEnrollment: 45 },
-  { classKey: 'XB', romanName: 'XB', displayName: 'XB', enrolledBoys: 26, enrolledGirls: 0, totalEnrollment: 41 },
+  { classKey: 'XA', romanName: 'X-A', displayName: 'X-A', enrolledBoys: 8, enrolledGirls: 25, totalEnrollment: 45 },
+  { classKey: 'XB', romanName: 'X-B', displayName: 'X-B', enrolledBoys: 26, enrolledGirls: 0, totalEnrollment: 41 },
   { classKey: 'XI', romanName: 'XI', displayName: 'XI', enrolledBoys: 11, enrolledGirls: 13, totalEnrollment: 55 },
   { classKey: 'XII', romanName: 'XII', displayName: 'XII', enrolledBoys: 12, enrolledGirls: 5, totalEnrollment: 37 },
 ];
 
-export function computeEnrollmentsFromRecords(records: StudentRecord[]): ClassEnrollment[] {
+export function computeEnrollmentsFromRecords(
+  records: StudentRecord[],
+  baseEnrollments?: ClassEnrollment[]
+): ClassEnrollment[] {
   const classMap = new Map<string, { boys: number; girls: number }>();
+  const activeBase = baseEnrollments && baseEnrollments.length > 0 ? baseEnrollments : DEFAULT_GRADE_ENROLLMENTS;
 
   records.forEach((r) => {
     // Basic dropout exclusion logic (customize if status matters more)
@@ -113,7 +117,7 @@ export function computeEnrollmentsFromRecords(records: StudentRecord[]): ClassEn
     }
   });
 
-  return DEFAULT_GRADE_ENROLLMENTS.map(def => {
+  return activeBase.map(def => {
     const r = def.romanName.toLowerCase();
     const c = def.classKey.toLowerCase();
     
@@ -132,7 +136,7 @@ export function computeEnrollmentsFromRecords(records: StudentRecord[]): ClassEn
       // ONLY if there isn't a specific def for that section.
       else if (!r.includes('-') && (kl.startsWith(r + '-') || kl.startsWith(c + '-'))) {
         // Check if there's a more specific def (like VI-A when def is VI)
-        const hasSpecificDef = DEFAULT_GRADE_ENROLLMENTS.some(d => d.romanName.toLowerCase() === kl || d.classKey.toLowerCase() === kl);
+        const hasSpecificDef = activeBase.some(d => d.romanName.toLowerCase() === kl || d.classKey.toLowerCase() === kl);
         if (!hasSpecificDef) {
           totalBoys += counts.boys;
           totalGirls += counts.girls;
@@ -145,6 +149,7 @@ export function computeEnrollmentsFromRecords(records: StudentRecord[]): ClassEn
         ...def,
         enrolledBoys: totalBoys,
         enrolledGirls: totalGirls,
+        totalEnrollment: totalBoys + totalGirls,
       };
     }
     return def;
@@ -153,7 +158,8 @@ export function computeEnrollmentsFromRecords(records: StudentRecord[]): ClassEn
 
 export function buildAttendanceRows(
   enrollments: ClassEnrollment[],
-  inputs: Record<string, { presentBoys: number | ''; presentGirls: number | ''; classTeacher?: string }>
+  inputs: Record<string, { presentBoys: number | ''; presentGirls: number | ''; classTeacher?: string }>,
+  classTeachersMap?: Record<string, string>
 ): ClassAttendanceRow[] {
   return enrollments.map(enr => {
     const totalEnrolled = typeof enr.totalEnrollment === 'number' && enr.totalEnrollment > 0
@@ -173,15 +179,18 @@ export function buildAttendanceRows(
     const boysPercentage = enr.enrolledBoys > 0 ? Math.round((pb / enr.enrolledBoys) * 100) : 0;
     const girlsPercentage = enr.enrolledGirls > 0 ? Math.round((pg / enr.enrolledGirls) * 100) : 0;
 
-    // Determine default class teacher from timetable if not provided in inputs
+    // Determine default class teacher from classTeachersMap or timetable
     let defaultTeacher = '';
-    const matchingClasses = timetableData.classes.filter(c => c.label === enr.romanName);
-    if (matchingClasses.length > 0) {
-      const teachers = Array.from(new Set(matchingClasses.map(c => c.classTeacher).filter(Boolean)));
-      defaultTeacher = teachers.join(' / ');
+    if (classTeachersMap && classTeachersMap[enr.classKey]) {
+      defaultTeacher = classTeachersMap[enr.classKey];
     } else {
-      // Placeholder for early grades (ECCE, Grade 1 to Grade 3)
-      defaultTeacher = '(To be added)';
+      const matchingClasses = timetableData.classes.filter(c => c.label === enr.romanName);
+      if (matchingClasses.length > 0) {
+        const teachers = Array.from(new Set(matchingClasses.map(c => c.classTeacher).filter(Boolean)));
+        defaultTeacher = teachers.join(' / ');
+      } else {
+        defaultTeacher = 'Miss Shahida';
+      }
     }
 
     return {

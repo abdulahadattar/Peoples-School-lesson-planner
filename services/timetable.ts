@@ -16,6 +16,8 @@ import timetableData from '../data/timetable.json';
 import { Teacher } from '../types';
 import { isKnownSubject, normalizeSubject, resolveByName, resolveTeacher } from './teacherRoster';
 
+import { parseTimetableCell } from './timetableConflictEngine';
+
 export type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat';
 
 export const DAY_KEYS: DayKey[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
@@ -178,7 +180,10 @@ export function locatePeriod(entry: TimetableClassEntry, day: DayKey, minutes: n
 export function standardSchedule(classes: TimetableClassEntry[], day?: DayKey) {
   const targetDay = day ?? 'mon';
   // On Friday, prioritize class with explicit Friday timings (like Class VII) if present
-  const entry = (targetDay === 'fri' && classes.find(c => c.periods.some(p => p.friStart))) || classes[0];
+  const entry =
+    (targetDay === 'fri' && classes.find(c => c.periods.some(p => p.friStart && p.friEnd))) ||
+    classes.find(c => c.periods && c.periods.length >= 7) ||
+    classes[0];
   if (!entry) return [];
   return entry.periods
     .filter(p => {
@@ -245,7 +250,10 @@ export function getSchoolStatus(
     };
   }
 
-  const entry = (day === 'fri' && classes.find(c => c.periods.some(p => p.friStart))) || classes[0];
+  const entry =
+    (day === 'fri' && classes.find(c => c.periods.some(p => p.friStart && p.friEnd))) ||
+    classes.find(c => c.periods && c.periods.length >= 7) ||
+    classes[0];
   const periods = day === 'fri'
     ? entry.periods.filter(p => p.friStart && p.friEnd)
     : entry.periods;
@@ -366,26 +374,13 @@ export function resolveSlot(
 ): ResolvedSlot {
   const period = entry.periods[periodIndex];
   const raw = period?.[day]?.trim() ?? '';
-  if (!raw) {
-    return { label: 'Free period', parts: [], teachers: [], empty: true };
-  }
-  const subjects = raw.split('/').map(s => s.trim()).filter(Boolean);
-  const parts: SlotPart[] = subjects.map(subjectRaw => {
-    let subject = normalizeSubject(subjectRaw);
-    let teacher = resolveTeacher(subject, entry.label, teachers);
-    if (!teacher) teacher = resolveByName(subjectRaw, teachers);
-    if (teacher && !isKnownSubject(subjectRaw)) {
-      // Cell was a teacher name (e.g. "Feroz") — label it with their subject.
-      subject = teacher.subjects[0]?.name ?? subject;
-    }
-    return { subject, teacher };
-  });
-  const teachersPresent = parts.map(p => p.teacher).filter((t): t is Teacher => !!t);
+  const parsed = parseTimetableCell(raw, entry.label, teachers);
+
   return {
-    label: parts.map(p => p.subject).join(' / '),
-    parts,
-    teachers: teachersPresent,
-    empty: false,
+    label: parsed.empty ? 'Free period' : parsed.label,
+    parts: parsed.parts,
+    teachers: parsed.teachers,
+    empty: parsed.empty,
   };
 }
 

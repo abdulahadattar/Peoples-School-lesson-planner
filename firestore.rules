@@ -39,6 +39,12 @@ service cloud.firestore {
       allow delete: if isSignedIn();
     }
 
+    match /substitutions/{dateKey} {
+      allow get, list: if true;
+      allow create, update: if isValidId(dateKey);
+      allow delete: if isSignedIn();
+    }
+
     match /settings/{settingId} {
       allow get, list: if true;
       allow create, update, delete: if isAdmin();

@@ -13,6 +13,8 @@ import {
 } from '../services/timetable';
 import { SubstitutionAssignment, getStoredSubstitutions } from '../services/storageService';
 import { ClassTier, getClassTier } from '../services/tierHelpers';
+import { useSchoolConfig } from '../hooks/useSchoolConfig';
+import { TimetableClassEntry, TimetablePeriod } from '../services/timetable';
 import { SubstitutionManager } from './SubstitutionManager';
 import { BreakDutiesPanel } from './BreakDutiesPanel';
 import { LiveClassCard } from './live/LiveClassCard';
@@ -70,18 +72,169 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers = [] }
   // Active day: if user explicitly selected previewDay, use it; otherwise use liveDay, or default to Monday if Sunday
   const effectiveDay: DayKey = previewDay ?? (liveDay ?? 'mon');
 
+  // Retrieve School Admin settings (classes, class teachers, periods)
+  const { config: schoolConfig } = useSchoolConfig();
+
+  // Active faculty roster: prefer live centralized config if available
+  const activeTeachers = useMemo(() => {
+    if (schoolConfig?.teachers && schoolConfig.teachers.length > 0) {
+      return schoolConfig.teachers;
+    }
+    return teachers;
+  }, [schoolConfig?.teachers, teachers]);
+
+  // Merge live School Admin config with timetable classes & include all school classes
+  const syncedClasses = useMemo<TimetableClassEntry[]>(() => {
+    if (!timetable) return [];
+
+    // Map existing timetable classes to schoolConfig overrides
+    const updatedTimetableClasses: TimetableClassEntry[] = timetable.classes.map(c => {
+      const norm = c.label.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+      const match = schoolConfig?.classes?.find(sc => {
+        const k1 = sc.classKey.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+        const k2 = sc.romanName.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+        return k1 === norm || k2 === norm;
+      });
+
+      if (match) {
+        const isPlaceholder =
+          !match.classTeacher ||
+          match.classTeacher.toLowerCase() === 'unassigned' ||
+          /^(miss\s+)?(fozia|hina|rabia|saima|nadia|farzana)$/i.test(match.classTeacher.trim());
+
+        return {
+          ...c,
+          label: match.romanName || c.label,
+          classTeacher: isPlaceholder ? c.classTeacher : match.classTeacher,
+        };
+      }
+      return c;
+    });
+
+    // Reference standard period times from IV-A
+    const basePeriods = updatedTimetableClasses[0]?.periods || [];
+
+    // Append any configured primary classes (ECCE, I-A, I-B, II, III-A, III-B) not in timetable
+    const additionalClasses: TimetableClassEntry[] = [];
+    if (schoolConfig?.classes) {
+      schoolConfig.classes.forEach(sc => {
+        const norm = sc.classKey.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+        const exists = updatedTimetableClasses.some(c => {
+          const cNorm = c.label.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+          return cNorm === norm;
+        });
+
+        if (!exists) {
+          // Use real subjects from sc.subjects or standard curriculum
+          const primarySubjects =
+            sc.subjects && sc.subjects.length > 0
+              ? sc.subjects
+              : ['English', 'Urdu', 'Sindhi', 'Mathematics', 'General Science', 'Islamiat', 'Arts & Drawing'];
+
+          const isPlaceholder =
+            !sc.classTeacher ||
+            sc.classTeacher.toLowerCase() === 'unassigned' ||
+            /^(miss\s+)?(fozia|hina|rabia|saima|nadia|farzana)$/i.test(sc.classTeacher.trim());
+          const validTeacher = isPlaceholder ? '' : sc.classTeacher;
+
+          // Synthesize real period schedule using the actual primary curriculum subjects
+          const classTeacherPeriods: TimetablePeriod[] = basePeriods.map((p, pIdx) => {
+            const subject = primarySubjects[pIdx % primarySubjects.length] || 'General Studies';
+            const cellVal = validTeacher ? `${subject} / ${validTeacher}` : subject;
+
+            return {
+              no: p.no,
+              start: p.start,
+              end: p.end,
+              friStart: p.friStart,
+              friEnd: p.friEnd,
+              mon: cellVal,
+              tue: cellVal,
+              wed: cellVal,
+              thu: cellVal,
+              fri: pIdx < 5 ? cellVal : '—',
+              sat: '—',
+            };
+          });
+
+          additionalClasses.push({
+            label: sc.romanName || sc.displayName || sc.classKey,
+            classTeacher: validTeacher || 'Unassigned',
+            periods: classTeacherPeriods,
+          });
+        }
+      });
+    }
+
+    // Sort classes from ECCE through XII
+    const classOrder = [
+      'ECCE',
+      'I-A',
+      'I-B',
+      'II',
+      'III-A',
+      'III-B',
+      'IV-A',
+      'IV-B',
+      'V',
+      'VI-A',
+      'VI-B',
+      'VII',
+      'VIII',
+      'IX',
+      'X-A',
+      'X-B',
+      'XI',
+      'XII',
+    ];
+    const all = [...additionalClasses, ...updatedTimetableClasses].map(c => {
+      const norm = c.label.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+      const customMatch = schoolConfig?.customTimetable?.find(ct => {
+        const ctNorm = ct.label.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+        return ctNorm === norm;
+      });
+      if (customMatch && customMatch.periods && customMatch.periods.length > 0) {
+        return {
+          ...c,
+          classTeacher: customMatch.classTeacher || c.classTeacher,
+          periods: customMatch.periods,
+        };
+      }
+      return c;
+    });
+
+    all.sort((a, b) => {
+      const idxA = classOrder.indexOf(a.label);
+      const idxB = classOrder.indexOf(b.label);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.label.localeCompare(b.label);
+    });
+
+    return all;
+  }, [timetable, schoolConfig?.classes, schoolConfig?.customTimetable]);
+
+  const syncedTimetable = useMemo(() => {
+    if (!timetable) return null;
+    return {
+      ...timetable,
+      classes: syncedClasses,
+    };
+  }, [timetable, syncedClasses]);
+
   const schedule = useMemo(
-    () => (timetable ? standardSchedule(timetable.classes, effectiveDay) : []),
-    [timetable, effectiveDay],
+    () => (syncedTimetable ? standardSchedule(syncedTimetable.classes, effectiveDay) : []),
+    [syncedTimetable, effectiveDay],
   );
 
   const effectiveMinutes = clockDate.getHours() * 60 + clockDate.getMinutes();
 
   // Compute school status for current clock time
   const schoolStatus = useMemo(() => {
-    if (!timetable) return null;
-    return getSchoolStatus(timetable.classes, effectiveDay, effectiveMinutes);
-  }, [timetable, effectiveDay, effectiveMinutes]);
+    if (!syncedTimetable) return null;
+    return getSchoolStatus(syncedTimetable.classes, effectiveDay, effectiveMinutes);
+  }, [syncedTimetable, effectiveDay, effectiveMinutes]);
 
   // Live active period index (if inside an active running period)
   const livePeriodIndex = schoolStatus?.state === 'in_period' ? schoolStatus.periodIndex : -1;
@@ -113,19 +266,19 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers = [] }
 
   // Compute staff busy & free for the currently displayed period
   const staff = useMemo(() => {
-    if (!timetable) return null;
-    return computeStaff(timetable.classes, teachers, effectiveDay, effectiveCardPeriodIndex);
-  }, [timetable, teachers, effectiveDay, effectiveCardPeriodIndex]);
+    if (!syncedTimetable) return null;
+    return computeStaff(syncedTimetable.classes, activeTeachers, effectiveDay, effectiveCardPeriodIndex);
+  }, [syncedTimetable, activeTeachers, effectiveDay, effectiveCardPeriodIndex]);
 
   // Filter classes by tier group (Primary, Elementary, Middle, Secondary)
   const filteredClasses = useMemo(() => {
-    if (!timetable) return [];
-    return timetable.classes.filter(c => {
+    if (!syncedTimetable) return [];
+    return syncedClasses.filter(c => {
       const tier = getClassTier(c.label);
       if (classFilter !== 'all' && tier !== classFilter) return false;
       return true;
     });
-  }, [timetable, classFilter]);
+  }, [syncedTimetable, syncedClasses, classFilter]);
 
   const goLive = () => {
     setPreviewDay(null);
@@ -210,7 +363,7 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers = [] }
         schoolStatus={schoolStatus}
         classFilter={classFilter}
         onClassFilterChange={setClassFilter}
-        totalClassesCount={timetable.classes.length}
+        totalClassesCount={syncedClasses.length}
         searchQuery={searchQuery}
         onSearchQueryChange={setSearchQuery}
       />
@@ -218,8 +371,8 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers = [] }
       {/* Mode View: Substitutions */}
       {monitorMode === 'substitutions' && (
         <SubstitutionManager
-          timetable={timetable}
-          teachers={teachers}
+          timetable={syncedTimetable || timetable}
+          teachers={activeTeachers}
           day={effectiveDay}
           onSubstitutionsChanged={(newSubs, newAbsent) => {
             setSubstitutions(newSubs);
@@ -269,7 +422,7 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers = [] }
           <BreakDutiesPanel
             day={effectiveDay}
             onDayChange={setPreviewDay}
-            teachers={teachers}
+            teachers={activeTeachers}
             absentTeacherIds={absentTeacherIds}
             currentMinutes={effectiveMinutes}
           />
@@ -290,7 +443,7 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers = [] }
                 live={isLive}
                 isLivePeriodActive={isCurrentLivePeriodActive}
                 schoolStatusState={schoolStatus?.state}
-                teachers={teachers}
+                teachers={activeTeachers}
                 now={clockDate}
                 substitutions={substitutions}
                 absentTeacherIds={absentTeacherIds}

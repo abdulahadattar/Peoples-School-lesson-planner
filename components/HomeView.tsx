@@ -1,5 +1,6 @@
 import React from 'react';
 import { BookOpenIcon, DocumentTextIcon, PulseIcon, ArchiveIcon, SpreadsheetIcon, UserGroupIcon } from './icons/MiscIcons';
+import { Settings } from 'lucide-react';
 import { PhssjLogo, ZiauddinLogo } from './Logo';
 import { View } from '../types';
 import { motion } from 'motion/react';
@@ -159,6 +160,16 @@ const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
           >
             <ArchiveIcon className="w-4 h-4 text-brand-accent" />
             <span>History Archive</span>
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            type="button"
+            onClick={() => onNavigate?.('settings')}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-brand-surface border border-brand-border text-brand-text-primary hover:border-purple-500/40 hover:text-purple-600 shadow-soft transition-colors cursor-pointer"
+          >
+            <Settings className="w-4 h-4 text-purple-600" />
+            <span>School Admin Panel</span>
           </motion.button>
         </motion.div>
 

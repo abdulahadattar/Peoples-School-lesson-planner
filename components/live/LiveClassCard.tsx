@@ -77,8 +77,12 @@ export const LiveClassCard: React.FC<LiveClassCardProps> = ({
   if (!isMatch) return null;
 
   const rawClassTeacher = entry.classTeacher || '';
-  const classTeacherCanonical = canonicalName(rawClassTeacher, teachers);
-  const classTeacherObj = rawClassTeacher
+  const isPlaceholderOrUnassigned =
+    !rawClassTeacher ||
+    rawClassTeacher.toLowerCase() === 'unassigned' ||
+    /^(miss\s+)?(fozia|hina|rabia|saima|nadia|farzana)$/i.test(rawClassTeacher.trim());
+  const classTeacherCanonical = isPlaceholderOrUnassigned ? '' : canonicalName(rawClassTeacher, teachers);
+  const classTeacherObj = (!isPlaceholderOrUnassigned && rawClassTeacher)
     ? teachers.find(
         t =>
           t.name?.toLowerCase().includes(rawClassTeacher.toLowerCase()) ||
