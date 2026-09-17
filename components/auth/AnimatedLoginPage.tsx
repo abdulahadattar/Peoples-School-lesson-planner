@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { PhssjLogo, ZiauddinLogo } from '../Logo';
-import { loginWithGoogle, getCurrentUser } from '../../services/googleAuth';
-import { ADMIN_EMAILS } from '../../services/adminService';
+import { loginWithGoogle, getCurrentUser, consumeRedirectSignInStatus, processRedirectSignIn } from '../../services/googleAuth';
 import { User } from 'firebase/auth';
+import { auth } from '../../services/firebase';
+import { ADMIN_EMAILS } from '../../services/adminService';
 import {
   ShieldCheck,
   Sparkles,
@@ -77,6 +78,34 @@ export const AnimatedLoginPage: React.FC<AnimatedLoginPageProps> = ({
     return () => clearInterval(timer);
   }, []);
 
+  // Handle the return trip from a full-page redirect sign-in.
+  // In embedded frames/webviews popups are blocked, so we fall back to
+  // signInWithRedirect; after Google bounces us back we land here.
+  useEffect(() => {
+    const wasRedirectSignIn = consumeRedirectSignInStatus();
+    if (!wasRedirectSignIn) return;
+    setIsSigningIn(true);
+    processRedirectSignIn()
+      .then((user) => {
+        if (user) {
+          onLoginSuccess(user);
+        } else {
+          // No result (e.g. user cancelled on Google's page) - reset the button
+          setIsSigningIn(false);
+        }
+      })
+      .catch((err: any) => {
+        console.warn('Redirect sign-in error:', err);
+        setErrorMessage(
+          err?.code === 'auth/unauthorized-domain'
+            ? 'This domain is not authorized in Firebase. Add it under Authentication → Settings → Authorized domains.'
+            : err?.message || 'Redirect sign-in failed. You may continue in Guest Mode.'
+        );
+        setIsSigningIn(false);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleGoogleSignIn = async () => {
     setIsSigningIn(true);
     setErrorMessage(null);
@@ -90,10 +119,14 @@ export const AnimatedLoginPage: React.FC<AnimatedLoginPageProps> = ({
       }
     } catch (err: any) {
       console.warn('Authentication error:', err);
+      // Redirect sign-in is underway - the page is navigating away, stay quiet.
+      if (err?.code === 'auth/redirect-pending') return;
       setErrorMessage(
         err?.code === 'auth/popup-blocked'
           ? 'Sign-in pop-up was blocked. Please allow popups or open in a new tab.'
-          : err?.message || 'Sign in encountered an issue. You may continue in Guest Mode.'
+          : err?.code === 'auth/unauthorized-domain'
+            ? 'This domain is not authorized in Firebase Authentication. Add it under Authentication → Settings → Authorized domains (e.g. localhost for local testing).'
+            : err?.message || 'Sign in encountered an issue. You may continue in Guest Mode.'
       );
       setIsSigningIn(false);
     }
