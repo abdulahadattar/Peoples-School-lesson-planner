@@ -13,8 +13,9 @@ import { DailyAttendanceView } from './components/attendance/DailyAttendanceView
 import { AnimatedLoginPage } from './components/auth/AnimatedLoginPage';
 import { SchoolSettingsView } from './components/settings/SchoolSettingsView';
 import { PhssjLogo, ZiauddinLogo } from './components/Logo';
-import { BookOpenIcon, CloseIcon, DocumentTextIcon, HomeIcon, PulseIcon, ArchiveIcon, SpreadsheetIcon, UserGroupIcon } from './components/icons/MiscIcons';
+import { BookOpenIcon, CloseIcon, DocumentTextIcon, HomeIcon, PulseIcon, ArchiveIcon, SpreadsheetIcon, UserGroupIcon, FolderArchiveIcon } from './components/icons/MiscIcons';
 import { Settings as SettingsIcon } from 'lucide-react';
+import { DocumentArchiveCenterView } from './components/DocumentArchiveCenterView';
 import { useGeneralGeneration, GenerationMode } from './hooks/useGeneralGeneration';
 import { useSelection } from './hooks/useSelection';
 import { loadSloChapter } from './services/sloData';
@@ -34,6 +35,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { view: 'home', label: 'Home', icon: HomeIcon, activeViews: ['home'] },
   { view: 'records', label: 'Student Records', icon: SpreadsheetIcon, activeViews: ['records'] },
+  { view: 'archive', label: 'Document Archive', icon: FolderArchiveIcon, activeViews: ['archive'] },
   { view: 'attendance', label: 'Daily Attendance', icon: UserGroupIcon, activeViews: ['attendance'] },
   { view: 'lesson', label: 'Lesson Plans', icon: BookOpenIcon, activeViews: ['lesson', 'results'] },
   { view: 'paper', label: 'Exam Papers', icon: DocumentTextIcon, activeViews: ['paper'] },
@@ -408,6 +410,8 @@ const App: React.FC = () => {
             )}
 
             {view === 'records' && <StudentRecordsView />}
+
+            {view === 'archive' && <DocumentArchiveCenterView />}
 
             {view === 'attendance' && <DailyAttendanceView />}
 

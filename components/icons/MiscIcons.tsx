@@ -203,3 +203,11 @@ export const UserGroupIcon: React.FC<IconProps> = (props) => (
     <path d="M16 3.13a4 4 0 0 1 0 7.75" />
   </svg>
 );
+
+export const FolderArchiveIcon: React.FC<IconProps> = (props) => (
+  <svg {...props} {...base}>
+    <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
+    <circle cx="12" cy="13" r="2" />
+    <path d="M12 15v3" />
+  </svg>
+);

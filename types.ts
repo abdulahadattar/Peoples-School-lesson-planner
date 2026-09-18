@@ -133,7 +133,7 @@ export interface Teacher {
   subjects: TeacherSubject[];
 }
 
-export type View = 'home' | 'records' | 'lesson' | 'paper' | 'results' | 'live' | 'history' | 'attendance' | 'settings';
+export type View = 'home' | 'records' | 'archive' | 'attendance' | 'lesson' | 'paper' | 'results' | 'live' | 'history' | 'settings';
 export type Theme = 'light' | 'dark';
 
 export interface SLO {

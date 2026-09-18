@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpenIcon, DocumentTextIcon, PulseIcon, ArchiveIcon, SpreadsheetIcon, UserGroupIcon } from './icons/MiscIcons';
+import { BookOpenIcon, DocumentTextIcon, PulseIcon, ArchiveIcon, SpreadsheetIcon, UserGroupIcon, FolderArchiveIcon } from './icons/MiscIcons';
 import { Settings } from 'lucide-react';
 import { PhssjLogo, ZiauddinLogo } from './Logo';
 import { View } from '../types';
@@ -140,6 +140,16 @@ const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
           >
             <SpreadsheetIcon className="w-4 h-4" />
             <span>Student Records (Google Sheets)</span>
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            type="button"
+            onClick={() => onNavigate?.('archive')}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-brand-surface border border-brand-border text-brand-text-primary hover:border-brand-primary/40 hover:text-brand-primary shadow-soft transition-colors cursor-pointer"
+          >
+            <FolderArchiveIcon className="w-4 h-4 text-indigo-500" />
+            <span>Document Archive & B-Forms</span>
           </motion.button>
           <motion.button
             whileHover={{ scale: 1.03 }}

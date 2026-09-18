@@ -20,12 +20,18 @@ function isValidApiKey(key: string): boolean {
 function getApiKeyPool(): string[] {
   const keys: string[] = [];
 
-  const single = import.meta.env.VITE_API_KEY;
+  const env = (typeof import.meta !== 'undefined' && import.meta.env)
+    ? import.meta.env
+    : (typeof process !== 'undefined' && process.env)
+    ? process.env
+    : ({} as Record<string, string | undefined>);
+
+  const single = env.VITE_API_KEY || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined);
   if (single && isValidApiKey(single)) {
     keys.push(single);
   }
 
-  const multi = import.meta.env.VITE_API_KEYS;
+  const multi = env.VITE_API_KEYS || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEYS : undefined);
   if (multi) {
     const allKeys = multi
       .split(",")
@@ -103,15 +109,24 @@ export function refreshApiKeyPool(): void {
 export const DEFAULT_MODEL = "gemini-3.5-flash-lite";
 
 /**
- * Model fallback hierarchy. Every request tries the first model with ALL
+ * Model fallback hierarchy. Every request tries the first (best) model with ALL
  * healthy keys; if every key fails on it, it moves to the next model on all keys,
  * and so on.
- * Chain: Gemini 3.5 Flash Lite -> Gemini 3.1 Flash Lite -> Gemini 2.5 Flash
+ * Chain order:
+ *   1. gemini-3.5-flash-lite
+ *   2. gemini-3.1-flash-lite
+ *   3. gemini-2.5-flash
+ *   4. gemini-2.5-flash-lite
+ *   5. gemma-4-31b-it
+ *   6. gemma-4-26b-it
  */
 export const MODEL_CHAIN: string[] = [
   "gemini-3.5-flash-lite",
   "gemini-3.1-flash-lite",
   "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+  "gemma-4-31b-it",
+  "gemma-4-26b-it",
 ];
 
 function isAuthOrQuotaError(error: any): boolean {

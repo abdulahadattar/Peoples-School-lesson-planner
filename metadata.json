@@ -1,6 +1,6 @@
 {
   "name": "PHSSJ Lesson Planner",
-  "description": "Peoples Higher Secondary School Jamshoro lesson plan, exam paper generator, and Google Sheets student records register",
+  "description": "Peoples Higher Secondary School Jamshoro lesson plan, exam paper generator, Google Sheets student records register, and AI student document archive & verification center",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -4,6 +4,30 @@ import fs from 'fs';
 import crypto from 'crypto';
 import compression from 'compression';
 import { createServer as createViteServer } from 'vite';
+import {
+  ingestUploadedArchive,
+  ingestIndividualFiles,
+  createBatchJob,
+  addSingleFileToJob,
+  finalizeBatchJob,
+  handleChunkUpload,
+  getAllDossiers,
+  getDossierByGr,
+  getJobStatus,
+  getLatestJob,
+  updateDocumentMetadata,
+  createArchiveZipStream,
+  auditDossierAgainstSheet,
+  auditAllDossiersAgainstSheet,
+  getAllDocuments,
+  retryFailedDocumentsInJob,
+  autoLinkDocumentsAgainstSheet,
+  assignDocumentToGr,
+  dismissDiscrepancy,
+  undismissDiscrepancy,
+  getDismissedFlags,
+  setCachedSheetRecords,
+} from './services/documentArchiveService';
 
 // Server-side in-memory cache for Google Sheet data to prevent redundant network round-trips
 interface ServerSheetCacheEntry {
@@ -38,7 +62,8 @@ async function startServer() {
   );
 
   // Middleware
-  app.use(express.json({ limit: '20mb' }));
+  app.use(express.json({ limit: '100mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 
   // API Health Check
   app.get('/api/health', (_req, res) => {
@@ -95,8 +120,17 @@ async function startServer() {
           : undefined,
       });
 
-      // Try all fallback models and all keys
-      const modelsToTry = Array.from(new Set([model, 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-2.5-flash']));
+      // Try all fallback models and all keys in strict prioritized order:
+      // First the best model tried with all API keys, then second best with all API keys, then 3rd, and so on.
+      const modelsToTry = Array.from(new Set([
+        model,
+        'gemini-3.5-flash-lite',
+        'gemini-3.1-flash-lite',
+        'gemini-2.5-flash',
+        'gemini-2.5-flash-lite',
+        'gemma-4-31b-it',
+        'gemma-4-26b-it',
+      ]));
       let lastErrText = '';
       let lastStatus = 500;
 
@@ -288,6 +322,10 @@ async function startServer() {
           schoolMetadata,
         };
         sheetCache[cacheKey] = cached;
+      }
+
+      if (cached?.records) {
+        setCachedSheetRecords(cached.records);
       }
 
       // Check client If-None-Match ETag header
@@ -682,6 +720,346 @@ async function startServer() {
       res.json({ ok: true, data });
     } catch (error) {
       res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  // ==========================================
+  // STUDENT DOCUMENT ARCHIVE & AI ROTATION API
+  // ==========================================
+
+  // Helper to get active server keys
+  const getDocumentApiKeys = () => {
+    const rawKeys: string[] = [];
+    if (process.env.GEMINI_API_KEY) rawKeys.push(process.env.GEMINI_API_KEY);
+    if (process.env.GEMINI_API_KEYS) rawKeys.push(...process.env.GEMINI_API_KEYS.split(','));
+    if (process.env.VITE_API_KEY) rawKeys.push(process.env.VITE_API_KEY);
+    if (process.env.VITE_API_KEYS) rawKeys.push(...process.env.VITE_API_KEYS.split(','));
+    return Array.from(new Set(rawKeys.map((k) => k.trim()).filter(Boolean)));
+  };
+
+  // Initialize a new batch processing job
+  app.post('/api/documents/create-job', (req, res) => {
+    try {
+      const { expectedCount = 0 } = req.body || {};
+      const job = createBatchJob(Number(expectedCount) || 0);
+      res.json({ ok: true, job });
+    } catch (err) {
+      console.error('[server.ts] create-job error:', err);
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // Upload a single file into a batch job (prevents 413 by streaming files individually)
+  app.post('/api/documents/upload-single', async (req, res) => {
+    try {
+      const { jobId, filename, base64Data, grNo } = req.body || {};
+      if (!jobId || !base64Data || !filename) {
+        res.status(400).json({ error: 'jobId, filename, and base64Data are required' });
+        return;
+      }
+      const buffer = Buffer.from(base64Data, 'base64');
+      const result = await addSingleFileToJob(jobId, filename, buffer, grNo);
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      console.error('[server.ts] upload-single error:', err);
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // Finalize batch job and kick off background AI queue
+  app.post('/api/documents/finalize-job', (req, res) => {
+    try {
+      const { jobId } = req.body || {};
+      if (!jobId) {
+        res.status(400).json({ error: 'jobId is required' });
+        return;
+      }
+      const keys = getDocumentApiKeys();
+      const job = finalizeBatchJob(jobId, keys);
+      res.json({ ok: true, job });
+    } catch (err) {
+      console.error('[server.ts] finalize-job error:', err);
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // Chunked upload for very large files / ZIP archives (prevents 413 Entity Too Large)
+  app.post('/api/documents/upload-chunk', async (req, res) => {
+    try {
+      const { uploadId, chunkIndex, totalChunks, chunkBase64, filename, grNo, isZip } = req.body || {};
+      if (!uploadId || chunkIndex === undefined || !totalChunks || !chunkBase64 || !filename) {
+        res.status(400).json({ error: 'Missing required chunk parameters' });
+        return;
+      }
+      const keys = getDocumentApiKeys();
+      const result = await handleChunkUpload(
+        uploadId,
+        Number(chunkIndex),
+        Number(totalChunks),
+        chunkBase64,
+        filename,
+        grNo,
+        Boolean(isZip),
+        keys
+      );
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      console.error('[server.ts] upload-chunk error:', err);
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // Upload ZIP archive containing GR folders or multi-page documents
+  app.post('/api/documents/upload-zip', async (req, res) => {
+    try {
+      const { base64Data, filename = 'upload.zip' } = req.body || {};
+      if (!base64Data) {
+        res.status(400).json({ error: 'base64Data is required' });
+        return;
+      }
+      const buffer = Buffer.from(base64Data, 'base64');
+      const keys = getDocumentApiKeys();
+      const job = await ingestUploadedArchive(buffer, filename, keys);
+      res.json({ ok: true, job });
+    } catch (err) {
+      console.error('[server.ts] upload-zip error:', err);
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // Upload individual / multiple image files
+  app.post('/api/documents/upload-files', async (req, res) => {
+    try {
+      const { files } = req.body || {};
+      if (!Array.isArray(files) || files.length === 0) {
+        res.status(400).json({ error: 'files array is required' });
+        return;
+      }
+      const fileBuffers = files.map((f: any) => ({
+        filename: f.filename || 'doc.jpg',
+        buffer: Buffer.from(f.base64Data, 'base64'),
+        grNo: f.grNo,
+      }));
+      const keys = getDocumentApiKeys();
+      const job = await ingestIndividualFiles(fileBuffers, keys);
+      res.json({ ok: true, job });
+    } catch (err) {
+      console.error('[server.ts] upload-files error:', err);
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // Get active background job status
+  app.get('/api/documents/jobs/:jobId', (req, res) => {
+    const job = getJobStatus(req.params.jobId);
+    if (!job) {
+      res.status(404).json({ error: 'Job not found' });
+      return;
+    }
+    res.json({ ok: true, job });
+  });
+
+  // Get latest background job
+  app.get('/api/documents/jobs-latest', (_req, res) => {
+    const job = getLatestJob();
+    res.json({ ok: true, job });
+  });
+
+  // Retry failed documents in a job
+  app.post('/api/documents/jobs/:jobId/retry', async (req, res) => {
+    try {
+      const keys = getDocumentApiKeys();
+      const job = await retryFailedDocumentsInJob(req.params.jobId, keys);
+      if (!job) {
+        res.status(404).json({ error: 'Job not found' });
+        return;
+      }
+      res.json({ ok: true, job });
+    } catch (err) {
+      console.error('[server.ts] retry job error:', err);
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // Get all student dossiers
+  app.get('/api/documents/dossiers', (_req, res) => {
+    try {
+      const dossiers = getAllDossiers();
+      res.json({ ok: true, dossiers });
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // Get all individual extracted documents
+  app.get('/api/documents/all-docs', (_req, res) => {
+    try {
+      const documents = getAllDocuments();
+      res.json({ ok: true, documents });
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // Cross-reference all dossiers with Google Sheet roster
+  app.post('/api/documents/audit-all', (req, res) => {
+    try {
+      const { records = [] } = req.body || {};
+      const discrepancies = auditAllDossiersAgainstSheet(records);
+      const dossiers = getAllDossiers();
+      res.json({ ok: true, discrepancies, dossiers });
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // Get a single student dossier by GR
+  app.get('/api/documents/dossiers/:grNo', (req, res) => {
+    const dossier = getDossierByGr(req.params.grNo);
+    if (!dossier) {
+      res.status(404).json({ error: 'Dossier not found for this GR' });
+      return;
+    }
+    res.json({ ok: true, dossier });
+  });
+
+  // Cross-reference dossier with Google Sheet data
+  app.post('/api/documents/audit/:grNo', (req, res) => {
+    try {
+      const { sheetRecord } = req.body || {};
+      const discrepancies = auditDossierAgainstSheet(req.params.grNo, sheetRecord);
+      res.json({ ok: true, discrepancies });
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // Automatically link all unassigned & scanned documents to Google Sheet students
+  app.post('/api/documents/auto-link', (req, res) => {
+    try {
+      const { records = [] } = req.body || {};
+      const result = autoLinkDocumentsAgainstSheet(records);
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      console.error('[server.ts] auto-link error:', err);
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // Manually assign a document to a student GR
+  app.post('/api/documents/assign', (req, res) => {
+    try {
+      const { docId, targetGrNo, studentRecord } = req.body || {};
+      if (!docId || !targetGrNo) {
+        res.status(400).json({ error: 'docId and targetGrNo are required' });
+        return;
+      }
+      const doc = assignDocumentToGr(docId, String(targetGrNo).trim(), studentRecord);
+      if (!doc) {
+        res.status(404).json({ error: 'Document not found' });
+        return;
+      }
+      res.json({ ok: true, document: doc, dossier: getDossierByGr(String(targetGrNo).trim()) });
+    } catch (err) {
+      console.error('[server.ts] assign error:', err);
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // Mark discrepancy as false flag / dismissed
+  app.post('/api/documents/discrepancies/dismiss', (req, res) => {
+    try {
+      const { flagId } = req.body || {};
+      if (!flagId) {
+        res.status(400).json({ error: 'flagId is required' });
+        return;
+      }
+      const success = dismissDiscrepancy(flagId);
+      res.json({ ok: true, success });
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // Un-dismiss a discrepancy flag
+  app.post('/api/documents/discrepancies/undismiss', (req, res) => {
+    try {
+      const { flagId } = req.body || {};
+      if (!flagId) {
+        res.status(400).json({ error: 'flagId is required' });
+        return;
+      }
+      const success = undismissDiscrepancy(flagId);
+      res.json({ ok: true, success });
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // Get dismissed flags dictionary
+  app.get('/api/documents/dismissed-flags', (_req, res) => {
+    try {
+      const flags = getDismissedFlags();
+      res.json({ ok: true, flags });
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // Manually update tag or rotate image
+  app.post('/api/documents/update-doc', async (req, res) => {
+    try {
+      const { docId, newTag, rotateAngle } = req.body || {};
+      if (!docId) {
+        res.status(400).json({ error: 'docId is required' });
+        return;
+      }
+      const updated = await updateDocumentMetadata(docId, newTag, rotateAngle);
+      if (!updated) {
+        res.status(404).json({ error: 'Document not found' });
+        return;
+      }
+      res.json({ ok: true, document: updated });
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // Serve stored document files safely
+  app.get('/api/documents/file/:grNo/:filename', (req, res) => {
+    try {
+      const { grNo, filename } = req.params;
+      const safeFilename = path.basename(filename);
+      const safeGr = path.basename(grNo);
+      const filePath = path.join(process.cwd(), 'data', 'student_documents', `GR_${safeGr}`, safeFilename);
+
+      if (!fs.existsSync(filePath)) {
+        res.status(404).send('File not found');
+        return;
+      }
+
+      res.setHeader('Content-Type', 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      fs.createReadStream(filePath).pipe(res);
+    } catch (err) {
+      res.status(500).send((err as Error).message);
+    }
+  });
+
+  // Download Class-wise or All-classes organized ZIP
+  app.get('/api/documents/export-zip', (req, res) => {
+    try {
+      const targetClass = (req.query.class as string) || 'ALL';
+      const zipName = targetClass === 'ALL' ? 'PHSSJ_All_Students_Documents.zip' : `PHSSJ_Class_${targetClass}_Documents.zip`;
+
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', `attachment; filename="${zipName}"`);
+
+      const zipStream = createArchiveZipStream(targetClass);
+      zipStream.pipe(res);
+      zipStream.finalize();
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
     }
   });
 

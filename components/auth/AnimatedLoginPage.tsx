@@ -54,7 +54,7 @@ const HIGHLIGHT_MODULES = [
     icon: Clock,
     title: 'Live Timetable & Roster',
     badge: '21 Faculty',
-    desc: 'Real-time proxy substitution engine and teacher load allocation monitor.',
+    desc: 'Real-time proxy substitution and teacher load allocation.',
     color: 'from-amber-500 to-orange-600',
     lightBg: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60',
   },

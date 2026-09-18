@@ -67,33 +67,45 @@ function geminiServerPlugin(): Plugin {
               } : undefined,
             });
 
+            const modelsToTry = Array.from(new Set([
+              model,
+              'gemini-3.5-flash-lite',
+              'gemini-3.1-flash-lite',
+              'gemini-2.5-flash',
+              'gemini-2.5-flash-lite',
+              'gemma-4-31b-it',
+              'gemma-4-26b-it',
+            ]));
+
             let lastErrText = '';
             let lastStatus = 500;
 
-            for (const key of serverKeys) {
-              try {
-                const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-                const response = await fetch(geminiUrl, {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'x-goog-api-key': key,
-                  },
-                  body: reqBody,
-                });
+            for (const currentModel of modelsToTry) {
+              for (const key of serverKeys) {
+                try {
+                  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent`;
+                  const response = await fetch(geminiUrl, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'x-goog-api-key': key,
+                    },
+                    body: reqBody,
+                  });
 
-                if (response.ok) {
-                  const data = await response.json();
-                  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-                  res.setHeader('Content-Type', 'application/json');
-                  res.end(JSON.stringify({ text }));
-                  return;
+                  if (response.ok) {
+                    const data = await response.json();
+                    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                    res.setHeader('Content-Type', 'application/json');
+                    res.end(JSON.stringify({ text }));
+                    return;
+                  }
+
+                  lastStatus = response.status;
+                  lastErrText = await response.text();
+                } catch (fetchErr) {
+                  lastErrText = (fetchErr as Error).message;
                 }
-
-                lastStatus = response.status;
-                lastErrText = await response.text();
-              } catch (fetchErr) {
-                lastErrText = (fetchErr as Error).message;
               }
             }
 
