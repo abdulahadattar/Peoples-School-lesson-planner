@@ -76,7 +76,7 @@ export const ClassEditorModal: React.FC<ClassEditorModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
       <div className="bg-white dark:bg-brand-surface rounded-2xl border border-brand-border shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="px-6 py-4 border-b border-brand-border flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/30">

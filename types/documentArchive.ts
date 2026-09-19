@@ -15,25 +15,86 @@ export type DocumentClassificationType =
   | 'IGNORED_NOISE'
   | 'OTHER_UNCLASSIFIED';
 
+export interface ExtractedChildRecord {
+  entryNo?: number;
+  childNameEnglish?: string;
+  childNameSindhi?: string;
+  childNameUrdu?: string;
+  bFormNo?: string;
+  dob?: string;
+  gender?: 'Male' | 'Female' | string;
+  fatherNameEnglish?: string;
+  fatherNameSindhi?: string;
+  fatherCnic?: string;
+  motherNameSindhi?: string;
+  motherCnic?: string;
+  hasTickMark?: boolean;
+  isTargetStudent?: boolean;
+}
+
 export interface ExtractedStudentInfo {
   grNo?: string;
   studentName?: string; // English
   studentNameUrdu?: string;
+  studentNameSindhi?: string; // Sindhi (سنڌي) script
   fatherName?: string; // English
   fatherNameUrdu?: string;
+  fatherNameSindhi?: string; // Sindhi (سنڌي) script
+  applicantName?: string; // On B-Form / CRC: Applicant (درخواست گذار) at top is Father/Mother
+  applicantCnic?: string; // On B-Form / CRC: Applicant CNIC
+  children?: ExtractedChildRecord[]; // On B-Form / CRC: All children listed in family table
+  cardholderName?: string; // On CNIC: Name of cardholder (student's Father on Father CNIC)
+  cardholderFatherName?: string; // On CNIC: Father Name of cardholder (student's Paternal Grandfather on Father CNIC)
+  paternalGrandfatherName?: string; // Father's Father printed on Father's CNIC
+  caste?: string; // Extracted caste / tribe / surname (e.g. Brohi, Baloch, Khetran, Memon, Chandio, etc.)
   bFormNo?: string; // Normalized 13 digits: XXXXX-XXXXXXX-X
   fatherCnic?: string; // Normalized 13 digits: XXXXX-XXXXXXX-X
   dob?: string; // DD-MM-YYYY
   gender?: 'Male' | 'Female' | string;
   religion?: string;
+  hasEnglishText?: boolean; // True if document has printed English names; False if Urdu/Sindhi script only
   previousSchool?: string;
   classAdmitted?: string;
   admissionDate?: string;
   address?: string;
   notes?: string;
+  marksheetDetails?: {
+    rollNo?: string;
+    seatNo?: string;
+    totalMarks?: number;
+    obtainedMarks?: number;
+    percentage?: number;
+    grade?: string;
+    examYear?: string;
+    board?: string;
+    resultStatus?: string;
+  };
+  bFormValidation?: {
+    isValidFormat?: boolean;
+    issue?: string;
+    cleanNumber?: string;
+    provinceName?: string;
+    isValid?: boolean;
+    digits?: string;
+    formatted?: string;
+    provinceCode?: number;
+  };
 }
 
 export type DiscrepancySeverity = 'low' | 'medium' | 'high' | 'critical';
+
+export interface CandidateStudentMatch {
+  grNo: string;
+  studentName: string;
+  fatherName: string;
+  currentClass: string;
+  section?: string;
+  bFormNo?: string;
+  parentCnic?: string;
+  score: number; // 0 - 100
+  evidence: string[];
+  reasons: string;
+}
 
 export interface DocumentDiscrepancy {
   id: string;
@@ -41,7 +102,18 @@ export interface DocumentDiscrepancy {
   studentName: string;
   fatherName?: string;
   currentClass?: string;
-  field: 'bFormNo' | 'parentCnic' | 'studentName' | 'fatherName' | 'dob' | 'grNo' | 'missing' | 'orientation';
+  field:
+    | 'bFormNo'
+    | 'parentCnic'
+    | 'studentName'
+    | 'fatherName'
+    | 'dob'
+    | 'grNo'
+    | 'caste'
+    | 'familyHierarchy'
+    | 'bFormValidation'
+    | 'missing'
+    | 'orientation';
   fieldName: string;
   sheetValue: string;
   extractedValue: string;
@@ -52,6 +124,15 @@ export interface DocumentDiscrepancy {
   documentFilename?: string;
   documentClassification?: DocumentClassificationType;
   isDismissed?: boolean;
+  incompleteOcr?: boolean;
+  suggestedAction?: 'update_sheet' | 'merge_caste' | 'enrich_full_name' | 'verify_hierarchy' | 'reformat_bform' | 'link_gr';
+  suggestedCorrection?: {
+    field: string;
+    newValue: string;
+    reason: string;
+    previousValue?: string;
+  };
+  rankedMatches?: CandidateStudentMatch[];
   resolvedAt?: string;
 }
 
@@ -105,11 +186,19 @@ export interface StudentDossier {
   bFormNo: string;
   parentCnic: string;
   dob: string;
+  caste?: string;
+  paternalGrandfatherName?: string;
+  studentNameSindhi?: string;
+  fatherNameSindhi?: string;
+  hasEnglishText?: boolean;
   avatarUrl?: string;
   documents: StudentDocumentRecord[];
   allFlags: DocumentDiscrepancy[];
   hasMissingDocuments: boolean;
   missingTypes: DocumentClassificationType[];
+  dossierConfidence?: number; // 0 - 100
+  confidenceTier?: 'HIGH' | 'MEDIUM' | 'LOW';
+  evidence?: string[];
   lastUpdated: string;
 }
 

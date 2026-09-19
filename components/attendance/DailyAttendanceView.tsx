@@ -489,7 +489,7 @@ export const DailyAttendanceView: React.FC = () => {
       {/* Toast Notification */}
       {notification && (
         <div
-          className={`fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium transition-all duration-300 ${
+          className={`fixed bottom-6 right-6 z-[130] flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium transition-all duration-300 ${
             notification.type === 'success'
               ? 'bg-emerald-900/90 text-white border-emerald-700'
               : notification.type === 'error'
@@ -1127,7 +1127,7 @@ export const DailyAttendanceView: React.FC = () => {
 
       {/* History / Archive Drawer Modal */}
       {showHistoryDrawer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
           <div className="bg-brand-surface rounded-2xl border border-brand-border shadow-2xl max-w-lg w-full overflow-hidden animate-scaleUp">
             <div className="p-5 border-b border-brand-border flex items-center justify-between">
               <div className="flex items-center gap-2.5">

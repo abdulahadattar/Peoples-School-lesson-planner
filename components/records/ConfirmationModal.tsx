@@ -36,7 +36,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-fadeIn">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-fadeIn">
       <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-brand-surface border border-brand-border shadow-card p-6 overflow-hidden flex flex-col max-h-[90vh]">
         <div className="flex items-start gap-3.5 mb-4">
           <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0 border border-amber-200/60 dark:border-amber-900/60">

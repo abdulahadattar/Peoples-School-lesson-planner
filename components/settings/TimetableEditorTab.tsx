@@ -527,7 +527,7 @@ export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
     <div className="space-y-6">
       {/* Toast Notification Banner */}
       {exportNotice && (
-        <div className="fixed top-5 right-5 z-50 px-4 py-3 rounded-2xl bg-brand-surface border border-brand-primary text-brand-text-primary shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-200">
+        <div className="fixed top-5 right-5 z-[130] px-4 py-3 rounded-2xl bg-brand-surface border border-brand-primary text-brand-text-primary shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-200">
           <div className="w-8 h-8 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center font-bold text-base">
             📊
           </div>
@@ -1230,7 +1230,7 @@ export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
           PERIOD CELL EDITOR MODAL
           ───────────────────────────────────────────────────────────── */}
       {editingCell && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-brand-surface border border-brand-border rounded-2xl w-full max-w-lg p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-brand-border pb-3">

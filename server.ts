@@ -26,7 +26,18 @@ import {
   dismissDiscrepancy,
   undismissDiscrepancy,
   getDismissedFlags,
+  applyDiscrepancyCorrection,
+  batchApplyDiscrepancyCorrections,
+  getRankedCandidateMatches,
   setCachedSheetRecords,
+  stopProcessingJob,
+  deleteDocumentRecord,
+  deleteMultipleDocumentRecords,
+  rescanDocumentRecord,
+  replaceDocumentRecord,
+  selectTargetChildForDocument,
+  reprocessDocumentWithAi,
+  reprocessDossierDocumentsWithAi,
 } from './services/documentArchiveService';
 
 // Server-side in-memory cache for Google Sheet data to prevent redundant network round-trips
@@ -981,6 +992,54 @@ async function startServer() {
     }
   });
 
+  // Apply single discrepancy correction to Google Sheet and local records
+  app.post('/api/documents/discrepancies/apply-correction', async (req, res) => {
+    try {
+      const { grNo, flagId, correction, accessToken } = req.body || {};
+      if (!grNo || !correction) {
+        res.status(400).json({ error: 'grNo and correction are required' });
+        return;
+      }
+      const authHeader = req.headers.authorization;
+      const token = accessToken || (authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined);
+      const result = await applyDiscrepancyCorrection(grNo, flagId, correction, token);
+      // Invalidate master sheet cache so subsequent queries fetch updated values
+      Object.keys(sheetCache).forEach((k) => delete sheetCache[k]);
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      console.error('[server.ts] apply-correction error:', err);
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // Batch apply multiple discrepancy corrections
+  app.post('/api/documents/discrepancies/batch-apply', async (req, res) => {
+    try {
+      const { corrections = [], accessToken } = req.body || {};
+      const authHeader = req.headers.authorization;
+      const token = accessToken || (authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined);
+      const result = await batchApplyDiscrepancyCorrections(corrections, token);
+      // Invalidate master sheet cache so subsequent queries fetch updated values
+      Object.keys(sheetCache).forEach((k) => delete sheetCache[k]);
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      console.error('[server.ts] batch-apply error:', err);
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // Query ranked candidate matches for an unlinked document profile
+  app.post('/api/documents/candidate-matches', (req, res) => {
+    try {
+      const { extractedInfo, topN = 5 } = req.body || {};
+      const serverRecords = sheetCache['default']?.records || [];
+      const matches = getRankedCandidateMatches(extractedInfo, serverRecords, topN);
+      res.json({ ok: true, matches });
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
   // Un-dismiss a discrepancy flag
   app.post('/api/documents/discrepancies/undismiss', (req, res) => {
     try {
@@ -1006,6 +1065,65 @@ async function startServer() {
     }
   });
 
+  // Manually select a specific child from multi-child CRC / B-Form table
+  app.post('/api/documents/select-child', (req, res) => {
+    try {
+      const { docId, entryNoOrIndex } = req.body || {};
+      if (!docId || entryNoOrIndex === undefined) {
+        res.status(400).json({ error: 'docId and entryNoOrIndex are required' });
+        return;
+      }
+      const updated = selectTargetChildForDocument(docId, Number(entryNoOrIndex));
+      if (!updated) {
+        res.status(404).json({ error: 'Document or child entry not found' });
+        return;
+      }
+      res.json({ ok: true, document: updated });
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // Re-process a single document with latest AI vision prompt & transliteration
+  app.post('/api/documents/reprocess-doc', async (req, res) => {
+    try {
+      const { docId } = req.body || {};
+      if (!docId) {
+        res.status(400).json({ error: 'docId is required' });
+        return;
+      }
+      const keys = getDocumentApiKeys();
+      const updated = await reprocessDocumentWithAi(docId, keys);
+      if (!updated) {
+        res.status(404).json({ error: 'Document not found or image missing' });
+        return;
+      }
+      res.json({ ok: true, document: updated });
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // Re-process all documents in a student dossier
+  app.post('/api/documents/reprocess-dossier', async (req, res) => {
+    try {
+      const { grNo } = req.body || {};
+      if (!grNo) {
+        res.status(400).json({ error: 'grNo is required' });
+        return;
+      }
+      const keys = getDocumentApiKeys();
+      const dossier = await reprocessDossierDocumentsWithAi(String(grNo).trim(), keys);
+      if (!dossier) {
+        res.status(404).json({ error: 'Dossier not found' });
+        return;
+      }
+      res.json({ ok: true, dossier });
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
   // Manually update tag or rotate image
   app.post('/api/documents/update-doc', async (req, res) => {
     try {
@@ -1019,7 +1137,57 @@ async function startServer() {
         res.status(404).json({ error: 'Document not found' });
         return;
       }
-      res.json({ ok: true, document: updated });
+      res.json({ ok: true, document: updated, dossier: getDossierByGr(updated.grNo) });
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // Permanently delete/remove document record(s) & file(s)
+  app.post('/api/documents/delete', (req, res) => {
+    try {
+      const { docId, docIds } = req.body || {};
+      let idsToDelete: string[] = [];
+      if (Array.isArray(docIds) && docIds.length > 0) {
+        idsToDelete = docIds.filter(Boolean);
+      } else if (docId) {
+        idsToDelete = [docId];
+      }
+
+      if (idsToDelete.length === 0) {
+        res.status(400).json({ error: 'docId or docIds is required' });
+        return;
+      }
+
+      const { deletedCount } = deleteMultipleDocumentRecords(idsToDelete);
+      res.json({ ok: true, deletedCount, dossiers: getAllDossiers(), documents: getAllDocuments() });
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // Stop / Cancel active background job
+  app.post('/api/documents/jobs/:jobId/stop', (req, res) => {
+    try {
+      const { jobId } = req.params;
+      const success = stopProcessingJob(jobId);
+      res.json({ ok: true, success, job: getJobStatus(jobId) });
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  });
+
+  // Rescan / Re-analyze document using Gemini Vision model fallback chain
+  app.post('/api/documents/rescan', async (req, res) => {
+    try {
+      const { docId } = req.body || {};
+      if (!docId) {
+        res.status(400).json({ error: 'docId is required' });
+        return;
+      }
+      const serverKeys = getDocumentApiKeys();
+      const updatedDoc = await rescanDocumentRecord(docId, serverKeys);
+      res.json({ ok: true, document: updatedDoc, dossiers: getAllDossiers(), documents: getAllDocuments() });
     } catch (err) {
       res.status(500).json({ error: (err as Error).message });
     }
@@ -1029,8 +1197,10 @@ async function startServer() {
   app.get('/api/documents/file/:grNo/:filename', (req, res) => {
     try {
       const { grNo, filename } = req.params;
-      const safeFilename = path.basename(filename);
-      const safeGr = path.basename(grNo);
+      const decodedFilename = decodeURIComponent(filename);
+      const decodedGr = decodeURIComponent(grNo);
+      const safeFilename = path.basename(decodedFilename);
+      const safeGr = path.basename(decodedGr);
       const filePath = path.join(process.cwd(), 'data', 'student_documents', `GR_${safeGr}`, safeFilename);
 
       if (!fs.existsSync(filePath)) {
@@ -1038,8 +1208,18 @@ async function startServer() {
         return;
       }
 
-      res.setHeader('Content-Type', 'image/jpeg');
-      res.setHeader('Cache-Control', 'public, max-age=86400');
+      const ext = path.extname(safeFilename).toLowerCase();
+      let mimeType = 'image/jpeg';
+      if (ext === '.png') mimeType = 'image/png';
+      else if (ext === '.webp') mimeType = 'image/webp';
+      else if (ext === '.pdf') mimeType = 'application/pdf';
+      else if (ext === '.gif') mimeType = 'image/gif';
+      else if (ext === '.svg') mimeType = 'image/svg+xml';
+
+      res.setHeader('Content-Type', mimeType);
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
       fs.createReadStream(filePath).pipe(res);
     } catch (err) {
       res.status(500).send((err as Error).message);

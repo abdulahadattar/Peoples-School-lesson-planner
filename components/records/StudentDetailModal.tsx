@@ -25,6 +25,7 @@ import { StudentDossier, DocumentDiscrepancy } from '../../types/documentArchive
 interface StudentDetailModalProps {
   isOpen: boolean;
   student: StudentRecord | null;
+  initialTab?: 'details' | 'documents';
   onClose: () => void;
   onEdit: (student: StudentRecord) => void;
 }
@@ -32,14 +33,21 @@ interface StudentDetailModalProps {
 export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   isOpen,
   student,
+  initialTab = 'details',
   onClose,
   onEdit,
 }) => {
-  const [activeTab, setActiveTab] = useState<'details' | 'documents'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'documents'>(initialTab);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [dossier, setDossier] = useState<StudentDossier | null>(null);
   const [discrepancies, setDiscrepancies] = useState<DocumentDiscrepancy[]>([]);
   const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
 
   useEffect(() => {
     if (student && isOpen) {
@@ -75,7 +83,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   const docCount = dossier?.documents.length || 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-fadeIn">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-fadeIn">
       <div className="w-full max-w-2xl rounded-2xl bg-white dark:bg-brand-surface border border-brand-border shadow-card p-6 flex flex-col max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-start justify-between pb-4 border-b border-brand-border">
@@ -92,7 +100,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             >
               {dossier?.avatarUrl ? (
                 <img
-                  src={`${dossier.avatarUrl}?t=${Date.now()}`}
+                  src={dossier.avatarUrl}
                   alt={student.studentName}
                   className="w-full h-full object-cover rounded-full"
                 />
@@ -390,7 +398,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
       {previewPhotoUrl && (
         <div
           onClick={() => setPreviewPhotoUrl(null)}
-          className="fixed inset-0 z-60 bg-black/85 flex items-center justify-center p-4 animate-fadeIn"
+          className="fixed inset-0 z-[110] bg-black/85 flex items-center justify-center p-4 animate-fadeIn"
         >
           <div className="relative bg-white dark:bg-brand-surface rounded-2xl max-w-lg w-full p-4 border border-brand-border shadow-2xl space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-brand-border">
@@ -407,7 +415,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             </div>
             <div className="bg-slate-950 rounded-xl p-2 flex items-center justify-center min-h-[300px]">
               <img
-                src={`${previewPhotoUrl}?t=${Date.now()}`}
+                src={previewPhotoUrl}
                 alt={student.studentName}
                 className="max-h-[60vh] w-auto object-contain rounded-lg"
               />

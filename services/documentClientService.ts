@@ -158,7 +158,7 @@ export async function uploadIndividualFiles(
   const { job: initialJob } = await initRes.json();
   const jobId = initialJob.id;
 
-  // 2. Stream files individually or in chunked mode
+  // 2. Stream files individually to the batch job
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     const currentPercent = Math.round((i / files.length) * 90) + 5;
@@ -166,34 +166,22 @@ export async function uploadIndividualFiles(
       onProgress(currentPercent, `Uploading (${i + 1}/${files.length}): ${file.name}...`);
     }
 
-    if (file.size > 4 * 1024 * 1024) {
-      // Large file / PDF: upload via chunks attached to the student
-      await uploadFileInChunks(file, grNo, false, (chunkPct) => {
-        if (onProgress) {
-          onProgress(
-            currentPercent,
-            `Uploading ${file.name} (${i + 1}/${files.length}) [${chunkPct}%]...`
-          );
-        }
-      });
-    } else {
-      // Normal size file (< 4MB): send directly as single file item to avoid bundling large payloads
-      const base64Data = await fileToBase64(file);
-      const uploadRes = await fetch('/api/documents/upload-single', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jobId,
-          filename: file.name,
-          base64Data,
-          grNo,
-        }),
-      });
+    // Convert file to base64 and attach directly to the batch jobId
+    const base64Data = await fileToBase64(file);
+    const uploadRes = await fetch('/api/documents/upload-single', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jobId,
+        filename: file.name,
+        base64Data,
+        grNo,
+      }),
+    });
 
-      if (!uploadRes.ok) {
-        const errText = await uploadRes.text();
-        throw new Error(formatApiErrorMessage(uploadRes.status, errText));
-      }
+    if (!uploadRes.ok) {
+      const errText = await uploadRes.text();
+      throw new Error(formatApiErrorMessage(uploadRes.status, errText));
     }
   }
 
@@ -279,7 +267,7 @@ export async function updateDocumentTagOrRotation(
   docId: string,
   newTag?: DocumentClassificationType,
   rotateAngle?: 90 | 180 | 270
-): Promise<StudentDocumentRecord> {
+): Promise<StudentDocumentRecord & { _dossier?: StudentDossier }> {
   const res = await fetch('/api/documents/update-doc', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -287,7 +275,11 @@ export async function updateDocumentTagOrRotation(
   });
   if (!res.ok) throw new Error('Failed to update document metadata');
   const data = await res.json();
-  return data.document;
+  const doc = data.document;
+  if (data.dossier && doc) {
+    (doc as any)._dossier = data.dossier;
+  }
+  return doc;
 }
 
 export async function retryFailedJob(jobId: string): Promise<BatchProcessingJob> {
@@ -373,8 +365,178 @@ export async function fetchDismissedFlags(): Promise<Record<string, boolean>> {
   }
 }
 
+export async function deleteDocument(docId: string): Promise<{ ok: boolean; dossiers: StudentDossier[]; documents: StudentDocumentRecord[] }> {
+  const res = await fetch('/api/documents/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ docId }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(formatApiErrorMessage(res.status, err));
+  }
+  return await res.json();
+}
+
+export async function deleteDocumentsBatch(docIds: string[]): Promise<{ ok: boolean; deletedCount: number; dossiers: StudentDossier[]; documents: StudentDocumentRecord[] }> {
+  const res = await fetch('/api/documents/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ docIds }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(formatApiErrorMessage(res.status, err));
+  }
+  return await res.json();
+}
+
+export async function rescanDocument(docId: string): Promise<{ ok: boolean; document: StudentDocumentRecord; dossiers: StudentDossier[]; documents: StudentDocumentRecord[] }> {
+  const res = await fetch('/api/documents/rescan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ docId }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(formatApiErrorMessage(res.status, err));
+  }
+  return await res.json();
+}
+
+export async function stopJob(jobId: string): Promise<{ ok: boolean; job: BatchProcessingJob }> {
+  const res = await fetch(`/api/documents/jobs/${jobId}/stop`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(formatApiErrorMessage(res.status, err));
+  }
+  return await res.json();
+}
+
+/**
+ * Apply a suggested discrepancy correction (e.g. Caste incorporation, hierarchy verify, B-Form format)
+ */
+export async function applyDiscrepancyCorrectionClient(
+  grNo: string,
+  flagId: string,
+  correction: { field: string; newValue: string; reason?: string },
+  accessToken?: string
+): Promise<{ success: boolean; message: string; updatedRecord?: any; dossier?: StudentDossier }> {
+  const res = await fetch('/api/documents/discrepancies/apply-correction', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
+    body: JSON.stringify({ grNo, flagId, correction, accessToken }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(formatApiErrorMessage(res.status, err));
+  }
+  return await res.json();
+}
+
+/**
+ * Batch apply multiple discrepancy corrections in one action
+ */
+export async function batchApplyDiscrepancyCorrectionsClient(
+  corrections: Array<{ grNo: string; flagId: string; field: string; newValue: string; reason?: string }>,
+  accessToken?: string
+): Promise<{ success: boolean; appliedCount: number; errors: string[] }> {
+  const res = await fetch('/api/documents/discrepancies/batch-apply', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
+    body: JSON.stringify({ corrections, accessToken }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(formatApiErrorMessage(res.status, err));
+  }
+  return await res.json();
+}
+
+/**
+ * Query candidate matches for any extracted profile
+ */
+export async function queryCandidateMatches(
+  extractedInfo: any,
+  topN: number = 5
+): Promise<{ ok: boolean; matches: any[] }> {
+  const res = await fetch('/api/documents/candidate-matches', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ extractedInfo, topN }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(formatApiErrorMessage(res.status, err));
+  }
+  return await res.json();
+}
+
 export function getExportZipUrl(targetClass?: string): string {
   return `/api/documents/export-zip?class=${encodeURIComponent(targetClass || 'ALL')}`;
+}
+
+/**
+ * Manually select a specific child from multi-child CRC / B-Form table
+ */
+export async function selectTargetChildClient(
+  docId: string,
+  entryNoOrIndex: number
+): Promise<{ ok: boolean; document: StudentDocumentRecord }> {
+  const res = await fetch('/api/documents/select-child', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ docId, entryNoOrIndex }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(formatApiErrorMessage(res.status, err));
+  }
+  return await res.json();
+}
+
+/**
+ * Re-process a single document with latest AI vision prompt & transliteration
+ */
+export async function reprocessDocClient(
+  docId: string
+): Promise<{ ok: boolean; document: StudentDocumentRecord }> {
+  const res = await fetch('/api/documents/reprocess-doc', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ docId }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(formatApiErrorMessage(res.status, err));
+  }
+  return await res.json();
+}
+
+/**
+ * Re-process all documents in a student dossier
+ */
+export async function reprocessDossierClient(
+  grNo: string
+): Promise<{ ok: boolean; dossier: StudentDossier }> {
+  const res = await fetch('/api/documents/reprocess-dossier', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ grNo }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(formatApiErrorMessage(res.status, err));
+  }
+  return await res.json();
 }
 
 function fileToBase64(file: File): Promise<string> {

@@ -135,7 +135,7 @@ export const StudentEditModal: React.FC<StudentEditModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-fadeIn overflow-y-auto">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-fadeIn overflow-y-auto">
       <div className="w-full max-w-3xl rounded-2xl bg-white dark:bg-brand-surface border border-brand-border shadow-card p-6 flex flex-col max-h-[92vh] my-auto">
         <div className="flex items-center justify-between pb-4 border-b border-brand-border">
           <div>

@@ -112,7 +112,14 @@ export const loginWithGoogle = async (): Promise<User | null> => {
  * Get current in-memory access token.
  */
 export const getAccessToken = async (): Promise<string | null> => {
-  return cachedAccessToken;
+  if (cachedAccessToken) return cachedAccessToken;
+  const stored = localStorage.getItem('google_access_token');
+  const expiry = localStorage.getItem('google_token_expiry');
+  if (stored && expiry && Date.now() < parseInt(expiry, 10)) {
+    cachedAccessToken = stored;
+    return stored;
+  }
+  return stored || null;
 };
 
 /**

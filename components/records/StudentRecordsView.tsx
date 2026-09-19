@@ -10,6 +10,7 @@ import {
   Eye,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   Users,
   GraduationCap,
   FileSpreadsheet,
@@ -26,6 +27,12 @@ import {
   Unlock,
   ShieldCheck,
   ShieldAlert,
+  ZoomIn,
+  FolderOpen,
+  LayoutGrid,
+  List,
+  FileText,
+  Camera,
 } from 'lucide-react';
 import { useSchoolConfig } from '../../hooks/useSchoolConfig';
 import {
@@ -46,6 +53,8 @@ import {
   getAccessToken,
   getCurrentUser,
 } from '../../services/googleAuth';
+import { fetchAllDossiers } from '../../services/documentClientService';
+import { StudentDossier } from '../../types/documentArchive';
 import { GoogleSignInButton } from './GoogleSignInButton';
 import { StudentDetailModal } from './StudentDetailModal';
 import { StudentEditModal } from './StudentEditModal';
@@ -68,6 +77,97 @@ export type SortField =
   | 'address';
 
 export type SortDirection = 'asc' | 'desc';
+
+interface StudentAvatarProps {
+  name: string;
+  grNo?: string;
+  avatarUrl?: string;
+  size?: 'sm' | 'md' | 'lg';
+  onClick?: () => void;
+}
+
+const StudentAvatar: React.FC<StudentAvatarProps> = ({
+  name,
+  grNo = '',
+  avatarUrl,
+  size = 'md',
+  onClick,
+}) => {
+  const [imgError, setImgError] = useState(false);
+
+  // Reset img error if avatarUrl changes
+  useEffect(() => {
+    setImgError(false);
+  }, [avatarUrl]);
+
+  const sizeClasses = {
+    sm: 'w-7 h-7 text-[10px]',
+    md: 'w-8 h-8 text-xs',
+    lg: 'w-11 h-11 text-sm',
+  }[size];
+
+  const initials = useMemo(() => {
+    if (!name) return 'S';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }, [name]);
+
+  const colorIndex = useMemo(() => {
+    let hash = 0;
+    const str = grNo || name || 'S';
+    for (let i = 0; i < str.length; i++) {
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return Math.abs(hash) % 6;
+  }, [grNo, name]);
+
+  const bgGradients = [
+    'from-indigo-600 to-blue-600 text-white',
+    'from-emerald-600 to-teal-700 text-white',
+    'from-violet-600 to-purple-700 text-white',
+    'from-amber-600 to-orange-700 text-white',
+    'from-rose-600 to-pink-700 text-white',
+    'from-sky-600 to-cyan-700 text-white',
+  ];
+
+  if (avatarUrl && !imgError) {
+    return (
+      <div
+        onClick={onClick}
+        className={`${sizeClasses} rounded-full border border-brand-border/80 overflow-hidden flex-shrink-0 shadow-xs relative group/avatar ${
+          onClick ? 'cursor-pointer hover:ring-2 hover:ring-brand-primary transition-all' : ''
+        }`}
+        title={`${name} (Click to inspect photo)`}
+      >
+        <img
+          src={avatarUrl}
+          alt={name}
+          className="w-full h-full object-cover"
+          onError={() => setImgError(true)}
+          loading="lazy"
+        />
+        {onClick && (
+          <div className="absolute inset-0 bg-black/35 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center">
+            <ZoomIn className="w-3 h-3 text-white" />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      onClick={onClick}
+      className={`${sizeClasses} rounded-full bg-gradient-to-br ${bgGradients[colorIndex]} font-bold flex items-center justify-center flex-shrink-0 shadow-xs select-none border border-white/25 ${
+        onClick ? 'cursor-pointer hover:opacity-90 transition-opacity' : ''
+      }`}
+      title={name}
+    >
+      {initials}
+    </div>
+  );
+};
 
 export const StudentRecordsView: React.FC = () => {
   const { config: schoolConfig, isAdmin, saveConfig } = useSchoolConfig();
@@ -121,8 +221,14 @@ export const StudentRecordsView: React.FC = () => {
 
   // Modals
   const [detailStudent, setDetailStudent] = useState<StudentRecord | null>(null);
+  const [detailModalTab, setDetailModalTab] = useState<'details' | 'documents'>('details');
   const [editStudent, setEditStudent] = useState<StudentRecord | null>(null);
   const [isAddMode, setIsAddMode] = useState<boolean>(false);
+
+  // Document Dossier & Avatar state
+  const [dossiersByGr, setDossiersByGr] = useState<Record<string, StudentDossier>>({});
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<{ url: string; name: string; grNo: string } | null>(null);
+  const [viewMode, setViewMode] = useState<'auto' | 'table' | 'cards'>('auto');
 
   // Confirmation modal state
   const [confirmationState, setConfirmationState] = useState<{
@@ -175,7 +281,7 @@ export const StudentRecordsView: React.FC = () => {
     };
   }, []);
 
-  // Fetch initial sheet data
+  // Fetch initial sheet data & student document dossiers
   const loadRecords = async (isManualRefresh = false) => {
     if (isManualRefresh) setIsRefreshing(true);
     else setIsLoading(true);
@@ -183,11 +289,29 @@ export const StudentRecordsView: React.FC = () => {
 
     try {
       const token = authToken || (await getAccessToken());
-      const result = await fetchSheetData(DEFAULT_SPREADSHEET_ID, DEFAULT_GID, token, isManualRefresh);
-      setRecords(result.records);
-      setLastSynced(result.lastSynced);
-      if (isManualRefresh) {
-        showNotification(`Successfully synchronized ${result.records.length} records from Google Sheet.`);
+      const [sheetResult, dossiersResult] = await Promise.allSettled([
+        fetchSheetData(DEFAULT_SPREADSHEET_ID, DEFAULT_GID, token, isManualRefresh),
+        fetchAllDossiers(),
+      ]);
+
+      if (sheetResult.status === 'fulfilled') {
+        setRecords(sheetResult.value.records);
+        setLastSynced(sheetResult.value.lastSynced);
+        if (isManualRefresh) {
+          showNotification(`Successfully synchronized ${sheetResult.value.records.length} records from Google Sheet.`);
+        }
+      } else {
+        throw sheetResult.reason;
+      }
+
+      if (dossiersResult.status === 'fulfilled') {
+        const dMap: Record<string, StudentDossier> = {};
+        for (const d of dossiersResult.value) {
+          if (d.grNo) {
+            dMap[String(d.grNo).trim()] = d;
+          }
+        }
+        setDossiersByGr(dMap);
       }
     } catch (err: any) {
       console.error('Failed to load Google Sheet data:', err);
@@ -585,7 +709,7 @@ export const StudentRecordsView: React.FC = () => {
       {/* Toast Notification */}
       {notification && (
         <div
-          className={`fixed top-20 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-glass border text-xs font-semibold animate-fadeInUp ${
+          className={`fixed top-20 right-6 z-[130] flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-glass border text-xs font-semibold animate-fadeInUp ${
             notification.type === 'error'
               ? 'bg-rose-50 dark:bg-rose-950/90 text-rose-800 dark:text-rose-200 border-rose-200 dark:border-rose-800'
               : notification.type === 'info'
@@ -911,23 +1035,67 @@ export const StudentRecordsView: React.FC = () => {
         </div>
 
         {/* Results summary bar */}
-        <div className="flex items-center justify-between text-xs text-brand-text-secondary pt-1 border-t border-brand-border/60">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-brand-text-secondary pt-1 border-t border-brand-border/60">
           <span>
             Showing <strong className="text-brand-text-primary">{filteredRecords.length}</strong> of{' '}
             <strong className="text-brand-text-primary">{records.length}</strong> school records
           </span>
-          <div className="flex items-center gap-2">
-            <span>Rows per page:</span>
-            <select
-              value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value))}
-              className="bg-brand-bg border border-brand-border rounded-lg px-2 py-0.5 text-xs text-brand-text-primary focus:outline-hidden"
-            >
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-              <option value={200}>200</option>
-            </select>
+          <div className="flex items-center gap-3">
+            {/* View Mode Toggle */}
+            <div className="flex items-center bg-brand-bg rounded-lg p-0.5 border border-brand-border">
+              <button
+                type="button"
+                onClick={() => setViewMode('auto')}
+                className={`px-2 py-1 rounded text-xs font-semibold transition-colors flex items-center gap-1 ${
+                  viewMode === 'auto'
+                    ? 'bg-white dark:bg-brand-surface text-brand-primary shadow-2xs'
+                    : 'text-brand-text-secondary hover:text-brand-text-primary'
+                }`}
+                title="Auto Layout (Cards on mobile, Table on desktop)"
+              >
+                Auto
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`px-2 py-1 rounded text-xs font-semibold transition-colors flex items-center gap-1 ${
+                  viewMode === 'table'
+                    ? 'bg-white dark:bg-brand-surface text-brand-primary shadow-2xs'
+                    : 'text-brand-text-secondary hover:text-brand-text-primary'
+                }`}
+                title="Force Table View"
+              >
+                <List className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Table</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('cards')}
+                className={`px-2 py-1 rounded text-xs font-semibold transition-colors flex items-center gap-1 ${
+                  viewMode === 'cards'
+                    ? 'bg-white dark:bg-brand-surface text-brand-primary shadow-2xs'
+                    : 'text-brand-text-secondary hover:text-brand-text-primary'
+                }`}
+                title="Card View (Mobile Optimized)"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Cards</span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <span>Rows:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                className="bg-brand-bg border border-brand-border rounded-lg px-2 py-0.5 text-xs text-brand-text-primary focus:outline-hidden"
+              >
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value={200}>200</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
@@ -1129,151 +1297,388 @@ export const StudentRecordsView: React.FC = () => {
                   <th className="py-3 px-4 min-w-[140px]">Partner Contact</th>
                   <th className="py-3 px-3 text-center min-w-[80px]">Shift</th>
                   <th className="py-3 px-3 text-center min-w-[90px]">Medium</th>
-                  <th className="py-3 px-3 text-center min-w-[70px]">Picture</th>
-                  <th className="py-3 px-3 text-center sticky right-0 z-20 bg-slate-50 dark:bg-slate-900 border-l border-brand-border shadow-xs w-24">
+                  <th className="py-3 px-3 text-center min-w-[110px]">Docs & Scans</th>
+                  <th className="py-3 px-3 text-center sticky right-0 z-20 bg-slate-50 dark:bg-slate-900 border-l border-brand-border shadow-xs w-28">
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-brand-border/60">
-                {paginatedRecords.map((student) => (
-                  <tr
-                    key={student.rowNumber}
-                    className="hover:bg-brand-bg/80 transition-colors group"
-                  >
-                    {/* Sticky GR# */}
-                    <td className="py-2.5 px-3.5 sticky left-0 z-10 bg-white dark:bg-brand-surface group-hover:bg-brand-bg border-r border-brand-border shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] font-mono font-bold text-brand-primary whitespace-nowrap">
-                      {student.grNo || '—'}
-                    </td>
+                {paginatedRecords.map((student) => {
+                  const grClean = String(student.grNo || '').trim();
+                  const dossier = dossiersByGr[grClean];
+                  const docCount = dossier?.documents?.length || 0;
+                  const hasFlags = (dossier?.allFlags?.length || 0) > 0;
 
-                    {/* Student Name - Non-sticky so it never clips or overlaps father name */}
-                    <td className="py-2.5 px-4 bg-white dark:bg-brand-surface group-hover:bg-brand-bg border-r border-brand-border/40 whitespace-nowrap">
-                      <button
-                        type="button"
-                        onClick={() => setDetailStudent(student)}
-                        className="font-bold text-brand-text-primary hover:text-brand-primary text-left truncate block max-w-[220px] transition-colors"
-                        title={student.studentName}
-                      >
-                        {student.studentName || '—'}
-                      </button>
-                    </td>
+                  return (
+                    <tr
+                      key={student.rowNumber}
+                      className="hover:bg-brand-bg/80 transition-colors group"
+                    >
+                      {/* Sticky GR# */}
+                      <td className="py-2.5 px-3.5 sticky left-0 z-10 bg-white dark:bg-brand-surface group-hover:bg-brand-bg border-r border-brand-border shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] font-mono font-bold text-brand-primary whitespace-nowrap">
+                        {student.grNo || '—'}
+                      </td>
 
-                    {/* Father / Guardian Name - Completely visible and never cut off */}
-                    <td className="py-2.5 px-4 text-brand-text-primary font-medium whitespace-nowrap min-w-[210px]" title={student.fatherName}>
-                      {student.fatherName || '—'}
-                    </td>
+                      {/* Student Name with Circular Student Avatar */}
+                      <td className="py-2.5 px-4 bg-white dark:bg-brand-surface group-hover:bg-brand-bg border-r border-brand-border/40 whitespace-nowrap">
+                        <div className="flex items-center gap-2.5">
+                          <StudentAvatar
+                            name={student.studentName}
+                            grNo={student.grNo}
+                            avatarUrl={dossier?.avatarUrl}
+                            size="md"
+                            onClick={() => {
+                              if (dossier?.avatarUrl) {
+                                setAvatarPreviewUrl({
+                                  url: dossier.avatarUrl,
+                                  name: student.studentName,
+                                  grNo: student.grNo,
+                                });
+                              } else {
+                                setDetailStudent(student);
+                                setDetailModalTab('details');
+                              }
+                            }}
+                          />
+                          <div className="min-w-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDetailStudent(student);
+                                setDetailModalTab('details');
+                              }}
+                              className="font-bold text-brand-text-primary hover:text-brand-primary text-left truncate block max-w-[200px] transition-colors"
+                              title={student.studentName}
+                            >
+                              {student.studentName || '—'}
+                            </button>
+                            {docCount > 0 ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDetailStudent(student);
+                                  setDetailModalTab('documents');
+                                }}
+                                className={`inline-flex items-center gap-1 text-[10px] font-mono font-medium px-1.5 py-0.2 rounded transition-colors ${
+                                  hasFlags
+                                    ? 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100'
+                                    : 'text-brand-primary bg-brand-primary/10 hover:bg-brand-primary/20'
+                                }`}
+                                title={`${docCount} documents attached${hasFlags ? ' (has discrepancies)' : ''}`}
+                              >
+                                <FolderOpen className="w-2.5 h-2.5" />
+                                <span>{docCount} {docCount === 1 ? 'doc' : 'docs'}</span>
+                                {hasFlags && <AlertTriangle className="w-2.5 h-2.5 text-amber-600" />}
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDetailStudent(student);
+                                  setDetailModalTab('documents');
+                                }}
+                                className="text-[10px] text-brand-text-secondary hover:text-brand-primary transition-colors flex items-center gap-0.5"
+                                title="Attach student document scan"
+                              >
+                                <Camera className="w-2.5 h-2.5 opacity-60" />
+                                <span>Attach</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </td>
 
-                    <td className="py-2.5 px-3 text-center">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-md font-mono text-[11px] font-bold bg-brand-bg border border-brand-border text-brand-text-primary">
-                        {student.currentClass || '—'}
-                        {student.section ? `-${student.section}` : ''}
+                      {/* Father / Guardian Name - Completely visible and never cut off */}
+                      <td className="py-2.5 px-4 text-brand-text-primary font-medium whitespace-nowrap min-w-[210px]" title={student.fatherName}>
+                        {student.fatherName || '—'}
+                      </td>
+
+                      <td className="py-2.5 px-3 text-center">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md font-mono text-[11px] font-bold bg-brand-bg border border-brand-border text-brand-text-primary">
+                          {student.currentClass || '—'}
+                          {student.section ? `-${student.section}` : ''}
+                        </span>
+                      </td>
+
+                      <td className="py-2.5 px-3 text-center text-brand-text-secondary">
+                        {student.gender || '—'}
+                      </td>
+
+                      <td className="py-2.5 px-3 text-center font-mono text-[11px] text-brand-text-secondary">
+                        {student.dobDay && student.dobMonth && student.dobYear
+                          ? `${student.dobDay}/${student.dobMonth}/${student.dobYear}`
+                          : '—'}
+                      </td>
+
+                      <td className="py-2.5 px-4 font-mono text-[11px]">
+                        {student.parentContact && student.parentContact !== 'NA' && student.parentContact !== 'N/A' ? (
+                          <a
+                            href={`tel:${student.parentContact}`}
+                            className="text-brand-primary hover:underline flex items-center gap-1"
+                          >
+                            <Phone className="w-3 h-3 flex-shrink-0" />
+                            <span>{student.parentContact}</span>
+                          </a>
+                        ) : (
+                          <span className="text-brand-text-secondary">NA</span>
+                        )}
+                      </td>
+
+                      <td className="py-2.5 px-4 font-mono text-[11px]">
+                        {student.emergencyContact && student.emergencyContact !== 'NA' && student.emergencyContact !== 'N/A' ? (
+                          <span className="text-brand-text-primary">{student.emergencyContact}</span>
+                        ) : (
+                          <span className="text-brand-text-secondary">NA</span>
+                        )}
+                      </td>
+
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                        {getStatusBadge(student.status)}
+                      </td>
+
+                      <td className="py-2.5 px-4 font-mono text-[11px] text-brand-text-secondary truncate max-w-[140px]">
+                        {student.bFormNo || '—'}
+                      </td>
+
+                      <td className="py-2.5 px-4 font-mono text-[11px] text-brand-text-secondary truncate max-w-[140px]">
+                        {student.parentCnic || '—'}
+                      </td>
+
+                      <td className="py-2.5 px-4 text-brand-text-secondary text-[11px] truncate max-w-[220px]" title={student.address}>
+                        {student.address || '—'}
+                      </td>
+
+                      <td className="py-2.5 px-3 text-center font-mono text-[11px] text-brand-text-secondary">
+                        {student.classAdmitted || '—'}
+                      </td>
+
+                      <td className="py-2.5 px-3 text-center font-mono text-[11px] text-brand-text-secondary">
+                        {student.admissionDay && student.admissionMonth && student.admissionYear
+                          ? `${student.admissionDay}/${student.admissionMonth}/${student.admissionYear}`
+                          : '—'}
+                      </td>
+
+                      <td className="py-2.5 px-4 font-mono text-[11px] text-brand-text-secondary truncate max-w-[140px]">
+                        {student.partnerContact || '—'}
+                      </td>
+
+                      <td className="py-2.5 px-3 text-center text-brand-text-secondary">
+                        {student.shift || 'Morning'}
+                      </td>
+
+                      <td className="py-2.5 px-3 text-center text-brand-text-secondary">
+                        {student.medium || 'English'}
+                      </td>
+
+                      {/* Docs & Scans Badge */}
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDetailStudent(student);
+                            setDetailModalTab('documents');
+                          }}
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold transition-all border ${
+                            docCount > 0
+                              ? hasFlags
+                                ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 hover:bg-amber-100'
+                                : 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
+                              : 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800/60 dark:text-slate-400 dark:border-slate-700 hover:bg-slate-100'
+                          }`}
+                          title={docCount > 0 ? `View ${docCount} documents for ${student.studentName}` : 'Attach documents'}
+                        >
+                          <FolderOpen className="w-3 h-3" />
+                          <span>{docCount > 0 ? `${docCount} Docs` : 'Attach'}</span>
+                          {hasFlags && <AlertTriangle className="w-3 h-3 text-amber-600 flex-shrink-0" />}
+                        </button>
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-2.5 px-3 text-center sticky right-0 z-10 bg-white dark:bg-brand-surface group-hover:bg-brand-bg border-l border-brand-border">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDetailStudent(student);
+                              setDetailModalTab('details');
+                            }}
+                            title="View Profile"
+                            className="p-1.5 rounded-lg text-brand-text-secondary hover:text-brand-primary hover:bg-brand-surface transition-colors"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDetailStudent(student);
+                              setDetailModalTab('documents');
+                            }}
+                            title="View Documents & Scans"
+                            className="p-1.5 rounded-lg text-brand-text-secondary hover:text-brand-primary hover:bg-brand-surface transition-colors"
+                          >
+                            <FolderOpen className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(student)}
+                            title={isSheetEditingLocked ? 'Editing locked by school admin' : 'Edit Student Record'}
+                            disabled={isSheetEditingLocked}
+                            className={`p-1.5 rounded-lg transition-colors ${
+                              isSheetEditingLocked
+                                ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
+                                : 'text-brand-text-secondary hover:text-brand-primary hover:bg-brand-surface'
+                            }`}
+                          >
+                            {isSheetEditingLocked ? <Lock className="w-3.5 h-3.5" /> : <Edit2 className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Mobile / Responsive Card Layout (Shown when viewMode === 'cards' or on mobile in 'auto' mode) */}
+        {!isLoading && !error && paginatedRecords.length > 0 && (
+          <div
+            className={`${
+              viewMode === 'cards' ? 'block' : viewMode === 'table' ? 'hidden' : 'block lg:hidden'
+            } divide-y divide-brand-border/60 bg-white dark:bg-brand-surface`}
+          >
+            {paginatedRecords.map((student) => {
+              const grClean = String(student.grNo || '').trim();
+              const dossier = dossiersByGr[grClean];
+              const docCount = dossier?.documents?.length || 0;
+              const hasFlags = (dossier?.allFlags?.length || 0) > 0;
+
+              return (
+                <div key={student.rowNumber} className="p-3.5 hover:bg-brand-bg/50 transition-colors space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <StudentAvatar
+                        name={student.studentName}
+                        grNo={student.grNo}
+                        avatarUrl={dossier?.avatarUrl}
+                        size="lg"
+                        onClick={() => {
+                          if (dossier?.avatarUrl) {
+                            setAvatarPreviewUrl({
+                              url: dossier.avatarUrl,
+                              name: student.studentName,
+                              grNo: student.grNo,
+                            });
+                          } else {
+                            setDetailStudent(student);
+                            setDetailModalTab('details');
+                          }
+                        }}
+                      />
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono text-[11px] font-bold text-brand-primary bg-brand-primary/10 px-1.5 py-0.5 rounded border border-brand-primary/20">
+                            GR# {student.grNo || '—'}
+                          </span>
+                          <span className="font-mono text-[11px] font-semibold text-brand-text-secondary bg-brand-bg px-1.5 py-0.5 rounded border border-brand-border">
+                            {student.currentClass || '—'}{student.section ? `-${student.section}` : ''}
+                          </span>
+                          {getStatusBadge(student.status)}
+                        </div>
+                        <h4
+                          onClick={() => {
+                            setDetailStudent(student);
+                            setDetailModalTab('details');
+                          }}
+                          className="font-bold text-brand-text-primary text-sm tracking-tight mt-1 hover:text-brand-primary cursor-pointer transition-colors"
+                        >
+                          {student.studentName || '—'}
+                        </h4>
+                        <p className="text-xs text-brand-text-secondary">
+                          S/O {student.fatherName || '—'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Secondary Details & Quick Contact */}
+                  <div className="grid grid-cols-2 gap-2 text-xs bg-brand-bg/60 p-2.5 rounded-xl border border-brand-border/50">
+                    <div>
+                      <span className="text-[10px] text-brand-text-secondary uppercase font-semibold block">Date of Birth</span>
+                      <span className="font-mono text-xs text-brand-text-primary">
+                        {student.dobDay && student.dobMonth && student.dobYear
+                          ? `${student.dobDay}/${student.dobMonth}/${student.dobYear}`
+                          : '—'}
                       </span>
-                    </td>
-
-                    <td className="py-2.5 px-3 text-center text-brand-text-secondary">
-                      {student.gender || '—'}
-                    </td>
-
-                    <td className="py-2.5 px-3 text-center font-mono text-[11px] text-brand-text-secondary">
-                      {student.dobDay && student.dobMonth && student.dobYear
-                        ? `${student.dobDay}/${student.dobMonth}/${student.dobYear}`
-                        : '—'}
-                    </td>
-
-                    <td className="py-2.5 px-4 font-mono text-[11px]">
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-brand-text-secondary uppercase font-semibold block">Contact</span>
                       {student.parentContact && student.parentContact !== 'NA' && student.parentContact !== 'N/A' ? (
                         <a
                           href={`tel:${student.parentContact}`}
-                          className="text-brand-primary hover:underline flex items-center gap-1"
+                          className="inline-flex items-center gap-1 text-xs text-brand-primary font-mono hover:underline"
                         >
                           <Phone className="w-3 h-3 flex-shrink-0" />
                           <span>{student.parentContact}</span>
                         </a>
                       ) : (
-                        <span className="text-brand-text-secondary">NA</span>
+                        <span className="text-xs text-brand-text-secondary font-mono">No Phone</span>
                       )}
-                    </td>
+                    </div>
+                  </div>
 
-                    <td className="py-2.5 px-4 font-mono text-[11px]">
-                      {student.emergencyContact && student.emergencyContact !== 'NA' && student.emergencyContact !== 'N/A' ? (
-                        <span className="text-brand-text-primary">{student.emergencyContact}</span>
-                      ) : (
-                        <span className="text-brand-text-secondary">NA</span>
-                      )}
-                    </td>
+                  {/* Document Dossier & Action Buttons */}
+                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-brand-border/40">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDetailStudent(student);
+                        setDetailModalTab('documents');
+                      }}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                        docCount > 0
+                          ? hasFlags
+                            ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300'
+                            : 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300'
+                          : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400'
+                      }`}
+                    >
+                      <FolderOpen className="w-3.5 h-3.5" />
+                      <span>{docCount > 0 ? `${docCount} Docs` : 'Attach Doc'}</span>
+                      {hasFlags && <AlertTriangle className="w-3 h-3 text-amber-600 flex-shrink-0" />}
+                    </button>
 
-                    <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                      {getStatusBadge(student.status)}
-                    </td>
-
-                    <td className="py-2.5 px-4 font-mono text-[11px] text-brand-text-secondary truncate max-w-[140px]">
-                      {student.bFormNo || '—'}
-                    </td>
-
-                    <td className="py-2.5 px-4 font-mono text-[11px] text-brand-text-secondary truncate max-w-[140px]">
-                      {student.parentCnic || '—'}
-                    </td>
-
-                    <td className="py-2.5 px-4 text-brand-text-secondary text-[11px] truncate max-w-[220px]" title={student.address}>
-                      {student.address || '—'}
-                    </td>
-
-                    <td className="py-2.5 px-3 text-center font-mono text-[11px] text-brand-text-secondary">
-                      {student.classAdmitted || '—'}
-                    </td>
-
-                    <td className="py-2.5 px-3 text-center font-mono text-[11px] text-brand-text-secondary">
-                      {student.admissionDay && student.admissionMonth && student.admissionYear
-                        ? `${student.admissionDay}/${student.admissionMonth}/${student.admissionYear}`
-                        : '—'}
-                    </td>
-
-                    <td className="py-2.5 px-4 font-mono text-[11px] text-brand-text-secondary truncate max-w-[140px]">
-                      {student.partnerContact || '—'}
-                    </td>
-
-                    <td className="py-2.5 px-3 text-center text-brand-text-secondary">
-                      {student.shift || 'Morning'}
-                    </td>
-
-                    <td className="py-2.5 px-3 text-center text-brand-text-secondary">
-                      {student.medium || 'English'}
-                    </td>
-
-                    <td className="py-2.5 px-3 text-center font-semibold text-[10px] text-brand-text-secondary">
-                      {student.picture || 'YES'}
-                    </td>
-
-                    {/* Actions */}
-                    <td className="py-2.5 px-3 text-center sticky right-0 z-10 bg-white dark:bg-brand-surface group-hover:bg-brand-bg border-l border-brand-border">
-                      <div className="flex items-center justify-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setDetailStudent(student)}
-                          title="View Profile"
-                          className="p-1.5 rounded-lg text-brand-text-secondary hover:text-brand-primary hover:bg-brand-surface transition-colors"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdit(student)}
-                          title={isSheetEditingLocked ? 'Editing locked by school admin' : 'Edit Student Record'}
-                          disabled={isSheetEditingLocked}
-                          className={`p-1.5 rounded-lg transition-colors ${
-                            isSheetEditingLocked
-                              ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
-                              : 'text-brand-text-secondary hover:text-brand-primary hover:bg-brand-surface'
-                          }`}
-                        >
-                          {isSheetEditingLocked ? <Lock className="w-3.5 h-3.5" /> : <Edit2 className="w-3.5 h-3.5" />}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDetailStudent(student);
+                          setDetailModalTab('details');
+                        }}
+                        className="py-1.5 px-3 rounded-xl text-xs font-semibold bg-brand-bg text-brand-text-primary border border-brand-border hover:bg-brand-border/60 transition-colors"
+                      >
+                        Profile
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEdit(student)}
+                        disabled={isSheetEditingLocked}
+                        className={`py-1.5 px-3 rounded-xl text-xs font-semibold flex items-center gap-1 border transition-colors ${
+                          isSheetEditingLocked
+                            ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                            : 'bg-brand-primary/10 text-brand-primary border-brand-primary/20 hover:bg-brand-primary/20'
+                        }`}
+                      >
+                        <Edit2 className="w-3 h-3" />
+                        <span>Edit</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -1339,6 +1744,7 @@ export const StudentRecordsView: React.FC = () => {
       <StudentDetailModal
         isOpen={!!detailStudent}
         student={detailStudent}
+        initialTab={detailModalTab}
         onClose={() => setDetailStudent(null)}
         onEdit={(student) => {
           setDetailStudent(null);
@@ -1371,6 +1777,72 @@ export const StudentRecordsView: React.FC = () => {
           setConfirmationState((prev) => ({ ...prev, isOpen: false, isSubmitting: false }))
         }
       />
+
+      {/* Student Photo Full-Resolution Lightbox Modal */}
+      {avatarPreviewUrl && (
+        <div
+          className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn"
+          onClick={() => setAvatarPreviewUrl(null)}
+        >
+          <div
+            className="bg-white dark:bg-brand-surface rounded-2xl max-w-sm w-full p-4 border border-brand-border space-y-3 shadow-2xl flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between w-full pb-2 border-b border-brand-border">
+              <div>
+                <h4 className="text-sm font-bold text-brand-text-primary">{avatarPreviewUrl.name}</h4>
+                <span className="text-xs font-mono font-bold text-brand-primary">
+                  GR# {avatarPreviewUrl.grNo}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAvatarPreviewUrl(null)}
+                className="p-1 rounded-lg hover:bg-brand-bg text-brand-text-secondary"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="w-64 h-64 rounded-2xl overflow-hidden border border-brand-border bg-slate-900 flex items-center justify-center shadow-inner">
+              <img
+                src={avatarPreviewUrl.url}
+                alt={avatarPreviewUrl.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+
+            <div className="flex items-center justify-between w-full pt-1">
+              <a
+                href={avatarPreviewUrl.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-brand-primary hover:underline"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Open Full Image</span>
+              </a>
+              <button
+                type="button"
+                onClick={() => {
+                  const s = records.find(
+                    (r) => String(r.grNo).trim() === String(avatarPreviewUrl.grNo).trim()
+                  );
+                  if (s) {
+                    setDetailStudent(s);
+                    setDetailModalTab('documents');
+                  }
+                  setAvatarPreviewUrl(null);
+                }}
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-brand-primary text-white hover:bg-brand-primary/90 transition-colors flex items-center gap-1"
+              >
+                <FolderOpen className="w-3.5 h-3.5" />
+                <span>All Documents</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

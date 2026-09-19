@@ -258,12 +258,12 @@ const App: React.FC = () => {
 
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-slate-900/20 dark:bg-black/40 z-[90] md:hidden backdrop-blur-sm animate-fadeIn"
+          className="fixed inset-0 bg-slate-900/40 dark:bg-black/60 z-40 md:hidden backdrop-blur-sm animate-fadeIn"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
-      <aside className={`fixed md:relative z-[100] top-0 left-0 h-screen md:h-full bg-brand-surface/95 dark:bg-brand-surface backdrop-blur-xl flex flex-col transition-transform duration-300 md:transition-none w-[280px] ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} border-r border-brand-border/60`}>
+      <aside className={`fixed md:relative z-50 md:z-10 top-0 left-0 h-screen md:h-full bg-brand-surface/95 dark:bg-brand-surface backdrop-blur-xl flex flex-col transition-transform duration-300 md:transition-none w-[280px] ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} border-r border-brand-border/60`}>
         <div className="p-6 flex-grow flex flex-col h-full overflow-hidden">
           <div className="flex items-center justify-between mb-8 md:hidden">
             <span className="font-semibold text-base text-brand-text-primary">Menu</span>
@@ -302,6 +302,7 @@ const App: React.FC = () => {
                     else if (item.view === 'lesson') handleNavigate('lesson');
                     else if (item.view === 'paper') handleNavigate('paper');
                     else navigate(item.view);
+                    setIsSidebarOpen(false);
                   }}
                   className={`relative w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors duration-200 group select-none ${
                     isActive

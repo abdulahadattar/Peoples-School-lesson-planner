@@ -24,6 +24,7 @@ import {
   Layers,
   RefreshCw,
   Sparkles,
+  StopCircle,
   Terminal,
   UploadCloud,
   X,
@@ -107,6 +108,16 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
     }
   };
 
+  const handleStopJob = async () => {
+    if (!jobId) return;
+    try {
+      await fetch(`/api/documents/jobs/${jobId}/stop`, { method: 'POST' });
+      await loadJob();
+    } catch (err: any) {
+      console.warn('[ProcessingTransparencyModal] Stop job error:', err.message);
+    }
+  };
+
   const handleCopyLogs = () => {
     const rawText = logs
       .map(
@@ -126,7 +137,7 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
     : 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/70 backdrop-blur-sm animate-fadeIn">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-slate-900/70 backdrop-blur-sm animate-fadeIn">
       <div className="relative w-full max-w-5xl max-h-[92vh] flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 gap-4 sm:gap-0">
@@ -160,6 +171,17 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
             </div>
           </div>
           <div className="flex items-center justify-end gap-2">
+            {job?.status === 'processing' && (
+              <button
+                type="button"
+                onClick={handleStopJob}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900 border border-rose-200 dark:border-rose-900 transition-all shadow-xs"
+                title="Stop active processing job"
+              >
+                <StopCircle className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                <span>Stop Process</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={loadJob}
@@ -428,7 +450,7 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
                               {file.url && (
                                 <div className="w-24 h-24 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 flex-shrink-0 flex items-center justify-center">
                                   <img
-                                    src={`${file.url}?t=${Date.now()}`}
+                                    src={file.url}
                                     alt={file.originalFilename}
                                     className="w-full h-full object-cover"
                                   />

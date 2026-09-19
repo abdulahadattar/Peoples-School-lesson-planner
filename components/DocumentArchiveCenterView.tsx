@@ -4,6 +4,7 @@ import {
   FileArchive,
   CheckCircle2,
   AlertTriangle,
+  AlertCircle,
   RotateCw,
   Download,
   Filter,
@@ -27,6 +28,15 @@ import {
   Building,
   Link as LinkIcon,
   UserPlus,
+  Trash2,
+  Database,
+  CheckSquare,
+  Square,
+  MinusSquare,
+  Wand2,
+  ArrowRight,
+  Tag,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   uploadZipArchive,
@@ -41,6 +51,12 @@ import {
   assignDocumentToStudent,
   dismissDiscrepancyFlag,
   undismissDiscrepancyFlag,
+  deleteDocument,
+  deleteDocumentsBatch,
+  rescanDocument,
+  applyDiscrepancyCorrectionClient,
+  batchApplyDiscrepancyCorrectionsClient,
+  queryCandidateMatches,
 } from '../services/documentClientService';
 import {
   StudentDossier,
@@ -48,7 +64,9 @@ import {
   StudentDocumentRecord,
   DocumentClassificationType,
   DocumentDiscrepancy,
+  CandidateStudentMatch,
 } from '../types/documentArchive';
+import { getAccessToken } from '../services/googleAuth';
 import { StudentRecord, fetchSheetData } from '../services/googleSheetsService';
 import { StudentDetailModal } from './records/StudentDetailModal';
 import { ProcessingTransparencyModal } from './documents/ProcessingTransparencyModal';
@@ -64,6 +82,7 @@ const DOCUMENT_LABELS: Record<DocumentClassificationType, string> = {
   SCHOOL_LEAVING_CERTIFICATE: 'School Leaving Certificate (SLC)',
   ADMISSION_FORM: 'School Admission Form',
   OTHER_UNCLASSIFIED: 'Supporting / Other Document',
+  IGNORED_NOISE: 'Ignored Noise / Blank Page',
 };
 
 const CLASS_OPTIONS = [
@@ -79,6 +98,37 @@ const CLASS_OPTIONS = [
   'Class XII (Pre-Medical)',
   'Class XII (Pre-Engineering)',
 ];
+
+const DocThumbnail: React.FC<{ url?: string; filename?: string; classification?: string; className?: string }> = ({
+  url,
+  filename = '',
+  classification = '',
+  className = 'w-full h-full object-cover',
+}) => {
+  const [hasError, setHasError] = useState(false);
+  const isPdf = filename.toLowerCase().endsWith('.pdf');
+
+  if (!url || hasError || isPdf) {
+    return (
+      <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center p-1 text-center select-none overflow-hidden">
+        <FileText className="w-5 h-5 text-brand-primary/80 mb-0.5 flex-shrink-0" />
+        <span className="text-[9px] font-mono font-bold text-slate-500 uppercase truncate max-w-full px-0.5">
+          {isPdf ? 'PDF' : classification ? classification.slice(0, 6) : 'DOC'}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={url}
+      alt={filename}
+      className={className}
+      onError={() => setHasError(true)}
+      loading="lazy"
+    />
+  );
+};
 
 export const DocumentArchiveCenterView: React.FC = () => {
   const [activeMainTab, setActiveMainTab] = useState<'dossiers' | 'extracted' | 'audit'>('dossiers');
@@ -100,8 +150,97 @@ export const DocumentArchiveCenterView: React.FC = () => {
   const [selectedPreviewDoc, setSelectedPreviewDoc] = useState<StudentDocumentRecord | null>(null);
   const [isAutoLinking, setIsAutoLinking] = useState(false);
   const [assigningDoc, setAssigningDoc] = useState<StudentDocumentRecord | null>(null);
+  const [deletingDoc, setDeletingDoc] = useState<StudentDocumentRecord | null>(null);
   const [targetAssignGr, setTargetAssignGr] = useState('');
   const [successToastMsg, setSuccessToastMsg] = useState<string | null>(null);
+  const [isOperatingDoc, setIsOperatingDoc] = useState(false);
+  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
+  const [isConfirmingBatchDelete, setIsConfirmingBatchDelete] = useState(false);
+  const [applyingFlagId, setApplyingFlagId] = useState<string | null>(null);
+  const [isBatchApplying, setIsBatchApplying] = useState(false);
+  const [docCandidateMatches, setDocCandidateMatches] = useState<Record<string, CandidateStudentMatch[]>>({});
+  const [loadingCandidatesDocId, setLoadingCandidatesDocId] = useState<string | null>(null);
+
+  const handleToggleSelectDoc = (docId: string) => {
+    setSelectedDocIds((prev) =>
+      prev.includes(docId) ? prev.filter((id) => id !== docId) : [...prev, docId]
+    );
+  };
+
+  const handleToggleSelectAll = (filteredList: StudentDocumentRecord[]) => {
+    const filteredIds = filteredList.map((d) => d.id);
+    const isAllSelected = filteredIds.length > 0 && filteredIds.every((id) => selectedDocIds.includes(id));
+    if (isAllSelected) {
+      setSelectedDocIds((prev) => prev.filter((id) => !filteredIds.includes(id)));
+    } else {
+      const combined = new Set([...selectedDocIds, ...filteredIds]);
+      setSelectedDocIds(Array.from(combined));
+    }
+  };
+
+  const handleBatchDeleteDocs = async () => {
+    if (selectedDocIds.length === 0) return;
+    try {
+      setIsOperatingDoc(true);
+      const res = await deleteDocumentsBatch(selectedDocIds);
+      if (res && res.documents) {
+        setDocuments(res.documents);
+      }
+      if (res && res.dossiers) {
+        setDossiers(res.dossiers);
+      }
+      if (selectedPreviewDoc && selectedDocIds.includes(selectedPreviewDoc.id)) {
+        setSelectedPreviewDoc(null);
+      }
+      setSuccessToastMsg(`Successfully deleted ${res.deletedCount || selectedDocIds.length} document scans`);
+      setSelectedDocIds([]);
+      await refreshData();
+    } catch (err: any) {
+      alert(`Batch delete error: ${err.message || 'Failed to delete selected documents'}`);
+    } finally {
+      setIsOperatingDoc(false);
+      setIsConfirmingBatchDelete(false);
+    }
+  };
+
+  const handleDeleteDoc = async (docId: string) => {
+    try {
+      setIsOperatingDoc(true);
+      const res = await deleteDocument(docId);
+      if (res && res.documents) {
+        setDocuments(res.documents);
+      }
+      if (res && res.dossiers) {
+        setDossiers(res.dossiers);
+      }
+      if (selectedPreviewDoc?.id === docId) {
+        setSelectedPreviewDoc(null);
+      }
+      setSuccessToastMsg('Document scan permanently deleted');
+      await refreshData();
+    } catch (err: any) {
+      alert(`Delete error: ${err.message || 'Failed to delete document'}`);
+    } finally {
+      setIsOperatingDoc(false);
+      setDeletingDoc(null);
+    }
+  };
+
+  const handleRescanDoc = async (docId: string) => {
+    try {
+      setIsOperatingDoc(true);
+      const res = await rescanDocument(docId);
+      if (res.document) {
+        setSelectedPreviewDoc(res.document);
+      }
+      setSuccessToastMsg('Document re-analyzed with Gemini AI Vision');
+      await refreshData();
+    } catch (err: any) {
+      alert(`Rescan error: ${err.message}`);
+    } finally {
+      setIsOperatingDoc(false);
+    }
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderZipInputRef = useRef<HTMLInputElement>(null);
@@ -193,6 +332,95 @@ export const DocumentArchiveCenterView: React.FC = () => {
       alert(`Could not restore flag: ${err.message}`);
     }
   };
+
+  const handleApplyCorrection = async (grNo: string, flag: DocumentDiscrepancy) => {
+    if (!flag.suggestedCorrection) return;
+    try {
+      setApplyingFlagId(flag.id);
+      const token = await getAccessToken();
+      const res = await applyDiscrepancyCorrectionClient(
+        grNo,
+        flag.id,
+        flag.suggestedCorrection,
+        token || undefined
+      );
+      setSuccessToastMsg(res.message || 'Correction applied and synchronized successfully!');
+      await refreshData();
+      setTimeout(() => setSuccessToastMsg(null), 4500);
+    } catch (err: any) {
+      alert(`Failed to apply correction: ${err.message}`);
+    } finally {
+      setApplyingFlagId(null);
+    }
+  };
+
+  const handleBatchApplyCorrections = async (targetFlags: Array<{ grNo: string; flag: DocumentDiscrepancy }>) => {
+    const valid = targetFlags.filter((d) => d.flag.suggestedCorrection && !d.flag.isDismissed);
+    if (valid.length === 0) return;
+
+    try {
+      setIsBatchApplying(true);
+      const token = await getAccessToken();
+      const corrections = valid.map((d) => ({
+        grNo: d.grNo,
+        flagId: d.flag.id,
+        field: d.flag.suggestedCorrection!.field,
+        newValue: d.flag.suggestedCorrection!.newValue,
+        reason: d.flag.suggestedCorrection!.reason,
+      }));
+
+      const res = await batchApplyDiscrepancyCorrectionsClient(corrections, token || undefined);
+      setSuccessToastMsg(
+        `Applied ${res.appliedCount} intelligent corrections to student records & Google Sheets!`
+      );
+      await refreshData();
+      setTimeout(() => setSuccessToastMsg(null), 5000);
+    } catch (err: any) {
+      alert(`Batch apply error: ${err.message}`);
+    } finally {
+      setIsBatchApplying(false);
+    }
+  };
+
+  const handleResolveWithCandidate = async (
+    docId: string,
+    candidate: CandidateStudentMatch,
+    flagId?: string
+  ) => {
+    try {
+      const studentRec = sheetRecords.find((s) => String(s.grNo).trim() === String(candidate.grNo).trim());
+      await assignDocumentToStudent(docId, candidate.grNo, studentRec);
+      if (flagId) {
+        await dismissDiscrepancyFlag(flagId).catch(() => {});
+      }
+      setSuccessToastMsg(
+        `Document successfully linked to Student GR #${candidate.grNo} (${candidate.studentName}) with ${candidate.score}% match confidence!`
+      );
+      setAssigningDoc(null);
+      await refreshData();
+      setTimeout(() => setSuccessToastMsg(null), 4500);
+    } catch (err: any) {
+      alert(`Could not resolve match: ${err.message}`);
+    }
+  };
+
+  // Pre-fetch candidate matches when assigning modal opens
+  useEffect(() => {
+    if (assigningDoc && assigningDoc.extractedData) {
+      const docId = assigningDoc.id;
+      if (!docCandidateMatches[docId]) {
+        setLoadingCandidatesDocId(docId);
+        queryCandidateMatches(assigningDoc.extractedData, 5)
+          .then((res) => {
+            if (res.ok && res.matches) {
+              setDocCandidateMatches((prev) => ({ ...prev, [docId]: res.matches }));
+            }
+          })
+          .catch((err) => console.warn('Candidate query error:', err))
+          .finally(() => setLoadingCandidatesDocId(null));
+      }
+    }
+  }, [assigningDoc]);
 
   useEffect(() => {
     refreshData();
@@ -903,7 +1131,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
       {activeMainTab === 'extracted' && (
         <div className="space-y-4">
           <div className="bg-white dark:bg-brand-surface rounded-xl border border-brand-border shadow-soft overflow-hidden">
-            <div className="p-4 border-b border-brand-border flex items-center justify-between">
+            <div className="p-4 border-b border-brand-border flex items-center justify-between flex-wrap gap-3">
               <div>
                 <h3 className="text-sm font-bold text-brand-text-primary">
                   All Processed Document Scans & AI Extracted Fields
@@ -912,7 +1140,72 @@ export const DocumentArchiveCenterView: React.FC = () => {
                   Showing all {filteredDocuments.length} document scans identified and extracted by Gemini AI vision.
                 </p>
               </div>
+
+              {/* Quick Batch Selection Helpers */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleToggleSelectAll(filteredDocuments)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-brand-bg border border-brand-border text-brand-text-secondary hover:text-brand-text-primary transition-colors flex items-center gap-1.5"
+                >
+                  <CheckSquare className="w-3.5 h-3.5 text-brand-primary" />
+                  <span>
+                    {filteredDocuments.length > 0 && filteredDocuments.every((d) => selectedDocIds.includes(d.id))
+                      ? 'Deselect All'
+                      : 'Select All Visible'}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const unassignedDocs = filteredDocuments.filter((d) => d.grNo === 'UNASSIGNED');
+                    handleToggleSelectAll(unassignedDocs);
+                  }}
+                  className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 hover:bg-amber-100 transition-colors"
+                >
+                  Select Unassigned ({filteredDocuments.filter((d) => d.grNo === 'UNASSIGNED').length})
+                </button>
+              </div>
             </div>
+
+            {/* Sticky Floating Batch Selection Banner */}
+            {selectedDocIds.length > 0 && (
+              <div className="bg-rose-50 dark:bg-rose-950/90 border-b border-rose-200 dark:border-rose-800 p-3 px-4 flex items-center justify-between flex-wrap gap-3 animate-fadeIn">
+                <div className="flex items-center gap-3">
+                  <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-rose-600 text-white font-bold text-xs shadow-xs">
+                    {selectedDocIds.length}
+                  </span>
+                  <div>
+                    <h4 className="text-xs font-bold text-rose-900 dark:text-rose-100">
+                      {selectedDocIds.length} Document Scan{selectedDocIds.length > 1 ? 's' : ''} Selected
+                    </h4>
+                    <p className="text-[11px] text-rose-700 dark:text-rose-300">
+                      Delete all selected document scans in a single bulk action.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDocIds([])}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-colors"
+                  >
+                    Clear Selection
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsConfirmingBatchDelete(true)}
+                    disabled={isOperatingDoc}
+                    className="px-4 py-1.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-sm transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Delete Selected ({selectedDocIds.length})</span>
+                  </button>
+                </div>
+              </div>
+            )}
 
             {filteredDocuments.length === 0 ? (
               <div className="p-12 text-center text-xs text-brand-text-secondary">
@@ -923,6 +1216,18 @@ export const DocumentArchiveCenterView: React.FC = () => {
                 <table className="w-full text-left text-xs">
                   <thead className="bg-brand-bg text-brand-text-secondary uppercase text-[10px] tracking-wider border-b border-brand-border">
                     <tr>
+                      <th className="py-3 px-3 w-10 text-center">
+                        <input
+                          type="checkbox"
+                          checked={
+                            filteredDocuments.length > 0 &&
+                            filteredDocuments.every((d) => selectedDocIds.includes(d.id))
+                          }
+                          onChange={() => handleToggleSelectAll(filteredDocuments)}
+                          className="w-4 h-4 rounded border-brand-border text-brand-primary focus:ring-brand-primary accent-brand-primary cursor-pointer"
+                          title="Select / Deselect all visible documents"
+                        />
+                      </th>
                       <th className="py-3 px-4">Scan Preview</th>
                       <th className="py-3 px-4">GR # & Filename</th>
                       <th className="py-3 px-4">Identified Type</th>
@@ -935,22 +1240,35 @@ export const DocumentArchiveCenterView: React.FC = () => {
                   <tbody className="divide-y divide-brand-border">
                     {filteredDocuments.map((doc) => {
                       const ext = doc.extractedData;
+                      const isDocSelected = selectedDocIds.includes(doc.id);
                       return (
-                        <tr key={doc.id} className="hover:bg-brand-bg/50 transition-colors">
+                        <tr
+                          key={doc.id}
+                          className={`transition-colors ${
+                            isDocSelected
+                              ? 'bg-rose-50/60 dark:bg-rose-950/40'
+                              : 'hover:bg-brand-bg/50'
+                          }`}
+                        >
+                          <td className="py-3 px-3 w-10 text-center">
+                            <input
+                              type="checkbox"
+                              checked={isDocSelected}
+                              onChange={() => handleToggleSelectDoc(doc.id)}
+                              className="w-4 h-4 rounded border-brand-border text-brand-primary focus:ring-brand-primary accent-brand-primary cursor-pointer"
+                            />
+                          </td>
                           <td className="py-3 px-4">
                             <div
                               onClick={() => setSelectedPreviewDoc(doc)}
                               className="w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-800 border border-brand-border overflow-hidden cursor-pointer flex items-center justify-center group relative"
                             >
-                              {doc.url ? (
-                                <img
-                                  src={`${doc.url}?t=${Date.now()}`}
-                                  alt={doc.filename}
-                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform"
-                                />
-                              ) : (
-                                <FileText className="w-5 h-5 text-slate-400" />
-                              )}
+                              <DocThumbnail
+                                url={doc.url}
+                                filename={doc.filename}
+                                classification={doc.classification}
+                                className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                              />
                               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
                                 <ZoomIn className="w-4 h-4" />
                               </div>
@@ -1051,7 +1369,27 @@ export const DocumentArchiveCenterView: React.FC = () => {
                           </td>
 
                           <td className="py-3 px-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleRescanDoc(doc.id)}
+                                disabled={isOperatingDoc}
+                                className="p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 transition-colors"
+                                title="Rescan document with Gemini AI"
+                              >
+                                <Sparkles className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setDeletingDoc(doc)}
+                                disabled={isOperatingDoc}
+                                className="p-1.5 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors"
+                                title="Delete document scan"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+
                               {doc.grNo === 'UNASSIGNED' ? (
                                 <button
                                   type="button"
@@ -1072,7 +1410,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
                                       setAssigningDoc(doc);
                                       setTargetAssignGr(doc.grNo);
                                     }}
-                                    className="p-1 rounded-lg text-slate-400 hover:text-brand-text-primary hover:bg-brand-bg transition-colors"
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-brand-text-primary hover:bg-brand-bg transition-colors"
                                     title="Reassign to another GR"
                                   >
                                     <UserPlus className="w-3.5 h-3.5" />
@@ -1121,6 +1459,43 @@ export const DocumentArchiveCenterView: React.FC = () => {
               </span>
             </div>
 
+            {/* Batch Apply One-Click Synchronization Banner */}
+            {(() => {
+              const flagsWithCorrection = filteredDiscrepancies.filter(
+                (d) => d.flag.suggestedCorrection && !d.flag.isDismissed
+              );
+              if (flagsWithCorrection.length === 0) return null;
+              return (
+                <div className="bg-emerald-50 dark:bg-emerald-950/40 border-b border-emerald-200 dark:border-emerald-800 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-xl bg-emerald-600 text-white shadow-xs">
+                      <Wand2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-emerald-900 dark:text-emerald-100 flex items-center gap-2">
+                        <span>{flagsWithCorrection.length} Intelligent Correction(s) Ready to Sync</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-200 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-200 font-extrabold">
+                          One-Click Sync
+                        </span>
+                      </h4>
+                      <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5">
+                        Caste incorporating surnames (e.g. Baloch, Khetran), standardized 13-digit NADRA B-Form numbers, and family hierarchy verifications detected.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isBatchApplying}
+                    onClick={() => handleBatchApplyCorrections(flagsWithCorrection)}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-60 whitespace-nowrap"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>{isBatchApplying ? 'Synchronizing...' : `Batch Apply All ${flagsWithCorrection.length} to Sheet`}</span>
+                  </button>
+                </div>
+              );
+            })()}
+
             {filteredDiscrepancies.length === 0 ? (
               <div className="p-12 text-center">
                 <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-2" />
@@ -1130,7 +1505,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-6">
+              <div className="grid grid-cols-1 gap-6 p-4">
                 {filteredDiscrepancies.map((item, idx) => {
                   const docImgUrl = item.flag.documentUrl;
                   const matchedDoc = documents.find((d) => d.id === item.flag.documentId);
@@ -1166,6 +1541,11 @@ export const DocumentArchiveCenterView: React.FC = () => {
                           <span className="text-xs text-slate-500">
                             ({item.currentClass || 'General'})
                           </span>
+                          {item.flag.incompleteOcr && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                              Partial OCR (&lt;13 Digits) • Sheet Authoritative
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 font-mono text-slate-700 dark:text-slate-300">
@@ -1175,7 +1555,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
                       </div>
 
                       {/* Main Split Body: Large Document Preview + Comparison Boxes */}
-                      <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
                         {/* Large Document Preview Card (4 cols) */}
                         <div className="md:col-span-4 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/80 rounded-xl p-3">
                           <div
@@ -1248,6 +1628,144 @@ export const DocumentArchiveCenterView: React.FC = () => {
                             </div>
                           </div>
 
+                          {/* Single-Click Suggested Correction Card */}
+                          {item.flag.suggestedCorrection && (
+                            <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 space-y-2.5 animate-fadeIn">
+                              <div className="flex items-center justify-between flex-wrap gap-2">
+                                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-900 dark:text-emerald-100">
+                                  <Wand2 className="w-4 h-4 text-emerald-600" />
+                                  <span>Recommended Resolution:</span>
+                                </div>
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
+                                  item.flag.suggestedAction === 'enrich_full_name' || item.flag.suggestedAction === 'merge_caste'
+                                    ? 'bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-200 border border-teal-300 dark:border-teal-700'
+                                    : 'bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200'
+                                }`}>
+                                  {item.flag.suggestedAction === 'enrich_full_name'
+                                    ? 'Full Name & Caste Enrichment'
+                                    : item.flag.suggestedAction === 'merge_caste'
+                                    ? 'Incorporate Caste'
+                                    : item.flag.suggestedAction || '1-Click Fix'}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-2 text-xs">
+                                <span className="text-slate-500 font-mono line-through truncate max-w-[140px]">
+                                  {item.flag.sheetValue || '(blank)'}
+                                </span>
+                                <ArrowRight className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                                <span className="font-mono font-bold text-emerald-800 dark:text-emerald-200 bg-white dark:bg-slate-900 px-2 py-1 rounded border border-emerald-300 dark:border-emerald-700 shadow-xs">
+                                  {item.flag.suggestedCorrection.newValue}
+                                </span>
+                              </div>
+
+                              <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
+                                {item.flag.suggestedCorrection.reason}
+                              </p>
+
+                              <div className="flex items-center justify-end pt-1">
+                                <button
+                                  type="button"
+                                  disabled={applyingFlagId === item.flag.id}
+                                  onClick={() => handleApplyCorrection(item.grNo, item.flag)}
+                                  className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                  <span>{applyingFlagId === item.flag.id ? 'Applying...' : 'Apply Correction to Google Sheet'}</span>
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Ranked Candidate Matches Section */}
+                          {item.flag.rankedMatches && item.flag.rankedMatches.length > 0 && (
+                            <div className="p-3.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/60 space-y-2.5 animate-fadeIn">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-900 dark:text-indigo-100">
+                                  <Sparkles className="w-4 h-4 text-indigo-600" />
+                                  <span>Intelligent Candidate Matches ({item.flag.rankedMatches.length})</span>
+                                </div>
+                                <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium">
+                                  Ranked by Multi-Factor Similarity
+                                </span>
+                              </div>
+
+                              <div className="space-y-2">
+                                {item.flag.rankedMatches.map((cand, cIdx) => {
+                                  const isHighConf = cand.score >= 80;
+                                  const isMedConf = cand.score >= 50 && cand.score < 80;
+
+                                  return (
+                                    <div
+                                      key={cIdx}
+                                      className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-xs"
+                                    >
+                                      <div className="space-y-1">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span
+                                            className={`px-2 py-0.5 rounded text-[10px] font-extrabold ${
+                                              isHighConf
+                                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                                : isMedConf
+                                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                                : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                                            }`}
+                                          >
+                                            {cand.score}% Match
+                                          </span>
+                                          <span className="font-mono font-bold text-xs text-indigo-700 dark:text-indigo-300">
+                                            GR #{cand.grNo}
+                                          </span>
+                                          <span className="font-bold text-xs text-slate-900 dark:text-white">
+                                            {cand.studentName}
+                                          </span>
+                                          {cand.fatherName && (
+                                            <span className="text-xs text-slate-500">
+                                              s/o {cand.fatherName}
+                                            </span>
+                                          )}
+                                          <span className="text-[10px] text-slate-400">
+                                            ({cand.currentClass})
+                                          </span>
+                                        </div>
+
+                                        {/* Evidence Chips */}
+                                        <div className="flex flex-wrap gap-1 items-center">
+                                          {cand.evidence.map((ev, evIdx) => (
+                                            <span
+                                              key={evIdx}
+                                              className="px-1.5 py-0.2 rounded text-[9px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                                            >
+                                              {ev}
+                                            </span>
+                                          ))}
+                                          <span className="text-[10px] text-slate-400 italic">
+                                            {cand.reasons}
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleResolveWithCandidate(
+                                            item.flag.documentId || matchedDoc?.id || '',
+                                            cand,
+                                            item.flag.id
+                                          )
+                                        }
+                                        className="px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-xs transition-all flex items-center justify-center gap-1 whitespace-nowrap self-end sm:self-center cursor-pointer active:scale-95"
+                                      >
+                                        <LinkIcon className="w-3.5 h-3.5" />
+                                        <span>Resolve & Link to GR #{cand.grNo}</span>
+                                      </button>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
                           {/* Actions Bar */}
                           <div className="flex flex-wrap items-center justify-end gap-2.5 pt-2">
                             <button
@@ -1279,7 +1797,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
 
       {/* Full Document Image Preview Modal */}
       {selectedPreviewDoc && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-brand-surface rounded-2xl max-w-3xl w-full p-4 border border-brand-border space-y-4 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-brand-border">
               <div>
@@ -1299,12 +1817,21 @@ export const DocumentArchiveCenterView: React.FC = () => {
               </button>
             </div>
 
-            <div className="bg-slate-950 rounded-xl p-2 flex items-center justify-center max-h-[500px] overflow-hidden">
-              <img
-                src={`${selectedPreviewDoc.url}?t=${Date.now()}`}
-                alt={selectedPreviewDoc.originalFilename}
-                className="max-h-[480px] w-auto object-contain rounded"
-              />
+            <div className="bg-slate-950 rounded-xl p-2 flex items-center justify-center min-h-[300px] max-h-[500px] overflow-hidden">
+              {selectedPreviewDoc.filename.toLowerCase().endsWith('.pdf') ? (
+                <iframe
+                  src={selectedPreviewDoc.url}
+                  className="w-full h-[480px] rounded border-0"
+                  title={selectedPreviewDoc.originalFilename}
+                />
+              ) : (
+                <DocThumbnail
+                  url={selectedPreviewDoc.url}
+                  filename={selectedPreviewDoc.filename}
+                  classification={selectedPreviewDoc.classification}
+                  className="max-h-[480px] w-auto object-contain rounded"
+                />
+              )}
             </div>
 
             {selectedPreviewDoc.extractedData && (
@@ -1342,26 +1869,50 @@ export const DocumentArchiveCenterView: React.FC = () => {
               </div>
             )}
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-brand-border">
-              <a
-                href={selectedPreviewDoc.url}
-                target="_blank"
-                rel="noreferrer"
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-brand-text-primary bg-brand-bg border border-brand-border hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
-              >
-                Open Full Scan ↗
-              </a>
-              <button
-                type="button"
-                onClick={() => {
-                  const gr = selectedPreviewDoc.grNo;
-                  setSelectedPreviewDoc(null);
-                  openStudentModal(gr);
-                }}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 transition-colors"
-              >
-                Open Student Dossier
-              </button>
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-brand-border">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleRescanDoc(selectedPreviewDoc.id)}
+                  disabled={isOperatingDoc}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 border border-indigo-200 dark:border-indigo-800 transition-colors flex items-center gap-1.5"
+                >
+                  <Sparkles className={`w-3.5 h-3.5 ${isOperatingDoc ? 'animate-spin' : ''}`} />
+                  <span>Rescan with AI</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDeletingDoc(selectedPreviewDoc)}
+                  disabled={isOperatingDoc}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 border border-rose-200 dark:border-rose-900 transition-colors flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete Scan</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <a
+                  href={selectedPreviewDoc.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-brand-text-primary bg-brand-bg border border-brand-border hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                >
+                  Open Full Scan ↗
+                </a>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const gr = selectedPreviewDoc.grNo;
+                    setSelectedPreviewDoc(null);
+                    openStudentModal(gr);
+                  }}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 transition-colors"
+                >
+                  Open Student Dossier
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1369,7 +1920,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
 
       {/* Assign / Reassign Document Modal */}
       {assigningDoc && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 animate-fadeIn">
+        <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 animate-fadeIn">
           <div className="bg-white dark:bg-brand-surface rounded-2xl max-w-md w-full p-5 border border-brand-border space-y-4 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-brand-border">
               <div className="flex items-center gap-2">
@@ -1413,6 +1964,80 @@ export const DocumentArchiveCenterView: React.FC = () => {
                 )}
               </div>
             </div>
+
+            {/* Intelligent Candidate Student Matches (Ranked by Multi-Factor Similarity) */}
+            {loadingCandidatesDocId === assigningDoc.id && (
+              <div className="p-3 bg-indigo-50/50 dark:bg-indigo-950/30 rounded-xl border border-indigo-200 dark:border-indigo-800 flex items-center gap-2 text-xs text-indigo-700 dark:text-indigo-300 animate-pulse">
+                <Sparkles className="w-4 h-4 animate-spin text-indigo-600" />
+                <span>Cross-referencing extracted NADRA indicators against Google Sheet student roster...</span>
+              </div>
+            )}
+
+            {docCandidateMatches[assigningDoc.id] && docCandidateMatches[assigningDoc.id].length > 0 && (
+              <div className="space-y-2 p-3 bg-indigo-50/60 dark:bg-indigo-950/30 rounded-xl border border-indigo-200 dark:border-indigo-800">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                    Top Recommended Student Matches:
+                  </span>
+                  <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold">
+                    1-Click Fast Match
+                  </span>
+                </div>
+                <div className="space-y-1.5 max-h-44 overflow-y-auto custom-scrollbar">
+                  {docCandidateMatches[assigningDoc.id].map((cand) => (
+                    <div
+                      key={cand.grNo}
+                      onClick={() => setTargetAssignGr(cand.grNo)}
+                      className={`p-2 rounded-lg border text-xs cursor-pointer transition-all flex items-center justify-between gap-2 ${
+                        targetAssignGr === cand.grNo
+                          ? 'bg-indigo-600 text-white border-indigo-600 font-bold shadow-xs'
+                          : 'bg-white dark:bg-slate-900 border-indigo-100 dark:border-indigo-900 hover:bg-indigo-50/80 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold ${
+                              targetAssignGr === cand.grNo
+                                ? 'bg-white/20 text-white'
+                                : cand.score >= 80
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                            }`}
+                          >
+                            {cand.score}% Match
+                          </span>
+                          <span className="font-mono font-bold">GR #{cand.grNo}</span>
+                          <span className="truncate max-w-[140px]">{cand.studentName}</span>
+                          {cand.fatherName && (
+                            <span className="text-[10px] opacity-75">s/o {cand.fatherName}</span>
+                          )}
+                          <span className="text-[10px] opacity-75">({cand.currentClass})</span>
+                        </div>
+                        <div className="text-[10px] opacity-80 mt-0.5 truncate max-w-[280px]">
+                          {cand.reasons}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleResolveWithCandidate(assigningDoc.id, cand);
+                        }}
+                        className={`px-2 py-1 rounded text-[11px] font-bold transition-all whitespace-nowrap ${
+                          targetAssignGr === cand.grNo
+                            ? 'bg-white text-indigo-600 hover:bg-indigo-50'
+                            : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                        }`}
+                      >
+                        Assign & Link
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2">
               <label className="text-xs font-semibold text-brand-text-primary block">
@@ -1482,6 +2107,80 @@ export const DocumentArchiveCenterView: React.FC = () => {
           onClose={() => setActiveStudentModal(null)}
           onEdit={() => {}}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingDoc && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-brand-surface rounded-2xl border border-brand-border p-6 max-w-md w-full shadow-2xl space-y-4 animate-scaleUp">
+            <div className="flex items-center gap-3 text-rose-500">
+              <Trash2 className="w-6 h-6 flex-shrink-0" />
+              <h3 className="text-lg font-bold text-brand-text-primary">Delete Document Scan?</h3>
+            </div>
+            <p className="text-xs text-brand-text-secondary leading-relaxed">
+              Are you sure you want to permanently delete <strong className="text-brand-text-primary">{deletingDoc.originalFilename || deletingDoc.filename}</strong> (GR #{deletingDoc.grNo})?
+              This will remove the physical scan file from disk and detach it from the student dossier.
+            </p>
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-brand-border">
+              <button
+                type="button"
+                onClick={() => setDeletingDoc(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-brand-text-secondary hover:bg-brand-bg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteDoc(deletingDoc.id)}
+                disabled={isOperatingDoc}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 shadow-xs transition-colors flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isOperatingDoc ? 'Deleting...' : 'Delete Scan'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Delete Confirmation Modal */}
+      {isConfirmingBatchDelete && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-brand-surface rounded-2xl border border-brand-border p-6 max-w-md w-full shadow-2xl space-y-4 animate-scaleUp">
+            <div className="flex items-center gap-3 text-rose-500">
+              <Trash2 className="w-7 h-7 flex-shrink-0" />
+              <div>
+                <h3 className="text-lg font-bold text-brand-text-primary">
+                  Delete {selectedDocIds.length} Document Scans?
+                </h3>
+                <p className="text-xs text-rose-600 dark:text-rose-400 font-medium">
+                  This bulk action is irreversible.
+                </p>
+              </div>
+            </div>
+            <p className="text-xs text-brand-text-secondary leading-relaxed">
+              Are you sure you want to permanently delete <strong>{selectedDocIds.length}</strong> selected document scans from disk and detach them from all student dossiers?
+            </p>
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-brand-border">
+              <button
+                type="button"
+                onClick={() => setIsConfirmingBatchDelete(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-brand-text-secondary hover:bg-brand-bg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleBatchDeleteDocs}
+                disabled={isOperatingDoc}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isOperatingDoc ? 'Deleting Scans...' : `Delete ${selectedDocIds.length} Scans`}</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Live Background Processing Pipeline & Diagnostics Modal */}

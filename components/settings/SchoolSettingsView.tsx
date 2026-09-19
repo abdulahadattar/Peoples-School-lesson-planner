@@ -213,7 +213,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({ onOpenLo
     <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-8 py-6 space-y-6">
       {/* Reset Confirmation Modal */}
       {showResetConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white dark:bg-brand-surface rounded-2xl border border-brand-border p-6 max-w-md shadow-2xl space-y-4">
             <div className="flex items-center gap-3 text-amber-500">
               <AlertCircle className="w-6 h-6 flex-shrink-0" />
