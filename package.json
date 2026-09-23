@@ -12,6 +12,8 @@
     "test": "node scripts/test-all.mjs"
   },
   "dependencies": {
+    "@autonoma-ai/sdk": "^0.2.9",
+    "@autonoma-ai/server-express": "^0.2.9",
     "@google/genai": "^1.29.0",
     "@types/express": "^5.0.6",
     "adm-zip": "^0.6.1",
@@ -32,7 +34,8 @@
     "recharts": "^3.10.1",
     "sharp": "^0.35.4",
     "tsx": "^4.23.13",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",

@@ -39,6 +39,7 @@ import {
   reprocessDocumentWithAi,
   reprocessDossierDocumentsWithAi,
 } from './services/documentArchiveService';
+import { createAutonomaHandler } from './services/autonomaIntegration';
 
 // Server-side in-memory cache for Google Sheet data to prevent redundant network round-trips
 interface ServerSheetCacheEntry {
@@ -76,9 +77,43 @@ async function startServer() {
   app.use(express.json({ limit: '100mb' }));
   app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 
-  // API Health Check
+  // Log all requests
+  app.use((req, res, next) => {
+    console.log('[server] Request:', req.method, req.path);
+    next();
+  });
+
+  // Environment variables for Autonoma
+  const sharedSecret = process.env.AUTONOMA_SHARED_SECRET || 'e1ae84345a120f3f25ce10158da374307faadfeb1a091b997299ae55777d166a';
+  const signingSecret = process.env.AUTONOMA_SIGNING_SECRET || '043b60e656b726705d559a6489a73ccaf57c234f5e01b384f5f62936c1a0aaaa';
+  const autonomaHandler = createAutonomaHandler(sharedSecret, signingSecret);
+
+  // API routes directly on app
   app.get('/api/health', (_req, res) => {
+    console.log('[server] /api/health route hit');
     res.json({ status: 'ok' });
+  });
+
+  app.post('/api/autonoma', (req, res, next) => {
+    console.log('[server] /api/autonoma route HIT - method:', req.method);
+    console.log('[server] /api/autonoma body:', req.body);
+    autonomaHandler(req, res, next);
+  });
+
+  app.post('/api/test-post', (req, res) => {
+    console.log('[server] /api/test-post route hit');
+    res.json({ ok: true, body: req.body });
+  });
+
+  app.get('/api/test-route', (req, res) => {
+    console.log('[server] /api/test-route route HIT - sending JSON');
+    res.json({ ok: true });
+  });
+
+  // Test route outside /api
+  app.get('/test-route', (req, res) => {
+    console.log('[server] /test-route route HIT');
+    res.json({ ok: true });
   });
 
   // Unified endpoint for Gemini to keep API keys secure on server with key rotation and model fallback
@@ -1244,12 +1279,19 @@ async function startServer() {
   });
 
   // Vite middleware for development
+  console.log('[server] NODE_ENV:', process.env.NODE_ENV);
   if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
+    console.log('[server] Skipping Vite server creation for API testing');
+    // const vite = await createViteServer({
+    //   server: { middlewareMode: true },
+    // });
+    // console.log('[server] Vite server created');
+    
+    // SPA fallback for everything else
+    app.get('/{*path}', (req, res) => {
+      console.log('[server] SPA fallback hit for:', req.method, req.path);
+      res.sendFile(path.join(process.cwd(), 'index.html'));
     });
-    app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
@@ -1260,6 +1302,15 @@ async function startServer() {
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://0.0.0.0:${PORT}`);
+  });
+
+  // Error handling middleware
+  app.use((err, req, res, next) => {
+    console.error('[server] Error:', err);
+    if (res.headersSent) {
+      return next(err);
+    }
+    res.status(500).json({ error: err.message });
   });
 }
 
