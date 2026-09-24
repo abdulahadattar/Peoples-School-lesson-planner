@@ -4,6 +4,7 @@
 - **Path**: `/api/autonoma`
 - **Method**: POST only
 - **Authentication**: HMAC-SHA256 with shared secret
+- **Deployed URL**: `https://alpha-o2v3a70og-abdulahadattars-projects.vercel.app/api/autonoma`
 
 ## Secrets
 - **Shared Secret** (known by Autonoma): `e1ae84345a120f3f25ce10158da374307faadfeb1a091b997299ae55777d166a`
@@ -21,7 +22,7 @@
 
 ## Maintenance Requirements
 When modifying any factory's `create` or `teardown` logic:
-1. Update the corresponding factory in `services/autonomaIntegration.ts`
+1. Update the corresponding factory in `api/index.ts` (self-contained serverless function)
 2. Re-run the validation cycle: up → down
 3. Ensure the recipe.json at `C:\Users\hp\.autonoma\c-users-hp\recipe.json` stays in sync
 4. The completion marker is at `C:\Users\hp\.autonoma\c-users-hp\.sdk-integration-complete`
@@ -29,17 +30,22 @@ When modifying any factory's `create` or `teardown` logic:
 ## Testing
 ```bash
 # Discover factories
-curl -X POST http://localhost:3000/api/autonoma \
+curl -X POST https://alpha-o2v3a70og-abdulahadattars-projects.vercel.app/api/autonoma \
   -H "Content-Type: application/json" \
-  -H "x-signature: $(echo -n '{"action":"discover"}' | openssl dgst -sha256 -hmac "$SHARED_SECRET" | cut -d' ' -f2)" \
+  -H "x-signature: <HMAC-SHA256 of body with shared secret>" \
   -d '{"action":"discover"}'
 
-# Validate scenario (requires recipe.json)
-# sdk check --url http://localhost:3000/api/autonoma --shared-secret $SHARED_SECRET
+# Full lifecycle test (up + down)
+# Use test-up-down.cjs script with Node.js
 ```
 
 ## Files
-- `services/autonomaIntegration.ts` - Factory definitions and handler creation
-- `server.ts` - Endpoint registration at `/api/autonoma`
-- `C:\Users\hp\.autonoma\c-users-hp\recipe.json` - Scenario definitions
+- `api/index.ts` - Self-contained serverless function with all 5 factories and handler
+- `C:\Users\hp\.autonoma\c-users-hp\recipe.json` - Scenario definitions (standard scenario)
 - `C:\Users\hp\.autonoma\c-users-hp\.sdk-integration-complete` - Completion marker
+
+## Deployment Notes
+- Serverless function on Vercel at `/api/autonoma`
+- Uses `/tmp/data/autonoma` for JSON file persistence (Vercel read-only filesystem)
+- Inlined all dependencies (zod, @autonoma-ai/sdk, @autonoma-ai/server-express, crypto, fs, path)
+- Framework: Vite + Express, build: `npm run build`, output: `dist`
