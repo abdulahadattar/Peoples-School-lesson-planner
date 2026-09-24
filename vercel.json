@@ -9,8 +9,7 @@
   ],
   "functions": {
     "api/index.ts": {
-      "maxDuration": 30,
-      "includeFiles": "services/**"
+      "maxDuration": 30
     }
   },
   "cleanUrls": true

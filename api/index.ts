@@ -1,5 +1,5 @@
 import express from 'express';
-import { createAutonomaHandler } from '../services/autonomaIntegration';
+import { createAutonomaHandler } from './autonomaIntegration';
 
 const app = express();
 
