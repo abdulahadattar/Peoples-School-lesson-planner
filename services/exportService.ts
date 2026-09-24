@@ -76,16 +76,15 @@ const parseTextForDocx = async (text: string, mathScale: number = 100): Promise<
     if (seg.type === 'equation' && seg.image) {
       // Convert data URL to base64 and create an ImageRun at its natural size
       // (measured in CSS px before the 2x rasterization).
-      const base64 = dataUrlToBase64(seg.image);
-      const scaleMultiplier = mathScale / 100;
-      runs.push(new ImageRun({
-        type: 'png',
-        data: base64,
-        transformation: {
-          width: Math.min(Math.round((seg.width || 120) * scaleMultiplier), 480),
-          height: Math.min(Math.round((seg.height || 24) * scaleMultiplier), 140),
-        },
-      }));
+const base64 = dataUrlToBase64(seg.image);
+       const scaleMultiplier = mathScale / 100;
+       runs.push(new ImageRun({
+         data: base64,
+         transformation: {
+           width: Math.min(Math.round((seg.width || 120) * scaleMultiplier), 480),
+           height: Math.min(Math.round((seg.height || 24) * scaleMultiplier), 140),
+         },
+       }));
     } else {
       // Plain text — check for bold/italic markdown
       runs.push(...parseMarkdownRuns(seg.value));

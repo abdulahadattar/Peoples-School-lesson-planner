@@ -39,9 +39,10 @@ import {
   reprocessDocumentWithAi,
   reprocessDossierDocumentsWithAi,
 } from './services/documentArchiveService';
+
+
 import { createAutonomaHandler } from './services/autonomaIntegration';
 
-export function createApp() {
 
 // Server-side in-memory cache for Google Sheet data to prevent redundant network round-trips
 interface ServerSheetCacheEntry {
@@ -85,7 +86,7 @@ async function createApp() {
     next();
   });
 
-  // Environment variables for Autonoma
+  // Autonoma SDK integration
   const sharedSecret = process.env.AUTONOMA_SHARED_SECRET || 'e1ae84345a120f3f25ce10158da374307faadfeb1a091b997299ae55777d166a';
   const signingSecret = process.env.AUTONOMA_SIGNING_SECRET || '043b60e656b726705d559a6489a73ccaf57c234f5e01b384f5f62936c1a0aaaa';
   const autonomaHandler = createAutonomaHandler(sharedSecret, signingSecret);
@@ -96,10 +97,10 @@ async function createApp() {
     res.json({ status: 'ok' });
   });
 
-  app.post('/api/autonoma', (req, res, next) => {
+  app.post('/api/autonoma', (req, res) => {
     console.log('[server] /api/autonoma route HIT - method:', req.method);
     console.log('[server] /api/autonoma body:', req.body);
-    autonomaHandler(req, res, next);
+    autonomaHandler(req, res);
   });
 
   app.post('/api/test-post', (req, res) => {
