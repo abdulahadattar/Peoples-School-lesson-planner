@@ -5,12 +5,12 @@
   "installCommand": "npm install",
   "framework": "vite",
   "functions": {
-    "dist/server.cjs": {
+    "api/index.cjs": {
       "maxDuration": 60
     }
   },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/dist/server.cjs" },
+    { "source": "/api/(.*)", "destination": "/api/index.cjs" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "cleanUrls": true
