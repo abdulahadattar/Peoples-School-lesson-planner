@@ -10,10 +10,7 @@
   "functions": {
     "api/index.ts": {
       "maxDuration": 30,
-      "includeFiles": [
-        "server.ts",
-        "services/**"
-      ]
+      "includeFiles": "server.ts"
     }
   },
   "cleanUrls": true
