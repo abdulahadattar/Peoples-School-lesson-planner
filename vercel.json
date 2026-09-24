@@ -5,6 +5,11 @@
   "installCommand": "npm install",
   "framework": null,
   "outputDirectory": "dist",
+  "functions": {
+    "api/index.cjs": {
+      "maxDuration": 60
+    }
+  },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.cjs" },
     { "source": "/(.*)", "destination": "/index.html" }
