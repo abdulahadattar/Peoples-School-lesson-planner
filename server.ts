@@ -41,6 +41,8 @@ import {
 } from './services/documentArchiveService';
 import { createAutonomaHandler } from './services/autonomaIntegration';
 
+export function createApp() {
+
 // Server-side in-memory cache for Google Sheet data to prevent redundant network round-trips
 interface ServerSheetCacheEntry {
   timestamp: number;
@@ -55,7 +57,7 @@ interface ServerSheetCacheEntry {
 const sheetCache: Record<string, ServerSheetCacheEntry> = {};
 const SHEET_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-async function startServer() {
+async function createApp() {
   const app = express();
   const PORT = 3000;
 
@@ -1300,10 +1302,6 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://0.0.0.0:${PORT}`);
-  });
-
   // Error handling middleware
   app.use((err, req, res, next) => {
     console.error('[server] Error:', err);
@@ -1312,6 +1310,23 @@ async function startServer() {
     }
     res.status(500).json({ error: err.message });
   });
+
+  return app;
 }
 
-startServer();
+async function startServer() {
+  const app = await createApp();
+  const PORT = 3000;
+  
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on http://0.0.0.0:${PORT}`);
+  });
+}
+
+// Export for Vercel
+export default createApp;
+
+// Start server if not in Vercel
+if (!process.env.VERCEL) {
+  startServer();
+}

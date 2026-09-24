@@ -3,16 +3,7 @@
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",
   "installCommand": "npm install",
-  "framework": null,
+  "framework": "vite",
   "outputDirectory": "dist",
-  "functions": {
-    "api/index.cjs": {
-      "maxDuration": 60
-    }
-  },
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index.cjs" },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ],
   "cleanUrls": true
 }
