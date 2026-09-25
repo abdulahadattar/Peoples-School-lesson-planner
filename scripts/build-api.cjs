@@ -5,9 +5,9 @@ build({
   entryPoints: [path.join(__dirname, '..', 'services', 'apiHandler.ts')],
   bundle: true,
   platform: 'node',
-  format: 'cjs',
+  format: 'esm',
   target: 'node18',
-  outfile: path.join(__dirname, '..', 'api', 'index.cjs'),
+  outfile: path.join(__dirname, '..', 'api', 'index.js'),
   logLevel: 'info',
   allowOverwrite: true,
 }).catch(() => process.exit(1));
