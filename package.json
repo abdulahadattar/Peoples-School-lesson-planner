@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && node scripts/build-api.mjs",
-    "start": "node api/index.cjs",
+    "build": "vite build && node scripts/build-api.cjs",
+    "start": "node api/index.js",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
     "test": "node scripts/test-all.mjs"
