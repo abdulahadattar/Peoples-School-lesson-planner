@@ -1,10 +1,23 @@
-# Autonoma SDK Integration - Maintenance Notes
+# Autonoma SDK Integration & Deployment - Maintenance Notes
 
-## Endpoint
+## Branch/URL Mapping
+| Branch | URL | Environment | Status |
+|--------|-----|-------------|--------|
+| `alpha` | `https://phssjamshoroportalalpha.vercel.app` | Testing only | Active |
+| `testing` | `https://phssjamshoroportalb.vercel.app` | Partial public access | Active |
+| `main` | `https://phssjamshoroportal.vercel.app` | Production for public | Active |
+
+## Autonoma SDK Endpoint
 - **Path**: `/api/autonoma`
 - **Method**: POST only
 - **Authentication**: HMAC-SHA256 with shared secret
-- **Deployed URL**: `https://alpha-o2v3a70og-abdulahadattars-projects.vercel.app/api/autonoma`
+- **Deployed URL**: `https://phssjamshoroportalalpha.vercel.app/api/autonoma`
+- **Validation**: ✅ All passing (discover, up, down)
+
+## API Endpoints
+- **Health**: `/api/health` → `{"status":"ok"}`
+- **Autonoma**: `/api/autonoma` → Environment factory for test data seeding
+- **PDF Proxy**: `/pdf-proxy?path=<github-path>` → Proxies GitHub raw content (replaces Vite dev proxy in production)
 
 ## Secrets
 - **Shared Secret** (known by Autonoma): `e1ae84345a120f3f25ce10158da374307faadfeb1a091b997299ae55777d166a`
@@ -20,6 +33,12 @@
 ## Scenarios
 - **standard** - Realistic browser companion state with active chat session, stored page context, and tool activity history.
 
+## Version Tracking
+- Version: `1.0.0-alpha.24`
+- Branch: `alpha`
+- Config file: `version.json` (root)
+- Displays in app footer with colored badge (yellow=testing, blue=partial-public, green=production)
+
 ## Maintenance Requirements
 When modifying any factory's `create` or `teardown` logic:
 1. Update the corresponding factory in `api/index.ts` (self-contained serverless function)
@@ -29,23 +48,30 @@ When modifying any factory's `create` or `teardown` logic:
 
 ## Testing
 ```bash
-# Discover factories
-curl -X POST https://alpha-o2v3a70og-abdulahadattars-projects.vercel.app/api/autonoma \
+# E2E tests (npm test)
+TEST_BASE_URL=https://phssjamshoroportalalpha.vercel.app npm test
+
+# Autonoma discover
+curl -X POST https://phssjamshoroportalalpha.vercel.app/api/autonoma \
   -H "Content-Type: application/json" \
   -H "x-signature: <HMAC-SHA256 of body with shared secret>" \
   -d '{"action":"discover"}'
 
 # Full lifecycle test (up + down)
-# Use test-up-down.cjs script with Node.js
+# Use Node.js script with HMAC signing (see scripts/test-all.mjs pattern)
 ```
 
 ## Files
 - `api/index.ts` - Self-contained serverless function with all 5 factories and handler
+- `server.ts` - Local dev server with all routes
 - `C:\Users\hp\.autonoma\c-users-hp\recipe.json` - Scenario definitions (standard scenario)
 - `C:\Users\hp\.autonoma\c-users-hp\.sdk-integration-complete` - Completion marker
+- `version.json` - Version tracking configuration
+- `scripts/test-all.mjs` - E2E test suite (26 tests: dev server, PDF proxy, SLO data, API keys, PDF validation, AI generation)
 
 ## Deployment Notes
-- Serverless function on Vercel at `/api/autonoma`
-- Uses `/tmp/data/autonoma` for JSON file persistence (Vercel read-only filesystem)
-- Inlined all dependencies (zod, @autonoma-ai/sdk, @autonoma-ai/server-express, crypto, fs, path)
-- Framework: Vite + Express, build: `npm run build`, output: `dist`
+- **Framework**: Vite + Express, build: `npm run build`, output: `dist`
+- **Serverless functions**: `api/index.ts` deployed as Vercel Node.js function
+- **Persistence**: `/tmp/data/autonoma` for JSON file persistence (Vercel read-only filesystem)
+- **Inlined dependencies**: zod, @autonoma-ai/sdk, @autonoma-ai/server-express, crypto, fs, path
+- **GitHub Actions**: Auto-deploys alpha branch → `phssjamshoroportalalpha.vercel.app`
