@@ -339,9 +339,9 @@ app.post('/api/autonoma', (req, res) => {
 });
 
 // PDF Proxy for GitHub raw content
-app.get('/pdf-proxy/*', async (req, res) => {
+app.get('/pdf-proxy/:path*', async (req, res) => {
   try {
-    const path = req.params[0] || '';
+    const path = req.params.path || req.query.path || req.originalUrl.replace('/pdf-proxy/', '').replace(/^\//, '');
     const url = `https://raw.githubusercontent.com/${path}`;
     console.log('[api] pdf-proxy fetching:', url);
     
