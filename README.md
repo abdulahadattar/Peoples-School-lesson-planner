@@ -1,6 +1,20 @@
 # Lesson Planner - Peoples Higher Secondary School Jamshoro
-keep updating documentions properly
+
 An intelligent lesson plan and exam paper generator for teachers, aligned with the Sindh Textbook Board (STBB) curriculum from ECCE to Class XII.
+
+## Deployments
+
+| Branch | URL | Environment |
+|--------|-----|-------------|
+| `alpha` | `https://phssjamshoroportalalpha.vercel.app` | Testing only |
+| `testing` | `https://phssjamshoroportalb.vercel.app` | Partial public access |
+| `main` | `https://phssjamshoroportal.vercel.app` | Production for public |
+
+## API Endpoints
+
+- `/api/health` — Health check, returns `{"status":"ok"}`
+- `/api/autonoma` — Autonoma SDK test data seeding (HMAC-SHA256 authenticated)
+- `/pdf-proxy?path=<github-raw-path>` — Proxies GitHub raw content for PDF documents
 
 ## Features
 
@@ -10,6 +24,7 @@ An intelligent lesson plan and exam paper generator for teachers, aligned with t
 - **Mobile-First Design** — Optimized for phones and tablets
 - **PDF & DOCX Export** — Download lesson plans and papers in multiple formats
 - **AI-Powered** — Uses Google Gemini for content generation
+- **Autonoma SDK Integration** — Test data seeding via `/api/autonoma` endpoint
 
 ## Important Notes
 
@@ -29,14 +44,24 @@ An intelligent lesson plan and exam paper generator for teachers, aligned with t
    - **Single key:** `VITE_API_KEY=your_gemini_api_key_here`
    - **Multiple keys for rotation:** `VITE_API_KEYS=key1,key2,key3,...,keyN`
 3. Run the app:
-   ```
-   npm run dev
-   ```
+    ```
+    npm run dev
+    ```
 
 ## Build
 
 ```
 npm run build
+```
+
+## Testing
+
+```bash
+# Run E2E tests (26 tests: dev server, PDF proxy, SLO data, API keys, PDF validation, AI generation)
+npm test
+
+# For deployed testing:
+TEST_BASE_URL=https://phssjamshoroportalalpha.vercel.app npm test
 ```
 
 ## Tech Stack
@@ -46,3 +71,5 @@ npm run build
 - Tailwind CSS
 - Google Gemini AI
 - DOCX + PDF export
+- Express (server-side API)
+- Autonoma SDK (test data seeding)
