@@ -2,6 +2,9 @@
 .env.local
 .vercel/
 
+# API build output (committed as .cjs, ignore stale .js)
+api/index.js
+
 # Node
 node_modules/
 *.log
