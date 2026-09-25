@@ -27812,11 +27812,11 @@ var require_color = __commonJS({
       return to;
     };
     var __toCommonJS2 = (mod) => __copyProps2(__defProp2({}, "__esModule", { value: true }), mod);
-    var index_exports2 = {};
-    __export2(index_exports2, {
-      default: () => index_default2
+    var index_exports = {};
+    __export2(index_exports, {
+      default: () => index_default
     });
-    module2.exports = __toCommonJS2(index_exports2);
+    module2.exports = __toCommonJS2(index_exports);
     var colors = {
       aliceblue: [240, 248, 255],
       antiquewhite: [250, 235, 215],
@@ -29376,7 +29376,7 @@ var require_color = __commonJS({
       }
       return array2;
     }
-    var index_default2 = Color;
+    var index_default = Color;
   }
 });
 
@@ -78423,12 +78423,12 @@ var require_cjs = __commonJS({
   }
 });
 
-// api/index.ts
-var index_exports = {};
-__export(index_exports, {
-  default: () => index_default
+// api/function.ts
+var function_exports = {};
+__export(function_exports, {
+  default: () => function_default
 });
-module.exports = __toCommonJS(index_exports);
+module.exports = __toCommonJS(function_exports);
 
 // services/app.ts
 var import_express = __toESM(require_express2(), 1);
@@ -112076,9 +112076,9 @@ async function createApp() {
   return app;
 }
 
-// api/index.ts
+// api/function.ts
 var cachedApp = null;
-async function index_default(req, res) {
+async function function_default(req, res) {
   if (!cachedApp) {
     cachedApp = await createApp();
   }

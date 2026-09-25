@@ -2,7 +2,7 @@ const { build } = require('esbuild');
 const path = require('path');
 
 build({
-  entryPoints: [path.join(__dirname, '..', 'api', 'index.ts')],
+  entryPoints: [path.join(__dirname, '..', 'api', 'function.ts')],
   bundle: true,
   platform: 'node',
   format: 'cjs',
