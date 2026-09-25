@@ -71,7 +71,7 @@ async function testAll() {
   // ── Server + Proxy (parallel) ──
   const [srv, proxy] = await Promise.allSettled([
     fetch(`${BASE}/`, { signal: AbortSignal.timeout(5000) }),
-    fetch(`${BASE}/pdf-proxy/abdulahadattar/STBB-BOOKS/main/README.md`, { signal: AbortSignal.timeout(8000) }),
+    fetch(`${BASE}/pdf-proxy?path=abdulahadattar/STBB-BOOKS/main/README.md`, { signal: AbortSignal.timeout(8000) }),
   ]);
   if (srv.status === 'fulfilled' && srv.value.ok) pass('Dev server');
   else fail('Dev server', 'not running');
@@ -145,7 +145,7 @@ async function testAll() {
       const chapter = data.chapters?.find(c => c.chapter_number === t.ch);
       if (!chapter?.pdf_url) { skip(t.name, 'no pdf_url'); return; }
       const gh = chapter.pdf_url.match(/raw\.githubusercontent\.com\/(.+)/);
-      const url = gh ? `${BASE}/pdf-proxy/${gh[1]}` : chapter.pdf_url;
+      const url = gh ? `${BASE}/pdf-proxy?path=${gh[1]}` : chapter.pdf_url;
       // Fetch only first 5KB to verify PDF header — no full download
       const r = await fetch(url, { signal: AbortSignal.timeout(15000), headers: { Range: 'bytes=0-5000' } });
       if (!r.ok && r.status !== 206) { fail(t.name, `HTTP ${r.status}`); return; }
@@ -174,7 +174,7 @@ async function testAll() {
       if (ch.pdf_url) {
         try {
           const gh = ch.pdf_url.match(/raw\.githubusercontent\.com\/(.+)/);
-          const r = await fetch(`${BASE}/pdf-proxy/${gh[1]}`, { signal: AbortSignal.timeout(25000) });
+          const r = await fetch(`${BASE}/pdf-proxy?path=${gh[1]}`, { signal: AbortSignal.timeout(25000) });
           if (r.ok) pdfPart = { inlineData: { mimeType: 'application/pdf', data: await blob2b64(await r.blob()) } };
         } catch {}
       }
@@ -219,7 +219,7 @@ async function testAll() {
       if (ch?.pdf_url) {
         try {
           const gh = ch.pdf_url.match(/raw\.githubusercontent\.com\/(.+)/);
-          const r = await fetch(`${BASE}/pdf-proxy/${gh[1]}`, { signal: AbortSignal.timeout(25000) });
+          const r = await fetch(`${BASE}/pdf-proxy?path=${gh[1]}`, { signal: AbortSignal.timeout(25000) });
           if (r.ok) pdfPart = { inlineData: { mimeType: 'application/pdf', data: await blob2b64(await r.blob()) } };
         } catch {}
       }
