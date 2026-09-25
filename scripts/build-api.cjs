@@ -2,11 +2,12 @@ const { build } = require('esbuild');
 const path = require('path');
 
 build({
-  entryPoints: [path.join(__dirname, '..', 'api', 'function.ts')],
+  entryPoints: [path.join(__dirname, '..', 'services', 'apiHandler.ts')],
   bundle: true,
   platform: 'node',
   format: 'cjs',
   target: 'node18',
   outfile: path.join(__dirname, '..', 'api', 'index.js'),
   logLevel: 'info',
+  allowOverwrite: true,
 }).catch(() => process.exit(1));
