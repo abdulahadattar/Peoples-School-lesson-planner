@@ -339,16 +339,8 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-app.post('/api/autonoma', async (req, res) => {
-  const sig = req.headers['x-signature'];
-  const bodyStr = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
-  console.log('[autonoma-debug] body:', bodyStr);
-  console.log('[autonoma-debug] signature:', sig);
-  console.log('[autonoma-debug] sharedSecret:', sharedSecret);
-  const computed = crypto.createHmac('sha256', sharedSecret).update(bodyStr).digest('hex');
-  console.log('[autonoma-debug] computed:', computed);
-  console.log('[autonoma-debug] match:', sig === computed);
-  await autonomaHandler(req, res);
+app.post('/api/autonoma', (req, res) => {
+  autonomaHandler(req, res);
 });
 
 // PDF Proxy
