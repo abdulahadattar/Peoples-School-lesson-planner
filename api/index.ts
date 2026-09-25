@@ -344,7 +344,7 @@ app.post('/api/autonoma', async (req, res) => {
   const bodyStr = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
   console.log('[autonoma-debug] body:', bodyStr);
   console.log('[autonoma-debug] signature:', sig);
-  console.log('[autonoma-debug] sharedSecret prefix:', sharedSecret.slice(0, 8));
+  console.log('[autonoma-debug] sharedSecret:', sharedSecret);
   const computed = crypto.createHmac('sha256', sharedSecret).update(bodyStr).digest('hex');
   console.log('[autonoma-debug] computed:', computed);
   console.log('[autonoma-debug] match:', sig === computed);
