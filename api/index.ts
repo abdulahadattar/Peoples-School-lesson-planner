@@ -623,7 +623,7 @@ app.post('/api/sheets/add', async (req, res) => {
 });
 
 // Attendance
-const ATTENDANCE_FILE = path.join(process.env.VERCEL ? '/tmp' : process.cwd(), 'data', 'daily_attendance.json');
+const ATTENDANCE_FILE = '/tmp/data/daily_attendance.json';
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 const getAttendanceStore = (): Record<string, any> => {
@@ -719,7 +719,7 @@ app.get('/api/attendance/history', (_req, res) => {
 });
 
 // Document storage
-const DATA_DIR = path.join(process.env.VERCEL ? '/tmp' : process.cwd(), 'data');
+const DATA_DIR = '/tmp/data';
 const DOCS_DIR = path.join(DATA_DIR, 'student_documents');
 const JOBS_FILE = path.join(DATA_DIR, 'processing_jobs.json');
 const DOSSIERS_FILE = path.join(DATA_DIR, 'student_dossiers.json');
