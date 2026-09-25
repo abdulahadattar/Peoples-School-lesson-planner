@@ -1,4 +1,4 @@
-import { createApp } from '../services/app';
+import { createApp } from '../services/app.js';
 import { Express } from 'express';
 
 let cachedApp: Express | null = null;
