@@ -56,6 +56,19 @@ npm run build
 
 ## Testing
 
+## Deployment
+
+All changes are pushed to GitHub and automatically deployed by Vercel's GitHub integration:
+
+1. **`alpha` branch** → `https://phssjamshoroportalalpha.vercel.app` (testing)
+2. **`testing` branch** → `https://phssjamshoroportalb.vercel.app` (partial public)
+3. **`main` branch** → `https://phssjamshoroportal.vercel.app` (production)
+
+**Do NOT deploy manually via Vercel CLI.** Simply push to the appropriate branch:
+```bash
+git push origin <branch>
+```
+
 ```bash
 # Run E2E tests (26 tests: dev server, PDF proxy, SLO data, API keys, PDF validation, AI generation)
 npm test
