@@ -9,3 +9,5 @@ api/index.js
 node_modules/
 *.log
 dist/
+
+.vercel
