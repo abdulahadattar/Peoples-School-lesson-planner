@@ -18,6 +18,7 @@ import { Settings as SettingsIcon } from 'lucide-react';
 import { DocumentArchiveCenterView } from './components/DocumentArchiveCenterView';
 import { useGeneralGeneration, GenerationMode } from './hooks/useGeneralGeneration';
 import { useSelection } from './hooks/useSelection';
+import versionConfig from './version.json';
 import { loadSloChapter } from './services/sloData';
 import { auth } from './services/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
@@ -474,6 +475,32 @@ const App: React.FC = () => {
           />
         )}
       </main>
+
+      {/* Version Footer */}
+      <div className="fixed bottom-0 left-0 right-0 h-6 bg-brand-surface/80 border-t border-brand-border/50 flex items-center justify-center text-xs text-brand-text-secondary z-50">
+        <span className="flex items-center gap-2">
+          <span
+            className={`w-2 h-2 rounded-full ${
+              versionConfig.environment === 'testing'
+                ? 'bg-yellow-400 animate-pulse'
+                : versionConfig.environment === 'partial-public'
+                ? 'bg-blue-400'
+                : 'bg-green-400'
+            }`}
+          />
+          <span>{versionConfig.version}</span>
+          <span className={`px-1.5 py-0.25 rounded text-xs font-medium ${
+            versionConfig.environment === 'testing'
+              ? 'bg-yellow-400/20 text-yellow-300'
+              : versionConfig.environment === 'partial-public'
+              ? 'bg-blue-400/20 text-blue-300'
+              : 'bg-green-400/20 text-green-300'
+          }`}>
+            {versionConfig.branch}
+          </span>
+          <span>{versionConfig.deployUrl.replace('https://', '')}</span>
+        </span>
+      </div>
     </div>
   );
 };
