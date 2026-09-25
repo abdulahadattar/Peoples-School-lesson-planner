@@ -7,6 +7,16 @@
 | `testing` | `https://phssjamshoroportalb.vercel.app` | Partial public access | Active |
 | `main` | `https://phssjamshoroportal.vercel.app` | Production for public | Active |
 
+## Deployment Workflow
+1. Push changes to `alpha` branch - GitHub integration auto-deploys to `phssjamshoroportalalpha.vercel.app`
+2. After alpha verification: cherry-pick relevant commits to `testing` branch
+3. After testing verification: merge to `main` branch
+4. **Do NOT use `vercel --prod` or `vercel deploy`** - use `git push origin <branch>`
+5. Delete the accidental "dist" project in Vercel dashboard if present
+
+## GitHub Actions
+Auto-deploys via GitHub integration (not manual Vercel CLI deployments)
+
 ## Autonoma SDK Endpoint
 - **Path**: `/api/autonoma`
 - **Method**: POST only
@@ -74,4 +84,5 @@ curl -X POST https://phssjamshoroportalalpha.vercel.app/api/autonoma \
 - **Serverless functions**: `api/index.ts` deployed as Vercel Node.js function
 - **Persistence**: `/tmp/data/autonoma` for JSON file persistence (Vercel read-only filesystem)
 - **Inlined dependencies**: zod, @autonoma-ai/sdk, @autonoma-ai/server-express, crypto, fs, path
-- **GitHub Actions**: Auto-deploys alpha branch → `phssjamshoroportalalpha.vercel.app`
+- **GitHub Actions**: Auto-deploys alpha branch → `phssjamshoroportalalpha.vercel.app`, testing → `phssjamshoroportalb.vercel.app`, main → `phssjamshoroportal.vercel.app`
+- **Do NOT deploy via Vercel CLI** - push to GitHub and let GitHub integration handle deployment
