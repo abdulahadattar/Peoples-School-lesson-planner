@@ -2,12 +2,11 @@
 .env.local
 .vercel/
 
-# API build output (committed as .cjs, ignore stale .js)
+# API build output
 api/index.js
+api/index.cjs
 
 # Node
 node_modules/
 *.log
 dist/
-
-.vercel
