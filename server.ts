@@ -119,6 +119,38 @@ async function createApp() {
     res.json({ ok: true });
   });
 
+  // PDF Proxy for GitHub raw content (production replacement for Vite dev proxy)
+  app.get('/pdf-proxy/:path(*)', async (req, res) => {
+    try {
+      const path = req.params.path;
+      const url = `https://raw.githubusercontent.com/${path}`;
+      console.log('[server] pdf-proxy fetching:', url);
+      
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'PHSSJ-Lesson-Planner/1.0',
+        },
+        signal: AbortSignal.timeout(30000),
+      });
+      
+      if (!response.ok) {
+        console.warn('[server] pdf-proxy failed:', response.status, response.statusText);
+        res.status(response.status).json({ error: `GitHub returned ${response.status}` });
+        return;
+      }
+      
+      const contentType = response.headers.get('content-type') || 'application/octet-stream';
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      
+      const arrayBuffer = await response.arrayBuffer();
+      res.send(Buffer.from(arrayBuffer));
+    } catch (error) {
+      console.error('[server] pdf-proxy error:', error);
+      res.status(500).json({ error: 'PDF proxy failed' });
+    }
+  });
+
   // Unified endpoint for Gemini to keep API keys secure on server with key rotation and model fallback
   app.post('/api/gemini', async (req, res) => {
     try {

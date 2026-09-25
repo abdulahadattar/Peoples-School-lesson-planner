@@ -338,4 +338,36 @@ app.post('/api/autonoma', (req, res) => {
   autonomaHandler(req, res);
 });
 
+// PDF Proxy for GitHub raw content
+app.get('/pdf-proxy/:path(*)', async (req, res) => {
+  try {
+    const path = req.params.path;
+    const url = `https://raw.githubusercontent.com/${path}`;
+    console.log('[api] pdf-proxy fetching:', url);
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'PHSSJ-Lesson-Planner/1.0',
+      },
+      signal: AbortSignal.timeout(30000),
+    });
+    
+    if (!response.ok) {
+      console.warn('[api] pdf-proxy failed:', response.status, response.statusText);
+      res.status(response.status).json({ error: `GitHub returned ${response.status}` });
+      return;
+    }
+    
+    const contentType = response.headers.get('content-type') || 'application/octet-stream';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    
+    const arrayBuffer = await response.arrayBuffer();
+    res.send(Buffer.from(arrayBuffer));
+  } catch (error) {
+    console.error('[api] pdf-proxy error:', error);
+    res.status(500).json({ error: 'PDF proxy failed' });
+  }
+});
+
 export default app;
