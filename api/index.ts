@@ -1,4 +1,4 @@
-import { createApp } from '../services/app.js';
+import { createApp } from './_bundle.cjs';
 import { Express } from 'express';
 
 let cachedApp: Express | null = null;

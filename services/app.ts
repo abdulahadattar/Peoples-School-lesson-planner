@@ -37,10 +37,10 @@ import {
   selectTargetChildForDocument,
   reprocessDocumentWithAi,
   reprocessDossierDocumentsWithAi,
-} from './documentArchiveService';
+} from './documentArchiveService.js';
 
 
-import { createAutonomaHandler } from './autonomaIntegration';
+import { createAutonomaHandler } from './autonomaIntegration.js';
 
 
 // Server-side in-memory cache for Google Sheet data to prevent redundant network round-trips

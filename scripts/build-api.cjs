@@ -7,7 +7,7 @@ build({
   platform: 'node',
   format: 'esm',
   target: 'node18',
-  outfile: path.join(__dirname, '..', 'api', 'index.js'),
+  outfile: path.join(__dirname, '..', 'api', '_bundle.cjs'),
   logLevel: 'info',
   allowOverwrite: true,
 }).catch(() => process.exit(1));

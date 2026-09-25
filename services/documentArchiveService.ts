@@ -5,7 +5,7 @@ import sharp from 'sharp';
 import AdmZip from 'adm-zip';
 import { ZipArchive, Archiver } from 'archiver';
 import { PDFDocument } from 'pdf-lib';
-import { cleanAndParseJson } from './jsonHelpers';
+import { cleanAndParseJson } from './jsonHelpers.js';
 import {
   StudentDocumentRecord,
   StudentDossier,

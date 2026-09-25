@@ -3,8 +3,7 @@
 .vercel/
 
 # API build output
-api/index.js
-api/index.cjs
+api/_bundle.cjs
 
 # Node
 node_modules/
