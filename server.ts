@@ -120,9 +120,9 @@ async function createApp() {
   });
 
   // PDF Proxy for GitHub raw content (production replacement for Vite dev proxy)
-  app.get('/pdf-proxy/:path*', async (req, res) => {
+  app.get('/pdf-proxy', async (req, res) => {
     try {
-      const path = req.params.path || req.query.path || req.originalUrl.replace('/pdf-proxy/', '').replace(/^\//, '');
+      const path = req.query.path || req.originalUrl.replace('/pdf-proxy', '').replace(/^\//, '');
       const url = `https://raw.githubusercontent.com/${path}`;
       console.log('[server] pdf-proxy fetching:', url);
       
