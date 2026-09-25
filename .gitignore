@@ -1,6 +1,10 @@
 # API build output
 api/index.js
 
+# Environment
+.env.local
+.vercel/
+
 # Node
 node_modules/
 *.log
