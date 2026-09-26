@@ -2,11 +2,11 @@
   "version": "1.0.0-alpha.24",
   "branch": "alpha",
   "environment": "testing",
-  "deployUrl": "https://phssjamshoroportala.vercel.app",
+  "deployUrl": "https://phssjamshoroportalalpha.vercel.app",
   "description": "Alpha testing environment - Autonoma SDK integration + PDF proxy fix",
   "branches": {
     "alpha": {
-      "url": "https://phssjamshoroportala.vercel.app",
+      "url": "https://phssjamshoroportalalpha.vercel.app",
       "environment": "testing",
       "description": "Testing branch for new features"
     },

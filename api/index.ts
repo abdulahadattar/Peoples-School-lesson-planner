@@ -728,6 +728,8 @@ const DOCS_INDEX_FILE = path.join(DATA_DIR, 'document_index.json');
 function ensureDirs() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(DOCS_DIR)) fs.mkdirSync(DOCS_DIR, { recursive: true });
+  const CHUNKS_DIR = path.join(DATA_DIR, 'chunks');
+  if (!fs.existsSync(CHUNKS_DIR)) fs.mkdirSync(CHUNKS_DIR, { recursive: true });
 }
 
 function loadJobs(): Record<string, any> {
@@ -827,9 +829,45 @@ app.post('/api/documents/finalize-job', (req, res) => {
 
 app.post('/api/documents/upload-chunk', async (req, res) => {
   try {
-    const { uploadId, chunkIndex, totalChunks, chunkBase64, filename, grNo, isZip } = req.body || {};
+    const { uploadId, chunkIndex, totalChunks, chunkBase64, filename, grNo, jobId } = req.body || {};
     if (!uploadId || chunkIndex === undefined || !totalChunks || !chunkBase64 || !filename) { res.status(400).json({ error: 'Missing required chunk parameters' }); return; }
-    res.json({ ok: true, uploadId, chunkIndex, totalChunks });
+
+    const CHUNKS_DIR = path.join(DATA_DIR, 'chunks', uploadId);
+    if (!fs.existsSync(CHUNKS_DIR)) fs.mkdirSync(CHUNKS_DIR, { recursive: true });
+
+    const chunkPath = path.join(CHUNKS_DIR, `chunk-${chunkIndex}`);
+    fs.writeFileSync(chunkPath, Buffer.from(chunkBase64, 'base64'));
+
+    const isLastChunk = chunkIndex === totalChunks - 1;
+    let assembledBuffer: Buffer | null = null;
+
+    if (isLastChunk) {
+      const chunks: Buffer[] = [];
+      for (let i = 0; i < totalChunks; i++) {
+        const chunkFile = path.join(CHUNKS_DIR, `chunk-${i}`);
+        if (fs.existsSync(chunkFile)) {
+          chunks.push(fs.readFileSync(chunkFile));
+        }
+      }
+      assembledBuffer = Buffer.concat(chunks);
+      fs.rmSync(CHUNKS_DIR, { recursive: true, force: true });
+    }
+
+    if (assembledBuffer && jobId) {
+      const jobs = loadJobs();
+      const job = jobs[jobId];
+      if (job) {
+        job.files.push({ filename, size: assembledBuffer.length, grNo: grNo || null, type: path.extname(filename), uploadedAt: Date.now() });
+        job.receivedCount++;
+        job.status = 'uploading';
+        job.updatedAt = Date.now();
+        saveJobs(jobs);
+        res.json({ ok: true, completed: true, jobId, filename, size: assembledBuffer.length });
+        return;
+      }
+    }
+
+    res.json({ ok: true, uploadId, chunkIndex, totalChunks, completed: !!assembledBuffer && !!jobId });
   } catch (err) {
     console.error('[server.ts] upload-chunk error:', err);
     res.status(500).json({ error: (err as Error).message });

@@ -43,14 +43,15 @@ export function formatApiErrorMessage(status: number, rawText: string): string {
  */
 async function uploadFileInChunks(
   file: File,
+  jobId: string,
   grNo?: string,
   isZip?: boolean,
   onProgress?: (percent: number, msg?: string) => void
-): Promise<BatchProcessingJob> {
+): Promise<boolean> {
   const uploadId = `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
   const totalChunks = Math.ceil(file.size / CHUNK_SIZE_BYTES);
 
-  let completedJob: BatchProcessingJob | null = null;
+  let completed = false;
 
   for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
     const start = chunkIndex * CHUNK_SIZE_BYTES;
@@ -73,6 +74,7 @@ async function uploadFileInChunks(
         chunkBase64,
         filename: file.name,
         grNo,
+        jobId,
         isZip: isZip || file.name.toLowerCase().endsWith('.zip'),
       }),
     });
@@ -83,50 +85,76 @@ async function uploadFileInChunks(
     }
 
     const data = await res.json();
-    if (data.completed && data.job) {
-      completedJob = data.job;
+    if (data.completed) {
+      completed = true;
     }
   }
 
-  if (completedJob) {
-    return completedJob;
-  }
-
-  // Fallback check latest job
-  const latest = await fetchLatestJob();
-  if (latest) return latest;
-  throw new Error('Upload completed but job initialization could not be verified.');
+  return completed;
 }
 
 export async function uploadZipArchive(
   file: File,
   onProgress?: (percent: number, msg?: string) => void
 ): Promise<BatchProcessingJob> {
-  // If ZIP is larger than 4MB, upload in safe chunks
-  if (file.size > 4 * 1024 * 1024) {
-    return uploadFileInChunks(file, undefined, true, onProgress);
-  }
+  if (onProgress) onProgress(5, `Preparing ${file.name}...`);
 
-  if (onProgress) onProgress(10, `Preparing ${file.name}...`);
-  const base64Data = await fileToBase64(file);
-  if (onProgress) onProgress(50, `Uploading ${file.name}...`);
-
-  const res = await fetch('/api/documents/upload-zip', {
+  // Initialize a batch job
+  const initRes = await fetch('/api/documents/create-job', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      base64Data,
-      filename: file.name,
-    }),
+    body: JSON.stringify({ expectedCount: 1 }),
   });
 
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(formatApiErrorMessage(res.status, errText));
+  if (!initRes.ok) {
+    const errText = await initRes.text();
+    throw new Error(formatApiErrorMessage(initRes.status, errText));
+  }
+
+  const { job: initialJob } = await initRes.json();
+  const jobId = initialJob.jobId;
+
+  if (file.size > CHUNK_SIZE_BYTES) {
+    // Chunked upload for large ZIPs
+    if (onProgress) onProgress(10, `Uploading ${file.name} in chunks...`);
+    await uploadFileInChunks(file, jobId, undefined, true, (pct, msg) => {
+      if (onProgress) onProgress(10 + Math.round(pct / 100 * 85), msg);
+    });
+  } else {
+    // Single upload for small ZIPs
+    if (onProgress) onProgress(10, `Uploading ${file.name}...`);
+    const base64Data = await fileToBase64(file);
+    const res = await fetch('/api/documents/upload-single', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jobId,
+        filename: file.name,
+        base64Data,
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(formatApiErrorMessage(res.status, errText));
+    }
+  }
+
+  // Finalize job
+  if (onProgress) onProgress(95, 'Finalizing batch queue & starting AI processing...');
+  const finalizeRes = await fetch('/api/documents/finalize-job', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ jobId }),
+  });
+
+  if (!finalizeRes.ok) {
+    const errText = await finalizeRes.text();
+    throw new Error(formatApiErrorMessage(finalizeRes.status, errText));
   }
 
   if (onProgress) onProgress(100, `Processing ${file.name}...`);
-  const data = await res.json();
+  const data = await finalizeRes.json();
   return data.job;
 }
 
@@ -166,22 +194,33 @@ export async function uploadIndividualFiles(
       onProgress(currentPercent, `Uploading (${i + 1}/${files.length}): ${file.name}...`);
     }
 
-    // Convert file to base64 and attach directly to the batch jobId
-    const base64Data = await fileToBase64(file);
-    const uploadRes = await fetch('/api/documents/upload-single', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jobId,
-        filename: file.name,
-        base64Data,
-        grNo,
-      }),
-    });
+    // Use chunked upload for files exceeding Vercel's body limit (2.5MB threshold)
+    if (file.size > CHUNK_SIZE_BYTES) {
+      const totalChunks = Math.ceil(file.size / CHUNK_SIZE_BYTES);
+      if (onProgress) {
+        onProgress(currentPercent, `Chunked upload: ${file.name} (${totalChunks} chunks)`);
+      }
+      await uploadFileInChunks(file, jobId, grNo, false, (pct, msg) => {
+        if (onProgress) onProgress(currentPercent + Math.round((pct / 100) * (90 / files.length)), msg);
+      });
+    } else {
+      // Convert file to base64 and attach directly to the batch jobId
+      const base64Data = await fileToBase64(file);
+      const uploadRes = await fetch('/api/documents/upload-single', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId,
+          filename: file.name,
+          base64Data,
+          grNo,
+        }),
+      });
 
-    if (!uploadRes.ok) {
-      const errText = await uploadRes.text();
-      throw new Error(formatApiErrorMessage(uploadRes.status, errText));
+      if (!uploadRes.ok) {
+        const errText = await uploadRes.text();
+        throw new Error(formatApiErrorMessage(uploadRes.status, errText));
+      }
     }
   }
 
