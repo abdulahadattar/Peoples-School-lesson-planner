@@ -156,7 +156,7 @@ export async function uploadIndividualFiles(
   }
 
   const { job: initialJob } = await initRes.json();
-  const jobId = initialJob.id;
+  const jobId = initialJob.jobId;
 
   // 2. Stream files individually to the batch job
   for (let i = 0; i < files.length; i++) {
