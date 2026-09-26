@@ -1145,7 +1145,7 @@ export const StudentRecordsView: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto custom-scrollbar">
+          <div className={`${viewMode === 'cards' ? 'hidden' : 'overflow-x-auto custom-scrollbar'}`}>
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="border-b border-brand-border bg-slate-50/80 dark:bg-slate-900/60 font-semibold text-brand-text-secondary uppercase tracking-wider text-[10px]">
