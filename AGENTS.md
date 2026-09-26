@@ -30,8 +30,10 @@ Auto-deploys via GitHub integration (not manual Vercel CLI deployments)
 - **PDF Proxy**: `/pdf-proxy?path=<github-path>` → Proxies GitHub raw content (replaces Vite dev proxy in production)
 
 ## Secrets
-- **Shared Secret** (known by Autonoma): `516ba976daf8692da3bff13b8182e765eb3826b274979e510a0630eecc61a90e`
-- **Signing Secret** (private, never shared): `043b60e656b726705d559a6489a73ccaf57c234f5e01b384f5f62936c1a0aaaa`
+- **Shared Secret**: Provided via environment variable `AUTONOMA_SHARED_SECRET`
+- **Signing Secret**: Provided via environment variable `AUTONOMA_SIGNING_SECRET`
+*(Do not commit plaintext secrets to the repository. Configure these in Vercel project environment variables and local `.env` files).*
+
 
 ## Factories Registered
 1. **ContextOwner** - Root entity (scope field: `turn_id`)

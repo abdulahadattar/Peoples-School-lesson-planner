@@ -9,7 +9,9 @@
     "start": "node api/index.js",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
-    "test": "node scripts/test-all.mjs"
+    "test": "node scripts/test-all.mjs",
+    "test:local": "node scripts/test-local.mjs",
+    "validate": "npm run lint && npm run build && npm run test:local"
   },
   "dependencies": {
     "@autonoma-ai/sdk": "^0.2.9",

@@ -29,20 +29,17 @@ service cloud.firestore {
 
     match /daily_attendance/{date} {
       allow get, list: if true;
-      allow create, update: if isValidId(date);
-      allow delete: if isSignedIn();
+      allow create, update, delete: if isSignedIn() && isValidId(date);
     }
 
     match /attendanceRecords/{recordId} {
       allow get, list: if true;
-      allow create, update: if isValidId(recordId);
-      allow delete: if isSignedIn();
+      allow create, update, delete: if isSignedIn() && isValidId(recordId);
     }
 
     match /substitutions/{dateKey} {
       allow get, list: if true;
-      allow create, update: if isValidId(dateKey);
-      allow delete: if isSignedIn();
+      allow create, update, delete: if isSignedIn() && isValidId(dateKey);
     }
 
     match /settings/{settingId} {

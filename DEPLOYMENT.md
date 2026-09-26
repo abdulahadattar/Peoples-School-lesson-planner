@@ -8,14 +8,18 @@
 | `main` | `peoples-school-lesson-planner` | `https://phssjamshoroportal.vercel.app` | Production for public |
 
 ## Deployment Process
-1. **All changes are first pushed to `alpha` branch** for testing
-2. GitHub integration automatically deploys `alpha` branch → `phssjamshoroportalalpha.vercel.app`
-3. **After alpha is verified**: changes are cherry-picked/merged to `testing` branch
-4. GitHub integration automatically deploys `testing` branch → `phssjamshoroportalb.vercel.app`
-5. **After testing is verified**: changes are merged to `main` branch
-6. GitHub integration automatically deploys `main` branch → `phssjamshoroportal.vercel.app`
+1. **All changes are first pushed to `alpha` branch** for testing:
+   - GitHub integration automatically deploys `alpha` branch → `phssjamshoroportalalpha.vercel.app`.
+   - Vercel CLI can also be used for inspection, environment variable management, checking deployment logs (`vercel logs <url>`), or deploying previews directly via `vercel`.
+2. **After alpha is verified**: changes are cherry-picked/merged to `testing` branch (`phssjamshoroportalb.vercel.app`).
+3. **After testing is verified**: changes are merged to `main` branch (`phssjamshoroportal.vercel.app`).
 
-## Important Notes
-- **Do NOT deploy directly via Vercel CLI** - use `git push origin <branch>` and let GitHub integration handle deployment
-- Do NOT use `vercel --prod` or `vercel deploy` commands - this can create unwanted projects/deployments
-- The "dist" project created by accidental `vercel deploy dist` should be ignored/deleted from Vercel dashboard
+## Vercel CLI Reference for this Workspace
+The worktree is linked to project `alpha` (`prj_CB1WN8i8o6Z95dr9it2P4Sr9MUUq`).
+- Check authenticated identity: `vercel whoami`
+- List recent deployments: `vercel ls alpha`
+- Inspect deployment logs: `vercel inspect <deployment-url>` or `vercel logs <deployment-url>`
+- Environment variables: `vercel env ls`, `vercel env pull`, `vercel env add <NAME>`
+- Direct preview build: `vercel` (builds and creates preview URL using `.vercel/project.json`)
+- Production deployment: `vercel --prod` (only when promoting targeted releases)
+
