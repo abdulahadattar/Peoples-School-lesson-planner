@@ -9,3 +9,12 @@ dist/
 
 .vercel
 .env*
+
+# Runtime-generated data. timetable.json and teachers.json are tracked because
+# the app imports them; everything else here is produced at runtime and includes
+# real student identity documents (CNIC scans, B-Forms, student photos), so it
+# must never reach the repository.
+data/student_documents/
+data/*.json
+!data/timetable.json
+!data/teachers.json

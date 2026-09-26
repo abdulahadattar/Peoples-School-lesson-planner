@@ -82,9 +82,40 @@ button, a, input, select, textarea {
   touch-action: manipulation;
 }
 
-/* Prevent accidental text highlight on mobile tap */
-button, nav, .select-none {
+/* Prevent accidental text highlight on mobile tap.
+   Scoped to real controls only: applying this to .select-none also hit data cells
+   in the student register, which stopped Android users long-pressing a GR number
+   or phone number to copy it. */
+button, nav {
   -webkit-touch-callout: none;
+}
+
+/* Android Chrome zooms the whole page when an input's computed font-size is under
+   16px, and the user has to pinch back out. The dense data-entry forms use
+   text-xs (12px) throughout, so the floor is enforced globally on touch devices
+   where the keyboard would actually appear. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Respect the OS gesture bar / navigation bar on notched and edge-to-edge
+   Android devices. Requires viewport-fit=cover in index.html. */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Keyboard focus ring, applied only for keyboard users. */
+:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 ::selection {
@@ -121,7 +152,20 @@ summary::-webkit-details-marker {
   display: none;
 }
 
-/* ── Motion ────────────────────────────────────────────────────── */
+/* ── Motion ──────────────────────────────────────────────────────
+   One scale for the whole app. Durations are short enough to feel
+   responsive but long enough to read; easing is consistent so
+   transitions feel like one system rather than a pile of effects. */
+:root {
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
+
+  --dur-fast: 140ms;
+  --dur-base: 220ms;
+  --dur-slow: 320ms;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -142,26 +186,15 @@ summary::-webkit-details-marker {
   0% { background-position: -450px 0; }
   100% { background-position: 450px 0; }
 }
-@keyframes drift {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(30px, -40px) scale(1.08); }
-  66% { transform: translate(-25px, 25px) scale(0.95); }
-}
-@keyframes floatSlow {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-12px); }
-}
 @keyframes progressStripes {
   0% { background-position: 0 0; }
   100% { background-position: 24px 0; }
 }
 
-.animate-fadeIn { animation: fadeIn 0.5s ease-out both; }
-.animate-fadeInUp { animation: fadeInUp 0.5s ease-out both; }
-.animate-slideUp { animation: slideUp 0.4s ease-out both; }
-.animate-scaleIn { animation: scaleIn 0.35s ease-out both; }
-.animate-drift { animation: drift 16s ease-in-out infinite; }
-.animate-floatSlow { animation: floatSlow 6s ease-in-out infinite; }
+.animate-fadeIn { animation: fadeIn 0.5s var(--ease-out-quart) both; }
+.animate-fadeInUp { animation: fadeInUp 0.5s var(--ease-out-expo) both; }
+.animate-slideUp { animation: slideUp 0.4s var(--ease-out-expo) both; }
+.animate-scaleIn { animation: scaleIn 0.35s var(--ease-out-quart) both; }
 
 /* ── Glass + gradient helpers ──────────────────────────────────── */
 .glass-card {

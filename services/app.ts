@@ -201,15 +201,14 @@ export async function createApp(): Promise<Express> {
 
       // Try all fallback models and all keys in strict prioritized order:
       // First the best model tried with all API keys, then second best with all API keys, then 3rd, and so on.
-      const modelsToTry = Array.from(new Set([
-        model,
-        'gemini-3.5-flash-lite',
-        'gemini-3.1-flash-lite',
-        'gemini-2.5-flash',
-        'gemini-2.5-flash-lite',
-        'gemma-4-31b-it',
-        'gemma-4-26b-it',
-      ]));
+        const modelsToTry = Array.from(new Set([
+          model,
+          'gemini-3.5-flash-lite',
+          'gemma-4-26b-a4b-it',
+          'gemini-3.1-flash-lite',
+          'gemini-3.5-flash',
+          'gemini-flash-latest',
+        ]));
       let lastErrText = '';
       let lastStatus = 500;
 

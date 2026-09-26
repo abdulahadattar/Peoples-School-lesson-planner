@@ -55,6 +55,8 @@ const NumberField: React.FC<{
       </button>
       <input
         type="number"
+  inputMode="numeric"
+  autoComplete="off"
         min={min}
         max={max}
         value={value}

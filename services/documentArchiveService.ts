@@ -1853,15 +1853,31 @@ async function callGeminiVision(
   const base64Data = imageBuffer.toString('base64');
 
   // Supported vision models with fallback priority.
-  // Verified against the live generateContent endpoint; ids that now 404 are
-  // excluded because each dead entry costs a full retry round.
+  // Every id below was measured against the live generateContent endpoint with a
+  // real 1400px document scan across all five configured keys (scripts/probe-chain.mjs):
+  //   gemini-3.5-flash-lite  5/5 keys  ~2.0s
+  //   gemma-4-26b-a4b-it     5/5 keys  ~2.1s
+  //   gemini-3.1-flash-lite  4/5 keys ~11.4s
+  //   gemini-3.5-flash       3/5 keys ~11.9s
+  //   gemini-flash-latest    2/5 keys ~12.9s
+  // Removed because they cost a full dead retry round and can never succeed:
+  //   gemini-2.5-flash   404 "no longer available to new users" on 4/5 keys
+  //   gemini-2.5-flash-lite  404 "no longer available to new users" on 5/5 keys
+  //   gemma-4-31b-it     0/5 keys (500/503/timeout)
+  //   gemini-3.1-pro-preview  429 quota on 5/5 keys
   const modelsToTry = [
     'gemini-3.5-flash-lite',
+    'gemma-4-26b-a4b-it',
     'gemini-3.1-flash-lite',
-    'gemini-2.5-flash',
-    'gemma-4-31b-it',
+    'gemini-3.5-flash',
     'gemini-flash-latest',
   ];
+
+  // Hard wall-clock budget for one page. Without this, a page that misses on the
+  // fast models could burn 5 models x 5 keys x 25s (~10 min) while the job sat at
+  // "0 of 7 files complete" with nothing in the log to explain it.
+  const totalBudgetMs = 60000;
+  const deadline = startTime + totalBudgetMs;
 
   const requestBody = JSON.stringify({
     contents: [
@@ -1896,10 +1912,19 @@ async function callGeminiVision(
 
   for (const model of modelsToTry) {
     for (let i = 0; i < serverKeys.length; i++) {
+      if (Date.now() >= deadline) {
+        lastError = `Budget of ${totalBudgetMs}ms exhausted before trying ${model}`;
+        break;
+      }
       const key = serverKeys[i];
       if (!key) continue;
       keyAttempts++;
       const maskedKey = `${key.slice(0, 6)}...${key.slice(-4)}`;
+
+      // Never let a single attempt outlive the remaining page budget.
+      const remaining = deadline - Date.now();
+      const attemptTimeout = Math.max(5000, Math.min(25000, remaining));
+      const attemptStart = Date.now();
 
       try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
@@ -1910,7 +1935,7 @@ async function callGeminiVision(
             'x-goog-api-key': key,
           },
           body: requestBody,
-          signal: AbortSignal.timeout(25000),
+          signal: AbortSignal.timeout(attemptTimeout),
         });
 
         if (res.ok) {
@@ -1933,7 +1958,7 @@ async function callGeminiVision(
                 {
                   filename,
                   grNo,
-                  details: `Model: ${model} | Key #${i + 1} (${maskedKey}) | Rotation: ${parsed.suggestedRotation || 0}° | Time: ${durationMs}ms`,
+                  details: `Model: ${model} | Key #${i + 1} (${maskedKey}) | Rotation: ${parsed.suggestedRotation || 0}° | Time: ${durationMs}ms | Attempts: ${keyAttempts}`,
                   executionTimeMs: durationMs,
                 }
               );
@@ -1943,18 +1968,40 @@ async function callGeminiVision(
         } else {
           const errBody = await res.text();
           lastError = `[${model}] Key #${i + 1} (${maskedKey}) HTTP ${res.status}: ${errBody.slice(0, 180)}`;
-          if (jobId && (res.status === 429 || res.status >= 500)) {
+
+          if (jobId) {
+            const verb =
+              res.status === 404
+                ? 'model retired, skipping remaining keys for this model'
+                : res.status === 429
+                  ? 'quota exceeded, rotating key'
+                  : res.status >= 500
+                    ? 'server error, rotating key'
+                    : 'rejected, rotating key';
             addJobLog(
               jobId,
-              'warn',
+              res.status >= 400 && res.status < 500 ? 'warn' : 'info',
               'AI_VISION',
-              `API rate limit / status ${res.status} on ${model}, rotating key...`,
+              `HTTP ${res.status} on ${model} (key #${i + 1}) after ${Date.now() - attemptStart}ms — ${verb}`,
               { filename, grNo, details: lastError }
             );
           }
+
+          // A retired model id fails identically on every key, so stop burning the
+          // full key matrix on it.
+          if (res.status === 404) break;
         }
       } catch (err: any) {
         lastError = `[${model}] Key #${i + 1} network error: ${err.message}`;
+        if (jobId) {
+          addJobLog(
+            jobId,
+            'warn',
+            'AI_VISION',
+            `${err.name === 'TimeoutError' ? `Timed out after ${attemptTimeout}ms` : 'Network error'} on ${model} (key #${i + 1}) — rotating key`,
+            { filename, grNo, details: lastError }
+          );
+        }
       }
     }
   }

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Teacher } from '../../types';
 import {
   SchoolConfig,
@@ -60,6 +60,29 @@ export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
   const [classFilter, setClassFilter] = useState('');
   const [teacherSearch, setTeacherSearch] = useState('');
   const [exportNotice, setExportNotice] = useState<string | null>(null);
+
+  // Excel export menu. State-driven (not :hover) so the four export actions are
+  // reachable by tap, and dismisses on outside click or Escape.
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!exportMenuOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setExportMenuOpen(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setExportMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [exportMenuOpen]);
 
   // Ordered classes list
   const classList = useMemo(() => {
@@ -614,30 +637,43 @@ export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
           </div>
 
           {/* Primary Excel Export Hub Dropdown */}
-          <div className="relative group">
+          <div className="relative group" ref={exportMenuRef}>
             <button
               type="button"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-xs"
+              onClick={() => setExportMenuOpen((v) => !v)}
+              aria-haspopup="menu"
+              aria-expanded={exportMenuOpen}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white transition-colors shadow-xs"
               title="Download Timetables in Microsoft Excel format (.xlsx)"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               <span>Export Excel</span>
-              <svg className="w-3 h-3 ml-0.5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                className={`w-3 h-3 ml-0.5 opacity-80 transition-transform duration-200 ${exportMenuOpen ? 'rotate-180' : ''}`}
+                fill="none" stroke="currentColor" viewBox="0 0 24 24"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
 
-            {/* Dropdown Options */}
-            <div className="absolute right-0 mt-1 w-64 p-1.5 bg-brand-surface rounded-2xl border border-brand-border shadow-2xl opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all z-40 space-y-1 text-xs">
+            {/* Dropdown Options. Driven by real state rather than :hover, because a
+                hover-only panel is unreachable on touch - all four exports were
+                dead on Android. */}
+            {exportMenuOpen && (
+            <div
+              role="menu"
+              className="absolute right-0 mt-1 w-64 p-1.5 bg-brand-surface rounded-2xl border border-brand-border shadow-2xl z-40 space-y-1 text-xs animate-scaleIn origin-top-right"
+            >
               <div className="px-2.5 py-1 text-[10px] uppercase font-bold text-brand-text-secondary">
                 Spreadsheet Exports (.xlsx)
               </div>
               <button
                 type="button"
-                onClick={handleExportAllClassesExcel}
-                className="w-full text-left px-2.5 py-2 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-brand-text-primary flex items-center justify-between transition-colors"
+                role="menuitem"
+                onClick={() => { setExportMenuOpen(false); handleExportAllClassesExcel(); }}
+                className="w-full text-left px-2.5 py-2 rounded-xl hover:bg-emerald-50 active:bg-emerald-100 dark:hover:bg-emerald-950/40 dark:active:bg-emerald-950/60 text-brand-text-primary flex items-center justify-between transition-colors"
               >
                 <div>
                   <div className="font-bold">Class-Wise Timetable</div>
@@ -650,8 +686,9 @@ export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
 
               <button
                 type="button"
-                onClick={handleExportAllTeachersExcel}
-                className="w-full text-left px-2.5 py-2 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-brand-text-primary flex items-center justify-between transition-colors"
+                role="menuitem"
+                onClick={() => { setExportMenuOpen(false); handleExportAllTeachersExcel(); }}
+                className="w-full text-left px-2.5 py-2 rounded-xl hover:bg-emerald-50 active:bg-emerald-100 dark:hover:bg-emerald-950/40 dark:active:bg-emerald-950/60 text-brand-text-primary flex items-center justify-between transition-colors"
               >
                 <div>
                   <div className="font-bold">Teacher-Wise Timetable</div>
@@ -666,20 +703,23 @@ export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
 
               <button
                 type="button"
-                onClick={handleExportSingleClassExcel}
-                className="w-full text-left px-2.5 py-1.5 rounded-xl hover:bg-brand-bg text-brand-text-secondary hover:text-brand-text-primary transition-colors text-[11px]"
+                role="menuitem"
+                onClick={() => { setExportMenuOpen(false); handleExportSingleClassExcel(); }}
+                className="w-full text-left px-2.5 py-2 rounded-xl hover:bg-brand-bg active:bg-brand-primary/10 text-brand-text-secondary hover:text-brand-text-primary transition-colors text-[11px]"
               >
-                📄 Export Class {selectedClassLabel} Only
+                Export Class {selectedClassLabel} Only
               </button>
 
               <button
                 type="button"
-                onClick={handleExportSingleTeacherExcel}
-                className="w-full text-left px-2.5 py-1.5 rounded-xl hover:bg-brand-bg text-brand-text-secondary hover:text-brand-text-primary transition-colors text-[11px]"
+                role="menuitem"
+                onClick={() => { setExportMenuOpen(false); handleExportSingleTeacherExcel(); }}
+                className="w-full text-left px-2.5 py-2 rounded-xl hover:bg-brand-bg active:bg-brand-primary/10 text-brand-text-secondary hover:text-brand-text-primary transition-colors text-[11px]"
               >
-                👤 Export Selected Teacher Only
+                Export Selected Teacher Only
               </button>
             </div>
+            )}
           </div>
 
           {/* Cloud Save Button */}
@@ -1059,13 +1099,14 @@ export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
                               return (
                                 <td key={dKey} className="py-2.5 px-3">
                                   {slots.map((slot, sIdx) => (
-                                    <div
+                                    <button
+                                      type="button"
                                       key={sIdx}
                                       onClick={() => handleOpenCellEditor(dKey, pIdx, slot.classLabel)}
-                                      className={`p-2 rounded-xl border cursor-pointer transition-all mb-1 last:mb-0 ${
+                                      className={`w-full text-left p-2 rounded-xl border transition-all mb-1 last:mb-0 ${
                                         isClash
-                                          ? 'border-rose-400 bg-rose-50/70 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200'
-                                          : 'border-brand-primary/30 bg-brand-primary/5 hover:bg-brand-primary/10 text-brand-text-primary'
+                                          ? 'border-rose-400 bg-rose-50/70 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 active:bg-rose-100 dark:active:bg-rose-950/70'
+                                          : 'border-brand-primary/30 bg-brand-primary/5 hover:bg-brand-primary/10 active:bg-brand-primary/20 text-brand-text-primary'
                                       }`}
                                     >
                                       <div className="font-bold text-xs flex items-center justify-between">
@@ -1084,7 +1125,7 @@ export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
                                           Double-booked with Class {slot.clashingWithClass}
                                         </div>
                                       )}
-                                    </div>
+                                    </button>
                                   ))}
                                 </td>
                               );
@@ -1231,7 +1272,7 @@ export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
           ───────────────────────────────────────────────────────────── */}
       {editingCell && (
         <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-brand-surface border border-brand-border rounded-2xl w-full max-w-lg p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+          <div className="bg-brand-surface border border-brand-border rounded-2xl w-full max-w-lg p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150 max-h-[90dvh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-brand-border pb-3">
               <div>

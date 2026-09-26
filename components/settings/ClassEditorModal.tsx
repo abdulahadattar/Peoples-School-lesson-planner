@@ -76,8 +76,8 @@ export const ClassEditorModal: React.FC<ClassEditorModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white dark:bg-brand-surface rounded-2xl border border-brand-border shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+      <div className="bg-white dark:bg-brand-surface rounded-2xl border border-brand-border shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90dvh]">
         {/* Header */}
         <div className="px-6 py-4 border-b border-brand-border flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/30">
           <div className="flex items-center gap-2.5">
@@ -96,7 +96,7 @@ export const ClassEditorModal: React.FC<ClassEditorModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg transition-colors"
+            className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg transition-colors active:bg-brand-bg"
           >
             <X className="w-5 h-5" />
           </button>
@@ -196,6 +196,8 @@ export const ClassEditorModal: React.FC<ClassEditorModalProps> = ({
                 </label>
                 <input
                   type="number"
+  inputMode="numeric"
+  autoComplete="off"
                   min="0"
                   value={enrolledBoys}
                   onChange={(e) => setEnrolledBoys(parseInt(e.target.value, 10) || 0)}
@@ -208,6 +210,8 @@ export const ClassEditorModal: React.FC<ClassEditorModalProps> = ({
                 </label>
                 <input
                   type="number"
+  inputMode="numeric"
+  autoComplete="off"
                   min="0"
                   value={enrolledGirls}
                   onChange={(e) => setEnrolledGirls(parseInt(e.target.value, 10) || 0)}

@@ -231,7 +231,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-brand-bg text-brand-text-primary font-sans selection:bg-brand-primary selection:text-white antialiased overflow-hidden">
+    <div className="flex h-[100dvh] bg-brand-bg text-brand-text-primary font-sans selection:bg-brand-primary selection:text-white antialiased overflow-hidden">
       {/* Animated Google Auth Gate Screen */}
       <AnimatePresence>
         {showLoginGate && !currentUser && (
@@ -264,7 +264,7 @@ const App: React.FC = () => {
         />
       )}
 
-      <aside className={`fixed md:relative z-50 md:z-10 top-0 left-0 h-screen md:h-full bg-brand-surface/95 dark:bg-brand-surface backdrop-blur-xl flex flex-col transition-transform duration-300 md:transition-none w-[280px] ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} border-r border-brand-border/60`}>
+      <aside className={`fixed md:relative z-50 md:z-10 top-0 left-0 h-[100dvh] md:h-full bg-brand-surface/95 dark:bg-brand-surface backdrop-blur-xl flex flex-col transition-transform duration-300 md:transition-none w-[280px] ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} border-r border-brand-border/60`}>
         <div className="p-6 flex-grow flex flex-col h-full overflow-hidden">
           <div className="flex items-center justify-between mb-8 md:hidden">
             <span className="font-semibold text-base text-brand-text-primary">Menu</span>
@@ -359,7 +359,7 @@ const App: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className={`flex-1 min-h-0 relative ${
+            className={`flex-1 min-h-0 relative pb-6 ${
               view === 'results' ? 'overflow-hidden flex flex-col' : 'overflow-y-auto overflow-x-hidden custom-scrollbar'
             }`}
           >
@@ -476,8 +476,9 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* Version Footer */}
-      <div className="fixed bottom-0 left-0 right-0 h-6 bg-brand-surface/80 border-t border-brand-border/50 flex items-center justify-center text-xs text-brand-text-secondary z-50">
+      {/* Version Footer. Sits above the Android gesture bar, and the main scroll
+          column carries matching pb-6 so it never covers the last row of data. */}
+      <div className="fixed bottom-0 left-0 right-0 min-h-6 py-0.5 pb-[max(0.125rem,env(safe-area-inset-bottom,0px))] bg-brand-surface/90 backdrop-blur-sm border-t border-brand-border/50 flex items-center justify-center text-[10px] sm:text-xs text-brand-text-secondary z-50">
         <span className="flex items-center gap-2">
           <span
             className={`w-2 h-2 rounded-full ${

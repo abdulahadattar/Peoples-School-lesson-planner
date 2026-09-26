@@ -83,8 +83,8 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   const docCount = dossier?.documents.length || 0;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-fadeIn">
-      <div className="w-full max-w-2xl rounded-2xl bg-white dark:bg-brand-surface border border-brand-border shadow-card p-6 flex flex-col max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto p-4 bg-slate-900/50 backdrop-blur-xs animate-fadeIn">
+      <div className="w-full max-w-2xl rounded-2xl bg-white dark:bg-brand-surface border border-brand-border shadow-card p-6 flex flex-col max-h-[90dvh] overflow-hidden">
         {/* Header */}
         <div className="flex items-start justify-between pb-4 border-b border-brand-border">
           <div className="flex items-center gap-3.5">
@@ -312,7 +312,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                         <button
                           type="button"
                           onClick={() => copyToClipboard(student.parentContact, 'parentContact')}
-                          className="p-1.5 rounded-md hover:bg-brand-surface text-brand-text-secondary hover:text-brand-primary transition-colors"
+                          className="p-1.5 rounded min-w-[36px] min-h-[36px] flex items-center justify-center-md hover:bg-brand-surface text-brand-text-secondary hover:text-brand-primary transition-colors active:bg-brand-surface"
                           title="Copy phone number"
                         >
                           {copiedKey === 'parentContact' ? (
@@ -335,7 +335,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                         <button
                           type="button"
                           onClick={() => copyToClipboard(student.emergencyContact, 'emergencyContact')}
-                          className="p-1.5 rounded-md hover:bg-brand-surface text-brand-text-secondary hover:text-brand-primary transition-colors"
+                          className="p-1.5 rounded min-w-[36px] min-h-[36px] flex items-center justify-center-md hover:bg-brand-surface text-brand-text-secondary hover:text-brand-primary transition-colors active:bg-brand-surface"
                           title="Copy phone number"
                         >
                           {copiedKey === 'emergencyContact' ? (
@@ -408,7 +408,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
               <button
                 type="button"
                 onClick={() => setPreviewPhotoUrl(null)}
-                className="p-1 rounded-lg text-brand-text-secondary hover:text-brand-text-primary"
+                className="p-1 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary active:bg-brand-bg"
               >
                 <X className="w-5 h-5" />
               </button>

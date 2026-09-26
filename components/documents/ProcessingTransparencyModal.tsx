@@ -137,7 +137,7 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
     : 0;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-slate-900/70 backdrop-blur-sm animate-fadeIn">
+    <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto p-3 sm:p-5 bg-slate-900/70 backdrop-blur-sm animate-fadeIn">
       <div className="relative w-full max-w-5xl max-h-[92vh] flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 gap-4 sm:gap-0">
@@ -375,9 +375,11 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
                             : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/40'
                         }`}
                       >
-                        <div
+                        <button
+                          type="button"
                           onClick={() => setExpandedFileId(isExpanded ? null : file.id)}
-                          className="flex items-center justify-between p-3.5 cursor-pointer select-none"
+                          aria-expanded={isExpanded}
+                          className="w-full flex items-center justify-between p-3.5 text-left hover:bg-slate-50 active:bg-slate-100 dark:hover:bg-slate-800/60 dark:active:bg-slate-800 transition-colors"
                         >
                           <div className="flex items-center gap-3 min-w-0">
                             {file.status === 'success' ? (
@@ -431,7 +433,7 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
                               <ChevronDown className="w-4 h-4 text-slate-400" />
                             )}
                           </div>
-                        </div>
+                        </button>
 
                         {/* Detailed Expanded Diagnostics */}
                         {isExpanded && (

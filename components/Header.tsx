@@ -112,8 +112,9 @@ const Header: React.FC<HeaderProps> = ({
                 await logoutUser();
                 if (onOpenLoginGate) onOpenLoginGate();
               }}
-              className="text-[11px] text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 font-medium px-2 py-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors flex items-center gap-1"
+              className="text-[11px] text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 font-medium min-w-[44px] min-h-[36px] px-2 py-1 rounded-lg hover:bg-red-50 active:bg-red-100 dark:hover:bg-red-950/40 dark:active:bg-red-950/60 transition-colors flex items-center justify-center gap-1"
               title="Sign Out to Login Gate"
+              aria-label="Sign Out"
             >
               <LogOut className="w-3 h-3" />
               <span className="hidden sm:inline">Sign Out</span>

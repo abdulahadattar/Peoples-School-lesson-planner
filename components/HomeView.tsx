@@ -42,36 +42,39 @@ const FEATURES = [
 
 const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
   return (
-    <div className="min-h-full flex flex-col items-center justify-center px-4 py-10 md:py-16 relative overflow-hidden">
-      {/* Animated background: drifting gradient orbs + dot grid */}
-      <div className="absolute inset-0 bg-brand-bg transition-colors duration-500" />
-      <motion.div
-        animate={{
-          x: [0, 25, -20, 0],
-          y: [0, -35, 20, 0],
-          scale: [1, 1.08, 0.95, 1],
-        }}
-        transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
-        className="absolute -top-32 -left-24 w-[28rem] h-[28rem] rounded-full bg-brand-primary/15 dark:bg-brand-primary/10 blur-3xl pointer-events-none"
-      />
-      <motion.div
-        animate={{
-          x: [0, -30, 25, 0],
-          y: [0, 30, -25, 0],
-          scale: [1, 1.1, 0.92, 1],
-        }}
-        transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
-        className="absolute -bottom-40 -right-24 w-[30rem] h-[30rem] rounded-full bg-brand-accent/15 dark:bg-brand-accent/10 blur-3xl pointer-events-none"
-      />
-      <div
-        className="absolute inset-0 opacity-[0.025] dark:opacity-[0.04] pointer-events-none"
-        style={{
-          backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
-          backgroundSize: '32px 32px',
-        }}
-      />
+    <div className="relative min-h-full w-full flex">
+      {/* Decorative layer. Clipping is confined to this layer so the blurred orbs
+          never widen the page, while the content below stays fully reachable.
+          The orbs translate only - no `scale` - because a filter like blur-3xl
+          has to be re-rasterised whenever its effective footprint changes, which
+          kept low-end Android GPUs busy from the moment the app opened.
+          MotionConfig reducedMotion="user" pauses them for users who asked for
+          reduced motion. */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+        <div className="absolute inset-0 bg-brand-bg transition-colors duration-500" />
+        <motion.div
+          animate={{ x: [0, 25, -20, 0], y: [0, -35, 20, 0] }}
+          transition={{ duration: 26, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute -top-32 -left-24 w-[24rem] h-[24rem] rounded-full bg-brand-primary/12 dark:bg-brand-primary/8 blur-2xl will-change-transform"
+        />
+        <motion.div
+          animate={{ x: [0, -30, 25, 0], y: [0, 30, -25, 0] }}
+          transition={{ duration: 32, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
+          className="absolute -bottom-40 -right-24 w-[26rem] h-[26rem] rounded-full bg-brand-accent/12 dark:bg-brand-accent/8 blur-2xl will-change-transform"
+        />
+        <div
+          className="absolute inset-0 opacity-[0.025] dark:opacity-[0.04]"
+          style={{
+            backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
+            backgroundSize: '32px 32px',
+          }}
+        />
+      </div>
 
-      <div className="w-full max-w-3xl relative z-10">
+      {/* Content column. `my-auto` centers it when the window is tall enough but,
+          unlike justify-center, never pushes content out of reach when it is not. */}
+      <div className="relative z-10 w-full flex flex-col items-center justify-center px-4 py-10 md:py-16 my-auto">
+      <div className="w-full max-w-3xl">
         {/* Hero */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -111,7 +114,7 @@ const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
               whileTap={{ scale: 0.98 }}
               className="group flex-1 relative overflow-hidden rounded-2xl glass-card p-5 text-left transition-shadow duration-200 hover:shadow-glass active:scale-[0.98] border border-brand-border/80 dark:border-brand-border cursor-pointer select-none"
             >
-              <div className="absolute inset-x-0 top-0 h-1 brand-gradient opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="absolute inset-x-0 top-0 h-1 brand-gradient opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-300" />
               <div className="relative z-10">
                 <div className={`w-11 h-11 mb-4 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 shadow-xs ${feature.accent}`}>
                   <feature.icon className="w-5 h-5" />
@@ -137,6 +140,7 @@ const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
             </div>
           </div>
         </motion.div>
+      </div>
       </div>
     </div>
   );

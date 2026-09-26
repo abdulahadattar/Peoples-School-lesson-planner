@@ -537,7 +537,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({ onOpenLo
                               setEditingClass(cls);
                               setIsClassModalOpen(true);
                             }}
-                            className="p-1.5 rounded-lg text-brand-text-secondary hover:text-brand-primary hover:bg-brand-bg transition-colors"
+                            className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-primary hover:bg-brand-bg transition-colors active:bg-brand-bg"
                             title="Edit class"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
@@ -545,7 +545,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({ onOpenLo
                           <button
                             type="button"
                             onClick={() => handleDeleteClass(cls.classKey)}
-                            className="p-1.5 rounded-lg text-brand-text-secondary hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                            className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors active:bg-rose-50"
                             title="Delete class"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -618,14 +618,14 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({ onOpenLo
                           setEditingTeacher(teacher);
                           setIsTeacherModalOpen(true);
                         }}
-                        className="p-1 rounded-lg text-brand-text-secondary hover:text-brand-primary hover:bg-brand-bg transition-colors"
+                        className="p-1 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-primary hover:bg-brand-bg transition-colors active:bg-brand-bg"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDeleteTeacher(teacher.id)}
-                        className="p-1 rounded-lg text-brand-text-secondary hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                        className="p-1 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors active:bg-rose-50"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -854,7 +854,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({ onOpenLo
                         <button
                           type="button"
                           onClick={() => handleRemovePeriod(idx)}
-                          className="p-1 rounded-lg text-brand-text-secondary hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                          className="p-1 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors active:bg-rose-50"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>

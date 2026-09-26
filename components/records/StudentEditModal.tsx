@@ -135,7 +135,7 @@ export const StudentEditModal: React.FC<StudentEditModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-fadeIn overflow-y-auto">
+    <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto p-4 bg-slate-900/50 backdrop-blur-xs animate-fadeIn overflow-y-auto">
       <div className="w-full max-w-3xl rounded-2xl bg-white dark:bg-brand-surface border border-brand-border shadow-card p-6 flex flex-col max-h-[92vh] my-auto">
         <div className="flex items-center justify-between pb-4 border-b border-brand-border">
           <div>
@@ -245,6 +245,8 @@ export const StudentEditModal: React.FC<StudentEditModalProps> = ({
                 <label className="block font-medium text-brand-text-primary mb-1">Day (DD)</label>
                 <input
                   type="number"
+  inputMode="numeric"
+  autoComplete="off"
                   min="1"
                   max="31"
                   value={formData.dobDay}
@@ -257,6 +259,8 @@ export const StudentEditModal: React.FC<StudentEditModalProps> = ({
                 <label className="block font-medium text-brand-text-primary mb-1">Month (MM)</label>
                 <input
                   type="number"
+  inputMode="numeric"
+  autoComplete="off"
                   min="1"
                   max="12"
                   value={formData.dobMonth}
@@ -269,6 +273,8 @@ export const StudentEditModal: React.FC<StudentEditModalProps> = ({
                 <label className="block font-medium text-brand-text-primary mb-1">Year (YYYY)</label>
                 <input
                   type="number"
+  inputMode="numeric"
+  autoComplete="off"
                   min="1990"
                   max="2030"
                   value={formData.dobYear}
@@ -316,7 +322,9 @@ export const StudentEditModal: React.FC<StudentEditModalProps> = ({
               <div>
                 <label className="block font-medium text-brand-text-primary mb-1">Parent / Guardian Contact</label>
                 <input
-                  type="text"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
                   value={formData.parentContact}
                   onChange={(e) => handleChange('parentContact', e.target.value)}
                   placeholder="03XX-XXXXXXX"
@@ -327,7 +335,9 @@ export const StudentEditModal: React.FC<StudentEditModalProps> = ({
               <div>
                 <label className="block font-medium text-brand-text-primary mb-1">Emergency Contact</label>
                 <input
-                  type="text"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
                   value={formData.emergencyContact}
                   onChange={(e) => handleChange('emergencyContact', e.target.value)}
                   placeholder="03XX-XXXXXXX"
@@ -338,7 +348,9 @@ export const StudentEditModal: React.FC<StudentEditModalProps> = ({
               <div>
                 <label className="block font-medium text-brand-text-primary mb-1">Partner Contact Number</label>
                 <input
-                  type="text"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
                   value={formData.partnerContact}
                   onChange={(e) => handleChange('partnerContact', e.target.value)}
                   placeholder="0333-5699357"

@@ -260,7 +260,7 @@ export const ClassAnalyticsCharts: React.FC<ClassAnalyticsChartsProps> = ({
             type="button"
             onClick={() => setIsCollapsed((prev) => !prev)}
             title={isCollapsed ? 'Expand Charts' : 'Collapse Charts'}
-            className="p-1.5 rounded-xl border border-brand-border bg-white dark:bg-brand-surface text-brand-text-secondary hover:text-brand-text-primary transition-colors"
+            className="p-1.5 rounded-xl min-w-[36px] min-h-[36px] flex items-center justify-center border border-brand-border bg-white dark:bg-brand-surface text-brand-text-secondary hover:text-brand-text-primary transition-colors active:bg-brand-bg"
           >
             {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
           </button>

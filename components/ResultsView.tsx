@@ -144,7 +144,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
                   onClick={() => setSelectedPlanIndex(prev => Math.max(0, prev - 1))}
                   disabled={selectedPlanIndex === 0}
                   aria-label="Previous plan"
-                  className="p-1.5 rounded-lg border border-brand-border hover:bg-brand-bg disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 active:scale-90"
+                  className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center border border-brand-border hover:bg-brand-bg disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 active:scale-90 active:bg-brand-bg"
                 >
                   <ChevronLeftIcon className="w-4 h-4" />
                 </button>
@@ -155,7 +155,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
                   onClick={() => setSelectedPlanIndex(prev => Math.min(lessonPlans.length - 1, prev + 1))}
                   disabled={selectedPlanIndex === lessonPlans.length - 1}
                   aria-label="Next plan"
-                  className="p-1.5 rounded-lg border border-brand-border hover:bg-brand-bg disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 active:scale-90"
+                  className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center border border-brand-border hover:bg-brand-bg disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 active:scale-90 active:bg-brand-bg"
                 >
                   <ChevronRightIcon className="w-4 h-4" />
                 </button>
@@ -417,7 +417,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
                       <button
                         onClick={() => { setShowRevision(false); setRevisionPrompt(''); }}
                         aria-label="Close revision"
-                        className="p-1 rounded-lg text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg transition-colors active:scale-90"
+                        className="p-1 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg transition-colors active:scale-90 active:bg-brand-bg"
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

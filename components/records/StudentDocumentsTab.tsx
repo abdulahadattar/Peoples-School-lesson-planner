@@ -1001,29 +1001,35 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
                   </div>
                 </div>
 
-                {/* Image Preview Container */}
-                <div
-                  onClick={() => setPreviewModalDoc(selectedDoc)}
-                  className="relative rounded-lg overflow-hidden bg-slate-950 flex items-center justify-center min-h-[280px] max-h-[400px] border border-brand-border cursor-pointer group"
-                >
+                {/* Image Preview Container.
+                    The zoom trigger is an explicit overlay button rather than an
+                    onClick on this wrapper: the <iframe> used for PDFs swallowed
+                    the tap, so the zoom modal was unreachable for every PDF on
+                    touch devices. */}
+                <div className="relative rounded-lg overflow-hidden bg-slate-950 flex items-center justify-center min-h-[280px] max-h-[400px] border border-brand-border group">
                   {selectedDoc.filename.toLowerCase().endsWith('.pdf') ? (
                     <iframe
                       src={selectedDoc.url}
-                      className="w-full h-[380px] rounded border-0"
+                      className="w-full h-[380px] rounded border-0 pointer-events-none"
                       title={selectedDoc.originalFilename}
                     />
                   ) : (
                     <img
                       src={selectedDoc.url}
                       alt={selectedDoc.originalFilename}
-                      className="max-h-[380px] w-auto object-contain rounded transition-transform group-hover:scale-102"
+                      className="max-h-[380px] w-auto object-contain rounded transition-transform sm:group-hover:scale-102"
                     />
                   )}
-                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewModalDoc(selectedDoc)}
+                    aria-label="Open full-screen document preview"
+                    className="absolute inset-0 bg-black/30 flex items-center justify-center transition-opacity text-white active:bg-black/45 sm:opacity-0 sm:group-hover:opacity-100"
+                  >
                     <span className="px-3 py-1.5 rounded-lg bg-black/60 text-xs font-medium backdrop-blur-xs flex items-center gap-1.5">
-                      <ZoomIn className="w-4 h-4" /> Click to Zoom
+                      <ZoomIn className="w-4 h-4" /> Tap to Zoom
                     </span>
-                  </div>
+                  </button>
                 </div>
 
                 {/* Extracted Details Pill Card */}
@@ -1225,7 +1231,7 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
                     <button
                       type="button"
                       onClick={() => setModalZoom((z) => Math.max(0.5, Number((z - 0.25).toFixed(2))))}
-                      className="p-1 rounded hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
+                      className="p-1 rounded min-w-[36px] min-h-[36px] flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors active:bg-white"
                       title="Zoom Out"
                     >
                       <ZoomOut className="w-3.5 h-3.5" />
@@ -1236,7 +1242,7 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
                     <button
                       type="button"
                       onClick={() => setModalZoom((z) => Math.min(3, Number((z + 0.25).toFixed(2))))}
-                      className="p-1 rounded hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
+                      className="p-1 rounded min-w-[36px] min-h-[36px] flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors active:bg-white"
                       title="Zoom In"
                     >
                       <ZoomIn className="w-3.5 h-3.5" />
@@ -1258,7 +1264,7 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
                   href={previewModalDoc.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="p-1.5 rounded-lg text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg transition-colors"
+                  className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg transition-colors active:bg-brand-bg"
                   title="Open Raw Image in New Tab"
                 >
                   <ExternalLink className="w-4 h-4" />
@@ -1270,7 +1276,7 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
                     setPreviewModalDoc(null);
                     setModalZoom(1);
                   }}
-                  className="p-1.5 rounded-lg text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg transition-colors"
+                  className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg transition-colors active:bg-brand-bg"
                 >
                   <X className="w-5 h-5" />
                 </button>

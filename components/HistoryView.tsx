@@ -228,9 +228,17 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                 {filteredPapers.map(item => (
                   <div
                     key={item.id}
-                    onClick={() => onOpenPaper(item.paper)}
-                    className="group bg-brand-surface p-4 rounded-xl border border-brand-border hover:border-brand-primary/40 hover:shadow-card-hover transition-all cursor-pointer flex flex-col justify-between"
+                    className="group bg-brand-surface p-4 rounded-xl border border-brand-border hover:border-brand-primary/40 hover:shadow-card-hover transition-all flex flex-col justify-between"
                   >
+                    {/* The open trigger. Kept as a real button so the card is
+                        keyboard reachable and announces itself, while the nested
+                        Delete/DOCX/PDF actions stay valid sibling buttons. */}
+                    <button
+                      type="button"
+                      onClick={() => onOpenPaper(item.paper)}
+                      aria-label={`Open paper: ${item.paper.title}`}
+                      className="text-left w-full rounded-lg active:opacity-70 transition-opacity"
+                    >
                     <div>
                       <div className="flex items-start justify-between gap-2">
                         <span className="px-2 py-0.5 text-[11px] font-semibold rounded bg-brand-primary/10 text-brand-primary">
@@ -257,6 +265,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                         <span>{item.paper.sections.length} Sections</span>
                       </div>
                     </div>
+                    </button>
 
                     <div className="mt-4 pt-3 border-t border-brand-border flex items-center justify-between">
                       <button

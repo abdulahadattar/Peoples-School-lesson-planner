@@ -78,10 +78,38 @@ export type SortField =
 
 export type SortDirection = 'asc' | 'desc';
 
+/**
+ * Collapses a GR number to a single comparable key so a roster cell and a scanned
+ * dossier still join when their formatting differs. The sheet may hold "56", " 56 ",
+ * "056" or "56.0", while the archive keys folders by the number parsed out of the
+ * scan filename. Without this, a real photo silently failed to attach to its student.
+ */
+const normalizeGrKey = (raw: string): string => {
+  const digits = raw.replace(/[^0-9]/g, '');
+  if (!digits) return raw.trim().toUpperCase();
+  return String(parseInt(digits, 10));
+};
+
+/**
+ * Resolves the best available photo for a student. The dossier-level avatarUrl is
+ * preferred, but if it is missing or its file 404s we fall back to any successfully
+ * classified STUDENT_PHOTO document in the same dossier.
+ */
+const resolveAvatarUrl = (dossier?: StudentDossier): string | undefined => {
+  if (!dossier) return undefined;
+  if (dossier.avatarUrl) return dossier.avatarUrl;
+  const photo = dossier.documents?.find(
+    (d) => d.classification === 'STUDENT_PHOTO' && d.status !== 'duplicate' && d.url
+  );
+  return photo?.url;
+};
+
 interface StudentAvatarProps {
   name: string;
   grNo?: string;
   avatarUrl?: string;
+  /** Tried in order if avatarUrl 404s, e.g. a STUDENT_PHOTO found in the dossier. */
+  fallbackUrls?: string[];
   size?: 'sm' | 'md' | 'lg';
   onClick?: () => void;
 }
@@ -90,15 +118,22 @@ const StudentAvatar: React.FC<StudentAvatarProps> = ({
   name,
   grNo = '',
   avatarUrl,
+  fallbackUrls,
   size = 'md',
   onClick,
 }) => {
-  const [imgError, setImgError] = useState(false);
+  const candidates = useMemo(
+    () => [avatarUrl, ...(fallbackUrls || [])].filter((u): u is string => Boolean(u)),
+    [avatarUrl, fallbackUrls]
+  );
+  const [candidateIndex, setCandidateIndex] = useState(0);
 
-  // Reset img error if avatarUrl changes
+  // Reset the candidate cursor whenever the set of candidate photos changes.
   useEffect(() => {
-    setImgError(false);
-  }, [avatarUrl]);
+    setCandidateIndex(0);
+  }, [candidates]);
+
+  const activeUrl = candidates[candidateIndex];
 
   const sizeClasses = {
     sm: 'w-7 h-7 text-[10px]',
@@ -131,7 +166,7 @@ const StudentAvatar: React.FC<StudentAvatarProps> = ({
     'from-sky-600 to-cyan-700 text-white',
   ];
 
-  if (avatarUrl && !imgError) {
+  if (activeUrl) {
     return (
       <div
         onClick={onClick}
@@ -141,10 +176,10 @@ const StudentAvatar: React.FC<StudentAvatarProps> = ({
         title={`${name} (Click to inspect photo)`}
       >
         <img
-          src={avatarUrl}
+          src={activeUrl}
           alt={name}
           className="w-full h-full object-cover"
-          onError={() => setImgError(true)}
+          onError={() => setCandidateIndex((i) => i + 1)}
           loading="lazy"
         />
         {onClick && (
@@ -308,7 +343,7 @@ export const StudentRecordsView: React.FC = () => {
         const dMap: Record<string, StudentDossier> = {};
         for (const d of dossiersResult.value) {
           if (d.grNo) {
-            dMap[String(d.grNo).trim()] = d;
+            dMap[normalizeGrKey(String(d.grNo))] = d;
           }
         }
         setDossiersByGr(dMap);
@@ -928,17 +963,21 @@ export const StudentRecordsView: React.FC = () => {
           <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-text-secondary" />
             <input
-              type="text"
+              type="search"
+              inputMode="search"
+              enterKeyHint="search"
+              autoComplete="off"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Find student name, father name, contact number, GR#, B.Form, CNIC..."
-              className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-brand-bg border border-brand-border focus:outline-hidden focus:ring-1 focus:ring-brand-primary text-xs text-brand-text-primary placeholder:text-brand-text-secondary"
+              className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-brand-bg border border-brand-border focus:outline-hidden focus:ring-1 focus:ring-brand-primary text-xs text-brand-text-primary placeholder:text-brand-text-secondary [&::-webkit-search-cancel-button]:hidden"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-secondary hover:text-brand-text-primary p-1 rounded-md"
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 min-w-[32px] min-h-[32px] flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary active:bg-brand-bg rounded-md transition-colors"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -953,7 +992,7 @@ export const StudentRecordsView: React.FC = () => {
               <select
                 value={selectedClass}
                 onChange={(e) => setSelectedClass(e.target.value)}
-                className="bg-transparent border-0 font-semibold text-brand-text-primary focus:outline-hidden cursor-pointer"
+                className="bg-transparent border-0 font-semibold text-brand-text-primary focus:outline-hidden cursor-pointer min-h-[40px] py-1"
               >
                 <option value="all">All</option>
                 {classOptions.map((c) => (
@@ -970,7 +1009,7 @@ export const StudentRecordsView: React.FC = () => {
               <select
                 value={selectedSection}
                 onChange={(e) => setSelectedSection(e.target.value)}
-                className="bg-transparent border-0 font-semibold text-brand-text-primary focus:outline-hidden cursor-pointer"
+                className="bg-transparent border-0 font-semibold text-brand-text-primary focus:outline-hidden cursor-pointer min-h-[40px] py-1"
               >
                 <option value="all">All</option>
                 {sectionOptions.map((s) => (
@@ -987,7 +1026,7 @@ export const StudentRecordsView: React.FC = () => {
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                className="bg-transparent border-0 font-semibold text-brand-text-primary focus:outline-hidden cursor-pointer"
+                className="bg-transparent border-0 font-semibold text-brand-text-primary focus:outline-hidden cursor-pointer min-h-[40px] py-1"
               >
                 <option value="all">All</option>
                 {statusOptions.map((s) => (
@@ -1004,7 +1043,7 @@ export const StudentRecordsView: React.FC = () => {
               <select
                 value={selectedGender}
                 onChange={(e) => setSelectedGender(e.target.value)}
-                className="bg-transparent border-0 font-semibold text-brand-text-primary focus:outline-hidden cursor-pointer"
+                className="bg-transparent border-0 font-semibold text-brand-text-primary focus:outline-hidden cursor-pointer min-h-[40px] py-1"
               >
                 <option value="all">All</option>
                 <option value="male">Male</option>
@@ -1046,7 +1085,7 @@ export const StudentRecordsView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setViewMode('auto')}
-                className={`px-2 py-1 rounded text-xs font-semibold transition-colors flex items-center gap-1 ${
+                className={`px-2.5 py-1.5 min-h-[36px] rounded text-xs font-semibold transition-colors flex items-center justify-center gap-1 active:scale-[0.97] ${
                   viewMode === 'auto'
                     ? 'bg-white dark:bg-brand-surface text-brand-primary shadow-2xs'
                     : 'text-brand-text-secondary hover:text-brand-text-primary'
@@ -1058,7 +1097,7 @@ export const StudentRecordsView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setViewMode('table')}
-                className={`px-2 py-1 rounded text-xs font-semibold transition-colors flex items-center gap-1 ${
+                className={`px-2.5 py-1.5 min-h-[36px] rounded text-xs font-semibold transition-colors flex items-center justify-center gap-1 active:scale-[0.97] ${
                   viewMode === 'table'
                     ? 'bg-white dark:bg-brand-surface text-brand-primary shadow-2xs'
                     : 'text-brand-text-secondary hover:text-brand-text-primary'
@@ -1071,7 +1110,7 @@ export const StudentRecordsView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setViewMode('cards')}
-                className={`px-2 py-1 rounded text-xs font-semibold transition-colors flex items-center gap-1 ${
+                className={`px-2.5 py-1.5 min-h-[36px] rounded text-xs font-semibold transition-colors flex items-center justify-center gap-1 active:scale-[0.97] ${
                   viewMode === 'cards'
                     ? 'bg-white dark:bg-brand-surface text-brand-primary shadow-2xs'
                     : 'text-brand-text-secondary hover:text-brand-text-primary'
@@ -1088,7 +1127,7 @@ export const StudentRecordsView: React.FC = () => {
               <select
                 value={pageSize}
                 onChange={(e) => setPageSize(Number(e.target.value))}
-                className="bg-brand-bg border border-brand-border rounded-lg px-2 py-0.5 text-xs text-brand-text-primary focus:outline-hidden"
+                className="bg-brand-bg border border-brand-border rounded-lg px-2 min-h-[36px] py-1 text-xs text-brand-text-primary focus:outline-hidden cursor-pointer"
               >
                 <option value={25}>25</option>
                 <option value={50}>50</option>
@@ -1151,8 +1190,12 @@ export const StudentRecordsView: React.FC = () => {
                 <tr className="border-b border-brand-border bg-slate-50/80 dark:bg-slate-900/60 font-semibold text-brand-text-secondary uppercase tracking-wider text-[10px]">
                   {/* Sticky GR# column only - with clean separator */}
                   <th
+                    tabIndex={0}
+                    role="columnheader"
+                    aria-sort={sortField === 'grNo' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('grNo'); } }}
                     onClick={() => handleSort('grNo')}
-                    className="py-3 px-3.5 sticky left-0 z-20 bg-slate-50 dark:bg-slate-900 border-r border-brand-border shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] w-20 min-w-[72px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
+                    className="py-3 px-3.5 md:sticky md:left-0 z-20 bg-slate-50 dark:bg-slate-900 border-r border-brand-border md:shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] w-20 min-w-[72px] cursor-pointer hover:bg-slate-100 active:bg-slate-200 dark:hover:bg-slate-800 dark:active:bg-slate-700 transition-colors select-none group/th"
                     title="Click to sort by GR#"
                   >
                     <div className="flex items-center justify-between gap-1">
@@ -1163,6 +1206,10 @@ export const StudentRecordsView: React.FC = () => {
 
                   {/* Name of Student - Non-sticky so adjacent columns never slide under it */}
                   <th
+                    tabIndex={0}
+                    role="columnheader"
+                    aria-sort={sortField === 'studentName' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('studentName'); } }}
                     onClick={() => handleSort('studentName')}
                     className="py-3 px-4 min-w-[200px] border-r border-brand-border/40 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
                     title="Click to sort by Name of Student"
@@ -1175,6 +1222,10 @@ export const StudentRecordsView: React.FC = () => {
 
                   {/* Father / Guardian Name - Clean, unobstructed */}
                   <th
+                    tabIndex={0}
+                    role="columnheader"
+                    aria-sort={sortField === 'fatherName' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('fatherName'); } }}
                     onClick={() => handleSort('fatherName')}
                     className="py-3 px-4 min-w-[210px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
                     title="Click to sort by Father / Guardian Name"
@@ -1187,6 +1238,10 @@ export const StudentRecordsView: React.FC = () => {
 
                   {/* Class & Sec */}
                   <th
+                    tabIndex={0}
+                    role="columnheader"
+                    aria-sort={sortField === 'currentClass' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('currentClass'); } }}
                     onClick={() => handleSort('currentClass')}
                     className="py-3 px-3 text-center min-w-[105px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
                     title="Click to sort by Class & Section"
@@ -1199,6 +1254,10 @@ export const StudentRecordsView: React.FC = () => {
 
                   {/* Gender */}
                   <th
+                    tabIndex={0}
+                    role="columnheader"
+                    aria-sort={sortField === 'gender' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('gender'); } }}
                     onClick={() => handleSort('gender')}
                     className="py-3 px-3 text-center min-w-[80px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
                     title="Click to sort by Gender"
@@ -1211,6 +1270,10 @@ export const StudentRecordsView: React.FC = () => {
 
                   {/* DOB */}
                   <th
+                    tabIndex={0}
+                    role="columnheader"
+                    aria-sort={sortField === 'dob' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('dob'); } }}
                     onClick={() => handleSort('dob')}
                     className="py-3 px-3 text-center min-w-[105px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
                     title="Click to sort by Date of Birth"
@@ -1223,6 +1286,10 @@ export const StudentRecordsView: React.FC = () => {
 
                   {/* Parent Contact */}
                   <th
+                    tabIndex={0}
+                    role="columnheader"
+                    aria-sort={sortField === 'parentContact' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('parentContact'); } }}
                     onClick={() => handleSort('parentContact')}
                     className="py-3 px-4 min-w-[150px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
                     title="Click to sort by Parent Contact"
@@ -1235,6 +1302,10 @@ export const StudentRecordsView: React.FC = () => {
 
                   {/* Emergency Contact */}
                   <th
+                    tabIndex={0}
+                    role="columnheader"
+                    aria-sort={sortField === 'emergencyContact' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('emergencyContact'); } }}
                     onClick={() => handleSort('emergencyContact')}
                     className="py-3 px-4 min-w-[150px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
                     title="Click to sort by Emergency Contact"
@@ -1247,6 +1318,10 @@ export const StudentRecordsView: React.FC = () => {
 
                   {/* Status */}
                   <th
+                    tabIndex={0}
+                    role="columnheader"
+                    aria-sort={sortField === 'status' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('status'); } }}
                     onClick={() => handleSort('status')}
                     className="py-3 px-3 text-center min-w-[120px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
                     title="Click to sort by Status"
@@ -1259,6 +1334,10 @@ export const StudentRecordsView: React.FC = () => {
 
                   {/* B.Form No. */}
                   <th
+                    tabIndex={0}
+                    role="columnheader"
+                    aria-sort={sortField === 'bFormNo' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('bFormNo'); } }}
                     onClick={() => handleSort('bFormNo')}
                     className="py-3 px-4 min-w-[140px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
                     title="Click to sort by B.Form No."
@@ -1271,6 +1350,10 @@ export const StudentRecordsView: React.FC = () => {
 
                   {/* Parent CNIC */}
                   <th
+                    tabIndex={0}
+                    role="columnheader"
+                    aria-sort={sortField === 'parentCnic' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('parentCnic'); } }}
                     onClick={() => handleSort('parentCnic')}
                     className="py-3 px-4 min-w-[140px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
                     title="Click to sort by Parent CNIC"
@@ -1283,6 +1366,10 @@ export const StudentRecordsView: React.FC = () => {
 
                   {/* Address */}
                   <th
+                    tabIndex={0}
+                    role="columnheader"
+                    aria-sort={sortField === 'address' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('address'); } }}
                     onClick={() => handleSort('address')}
                     className="py-3 px-4 min-w-[200px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
                     title="Click to sort by Address"
@@ -1298,17 +1385,18 @@ export const StudentRecordsView: React.FC = () => {
                   <th className="py-3 px-3 text-center min-w-[80px]">Shift</th>
                   <th className="py-3 px-3 text-center min-w-[90px]">Medium</th>
                   <th className="py-3 px-3 text-center min-w-[110px]">Docs & Scans</th>
-                  <th className="py-3 px-3 text-center sticky right-0 z-20 bg-slate-50 dark:bg-slate-900 border-l border-brand-border shadow-xs w-28">
+                  <th className="py-3 px-3 text-center md:sticky md:right-0 z-20 bg-slate-50 dark:bg-slate-900 border-l border-brand-border md:shadow-xs w-28">
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-brand-border/60">
                 {paginatedRecords.map((student) => {
-                  const grClean = String(student.grNo || '').trim();
+                  const grClean = normalizeGrKey(String(student.grNo || ''));
                   const dossier = dossiersByGr[grClean];
                   const docCount = dossier?.documents?.length || 0;
                   const hasFlags = (dossier?.allFlags?.length || 0) > 0;
+                  const resolvedAvatar = resolveAvatarUrl(dossier);
 
                   return (
                     <tr
@@ -1316,7 +1404,7 @@ export const StudentRecordsView: React.FC = () => {
                       className="hover:bg-brand-bg/80 transition-colors group"
                     >
                       {/* Sticky GR# */}
-                      <td className="py-2.5 px-3.5 sticky left-0 z-10 bg-white dark:bg-brand-surface group-hover:bg-brand-bg border-r border-brand-border shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] font-mono font-bold text-brand-primary whitespace-nowrap">
+                      <td className="py-2.5 px-3.5 md:sticky md:left-0 z-10 bg-white dark:bg-brand-surface group-hover:bg-brand-bg border-r border-brand-border md:shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] font-mono font-bold text-brand-primary whitespace-nowrap">
                         {student.grNo || '—'}
                       </td>
 
@@ -1326,12 +1414,12 @@ export const StudentRecordsView: React.FC = () => {
                           <StudentAvatar
                             name={student.studentName}
                             grNo={student.grNo}
-                            avatarUrl={dossier?.avatarUrl}
+                            avatarUrl={resolvedAvatar}
                             size="md"
                             onClick={() => {
-                              if (dossier?.avatarUrl) {
+                              if (resolvedAvatar) {
                                 setAvatarPreviewUrl({
-                                  url: dossier.avatarUrl,
+                                  url: resolvedAvatar,
                                   name: student.studentName,
                                   grNo: student.grNo,
                                 });
@@ -1378,7 +1466,7 @@ export const StudentRecordsView: React.FC = () => {
                                   setDetailStudent(student);
                                   setDetailModalTab('documents');
                                 }}
-                                className="text-[10px] text-brand-text-secondary hover:text-brand-primary transition-colors flex items-center gap-0.5"
+                                className="text-[10px] text-brand-text-secondary hover:text-brand-primary transition-colors flex items-center gap-0.5 min-h-[36px] px-1.5 -mx-1.5 rounded-lg hover:bg-brand-bg active:bg-brand-primary/15"
                                 title="Attach student document scan"
                               >
                                 <Camera className="w-2.5 h-2.5 opacity-60" />
@@ -1479,12 +1567,12 @@ export const StudentRecordsView: React.FC = () => {
                             setDetailStudent(student);
                             setDetailModalTab('documents');
                           }}
-                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold transition-all border ${
+                          className={`inline-flex items-center justify-center gap-1 min-h-[36px] px-2 py-1 rounded-lg text-[11px] font-semibold transition-all border active:scale-[0.97] ${
                             docCount > 0
                               ? hasFlags
-                                ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 hover:bg-amber-100'
-                                : 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
-                              : 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800/60 dark:text-slate-400 dark:border-slate-700 hover:bg-slate-100'
+                                ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 hover:bg-amber-100 active:bg-amber-200 dark:active:bg-amber-950/70'
+                                : 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 active:bg-emerald-200 dark:active:bg-emerald-950/70'
+                              : 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800/60 dark:text-slate-400 dark:border-slate-700 hover:bg-slate-100 active:bg-slate-200 dark:active:bg-slate-700'
                           }`}
                           title={docCount > 0 ? `View ${docCount} documents for ${student.studentName}` : 'Attach documents'}
                         >
@@ -1495,7 +1583,7 @@ export const StudentRecordsView: React.FC = () => {
                       </td>
 
                       {/* Actions */}
-                      <td className="py-2.5 px-3 text-center sticky right-0 z-10 bg-white dark:bg-brand-surface group-hover:bg-brand-bg border-l border-brand-border">
+                      <td className="py-2.5 px-3 text-center md:sticky md:right-0 z-10 bg-white dark:bg-brand-surface group-hover:bg-brand-bg border-l border-brand-border">
                         <div className="flex items-center justify-center gap-1">
                           <button
                             type="button"
@@ -1504,7 +1592,7 @@ export const StudentRecordsView: React.FC = () => {
                               setDetailModalTab('details');
                             }}
                             title="View Profile"
-                            className="p-1.5 rounded-lg text-brand-text-secondary hover:text-brand-primary hover:bg-brand-surface transition-colors"
+                            className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-primary hover:bg-brand-surface transition-colors active:bg-brand-surface"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
@@ -1515,7 +1603,7 @@ export const StudentRecordsView: React.FC = () => {
                               setDetailModalTab('documents');
                             }}
                             title="View Documents & Scans"
-                            className="p-1.5 rounded-lg text-brand-text-secondary hover:text-brand-primary hover:bg-brand-surface transition-colors"
+                            className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-primary hover:bg-brand-surface transition-colors active:bg-brand-surface"
                           >
                             <FolderOpen className="w-3.5 h-3.5" />
                           </button>
@@ -1524,10 +1612,10 @@ export const StudentRecordsView: React.FC = () => {
                             onClick={() => handleOpenEdit(student)}
                             title={isSheetEditingLocked ? 'Editing locked by school admin' : 'Edit Student Record'}
                             disabled={isSheetEditingLocked}
-                            className={`p-1.5 rounded-lg transition-colors ${
+                            className={`p-1.5 rounded-lg transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center ${
                               isSheetEditingLocked
                                 ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
-                                : 'text-brand-text-secondary hover:text-brand-primary hover:bg-brand-surface'
+                                : 'text-brand-text-secondary hover:text-brand-primary hover:bg-brand-surface active:bg-brand-primary/15'
                             }`}
                           >
                             {isSheetEditingLocked ? <Lock className="w-3.5 h-3.5" /> : <Edit2 className="w-3.5 h-3.5" />}
@@ -1550,10 +1638,11 @@ export const StudentRecordsView: React.FC = () => {
             } divide-y divide-brand-border/60 bg-white dark:bg-brand-surface`}
           >
             {paginatedRecords.map((student) => {
-              const grClean = String(student.grNo || '').trim();
+              const grClean = normalizeGrKey(String(student.grNo || ''));
               const dossier = dossiersByGr[grClean];
               const docCount = dossier?.documents?.length || 0;
               const hasFlags = (dossier?.allFlags?.length || 0) > 0;
+              const resolvedAvatar = resolveAvatarUrl(dossier);
 
               return (
                 <div key={student.rowNumber} className="p-3.5 hover:bg-brand-bg/50 transition-colors space-y-3">
@@ -1562,12 +1651,12 @@ export const StudentRecordsView: React.FC = () => {
                       <StudentAvatar
                         name={student.studentName}
                         grNo={student.grNo}
-                        avatarUrl={dossier?.avatarUrl}
+                        avatarUrl={resolvedAvatar}
                         size="lg"
                         onClick={() => {
-                          if (dossier?.avatarUrl) {
+                          if (resolvedAvatar) {
                             setAvatarPreviewUrl({
-                              url: dossier.avatarUrl,
+                              url: resolvedAvatar,
                               name: student.studentName,
                               grNo: student.grNo,
                             });
@@ -1798,7 +1887,7 @@ export const StudentRecordsView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setAvatarPreviewUrl(null)}
-                className="p-1 rounded-lg hover:bg-brand-bg text-brand-text-secondary"
+                className="p-1 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center hover:bg-brand-bg text-brand-text-secondary active:bg-brand-bg"
               >
                 <X className="w-5 h-5" />
               </button>

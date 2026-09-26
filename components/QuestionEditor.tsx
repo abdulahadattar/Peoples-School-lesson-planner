@@ -97,6 +97,8 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
             <label className="text-xs font-medium text-brand-text-secondary">Marks:</label>
             <input
               type="number"
+  inputMode="numeric"
+  autoComplete="off"
               min={1}
               max={50}
               value={editMarks}

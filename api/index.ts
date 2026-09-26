@@ -1017,8 +1017,31 @@ app.post('/api/documents/rescan', async (_req, res) => {
   res.json({ ok: true, document: null, dossiers: [], documents: [] });
 });
 
-app.get('/api/documents/file/:grNo/:filename', (_req, res) => {
-  res.status(404).send('File not found');
+app.get('/api/documents/file/:grNo/:filename', (req, res) => {
+  try {
+    const { grNo, filename } = req.params;
+    // Mirror the local server: strip any directory traversal from both segments
+    // before joining, so a crafted name cannot escape DOCS_DIR.
+    const safeGr = path.basename(decodeURIComponent(grNo));
+    const safeFilename = path.basename(decodeURIComponent(filename));
+
+    const filePath = path.join(DOCS_DIR, `GR_${safeGr}`, safeFilename);
+    if (!filePath.startsWith(DOCS_DIR) || !fs.existsSync(filePath)) {
+      res.status(404).send('File not found');
+      return;
+    }
+
+    const ext = path.extname(safeFilename).toLowerCase();
+    const mime: Record<string, string> = {
+      '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
+      '.webp': 'image/webp', '.gif': 'image/gif', '.pdf': 'application/pdf',
+    };
+    res.setHeader('Content-Type', mime[ext] || 'application/octet-stream');
+    res.setHeader('Cache-Control', 'no-store');
+    fs.createReadStream(filePath).pipe(res);
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
 });
 
 app.get('/api/documents/export-zip', (_req, res) => {

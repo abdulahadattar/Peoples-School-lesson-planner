@@ -449,7 +449,7 @@ export const SelectField: React.FC<SelectFieldProps> = ({
                   e.stopPropagation();
                   selectValue('');
                 }}
-                className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 text-brand-text-tertiary hover:text-brand-text-primary transition-colors cursor-pointer"
+                className="p-1 rounded min-w-[36px] min-h-[36px] flex items-center justify-center-md hover:bg-slate-200 dark:hover:bg-slate-700 text-brand-text-tertiary hover:text-brand-text-primary transition-colors cursor-pointer active:bg-slate-200"
                 title="Clear selection"
               >
                 <X className="w-3.5 h-3.5" />

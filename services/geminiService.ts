@@ -121,18 +121,19 @@ export const DEFAULT_MODEL = "gemini-3.5-flash-lite";
  *   gemini-1.5-flash       404 not found
  *   gemma-4-26b-it         404 not found
  *
- * Chain order:
- *   1. gemini-3.5-flash-lite
- *   2. gemini-3.1-flash-lite
- *   3. gemini-2.5-flash
- *   4. gemma-4-31b-it
- *   5. gemini-flash-latest
+ * Chain order (measured against the live endpoint with a real document image across
+ * all five configured keys, see scripts/probe-chain.mjs):
+ *   1. gemini-3.5-flash-lite  5/5 keys  ~2.0s
+ *   2. gemma-4-26b-a4b-it     5/5 keys  ~2.1s
+ *   3. gemini-3.1-flash-lite  4/5 keys ~11.4s
+ *   4. gemini-3.5-flash       3/5 keys ~11.9s
+ *   5. gemini-flash-latest    2/5 keys ~12.9s
  */
 export const MODEL_CHAIN: string[] = [
   "gemini-3.5-flash-lite",
+  "gemma-4-26b-a4b-it",
   "gemini-3.1-flash-lite",
-  "gemini-2.5-flash",
-  "gemma-4-31b-it",
+  "gemini-3.5-flash",
   "gemini-flash-latest",
 ];
 

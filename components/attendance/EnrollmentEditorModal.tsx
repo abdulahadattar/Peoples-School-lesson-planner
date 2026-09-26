@@ -136,11 +136,11 @@ export const EnrollmentEditorModal: React.FC<EnrollmentEditorModalProps> = ({
   return (
     <div
       id="enrollment-editor-modal"
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden"
+        className="relative w-full max-w-4xl max-h-[90dvh] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -238,6 +238,8 @@ export const EnrollmentEditorModal: React.FC<EnrollmentEditorModalProps> = ({
                   <td className="py-2 px-3 text-center">
                     <input
                       type="number"
+  inputMode="numeric"
+  autoComplete="off"
                       min="0"
                       disabled={!isAdmin}
                       value={enr.totalEnrollment ?? (enr.enrolledBoys + enr.enrolledGirls)}
@@ -252,6 +254,8 @@ export const EnrollmentEditorModal: React.FC<EnrollmentEditorModalProps> = ({
                   <td className="py-2 px-3 text-center">
                     <input
                       type="number"
+  inputMode="numeric"
+  autoComplete="off"
                       min="0"
                       disabled={!isAdmin}
                       value={enr.enrolledBoys}
@@ -266,6 +270,8 @@ export const EnrollmentEditorModal: React.FC<EnrollmentEditorModalProps> = ({
                   <td className="py-2 px-3 text-center">
                     <input
                       type="number"
+  inputMode="numeric"
+  autoComplete="off"
                       min="0"
                       disabled={!isAdmin}
                       value={enr.enrolledGirls}

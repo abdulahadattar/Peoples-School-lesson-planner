@@ -100,52 +100,47 @@ export const AnimatedLoginPage: React.FC<AnimatedLoginPageProps> = ({
   };
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col items-center justify-between overflow-hidden bg-[#070b14] text-slate-100 font-sans selection:bg-blue-500 selection:text-white">
-      {/* ── Motion Graphics Dynamic Background ──────────────────────────────── */}
+    <div className="relative min-h-[100dvh] w-full flex flex-col items-center justify-between overflow-hidden bg-[#070b14] text-slate-100 font-sans selection:bg-blue-500 selection:text-white">
+      {/* ── Motion Graphics Dynamic Background ────────────────────────────────
+          These orbs are on screen before the user has done anything, so they
+          were the app's first sustained GPU cost. Each animates translation only:
+          a 100-130px blur filter has to be re-rasterised whenever `scale`
+          changes its effective footprint, which on a low-end Android device
+          meant sustained frame drops and thermal throttling. Radii and durations
+          are trimmed, and MotionConfig reducedMotion="user" disables them for
+          anyone who asked the OS for reduced motion. */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
         {/* Ambient flowing liquid orbs */}
         <motion.div
-          animate={{
-            x: [0, 50, -40, 0],
-            y: [0, -60, 40, 0],
-            scale: [1, 1.15, 0.95, 1],
-          }}
+          animate={{ x: [0, 50, -40, 0], y: [0, -60, 40, 0] }}
           transition={{
-            duration: 22,
+            duration: 30,
             repeat: Infinity,
             ease: 'easeInOut',
           }}
-          className="absolute -top-32 -left-32 w-[520px] h-[520px] rounded-full bg-gradient-to-br from-blue-600/30 via-indigo-600/20 to-transparent blur-[120px]"
+          className="absolute -top-32 -left-32 w-[420px] h-[420px] rounded-full bg-gradient-to-br from-blue-600/30 via-indigo-600/20 to-transparent blur-[70px] will-change-transform"
         />
 
         <motion.div
-          animate={{
-            x: [0, -60, 50, 0],
-            y: [0, 70, -30, 0],
-            scale: [1, 1.2, 0.9, 1],
-          }}
+          animate={{ x: [0, -60, 50, 0], y: [0, 70, -30, 0] }}
           transition={{
-            duration: 26,
+            duration: 34,
             repeat: Infinity,
             ease: 'easeInOut',
             delay: 2,
           }}
-          className="absolute -bottom-40 -right-40 w-[600px] h-[600px] rounded-full bg-gradient-to-tl from-emerald-600/25 via-teal-500/15 to-transparent blur-[130px]"
+          className="absolute -bottom-40 -right-40 w-[460px] h-[460px] rounded-full bg-gradient-to-tl from-emerald-600/25 via-teal-500/15 to-transparent blur-[70px] will-change-transform"
         />
 
         <motion.div
-          animate={{
-            x: [0, 40, -30, 0],
-            y: [0, 40, -40, 0],
-            scale: [1, 1.1, 0.92, 1],
-          }}
+          animate={{ x: [0, 40, -30, 0], y: [0, 40, -40, 0] }}
           transition={{
-            duration: 18,
+            duration: 26,
             repeat: Infinity,
             ease: 'easeInOut',
             delay: 4,
           }}
-          className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[420px] h-[420px] rounded-full bg-gradient-to-r from-violet-600/20 to-blue-600/15 blur-[100px]"
+          className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[340px] h-[340px] rounded-full bg-gradient-to-r from-violet-600/20 to-blue-600/15 blur-[60px] will-change-transform"
         />
 
         {/* Apple-style fine geometric motion mesh grid */}
@@ -344,14 +339,18 @@ export const AnimatedLoginPage: React.FC<AnimatedLoginPageProps> = ({
               </p>
             </div>
 
-            {/* Error Notification */}
+            {/* Error Notification. Animated on opacity + y only: the previous
+                height/margin animation forced a synchronous layout of the whole
+                form on every frame, and it fires on the auth-failure path where
+                users are already retrying. */}
             <AnimatePresence>
               {errorMessage && (
                 <motion.div
-                  initial={{ opacity: 0, height: 0, mb: 0 }}
-                  animate={{ opacity: 1, height: 'auto', mb: 16 }}
-                  exit={{ opacity: 0, height: 0, mb: 0 }}
-                  className="p-3 bg-red-900/30 border border-red-500/40 rounded-xl text-xs text-red-200 flex items-start gap-2"
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                  className="mb-4 p-3 bg-red-900/30 border border-red-500/40 rounded-xl text-xs text-red-200 flex items-start gap-2"
                 >
                   <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
                   <span className="flex-1">{errorMessage}</span>

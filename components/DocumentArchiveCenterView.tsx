@@ -933,7 +933,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
           <button
             type="button"
             onClick={refreshData}
-            className="p-1.5 rounded-lg text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg transition-colors"
+            className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg transition-colors active:bg-brand-bg"
             title="Refresh Data & Run Audit"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -1225,7 +1225,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
                                 classification={doc.classification}
                                 className="w-full h-full object-cover group-hover:scale-110 transition-transform"
                               />
-                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
+                              <div className="absolute inset-0 bg-black/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
                                 <ZoomIn className="w-4 h-4" />
                               </div>
                             </div>
@@ -1330,7 +1330,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
                                 type="button"
                                 onClick={() => handleRescanDoc(doc.id)}
                                 disabled={isOperatingDoc}
-                                className="p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 transition-colors"
+                                className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 transition-colors active:bg-indigo-50"
                                 title="Rescan document"
                               >
                                 <RefreshCw className="w-3.5 h-3.5" />
@@ -1340,7 +1340,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
                                 type="button"
                                 onClick={() => setDeletingDoc(doc)}
                                 disabled={isOperatingDoc}
-                                className="p-1.5 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors"
+                                className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors active:bg-rose-50"
                                 title="Delete document scan"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -1366,7 +1366,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
                                       setAssigningDoc(doc);
                                       setTargetAssignGr(doc.grNo);
                                     }}
-                                    className="p-1.5 rounded-lg text-slate-400 hover:text-brand-text-primary hover:bg-brand-bg transition-colors"
+                                    className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-slate-400 hover:text-brand-text-primary hover:bg-brand-bg transition-colors active:bg-brand-bg"
                                     title="Reassign to another GR"
                                   >
                                     <UserPlus className="w-3.5 h-3.5" />
@@ -1530,7 +1530,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
                                 <span className="text-xs font-medium">No Image Preview</span>
                               </div>
                             )}
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity text-white gap-1.5 p-2 text-center">
+                            <div className="absolute inset-0 bg-black/50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity text-white gap-1.5 p-2 text-center">
                               <ZoomIn className="w-6 h-6" />
                               <span className="text-xs font-bold">Click to Inspect & Zoom Scan</span>
                             </div>
@@ -1764,7 +1764,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setSelectedPreviewDoc(null)}
-                className="p-1.5 rounded-lg text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg transition-colors"
+                className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg transition-colors active:bg-brand-bg"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1885,7 +1885,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setAssigningDoc(null)}
-                className="p-1.5 rounded-lg text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg"
+                className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg active:bg-brand-bg"
               >
                 <X className="w-5 h-5" />
               </button>
