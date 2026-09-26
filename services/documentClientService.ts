@@ -112,7 +112,10 @@ export async function uploadZipArchive(
   }
 
   const { job: initialJob } = await initRes.json();
-  const jobId = initialJob.jobId;
+  const jobId = initialJob.jobId ?? initialJob.id;
+  if (!jobId) {
+    throw new Error('Upload session did not return a job identifier');
+  }
 
   if (file.size > CHUNK_SIZE_BYTES) {
     // Chunked upload for large ZIPs
@@ -184,7 +187,10 @@ export async function uploadIndividualFiles(
   }
 
   const { job: initialJob } = await initRes.json();
-  const jobId = initialJob.jobId;
+  const jobId = initialJob.jobId ?? initialJob.id;
+  if (!jobId) {
+    throw new Error('Upload session did not return a job identifier');
+  }
 
   // 2. Stream files individually to the batch job
   for (let i = 0; i < files.length; i++) {

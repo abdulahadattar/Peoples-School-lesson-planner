@@ -112,21 +112,28 @@ export const DEFAULT_MODEL = "gemini-3.5-flash-lite";
  * Model fallback hierarchy. Every request tries the first (best) model with ALL
  * healthy keys; if every key fails on it, it moves to the next model on all keys,
  * and so on.
+ *
+ * Every id below was verified against the live generateContent endpoint. The
+ * chain intentionally excludes ids that now return 404, because each dead entry
+ * adds a full round of retries before the chain can move on:
+ *   gemini-2.5-flash-lite  404 "no longer available to new users"
+ *   gemini-2.0-flash       404 "no longer available"
+ *   gemini-1.5-flash       404 not found
+ *   gemma-4-26b-it         404 not found
+ *
  * Chain order:
  *   1. gemini-3.5-flash-lite
  *   2. gemini-3.1-flash-lite
  *   3. gemini-2.5-flash
- *   4. gemini-2.5-flash-lite
- *   5. gemma-4-31b-it
- *   6. gemma-4-26b-it
+ *   4. gemma-4-31b-it
+ *   5. gemini-flash-latest
  */
 export const MODEL_CHAIN: string[] = [
   "gemini-3.5-flash-lite",
   "gemini-3.1-flash-lite",
   "gemini-2.5-flash",
-  "gemini-2.5-flash-lite",
   "gemma-4-31b-it",
-  "gemma-4-26b-it",
+  "gemini-flash-latest",
 ];
 
 function isAuthOrQuotaError(error: any): boolean {
@@ -173,7 +180,7 @@ export function isKeyPermanentlyBlocked(error: unknown): boolean {
  * Calls the model API via REST, trying every model in MODEL_CHAIN with every
  * healthy key in order:
  *
- *   for each model (gemini-3.5-flash-lite → gemini-3.1-flash-lite → gemini-2.5-flash-lite → gemma-4-31b-it → gemma-4-26b-it)
+ *   for each model (gemini-3.5-flash-lite → gemini-3.1-flash-lite → gemini-2.5-flash → gemma-4-31b-it → gemini-flash-latest)
  *     try ALL api keys for this single model
  *     if all keys are exhausted on this model, try the second model on ALL api keys, and so on.
  */

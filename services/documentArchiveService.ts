@@ -1852,16 +1852,15 @@ async function callGeminiVision(
   const startTime = Date.now();
   const base64Data = imageBuffer.toString('base64');
 
-  // Supported vision models with fallback priority
+  // Supported vision models with fallback priority.
+  // Verified against the live generateContent endpoint; ids that now 404 are
+  // excluded because each dead entry costs a full retry round.
   const modelsToTry = [
     'gemini-3.5-flash-lite',
     'gemini-3.1-flash-lite',
-    'gemini-2.5-flash-lite',
     'gemini-2.5-flash',
-    'gemini-2.0-flash',
-    'gemini-1.5-flash',
-    'gemma-4-31b',
-    'gemma-4-26b',
+    'gemma-4-31b-it',
+    'gemini-flash-latest',
   ];
 
   const requestBody = JSON.stringify({
