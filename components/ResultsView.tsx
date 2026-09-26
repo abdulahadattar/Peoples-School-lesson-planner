@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { LessonPlan, GeneratedPaper, TeacherInfo, ExportFormat, PaperQuestion } from '../types';
-import { ArrowLeftIcon, DownloadIcon, ChevronLeftIcon, ChevronRightIcon, RefreshIcon, SparklesIcon } from './icons/MiscIcons';
+import { ArrowLeftIcon, DownloadIcon, ChevronLeftIcon, ChevronRightIcon, RefreshIcon, CheckCircleIcon } from './icons/MiscIcons';
 import {
   paperSectionNote,
   sectionInstruction,
@@ -90,7 +90,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
     const newQ: PaperQuestion = {
       id: `q_${Date.now()}`,
       type: isMcq ? 'mcq' : (section.title.toLowerCase().includes('short') ? 'short' : 'long'),
-      question: 'New question text goes here (click edit to modify or regenerate with AI)',
+      question: 'New question text goes here (click edit to modify or regenerate)',
       marks: defaultMarks,
       options: isMcq ? ['Option A', 'Option B', 'Option C', 'Option D'] : undefined,
     };
@@ -373,7 +373,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
                       <RefreshIcon className="w-3.5 h-3.5" />
                     </div>
                     <span className="text-xs sm:text-sm text-brand-text-secondary group-hover:text-brand-text-primary transition-colors truncate">
-                      Revise paper with AI (e.g., add MCQs, change marks, regenerate section)...
+                      Revise paper (add MCQs, change marks, regenerate a section)...
                     </span>
                     <span className="hidden sm:inline-flex text-[11px] font-semibold text-brand-primary bg-brand-primary/10 px-2.5 py-1 rounded-lg ml-auto border border-brand-primary/20">
                       Revise
@@ -411,7 +411,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-brand-primary animate-pulse" />
                         <span className="text-xs font-bold text-brand-primary uppercase tracking-wider">
-                          AI Paper Revision
+                          Paper Revision
                         </span>
                       </div>
                       <button
@@ -475,7 +475,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
                           </>
                         ) : (
                           <>
-                            <SparklesIcon className="w-3.5 h-3.5" />
+                            <CheckCircleIcon className="w-3.5 h-3.5" />
                             <span>Apply Revision</span>
                           </>
                         )}

@@ -751,7 +751,7 @@ export const StudentRecordsView: React.FC = () => {
             School Student Records & Register
           </h1>
           <p className="text-xs text-brand-text-secondary max-w-2xl leading-relaxed">
-            Connected to official Peoples Higher Secondary School spreadsheet. Filter, search students by name, father name, or contact number, and edit records with automatic two-way cloud sync.
+            Search, filter and edit student records. Changes sync back to the Google Sheet.
           </p>
         </div>
 
@@ -830,8 +830,8 @@ export const StudentRecordsView: React.FC = () => {
                 }`}
               >
                 {isAdmin
-                  ? 'Administrator Edit Override Active'
-                  : 'Google Sheet Records: View-Only Safeguard Active'}
+                  ? 'Admin Edit Override Active'
+                  : 'View-Only Mode'}
               </h4>
               <p
                 className={`text-xs mt-0.5 leading-relaxed ${
@@ -839,9 +839,9 @@ export const StudentRecordsView: React.FC = () => {
                 }`}
               >
                 {isAdmin
-                  ? 'Editing is currently locked for standard users. You retain full editing privileges as Administrator.'
+                  ? 'Editing is locked for standard users. You can still edit as Administrator.'
                   : schoolConfig.sheetEditingLockedMessage ||
-                    'Student record editing and addition is locked by School Administration. You can view, search, and export student data.'}
+                    'Editing is locked by School Administration. You can view, search, and export.'}
               </p>
             </div>
           </div>

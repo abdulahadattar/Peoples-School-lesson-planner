@@ -10,7 +10,7 @@ import {
   UserCheck,
   UserX,
   History,
-  Sparkles,
+  Info,
   ChevronLeft,
   ChevronRight,
   RotateCcw,
@@ -502,7 +502,7 @@ export const DailyAttendanceView: React.FC = () => {
           ) : notification.type === 'error' ? (
             <AlertCircle className="w-4 h-4 text-rose-400" />
           ) : (
-            <Sparkles className="w-4 h-4 text-brand-primary" />
+            <Info className="w-4 h-4 text-brand-primary" />
           )}
           <span>{notification.message}</span>
         </div>

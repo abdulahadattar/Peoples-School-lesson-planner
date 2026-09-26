@@ -5,7 +5,7 @@ import { View } from '../types';
 import { auth, loginWithGoogle, logoutUser } from '../services/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { isUserAdmin } from '../services/adminService';
-import { ShieldCheck, LogIn, LogOut, Sparkles } from 'lucide-react';
+import { ShieldCheck, LogIn, LogOut } from 'lucide-react';
 import { motion } from 'motion/react';
 
 type Theme = 'light' | 'dark';

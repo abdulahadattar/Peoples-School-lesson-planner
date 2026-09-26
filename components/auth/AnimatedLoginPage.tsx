@@ -6,7 +6,7 @@ import { ADMIN_EMAILS } from '../../services/adminService';
 import { User } from 'firebase/auth';
 import {
   ShieldCheck,
-  Sparkles,
+  GraduationCap,
   ArrowRight,
   BookOpen,
   CalendarCheck,
@@ -223,20 +223,19 @@ export const AnimatedLoginPage: React.FC<AnimatedLoginPageProps> = ({
             className="space-y-3"
           >
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-400/30 text-blue-300 text-xs font-medium backdrop-blur-md">
-              <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-              <span>Next-Gen Academic Operating System</span>
+              <GraduationCap className="w-3.5 h-3.5 text-blue-400" />
+              <span>School Portal</span>
             </div>
 
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-white leading-[1.15]">
-              Empowering Teachers.{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-teal-300 to-emerald-400">
-                Inspiring Students.
+              Peoples Higher Secondary School
+              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-teal-300 to-emerald-400">
+                Jamshoro
               </span>
             </h1>
 
             <p className="text-sm sm:text-base text-slate-300/90 leading-relaxed font-normal max-w-lg">
-              Official institutional portal for Peoples Higher Secondary School Jamshoro.
-              Streamline curriculum lesson planning, board exam generation, and daily verified attendance.
+              Sign in to manage lesson plans, exam papers, student records and attendance.
             </p>
           </motion.div>
 

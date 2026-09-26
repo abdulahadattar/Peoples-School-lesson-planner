@@ -9,6 +9,7 @@ import {
 } from '../services/storageService';
 import { LessonPlan, GeneratedPaper } from '../types';
 import Spinner from './ui/Spinner';
+import { ArchiveIcon } from './icons/MiscIcons';
 
 interface HistoryViewProps {
   onOpenLessonPlan: (plan: LessonPlan) => void;
@@ -208,11 +209,11 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
       ) : totalCount === 0 ? (
         <div className="text-center py-16 px-4 bg-brand-surface rounded-2xl border border-dashed border-brand-border">
           <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-brand-bg flex items-center justify-center text-brand-text-secondary">
-            📁
+            <ArchiveIcon className="w-5 h-5" />
           </div>
           <h3 className="text-base font-semibold text-brand-text-primary">No saved records found</h3>
           <p className="text-xs text-brand-text-secondary max-w-sm mx-auto mt-1">
-            Generated lesson plans and exam papers will automatically appear here as you create them.
+            Generated plans and papers appear here.
           </p>
         </div>
       ) : (

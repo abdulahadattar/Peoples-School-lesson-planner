@@ -1254,12 +1254,12 @@ export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
               </button>
             </div>
 
-            {/* Quick 1-Click Subject Assignment (Direct Subject Sync) */}
+            {/* Quick Subject Assignment (Direct Subject Sync) */}
             {selectedClassInfo?.subjects && selectedClassInfo.subjects.length > 0 && (
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-[11px] font-bold text-brand-text-secondary uppercase">
-                    1-Click Curriculum Subjects:
+                    Curriculum Subjects:
                   </label>
                   <span className="text-[10px] text-brand-text-secondary">
                     Auto-assigns designated teacher

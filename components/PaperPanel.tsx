@@ -610,11 +610,11 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
                     'No short questions included.'
                   ) : shortOptionalCount > 0 ? (
                     <span>
-                      📋 Students attempt <strong className="text-brand-text-primary">{shortAttemptCount} of {shortQuestionCount}</strong> questions (<strong>{shortOptionalCount} optional choices</strong>).
+                      Students attempt <strong className="text-brand-text-primary">{shortAttemptCount} of {shortQuestionCount}</strong> questions (<strong>{shortOptionalCount} optional choices</strong>).
                     </span>
                   ) : (
                     <span>
-                      📋 All <strong className="text-brand-text-primary">{shortQuestionCount}</strong> questions are compulsory (0 optional choices).
+                      All <strong className="text-brand-text-primary">{shortQuestionCount}</strong> questions are compulsory (0 optional choices).
                     </span>
                   )}
                 </span>
@@ -699,11 +699,11 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
                     'No long questions included.'
                   ) : longOptionalCount > 0 ? (
                     <span>
-                      📋 Students attempt <strong className="text-brand-text-primary">{longAttemptCount} of {longQuestionCount}</strong> questions (<strong>{longOptionalCount} optional choices</strong>).
+                      Students attempt <strong className="text-brand-text-primary">{longAttemptCount} of {longQuestionCount}</strong> questions (<strong>{longOptionalCount} optional choices</strong>).
                     </span>
                   ) : (
                     <span>
-                      📋 All <strong className="text-brand-text-primary">{longQuestionCount}</strong> questions are compulsory (0 optional choices).
+                      All <strong className="text-brand-text-primary">{longQuestionCount}</strong> questions are compulsory (0 optional choices).
                     </span>
                   )}
                 </span>
@@ -795,7 +795,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
                   onClick={() => setTotalMarks(markDistribution.totalQuestionMarks)}
                   className="font-bold text-brand-primary hover:underline"
                 >
-                  ⚡ Sync Target to {markDistribution.totalQuestionMarks}M
+                  Sync Target to {markDistribution.totalQuestionMarks}M
                 </button>
               </div>
             )}

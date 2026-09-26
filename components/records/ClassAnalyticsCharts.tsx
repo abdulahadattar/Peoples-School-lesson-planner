@@ -18,7 +18,6 @@ import {
   PieChart as PieIcon,
   Filter,
   ArrowUpRight,
-  Sparkles,
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
@@ -201,10 +200,10 @@ export const ClassAnalyticsCharts: React.FC<ClassAnalyticsChartsProps> = ({
           </div>
           <div>
             <h2 className="text-base font-extrabold text-brand-text-primary tracking-tight">
-              Class Distribution & Student Visualizations
+              Class Distribution
             </h2>
             <p className="text-xs text-brand-text-secondary mt-0.5">
-              Interactive breakdown across {classData.length} grade levels. Click any bar to instantly filter the records table.
+              Students across {classData.length} classes. Click a bar to filter the records table.
             </p>
           </div>
         </div>

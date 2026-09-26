@@ -23,7 +23,7 @@ import {
   Filter,
   Layers,
   RefreshCw,
-  Sparkles,
+  ScanLine,
   StopCircle,
   Terminal,
   UploadCloud,
@@ -166,7 +166,7 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
                 <span className="font-mono text-xs text-slate-400">Job #{jobId}</span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                {job?.currentStageDescription || 'Sequential AI document extraction and NADRA verification'}
+                {job?.currentStageDescription || 'Sequential document extraction and NADRA verification'}
               </p>
             </div>
           </div>
@@ -241,7 +241,7 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
             <div className="flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-slate-300 gap-4">
               <span className="flex items-center gap-1.5 min-w-0">
                 <Zap className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-                <span className="whitespace-nowrap flex-shrink-0">AI Pipeline Progress</span>
+                <span className="whitespace-nowrap flex-shrink-0">Processing Progress</span>
                 {job?.currentFile && (
                   <span className="text-slate-400 font-normal truncate">
                     (Current: {job.currentFile})
@@ -460,8 +460,8 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
                               <div className="flex-1 min-w-0 space-y-2">
                                 <div className="flex items-center justify-between">
                                   <span className="text-[11px] font-bold text-brand-primary uppercase tracking-wider flex items-center gap-1">
-                                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                                    AI Identified Document Data
+                                    <ScanLine className="w-3.5 h-3.5 text-amber-500" />
+                                    Extracted Document Data
                                   </span>
                                   {file.url && (
                                     <a
@@ -575,7 +575,7 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
                           : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
                       }`}
                     >
-                      {lvl}
+                      {lvl === 'AI_VISION' ? 'SCAN' : lvl === 'PDF_EXTRACT' ? 'PDF' : lvl}
                     </button>
                   ))}
                 </div>
@@ -631,11 +631,11 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
             <div className="space-y-4 text-xs">
               <div className="p-4 rounded-xl bg-brand-primary/5 dark:bg-brand-primary/10 border border-brand-primary/20 space-y-2">
                 <h4 className="font-bold text-sm text-brand-primary flex items-center gap-2">
-                  <Sparkles className="w-4 h-4" />
-                  <span>How the Document Archival & AI Verification Pipeline Works</span>
+                  <ScanLine className="w-4 h-4" />
+                  <span>How Document Processing Works</span>
                 </h4>
                 <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-                  Every uploaded file (individual images, ZIPs, or multi-page PDFs) passes through a resilient, transparent 5-stage automated pipeline designed specifically for Pakistani secondary school civil and academic documentation:
+                  Every uploaded file (images, ZIPs, or multi-page PDFs) passes through 5 stages before it is added to a student record:
                 </p>
               </div>
 
@@ -664,7 +664,7 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
                   <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
                     3
                   </div>
-                  <h5 className="font-bold text-slate-900 dark:text-white">AI Vision OCR</h5>
+                  <h5 className="font-bold text-slate-900 dark:text-white">Scan Classification</h5>
                   <p className="text-slate-500 dark:text-slate-400 text-[11px] leading-relaxed">
                     Classifies document type (B-Form, CNIC, Photo), detects sideways/upside-down angles, and rotates upright.
                   </p>

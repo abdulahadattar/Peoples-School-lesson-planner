@@ -21,7 +21,6 @@ import {
   BookOpen,
   Calendar,
   Building2,
-  Sparkles,
 } from 'lucide-react';
 import {
   SchoolConfig,
@@ -425,22 +424,11 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({ onOpenLo
           {/* Enrollment Source Setting Card */}
           <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-brand-text-primary">
-                  Daily Attendance Enrollment Source
-                </span>
-                <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                    workingConfig.enrollmentMode === 'google_sheet'
-                      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200'
-                      : 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200'
-                  }`}
-                >
-                  {workingConfig.enrollmentMode === 'google_sheet' ? 'Google Sheet Live Count' : 'Manual Admin Values'}
-                </span>
-              </div>
+              <span className="text-xs font-bold text-brand-text-primary">
+                Daily Attendance Enrollment Source
+              </span>
               <p className="text-xs text-brand-text-secondary leading-relaxed max-w-2xl">
-                Choose whether the Daily Attendance register calculates percentage from the <strong>Manual Register</strong> values configured below or <strong>automatically extracts live student counts</strong> from the 868-student Google Sheet records.
+                Where the attendance register gets its student counts from.
               </p>
             </div>
 

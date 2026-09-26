@@ -31,7 +31,7 @@ import {
   Image as ImageIcon,
   FileText,
   Clock,
-  Sparkles,
+  ScanLine,
   ChevronRight,
   ZoomIn,
   ZoomOut,
@@ -130,7 +130,7 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
         setUploadStatus(msg || `${pct}%`);
       });
       setActiveJob(job);
-      setUploadStatus('Uploaded! Processing scans in background with Gemini AI...');
+      setUploadStatus('Uploaded! Processing scans in background...');
       setTimeout(() => {
         setUploadStatus(null);
         loadData(true);
@@ -406,7 +406,7 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
       setIsReprocessing(true);
       const res = await reprocessDocClient(docId);
       setSelectedDoc(res.document);
-      setActionSuccessMsg('Document rescanned and re-evaluated with Gemini AI Vision!');
+      setActionSuccessMsg('Document rescanned and re-audited.');
       await loadData(true);
       setTimeout(() => setActionSuccessMsg(null), 4000);
     } catch (err: any) {
@@ -434,7 +434,7 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
     return (
       <div className="py-12 flex flex-col items-center justify-center text-slate-400 gap-3">
         <div className="w-8 h-8 rounded-full border-2 border-brand-primary border-t-transparent animate-spin" />
-        <span className="text-xs">Loading student archive documents & AI audit...</span>
+        <span className="text-xs">Loading student archive documents...</span>
       </div>
     );
   }
@@ -456,7 +456,7 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
       {/* Top Action & Status Bar */}
       <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-white dark:bg-brand-surface border border-brand-border shadow-xs">
         <div className="flex items-center gap-2 text-xs">
-          <Sparkles className="w-4 h-4 text-brand-primary flex-shrink-0" />
+          <FileText className="w-4 h-4 text-brand-primary flex-shrink-0" />
           <span className="text-brand-text-primary font-semibold">
             {dossier ? dossier.documents.length : 0} Document Scan(s)
           </span>
@@ -475,10 +475,10 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
             onClick={handleReprocessDossier}
             disabled={isReprocessing}
             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 border border-indigo-200 dark:border-indigo-800 transition-all disabled:opacity-50"
-            title="Re-extract and re-audit all documents for this student using updated AI vision rules"
+            title="Re-extract and re-audit all documents for this student"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isReprocessing ? 'animate-spin text-indigo-600' : ''}`} />
-            <span>{isReprocessing ? 'Rescanning...' : 'Rescan AI Vision'}</span>
+            <span>{isReprocessing ? 'Rescanning...' : 'Rescan Documents'}</span>
           </button>
 
           <button
@@ -720,12 +720,12 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
                       </p>
                     </div>
 
-                    {/* Right: AI Extracted Value & Editable Correction Input */}
+                    {/* Right: Extracted Value & Editable Correction Input */}
                     <div className="p-4 rounded-xl bg-brand-primary/5 dark:bg-brand-primary/10 border border-brand-primary/30 dark:border-brand-primary/40 flex flex-col justify-between space-y-2">
                       <div>
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-bold uppercase tracking-wider text-brand-primary flex items-center gap-1.5">
-                            <Sparkles className="w-3.5 h-3.5" />
+                            <ScanLine className="w-3.5 h-3.5" />
                             Extracted / Suggested Correction
                           </span>
                           {isUserEdited ? (
@@ -734,7 +734,7 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
                             </span>
                           ) : (
                             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-brand-primary/10 text-brand-primary">
-                              AI Vision
+                              From Scan
                             </span>
                           )}
                         </div>
@@ -795,7 +795,7 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
                         </>
                       ) : (
                         <>
-                          <Sparkles className="w-4 h-4" />
+                          <CheckCircle2 className="w-4 h-4" />
                           <span>Apply Correction to Google Sheet</span>
                         </>
                       )}
@@ -972,10 +972,10 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
                       onClick={() => handleReprocessDoc(selectedDoc.id)}
                       disabled={isReprocessing}
                       className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 transition-colors active:scale-95 disabled:opacity-50"
-                      title="Rescan this document with Gemini Vision OCR"
+                      title="Rescan this document"
                     >
-                      <Sparkles className={`w-3.5 h-3.5 ${isReprocessing ? 'animate-spin' : ''}`} />
-                      <span>Rescan AI</span>
+                      <RefreshCw className={`w-3.5 h-3.5 ${isReprocessing ? 'animate-spin' : ''}`} />
+                      <span>Rescan</span>
                     </button>
 
                     <button
@@ -1030,8 +1030,8 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
                 <div className="bg-brand-bg rounded-xl p-3 border border-brand-border text-xs space-y-2">
                   <div className="flex items-center justify-between text-brand-primary font-bold text-[11px] uppercase tracking-wider">
                     <div className="flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>AI Extracted Record (Target Student)</span>
+                      <ScanLine className="w-3.5 h-3.5" />
+                      <span>Extracted Record (Target Student)</span>
                     </div>
                     <span className="text-slate-400 font-normal">
                       Confidence: {Math.round((selectedDoc.classificationConfidence || 0.85) * 100)}%

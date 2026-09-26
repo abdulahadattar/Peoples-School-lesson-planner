@@ -182,7 +182,7 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
       {isRegenerating && (
         <div className="absolute inset-0 bg-brand-surface/80 backdrop-blur-[1px] flex items-center justify-center rounded-lg z-10 gap-2 text-xs font-medium text-brand-primary">
           <Spinner size="sm" />
-          <span>Regenerating question with AI...</span>
+          <span>Regenerating question...</span>
         </div>
       )}
 
@@ -217,7 +217,7 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
           <button
             type="button"
             onClick={() => setShowRegenPrompt(prev => !prev)}
-            title="Regenerate this specific question with AI"
+            title="Regenerate this question"
             className="p-1 text-xs text-brand-text-secondary hover:text-emerald-600 hover:bg-brand-bg rounded"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -279,7 +279,7 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
               onClick={handleRegenerate}
               className="px-3 py-1 text-xs font-medium rounded bg-emerald-600 text-white hover:bg-emerald-700"
             >
-              Regenerate with AI
+              Regenerate
             </button>
           </div>
         </div>

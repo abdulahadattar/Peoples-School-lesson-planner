@@ -13,7 +13,8 @@ import {
   FileText,
   Clock,
   Layers,
-  Sparkles,
+  ScanLine,
+  ListChecks,
   Eye,
   Check,
   X,
@@ -233,7 +234,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
       if (res.document) {
         setSelectedPreviewDoc(res.document);
       }
-      setSuccessToastMsg('Document re-analyzed with Gemini AI Vision');
+      setSuccessToastMsg('Document re-analyzed');
       await refreshData();
     } catch (err: any) {
       alert(`Rescan error: ${err.message}`);
@@ -371,7 +372,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
 
       const res = await batchApplyDiscrepancyCorrectionsClient(corrections, token || undefined);
       setSuccessToastMsg(
-        `Applied ${res.appliedCount} intelligent corrections to student records & Google Sheets!`
+        `Applied ${res.appliedCount} corrections to student records & Google Sheets!`
       );
       await refreshData();
       setTimeout(() => setSuccessToastMsg(null), 5000);
@@ -614,7 +615,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xl md:text-2xl font-bold text-brand-text-primary tracking-tight">
-              Student Document Center & AI Archivist
+              Student Document Center
             </h2>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-brand-primary/10 text-brand-primary border border-brand-primary/20">
               100% Server-Side
@@ -685,7 +686,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
             type="button"
             onClick={() => setIsTransparencyModalOpen(true)}
             className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-brand-text-primary bg-white dark:bg-brand-surface hover:bg-brand-bg border border-brand-border shadow-soft active:scale-95 transition-all"
-            title="Inspect background AI pipeline, per-file status, and debug logs"
+            title="Inspect background processing, per-file status, and debug logs"
           >
             <Activity className="w-4 h-4 text-amber-500" />
             <span>Live Pipeline & Logs</span>
@@ -812,51 +813,6 @@ export const DocumentArchiveCenterView: React.FC = () => {
       )}
 
       {/* Metrics Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
-        <div
-          onClick={() => setActiveMainTab('dossiers')}
-          className={`p-4 rounded-xl bg-white dark:bg-brand-surface border transition-all cursor-pointer shadow-soft ${
-            activeMainTab === 'dossiers' ? 'border-brand-primary ring-1 ring-brand-primary/30' : 'border-brand-border hover:border-brand-primary/40'
-          }`}
-        >
-          <span className="text-[11px] font-semibold text-brand-text-secondary uppercase tracking-wider block mb-1">
-            Registered Student Dossiers
-          </span>
-          <span className="text-2xl font-bold text-brand-text-primary">{dossiers.length}</span>
-        </div>
-
-        <div
-          onClick={() => setActiveMainTab('extracted')}
-          className={`p-4 rounded-xl bg-white dark:bg-brand-surface border transition-all cursor-pointer shadow-soft ${
-            activeMainTab === 'extracted' ? 'border-brand-primary ring-1 ring-brand-primary/30' : 'border-brand-border hover:border-brand-primary/40'
-          }`}
-        >
-          <span className="text-[11px] font-semibold text-brand-text-secondary uppercase tracking-wider block mb-1">
-            Total Scanned Documents
-          </span>
-          <span className="text-2xl font-bold text-brand-primary">{totalDocumentsCount}</span>
-        </div>
-
-        <div
-          onClick={() => setActiveMainTab('audit')}
-          className={`p-4 rounded-xl bg-white dark:bg-brand-surface border transition-all cursor-pointer shadow-soft ${
-            activeMainTab === 'audit' ? 'border-rose-500 ring-1 ring-rose-500/30' : 'border-brand-border hover:border-rose-500/40'
-          }`}
-        >
-          <span className="text-[11px] font-semibold text-brand-text-secondary uppercase tracking-wider block mb-1">
-            Audit Discrepancies
-          </span>
-          <span className="text-2xl font-bold text-rose-600">{totalFlaggedCount}</span>
-        </div>
-
-        <div className="p-4 rounded-xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft">
-          <span className="text-[11px] font-semibold text-brand-text-secondary uppercase tracking-wider block mb-1">
-            AI Key Rotation Engine
-          </span>
-          <span className="text-2xl font-bold text-emerald-600">3 Models Active</span>
-        </div>
-      </div>
-
       {/* Primary Navigation Tabs */}
       <div className="flex flex-row md:items-center gap-2 border-b border-brand-border pb-2 overflow-x-auto custom-scrollbar min-h-[50px] items-start w-full">
         <button
@@ -1134,10 +1090,10 @@ export const DocumentArchiveCenterView: React.FC = () => {
             <div className="p-4 border-b border-brand-border flex items-center justify-between flex-wrap gap-3">
               <div>
                 <h3 className="text-sm font-bold text-brand-text-primary">
-                  All Processed Document Scans & AI Extracted Fields
+                  All Processed Document Scans
                 </h3>
                 <p className="text-xs text-brand-text-secondary">
-                  Showing all {filteredDocuments.length} document scans identified and extracted by Gemini AI vision.
+                  Showing all {filteredDocuments.length} document scans.
                 </p>
               </div>
 
@@ -1231,7 +1187,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
                       <th className="py-3 px-4">Scan Preview</th>
                       <th className="py-3 px-4">GR # & Filename</th>
                       <th className="py-3 px-4">Identified Type</th>
-                      <th className="py-3 px-4">AI Extracted Info (NADRA)</th>
+                      <th className="py-3 px-4">Extracted Info (NADRA)</th>
                       <th className="py-3 px-4">Orientation</th>
                       <th className="py-3 px-4">Confidence</th>
                       <th className="py-3 px-4 text-right">Action</th>
@@ -1375,9 +1331,9 @@ export const DocumentArchiveCenterView: React.FC = () => {
                                 onClick={() => handleRescanDoc(doc.id)}
                                 disabled={isOperatingDoc}
                                 className="p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 transition-colors"
-                                title="Rescan document with Gemini AI"
+                                title="Rescan document"
                               >
-                                <Sparkles className="w-3.5 h-3.5" />
+                                <RefreshCw className="w-3.5 h-3.5" />
                               </button>
 
                               <button
@@ -1459,7 +1415,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
               </span>
             </div>
 
-            {/* Batch Apply One-Click Synchronization Banner */}
+            {/* Batch Apply Synchronization Banner */}
             {(() => {
               const flagsWithCorrection = filteredDiscrepancies.filter(
                 (d) => d.flag.suggestedCorrection && !d.flag.isDismissed
@@ -1469,17 +1425,14 @@ export const DocumentArchiveCenterView: React.FC = () => {
                 <div className="bg-emerald-50 dark:bg-emerald-950/40 border-b border-emerald-200 dark:border-emerald-800 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
                   <div className="flex items-start gap-3">
                     <div className="p-2 rounded-xl bg-emerald-600 text-white shadow-xs">
-                      <Wand2 className="w-5 h-5" />
+                      <CheckCircle2 className="w-5 h-5" />
                     </div>
                     <div>
                       <h4 className="text-xs font-bold text-emerald-900 dark:text-emerald-100 flex items-center gap-2">
-                        <span>{flagsWithCorrection.length} Intelligent Correction(s) Ready to Sync</span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-200 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-200 font-extrabold">
-                          One-Click Sync
-                        </span>
+                        <span>{flagsWithCorrection.length} Correction(s) Ready to Apply</span>
                       </h4>
                       <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5">
-                        Caste incorporating surnames (e.g. Baloch, Khetran), standardized 13-digit NADRA B-Form numbers, and family hierarchy verifications detected.
+                        Review each correction before applying.
                       </p>
                     </div>
                   </div>
@@ -1489,8 +1442,8 @@ export const DocumentArchiveCenterView: React.FC = () => {
                     onClick={() => handleBatchApplyCorrections(flagsWithCorrection)}
                     className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-60 whitespace-nowrap"
                   >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>{isBatchApplying ? 'Synchronizing...' : `Batch Apply All ${flagsWithCorrection.length} to Sheet`}</span>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>{isBatchApplying ? 'Applying...' : `Apply All ${flagsWithCorrection.length} to Sheet`}</span>
                   </button>
                 </div>
               );
@@ -1499,9 +1452,9 @@ export const DocumentArchiveCenterView: React.FC = () => {
             {filteredDiscrepancies.length === 0 ? (
               <div className="p-12 text-center">
                 <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-2" />
-                <h4 className="text-sm font-bold text-brand-text-primary">100% Clean Audit</h4>
+                <h4 className="text-sm font-bold text-brand-text-primary">No discrepancies</h4>
                 <p className="text-xs text-brand-text-secondary mt-1">
-                  All uploaded documents match their corresponding student Google Sheet records perfectly!
+                  Every document matches its student record.
                 </p>
               </div>
             ) : (
@@ -1590,17 +1543,17 @@ export const DocumentArchiveCenterView: React.FC = () => {
                         {/* Side-by-Side Comparison Boxes (8 cols) */}
                         <div className="md:col-span-8 space-y-4">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {/* AI Extracted Box */}
+                            {/* Extracted Box */}
                             <div className="p-4 rounded-xl bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/50 space-y-1.5">
                               <div className="text-[11px] font-extrabold text-rose-600 dark:text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
-                                <Sparkles className="w-3.5 h-3.5" />
-                                AI Extracted Value (From Scan)
+                                <ScanLine className="w-3.5 h-3.5" />
+                                Extracted Value (From Scan)
                               </div>
                               <div className="text-base font-bold font-mono text-rose-900 dark:text-rose-200 bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-rose-100 dark:border-rose-900 shadow-xs">
                                 {item.flag.extractedValue || '(Missing / Blank)'}
                               </div>
                               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                                Read directly by Gemini AI Vision OCR engine.
+                                Read directly from the uploaded scan.
                               </p>
                             </div>
 
@@ -1645,7 +1598,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
                                     ? 'Full Name & Caste Enrichment'
                                     : item.flag.suggestedAction === 'merge_caste'
                                     ? 'Incorporate Caste'
-                                    : item.flag.suggestedAction || '1-Click Fix'}
+                                    : item.flag.suggestedAction || 'Suggested fix'}
                                 </span>
                               </div>
 
@@ -1682,11 +1635,11 @@ export const DocumentArchiveCenterView: React.FC = () => {
                             <div className="p-3.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/60 space-y-2.5 animate-fadeIn">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-900 dark:text-indigo-100">
-                                  <Sparkles className="w-4 h-4 text-indigo-600" />
-                                  <span>Intelligent Candidate Matches ({item.flag.rankedMatches.length})</span>
+                                  <ListChecks className="w-4 h-4 text-indigo-600" />
+                                  <span>Candidate Matches ({item.flag.rankedMatches.length})</span>
                                 </div>
                                 <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium">
-                                  Ranked by Multi-Factor Similarity
+                                  Ranked by match score
                                 </span>
                               </div>
 
@@ -1837,8 +1790,8 @@ export const DocumentArchiveCenterView: React.FC = () => {
             {selectedPreviewDoc.extractedData && (
               <div className="bg-brand-bg p-3 rounded-xl border border-brand-border text-xs">
                 <div className="font-bold text-brand-primary uppercase text-[11px] mb-2 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                  AI Extracted Record
+                  <ScanLine className="w-3.5 h-3.5 text-amber-500" />
+                  Extracted Record
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <div>
@@ -1877,8 +1830,8 @@ export const DocumentArchiveCenterView: React.FC = () => {
                   disabled={isOperatingDoc}
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 border border-indigo-200 dark:border-indigo-800 transition-colors flex items-center gap-1.5"
                 >
-                  <Sparkles className={`w-3.5 h-3.5 ${isOperatingDoc ? 'animate-spin' : ''}`} />
-                  <span>Rescan with AI</span>
+                  <RefreshCw className={`w-3.5 h-3.5 ${isOperatingDoc ? 'animate-spin' : ''}`} />
+                  <span>Rescan</span>
                 </button>
 
                 <button
@@ -1965,11 +1918,11 @@ export const DocumentArchiveCenterView: React.FC = () => {
               </div>
             </div>
 
-            {/* Intelligent Candidate Student Matches (Ranked by Multi-Factor Similarity) */}
+            {/* Candidate Student Matches (ranked by match score) */}
             {loadingCandidatesDocId === assigningDoc.id && (
               <div className="p-3 bg-indigo-50/50 dark:bg-indigo-950/30 rounded-xl border border-indigo-200 dark:border-indigo-800 flex items-center gap-2 text-xs text-indigo-700 dark:text-indigo-300 animate-pulse">
-                <Sparkles className="w-4 h-4 animate-spin text-indigo-600" />
-                <span>Cross-referencing extracted NADRA indicators against Google Sheet student roster...</span>
+                <RefreshCw className="w-4 h-4 animate-spin text-indigo-600" />
+                <span>Matching against the student roster...</span>
               </div>
             )}
 
@@ -1977,11 +1930,8 @@ export const DocumentArchiveCenterView: React.FC = () => {
               <div className="space-y-2 p-3 bg-indigo-50/60 dark:bg-indigo-950/30 rounded-xl border border-indigo-200 dark:border-indigo-800">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                    Top Recommended Student Matches:
-                  </span>
-                  <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold">
-                    1-Click Fast Match
+                    <ListChecks className="w-3.5 h-3.5 text-indigo-600" />
+                    Candidate Matches:
                   </span>
                 </div>
                 <div className="space-y-1.5 max-h-44 overflow-y-auto custom-scrollbar">

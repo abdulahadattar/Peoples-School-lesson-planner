@@ -1,6 +1,5 @@
 import React from 'react';
-import { BookOpenIcon, DocumentTextIcon, PulseIcon, ArchiveIcon, SpreadsheetIcon, UserGroupIcon, FolderArchiveIcon } from './icons/MiscIcons';
-import { Settings } from 'lucide-react';
+import { BookOpenIcon, DocumentTextIcon, UserGroupIcon, SpreadsheetIcon } from './icons/MiscIcons';
 import { PhssjLogo, ZiauddinLogo } from './Logo';
 import { View } from '../types';
 import { motion } from 'motion/react';
@@ -14,28 +13,28 @@ const FEATURES = [
   {
     view: 'records' as View,
     title: 'Student Records',
-    description: 'Live Google Sheets register, GR# profiles, search, filters, and two-way sync.',
+    description: 'Google Sheets register, GR# profiles and search.',
     icon: SpreadsheetIcon,
     accent: 'text-emerald-600 bg-emerald-500/10 dark:bg-emerald-950/40 dark:text-emerald-300 group-hover:bg-emerald-600 group-hover:text-white',
   },
   {
     view: 'attendance' as View,
     title: 'Daily Attendance',
-    description: 'Mark daily attendance with 868-student register, absentee calculations & Google Sheets backup.',
+    description: 'Mark daily attendance and track absentees.',
     icon: UserGroupIcon,
     accent: 'text-blue-600 bg-blue-500/10 dark:bg-blue-950/40 dark:text-blue-300 group-hover:bg-blue-600 group-hover:text-white',
   },
   {
     view: 'lesson' as View,
     title: 'Lesson Plans',
-    description: 'Generate curriculum-aligned lesson plans for any topic, SLO or whole chapter.',
+    description: 'Lesson plans by topic, SLO or whole chapter.',
     icon: BookOpenIcon,
     accent: 'text-brand-primary bg-brand-primary/10 dark:bg-blue-950/40 group-hover:bg-brand-primary group-hover:text-white',
   },
   {
     view: 'paper' as View,
     title: 'Exam Papers',
-    description: 'Create structured, mark-balanced assessments with MCQs, short and long questions.',
+    description: 'Mark-balanced papers with MCQs, short and long questions.',
     icon: DocumentTextIcon,
     accent: 'text-brand-accent bg-brand-accent/10 dark:bg-emerald-950/40 group-hover:bg-brand-accent group-hover:text-white',
   },
@@ -94,8 +93,8 @@ const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
           <h1 className="text-3xl md:text-4xl font-extrabold text-brand-text-primary tracking-tight mb-2">
             Academic Portal
           </h1>
-          <p className="text-sm md:text-base text-brand-text-secondary font-normal max-w-md mx-auto leading-relaxed">
-            Craft beautiful lesson plans, board exam papers, and manage verified daily attendance for Peoples Higher Secondary School Jamshoro.
+          <p className="text-sm text-brand-text-secondary font-normal max-w-md mx-auto leading-relaxed">
+            Select a section from the sidebar to begin.
           </p>
         </motion.div>
 
@@ -124,79 +123,13 @@ const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
           ))}
         </div>
 
-        {/* Quick Utilities */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className="flex flex-wrap items-center justify-center gap-2.5 mb-8"
-        >
-          <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            type="button"
-            onClick={() => onNavigate?.('records')}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-brand-primary/10 text-brand-primary border border-brand-primary/30 hover:bg-brand-primary hover:text-white shadow-soft transition-colors cursor-pointer"
-          >
-            <SpreadsheetIcon className="w-4 h-4" />
-            <span>Student Records (Google Sheets)</span>
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            type="button"
-            onClick={() => onNavigate?.('archive')}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-brand-surface border border-brand-border text-brand-text-primary hover:border-brand-primary/40 hover:text-brand-primary shadow-soft transition-colors cursor-pointer"
-          >
-            <FolderArchiveIcon className="w-4 h-4 text-indigo-500" />
-            <span>Document Archive & B-Forms</span>
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            type="button"
-            onClick={() => onNavigate?.('live')}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-brand-surface border border-brand-border text-brand-text-primary hover:border-brand-primary/40 hover:text-brand-primary shadow-soft transition-colors cursor-pointer"
-          >
-            <PulseIcon className="w-4 h-4 text-emerald-500" />
-            <span>Live Monitor</span>
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            type="button"
-            onClick={() => onNavigate?.('history')}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-brand-surface border border-brand-border text-brand-text-primary hover:border-brand-primary/40 hover:text-brand-primary shadow-soft transition-colors cursor-pointer"
-          >
-            <ArchiveIcon className="w-4 h-4 text-brand-accent" />
-            <span>History Archive</span>
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            type="button"
-            onClick={() => onNavigate?.('settings')}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-brand-surface border border-brand-border text-brand-text-primary hover:border-purple-500/40 hover:text-purple-600 shadow-soft transition-colors cursor-pointer"
-          >
-            <Settings className="w-4 h-4 text-purple-600" />
-            <span>School Admin Panel</span>
-          </motion.button>
-        </motion.div>
-
         {/* Affiliation strip */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.35 }}
-          className="flex flex-col items-center gap-3"
+          className="flex flex-col items-center gap-3 mt-8"
         >
-          <div className="flex items-center gap-3 w-full justify-center">
-            <span className="h-px flex-1 max-w-[80px] bg-brand-border" />
-            <p className="text-[10px] font-semibold text-brand-text-tertiary tracking-[0.18em] uppercase">
-              Peoples Higher Secondary School Jamshoro
-            </p>
-            <span className="h-px flex-1 max-w-[80px] bg-brand-border" />
-          </div>
           <div className="flex items-center gap-2.5 px-4 py-2 rounded-full bg-white dark:bg-brand-surface shadow-card border border-brand-border">
             <span className="text-[10px] text-brand-text-secondary font-medium">Affiliated with</span>
             <div className="bg-white rounded-md px-1.5 py-0.5 border border-slate-200 dark:border-brand-border/60 flex items-center">
