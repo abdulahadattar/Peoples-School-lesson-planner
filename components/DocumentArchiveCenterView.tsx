@@ -2055,7 +2055,6 @@ export const DocumentArchiveCenterView: React.FC = () => {
           isOpen={!!activeStudentModal}
           student={activeStudentModal}
           onClose={() => setActiveStudentModal(null)}
-          onEdit={() => {}}
         />
       )}
 

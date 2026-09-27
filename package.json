@@ -12,6 +12,7 @@
     "test": "node scripts/test-all.mjs",
     "test:local": "node scripts/test-local.mjs",
     "test:attendance": "node --import tsx scripts/test-attendance-integrity.mjs",
+    "test:papers": "node --import tsx --import ./scripts/test-hooks/alias-idb.mjs scripts/test-paper-history.mjs",
     "validate": "npm run lint && npm run build && npm run test:local"
   },
   "dependencies": {

@@ -9,7 +9,7 @@ import KaTeXText from './KaTeXText';
 import { PhssjLogo } from './Logo';
 import Spinner from './ui/Spinner';
 import { QuestionEditor } from './QuestionEditor';
-import { saveExamPaperToDb } from '../services/storageService';
+import { saveExamPaperToDb, updateSavedPaperInDb } from '../services/storageService';
 
 interface ResultsViewProps {
   lessonPlans: LessonPlan[];
@@ -53,6 +53,26 @@ const ResultsView: React.FC<ResultsViewProps> = ({
     window.dispatchEvent(new CustomEvent('phssj-math-scale-changed', { detail: { scale: clamped } }));
   };
 
+  /**
+   * Persists an edited paper.
+   *
+   * Every question add/edit/delete used to call saveExamPaperToDb directly,
+   * which mints a fresh id on every call and prepends it - so editing one paper
+   * three times left three near-identical rows in the History Archive. When the
+   * paper was opened from History we now know its stored id and update that
+   * record in place; a genuinely new paper still gets a new entry.
+   */
+  const persistPaperEdit = (paper: GeneratedPaper) => {
+    if (paper.savedPaperId) {
+      return updateSavedPaperInDb(paper.savedPaperId, paper);
+    }
+    return saveExamPaperToDb(paper, { name: teacherName, schoolName })
+      .then(saved => {
+        // Remember the id so subsequent edits on this same paper also update in place.
+        paper.savedPaperId = saved.id;
+      });
+  };
+
   const handleUpdateQuestion = (sIdx: number, qIdx: number, updatedQuestion: PaperQuestion) => {
     if (!papers || papers.length === 0) return;
     const paper = papers[0];
@@ -63,7 +83,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
     );
     newPaper.totalMarks = calculatedMarks;
     onUpdatePaper?.(newPaper);
-    saveExamPaperToDb(newPaper).catch(console.error);
+    persistPaperEdit(newPaper).catch(console.error);
   };
 
   const handleDeleteQuestion = (sIdx: number, qIdx: number) => {
@@ -77,7 +97,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
     );
     newPaper.totalMarks = calculatedMarks;
     onUpdatePaper?.(newPaper);
-    saveExamPaperToDb(newPaper).catch(console.error);
+    persistPaperEdit(newPaper).catch(console.error);
   };
 
   const handleAddQuestion = (sIdx: number) => {
@@ -100,7 +120,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
     );
     newPaper.totalMarks = calculatedMarks;
     onUpdatePaper?.(newPaper);
-    saveExamPaperToDb(newPaper).catch(console.error);
+    persistPaperEdit(newPaper).catch(console.error);
   };
 
   const handleExportPaper = async (paper: GeneratedPaper) => {

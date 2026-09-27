@@ -102,6 +102,13 @@ export interface GeneratedPaper {
   sections: PaperSection[];
   /** Marking structure per section (index-aligned with `sections`). Absent after AI revision. */
   sectionBlueprints?: PaperSectionBlueprint[];
+  /**
+   * Storage id of the saved copy in History (SavedExamPaperItem.id), stamped on
+   * when the paper is opened from History. Edits update that record in place
+   * instead of appending a duplicate, which is what this field exists to make
+   * possible. Absent for a paper that has never been saved.
+   */
+  savedPaperId?: string;
 }
 
 export interface PaperSection {

@@ -235,7 +235,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                         Delete/DOCX/PDF actions stay valid sibling buttons. */}
                     <button
                       type="button"
-                      onClick={() => onOpenPaper(item.paper)}
+                      onClick={() => onOpenPaper({ ...item.paper, savedPaperId: item.id })}
                       aria-label={`Open paper: ${item.paper.title}`}
                       className="text-left w-full rounded-lg active:opacity-70 transition-opacity"
                     >

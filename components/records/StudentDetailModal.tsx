@@ -27,7 +27,7 @@ interface StudentDetailModalProps {
   student: StudentRecord | null;
   initialTab?: 'details' | 'documents';
   onClose: () => void;
-  onEdit: (student: StudentRecord) => void;
+  onEdit?: (student: StudentRecord) => void;
 }
 
 export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
@@ -380,17 +380,23 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
           >
             Close
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              onEdit(student);
-            }}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-all"
-          >
-            <Edit2 className="w-3.5 h-3.5" />
-            <span>Edit Student Record</span>
-          </button>
+          {/* Only rendered when a real edit handler is supplied. Previously this
+              button was always shown but the Document Archive view passed an
+              empty onEdit={() => {}}, so it silently closed the modal and did
+              nothing. A control that cannot act should not be offered. */}
+          {onEdit && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onEdit(student);
+              }}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-all"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+              <span>Edit Student Record</span>
+            </button>
+          )}
         </div>
       </div>
 
