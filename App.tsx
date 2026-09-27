@@ -49,11 +49,14 @@ const App: React.FC = () => {
   const [view, setView] = useState<View>('home');
   const [theme, setTheme] = useState<Theme>('light');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<User | null>(auth.currentUser);
-  const [showLoginGate, setShowLoginGate] = useState<boolean>(() => {
-    const isGuest = sessionStorage.getItem('phssj_guest_mode') === 'true';
-    return !isGuest && !auth.currentUser;
-  });
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  // The gate must not be decided until Firebase has finished restoring the
+  // session. Reading `auth.currentUser` during the first render is always null
+  // because auth hydrates asynchronously from IndexedDB, so a signed-in user was
+  // shown the login screen on every load until the listener below happened to
+  // fire. `authResolved` gates the decision instead.
+  const [authResolved, setAuthResolved] = useState<boolean>(false);
+  const [showLoginGate, setShowLoginGate] = useState<boolean>(false);
 
   const [generationMode, setGenerationMode] = useState<GenerationMode>('topic');
   const [topicInput, setTopicInput] = useState('');
@@ -94,8 +97,13 @@ const App: React.FC = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
+      setAuthResolved(true);
       if (user) {
+        // A real sign-in always takes the gate down, even if something reopened it.
         setShowLoginGate(false);
+      } else {
+        const isGuest = sessionStorage.getItem('phssj_guest_mode') === 'true';
+        setShowLoginGate(!isGuest);
       }
     });
     return () => unsubscribe();
@@ -234,7 +242,7 @@ const App: React.FC = () => {
     <div className="flex h-[100dvh] bg-brand-bg text-brand-text-primary font-sans selection:bg-brand-primary selection:text-white antialiased overflow-hidden">
       {/* Animated Google Auth Gate Screen */}
       <AnimatePresence>
-        {showLoginGate && !currentUser && (
+        {authResolved && showLoginGate && !currentUser && (
           <motion.div
             key="login-gate-overlay"
             initial={{ opacity: 0, scale: 1.02 }}
