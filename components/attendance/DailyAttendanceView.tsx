@@ -319,9 +319,15 @@ export const DailyAttendanceView: React.FC = () => {
 
       await saveAttendanceRecord(record);
 
+      // The sheet result is reported separately. Firestore (and the local cache)
+      // is the source of truth, so a sheet failure must not fail the save, but it
+      // must NOT be reported as a success either - previously every failure was
+      // swallowed and the user saw "saved successfully" while nothing reached
+      // the sheet.
+      let sheetMessage = '';
       try {
         const token = await getAccessToken();
-        await syncAttendanceToSheet({
+        const result = await syncAttendanceToSheet({
           date: selectedDate,
           recordedBy: inChargeName,
           notes,
@@ -333,13 +339,23 @@ export const DailyAttendanceView: React.FC = () => {
           },
           rows: attendanceRows,
         }, token);
-      } catch (syncErr) {
-        console.warn('Google Sheet attendance sync note:', syncErr);
+        sheetMessage = result.message;
+      } catch (syncErr: any) {
+        console.error('Attendance Google Sheet sync failed:', syncErr);
+        sheetMessage = syncErr?.message || 'Unknown sheet sync error';
       }
+
       setSaveSuccess(true);
       setHasUnsavedChanges(false);
       setLastSavedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-      showToast(`Daily attendance for ${selectedDate} saved successfully!`, 'success');
+      if (sheetMessage) {
+        showToast(
+          `Daily attendance for ${selectedDate} saved to the app. Google Sheet: ${sheetMessage}`,
+          sheetMessage.startsWith('Attendance synced') ? 'success' : 'error'
+        );
+      } else {
+        showToast(`Daily attendance for ${selectedDate} saved successfully!`, 'success');
+      }
       refreshHistory();
     } catch (err) {
       console.error('Save failed:', err);

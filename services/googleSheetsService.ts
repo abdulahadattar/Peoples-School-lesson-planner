@@ -763,6 +763,62 @@ export function exportRecordsToCSV(records: StudentRecord[], filename: string = 
   document.body.removeChild(link);
 }
 
+/** Header layout of the attendance sheet. */
+const ATTENDANCE_HEADERS = [
+  'Date', 'Recorded By', 'Class', 'Enrolled Boys', 'Enrolled Girls', 'Attendance %',
+  'Total Enrolled', 'Present Boys', 'Present Girls', 'Total Present', 'Total Absent',
+  'Notes', 'Class Teacher', 'Timestamp',
+];
+const ATTENDANCE_TAB = 'Sheet1';
+const ATTENDANCE_COLUMNS = ATTENDANCE_HEADERS.length; // A..N
+
+/**
+ * Turns a Sheets API failure into something a teacher can act on.
+ *
+ * These used to be swallowed: a non-OK response that was not the Excel-file case
+ * fell through to the server fallback and then to a generic
+ * "sheet sync pending authorization" message, while the app reported the save as
+ * successful. A 403 for a missing scope, a 400 for a wrong tab name and a 401 for
+ * an expired token all looked identical from the UI.
+ */
+function describeAttendanceSyncError(status: number, body: string, context: string): Error {
+  const detail = (() => {
+    try {
+      const parsed = JSON.parse(body);
+      return parsed?.error?.message || parsed?.error_description || body;
+    } catch {
+      return body;
+    }
+  })().slice(0, 400);
+
+  if (status === 401) {
+    return new Error(
+      `Google rejected the sign-in token (401) while ${context}. Sign out and sign in again with Google, ` +
+      `then retry.`
+    );
+  }
+  if (status === 403) {
+    return new Error(
+      `Google denied write access (403) while ${context}. The signed-in account needs Editor access to the ` +
+      `attendance sheet, and must re-authorise to grant the Google Sheets scope. Sign out, sign in again, ` +
+      `and ask the sheet owner to share it with you as an editor. Detail: ${detail}`
+    );
+  }
+  if (status === 404) {
+    return new Error(
+      `The attendance sheet or its "${ATTENDANCE_TAB}" tab was not found (404) while ${context}. ` +
+      `Check the spreadsheet ID and that the tab is still named "${ATTENDANCE_TAB}".`
+    );
+  }
+  if (status === 400) {
+    return new Error(
+      `Google rejected the request (400) while ${context}. This usually means the tab name is wrong or the ` +
+      `row shape does not match the sheet. Detail: ${detail}`
+    );
+  }
+  return new Error(`Attendance sheet sync failed (HTTP ${status}) while ${context}. Detail: ${detail}`);
+}
+
 export async function syncAttendanceToSheet(
   record: {
     date: string;
@@ -778,118 +834,146 @@ export async function syncAttendanceToSheet(
   },
   accessToken?: string | null
 ): Promise<{ success: boolean; message: string }> {
-  try {
-    const headerValues = ['Date', 'Recorded By', 'Class', 'Enrolled Boys', 'Enrolled Girls', 'Attendance %', 'Total Enrolled', 'Present Boys', 'Present Girls', 'Total Present', 'Total Absent', 'Notes', 'Timestamp'];
-    
-    const rowsToAppend = record.rows.map(r => [
-      record.date,
-      r.classTeacher || 'Class Teacher',
-      r.displayName,
-      r.enrolledBoys,
-      r.enrolledGirls,
-      `${r.percentage}%`,
-      r.totalEnrolled,
-      typeof r.presentBoys === 'number' ? r.presentBoys : 0,
-      typeof r.presentGirls === 'number' ? r.presentGirls : 0,
-      r.totalPresent,
-      r.absentTotal,
-      record.notes || '',
-      new Date().toISOString()
-    ]);
+  const timestamp = new Date().toISOString();
 
-    // Add the summary row at the end
-    rowsToAppend.push([
-      record.date,
-      record.recordedBy || 'Unassigned',
-      'TOTAL ATTENDANCE',
-      '',
-      '',
-      `${record.summary.overallPercentage}%`,
-      record.summary.totalEnrolled,
-      '',
-      '',
-      record.summary.totalPresent,
-      record.summary.totalAbsent,
-      record.notes || '',
-      new Date().toISOString()
-    ]);
+  const rowsToWrite = record.rows.map(r => [
+    record.date,
+    // The recorder, not the class teacher. This column previously carried the
+    // class teacher, so the sheet showed "Class In-Charge" or a teacher's name as
+    // who signed the register; the class teacher now has its own column.
+    record.recordedBy || 'Unassigned',
+    r.displayName,
+    r.enrolledBoys,
+    r.enrolledGirls,
+    `${r.percentage}%`,
+    r.totalEnrolled,
+    typeof r.presentBoys === 'number' ? r.presentBoys : 0,
+    typeof r.presentGirls === 'number' ? r.presentGirls : 0,
+    r.totalPresent,
+    r.absentTotal,
+    record.notes || '',
+    r.classTeacher || '',
+    timestamp,
+  ]);
 
-    if (accessToken) {
-      // 1. Check headers
-      try {
-        const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${ATTENDANCE_SPREADSHEET_ID}/values/${encodeURIComponent(`'Sheet1'!A1:M1`)}`;
-        const getRes = await fetch(getUrl, {
-          headers: { Authorization: `Bearer ${accessToken}` }
-        });
-        if (getRes.ok) {
-          const getData = await getRes.json();
-          const firstHeader = getData.values?.[0]?.[2];
-          // If headers are missing, or if it has the OLD headers (where Col C was 'Total Enrolled' instead of 'Class')
-          if (!getData.values || getData.values.length === 0 || getData.values[0].length === 0 || firstHeader !== 'Class') {
-            // Write new expanded headers
-            const updateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${ATTENDANCE_SPREADSHEET_ID}/values/${encodeURIComponent(`'Sheet1'!A1:M1`)}?valueInputOption=USER_ENTERED`;
-            await fetch(updateUrl, {
-              method: 'PUT',
-              headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ range: `'Sheet1'!A1:M1`, majorDimension: 'ROWS', values: [headerValues] }),
-            });
-            
-            // Wait a moment before appending to ensure headers are flushed, though usually synchronous
-          }
-        }
-      } catch (err) {
-        console.warn('Could not check/update headers', err);
-      }
+  rowsToWrite.push([
+    record.date,
+    record.recordedBy || 'Unassigned',
+    'TOTAL ATTENDANCE',
+    '',
+    '',
+    `${record.summary.overallPercentage}%`,
+    record.summary.totalEnrolled,
+    '',
+    '',
+    record.summary.totalPresent,
+    record.summary.totalAbsent,
+    record.notes || '',
+    '',
+    timestamp,
+  ]);
 
-      // 2. Append rows
-      const range = `'Sheet1'!A:A`;
-      const url = `https://sheets.googleapis.com/v4/spreadsheets/${ATTENDANCE_SPREADSHEET_ID}/values/${encodeURIComponent(
-        range
-      )}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          range,
-          majorDimension: 'ROWS',
-          values: rowsToAppend,
-        }),
-      });
-
-      if (response.ok) {
-        return { success: true, message: 'Attendance synced successfully to Google Sheet!' };
-      } else {
-        const errorText = await response.text();
-        if (errorText.includes('Office file') || errorText.includes('FAILED_PRECONDITION')) {
-          throw new Error('This operation is not supported because the spreadsheet is an Excel file. Please open the file in Google Drive and select "Save as Google Sheets".');
-        }
-      }
-    }
-
-    // Fallback to server route
-    const serverRes = await fetch('/api/attendance/sync-sheet', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      },
-      body: JSON.stringify({
-        spreadsheetId: ATTENDANCE_SPREADSHEET_ID,
-        rowValues: rowsToAppend,
-      }),
-    });
-
-    if (serverRes.ok) {
-      return { success: true, message: 'Attendance synced successfully to Google Sheet via server!' };
-    }
-  } catch (err) {
-    console.warn('Attendance Google Sheet sync warning:', err);
+  if (!accessToken) {
+    throw new Error(
+      'Your Google sign-in has expired, so the register was not sent to the sheet. ' +
+      'Sign out and sign in with Google again (the sheet needs that to stay connected), then save again. ' +
+      'The register itself is saved in the app either way.'
+    );
   }
 
-  return { success: false, message: 'Attendance saved locally and server, sheet sync pending authorization.' };
+  const authHeaders = { Authorization: `Bearer ${accessToken}` };
+  const jsonHeaders = { ...authHeaders, 'Content-Type': 'application/json' };
+  const api = (path: string) =>
+    `https://sheets.googleapis.com/v4/spreadsheets/${ATTENDANCE_SPREADSHEET_ID}/values/${path}`;
+  const fullRange = `'${ATTENDANCE_TAB}'!A1:N1`;
+
+  // 1. Ensure the header row matches, checking every column rather than one cell.
+  const headerRes = await fetch(api(encodeURIComponent(fullRange)), { headers: authHeaders });
+  if (!headerRes.ok) {
+    throw describeAttendanceSyncError(
+      headerRes.status,
+      await headerRes.text(),
+      'reading the attendance sheet header'
+    );
+  }
+  const headerData = await headerRes.json();
+  const currentHeader: string[] = headerData.values?.[0] || [];
+  const headerMatches =
+    currentHeader.length >= ATTENDANCE_COLUMNS &&
+    ATTENDANCE_HEADERS.every((h, i) => (currentHeader[i] || '').trim() === h);
+
+  if (!headerMatches) {
+    const headerPut = await fetch(`${api(encodeURIComponent(fullRange))}?valueInputOption=RAW`, {
+      method: 'PUT',
+      headers: jsonHeaders,
+      body: JSON.stringify({ range: fullRange, majorDimension: 'ROWS', values: [ATTENDANCE_HEADERS] }),
+    });
+    if (!headerPut.ok) {
+      throw describeAttendanceSyncError(
+        headerPut.status,
+        await headerPut.text(),
+        'writing the attendance sheet header'
+      );
+    }
+  }
+
+  // 2. Replace any existing block for this date.
+  //
+  // The sync used to append unconditionally, so re-saving a date left a second,
+  // conflicting set of rows in the sheet while Firestore kept a single record -
+  // the two drifted apart. Rows for the date are located and cleared first so
+  // the sheet always mirrors the saved record.
+  const allValuesRes = await fetch(api(encodeURIComponent(`'${ATTENDANCE_TAB}'!A:A`)), {
+    headers: authHeaders,
+  });
+  if (!allValuesRes.ok) {
+    throw describeAttendanceSyncError(
+      allValuesRes.status,
+      await allValuesRes.text(),
+      'scanning the attendance sheet for existing rows'
+    );
+  }
+  const allValues = (await allValuesRes.json()).values || [];
+  const rowsToClear: number[] = [];
+  allValues.forEach((row, idx) => {
+    if (String(row?.[0] ?? '').trim() === record.date) rowsToClear.push(idx + 1);
+  });
+
+  if (rowsToClear.length) {
+    const requests = rowsToClear.map((r) => ({
+      range: `'${ATTENDANCE_TAB}'!A${r}:N${r}`,
+    }));
+    const clearRes = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${ATTENDANCE_SPREADSHEET_ID}/values:batchClear`,
+      {
+        method: 'POST',
+        headers: jsonHeaders,
+        body: JSON.stringify({ ranges: requests.map((x) => x.range) }),
+      }
+    );
+    if (!clearRes.ok) {
+      throw describeAttendanceSyncError(
+        clearRes.status,
+        await clearRes.text(),
+        `clearing the previous rows for ${record.date}`
+      );
+    }
+  }
+
+  // 3. Write the current figures.
+  const appendRange = `'${ATTENDANCE_TAB}'!A:A`;
+  const appendRes = await fetch(
+    `${api(encodeURIComponent(appendRange))}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+    {
+      method: 'POST',
+      headers: jsonHeaders,
+      body: JSON.stringify({ range: appendRange, majorDimension: 'ROWS', values: rowsToWrite }),
+    }
+  );
+  if (!appendRes.ok) {
+    throw describeAttendanceSyncError(appendRes.status, await appendRes.text(), `writing ${record.date}`);
+  }
+
+  return { success: true, message: 'Attendance synced to Google Sheet!' };
 }
 

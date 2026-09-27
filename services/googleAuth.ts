@@ -109,18 +109,51 @@ export const loginWithGoogle = async (): Promise<User | null> => {
 };
 
 /**
- * Get current in-memory access token.
+ * Google access tokens for the Sheets scope expire roughly every hour, and the
+ * Firebase web SDK offers no silent refresh, so an expired token can only be
+ * replaced by signing in again.
+ *
+ * Returns null when there is no usable token so callers can prompt for a fresh
+ * sign-in.
  */
 export const getAccessToken = async (): Promise<string | null> => {
-  if (cachedAccessToken) return cachedAccessToken;
+  if (cachedAccessToken) {
+    if (isTokenExpired()) {
+      cachedAccessToken = null;
+    } else {
+      return cachedAccessToken;
+    }
+  }
+
   const stored = localStorage.getItem('google_access_token');
   const expiry = localStorage.getItem('google_token_expiry');
-  if (stored && expiry && Date.now() < parseInt(expiry, 10)) {
-    cachedAccessToken = stored;
-    return stored;
+  if (!stored) return null;
+
+  // The expiry has to be honoured. This previously returned the stored token
+  // even when it had expired, so after ~55 minutes every Google Sheets write
+  // failed with 401 - silently, because the caller swallowed the error. The
+  // sheet simply stopped receiving attendance.
+  if (!expiry || Date.now() >= parseInt(expiry, 10)) {
+    localStorage.removeItem('google_access_token');
+    localStorage.removeItem('google_token_expiry');
+    return null;
   }
-  return stored || null;
+
+  cachedAccessToken = stored;
+  return stored;
 };
+
+/** True when the stored Google access token is missing or past its expiry. */
+export const isGoogleTokenExpired = (): boolean => {
+  if (!localStorage.getItem('google_access_token')) return true;
+  return isTokenExpired();
+};
+
+function isTokenExpired(): boolean {
+  const expiry = localStorage.getItem('google_token_expiry');
+  if (!expiry) return true;
+  return Date.now() >= parseInt(expiry, 10);
+}
 
 /**
  * Get currently authenticated user object.

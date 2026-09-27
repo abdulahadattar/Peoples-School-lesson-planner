@@ -14,6 +14,7 @@
     "test:attendance": "node --import tsx scripts/test-attendance-integrity.mjs",
     "test:papers": "node --import tsx --import ./scripts/test-hooks/alias-idb.mjs scripts/test-paper-history.mjs",
     "test:register": "node --import tsx scripts/test-register-write-safety.mjs",
+    "test:token": "node --import tsx scripts/test-token-freshness.mjs",
     "verify:attendance": "node scripts/verify-attendance-save.mjs",
     "audit:runtime": "node scripts/audit-runtime.mjs",
     "validate": "npm run lint && npm run build && npm run test:local"
