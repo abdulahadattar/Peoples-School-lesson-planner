@@ -163,36 +163,37 @@ export function rowToStudentRecord(row: string[], rowIndex: number): StudentReco
  * Converts a StudentRecord back into the full 41-element row array for Google Sheets
  */
 export function studentRecordToRow(record: StudentRecord): string[] {
-  // Default metadata for People's School Jamshoro if missing
   const meta = [...(record.rawMetadata || [])];
   while (meta.length < 17) {
     meta.push('');
   }
+  // Only genuinely school-wide constants are filled in here. This function used
+  // to invent a registration number ('190400001'), a full address, and a set of
+  // enrolment counts (25/24/473/68/16/541) whenever rawMetadata was empty - which
+  // is precisely the case for a newly added student. Those fabricated values were
+  // written straight into the live register, producing a duplicate ID row and
+  // enrollment figures belonging to a different student. Unknown values now stay
+  // empty rather than being invented.
   if (!meta[4]) meta[4] = "People'S School Jamshoro";
-  if (!meta[5]) meta[5] = 'Ziauddin University';
-  if (!meta[13]) meta[13] = 'Jamshoro (South)';
-  if (!meta[14]) meta[14] = 'Kotri';
-  if (!meta[15]) meta[15] = 'Sindh University';
-  if (!meta[16]) meta[16] = 'Sindh University Housing Society Phase 1';
 
   return [
     meta[0] || String(record.rowNumber - 1),
     meta[1] || 'N/A',
-    meta[2] || '190400001',
-    meta[3] || 'Higher Secondary',
+    meta[2] || '',
+    meta[3] || '',
     meta[4] || "People'S School Jamshoro",
-    meta[5] || 'Ziauddin University',
-    meta[6] || 'PAS/LEGIS/B-12',
-    meta[7] || '25',
-    meta[8] || '24',
-    meta[9] || '473',
-    meta[10] || '68',
-    meta[11] || '16',
-    meta[12] || '541',
-    meta[13] || 'Jamshoro (South)',
-    meta[14] || 'Kotri',
-    meta[15] || 'Sindh University',
-    meta[16] || 'Sindh University Housing Society Phase 1',
+    meta[5] || '',
+    meta[6] || '',
+    meta[7] || '',
+    meta[8] || '',
+    meta[9] || '',
+    meta[10] || '',
+    meta[11] || '',
+    meta[12] || '',
+    meta[13] || '',
+    meta[14] || '',
+    meta[15] || '',
+    meta[16] || '',
     record.grNo,
     record.studentName,
     record.bFormNo,
@@ -752,7 +753,7 @@ export async function syncAttendanceToSheet(
     // Add the summary row at the end
     rowsToAppend.push([
       record.date,
-      record.recordedBy || 'Miss Shahida',
+      record.recordedBy || 'Unassigned',
       'TOTAL ATTENDANCE',
       '',
       '',

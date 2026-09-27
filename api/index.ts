@@ -657,7 +657,7 @@ app.post('/api/attendance', (req, res) => {
     if (!date || !classes) { res.status(400).json({ error: 'Missing date or classes data in body' }); return; }
     if (!DATE_REGEX.test(date)) { res.status(400).json({ error: 'Invalid date format. Expected YYYY-MM-DD.' }); return; }
     const store = getAttendanceStore();
-    store[date] = { date, classes, notes: notes || '', recordedBy: recordedBy || 'Miss Shahida', updatedAt: Date.now() };
+    store[date] = { date, classes, notes: notes || '', recordedBy: recordedBy || 'Unassigned', updatedAt: Date.now() };
     saveAttendanceStore(store);
     res.json({ ok: true, message: 'Attendance saved successfully', record: store[date] });
   } catch (error) { res.status(500).json({ error: (error as Error).message }); }

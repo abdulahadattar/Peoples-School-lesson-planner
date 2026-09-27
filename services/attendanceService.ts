@@ -34,9 +34,18 @@ export interface DailyAttendanceRecord {
   classes: Record<string, { presentBoys: number; presentGirls: number; classTeacher?: string }>;
 }
 
+/**
+ * Normalises the "recorded by" field on an official register.
+ *
+ * This previously mapped every generic placeholder (and a blank value) to a
+ * specific teacher's name, so a day that nobody signed was silently attributed
+ * to that teacher. A real recorded name still passes through untouched; only
+ * placeholders collapse to a neutral sentinel.
+ */
+export const UNASSIGNED_IN_CHARGE = 'Unassigned';
+
 export function cleanAttendanceInCharge(val?: string): string {
-  if (!val) return 'Miss Shahida';
-  const trimmed = val.trim();
+  const trimmed = (val || '').trim();
   const lower = trimmed.toLowerCase();
   if (
     lower === 'class in-charge' ||
@@ -49,7 +58,7 @@ export function cleanAttendanceInCharge(val?: string): string {
     lower === 'class incharge' ||
     lower === ''
   ) {
-    return 'Miss Shahida';
+    return UNASSIGNED_IN_CHARGE;
   }
   return trimmed;
 }
@@ -189,7 +198,9 @@ export function buildAttendanceRows(
         const teachers = Array.from(new Set(matchingClasses.map(c => c.classTeacher).filter(Boolean)));
         defaultTeacher = teachers.join(' / ');
       } else {
-        defaultTeacher = 'Miss Shahida';
+        // No timetable or enrollment record names a teacher for this class, so leave the
+        // cell empty rather than attributing the row to an arbitrary staff member.
+        defaultTeacher = '';
       }
     }
 
@@ -308,23 +319,123 @@ export async function saveAttendanceRecord(record: DailyAttendanceRecord): Promi
   }
 }
 
-export async function loadAttendanceRecord(date: string): Promise<DailyAttendanceRecord | null> {
+/**
+ * Result of an attendance load.
+ *
+ * `status` exists so a failed read can never be mistaken for an empty day. The
+ * record is saved with an unconditional setDoc, so a teacher who saw a blank
+ * register after a transient outage would silently overwrite the real numbers
+ * for that date. Callers must block saving when `status === 'error'`.
+ */
+export type AttendanceLoadResult =
+  | { status: 'ok'; record: DailyAttendanceRecord | null }
+  | { status: 'error'; error: string };
+
+export async function loadAttendanceRecord(date: string): Promise<AttendanceLoadResult> {
+  let firestoreFailed = false;
+  let firestoreError = '';
   try {
     const docRef = doc(db, 'daily_attendance', date);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-      return docSnap.data() as DailyAttendanceRecord;
+      return { status: 'ok', record: docSnap.data() as DailyAttendanceRecord };
     }
-  } catch (error) {
+  } catch (error: any) {
+    firestoreFailed = true;
+    firestoreError = error?.message || String(error);
     console.warn("Failed to load from Firestore, trying local", error);
   }
 
   // Fallback to local storage
-  const localStr = localStorage.getItem(`attendance_${date}`);
-  if (localStr) {
-    return JSON.parse(localStr);
+  try {
+    const localStr = localStorage.getItem(`attendance_${date}`);
+    if (localStr) {
+      return { status: 'ok', record: JSON.parse(localStr) as DailyAttendanceRecord };
+    }
+  } catch (error: any) {
+    // A corrupt local cache is also a failed read, not an empty day.
+    return { status: 'error', error: `Local cache unreadable: ${error?.message || error}` };
   }
-  return null;
+
+  if (firestoreFailed) {
+    return {
+      status: 'error',
+      error: `Could not read attendance for ${date} from the server (${firestoreError}). ` +
+        `No local copy exists either, so this date's record could not be loaded. ` +
+        `Saving now would overwrite it.`,
+    };
+  }
+
+  return { status: 'ok', record: null };
+}
+
+/** Sums present students across every class in a record. */
+function countTotalPresent(record: DailyAttendanceRecord): number {
+  return Object.values(record.classes || {}).reduce(
+    (sum, c) => sum + (c.presentBoys || 0) + (c.presentGirls || 0),
+    0
+  );
+}
+
+/**
+ * Attendance percentage for a record.
+ *
+ * This used to be a hardcoded 0, so every row in the history list rendered a
+ * red "0%" regardless of the real figures. It derives the denominator from the
+ * classes actually present in the record, comparing each class's present count
+ * against that class's configured enrollment.
+ */
+export function resolveAttendancePercentage(record: DailyAttendanceRecord, totalPresent: number): number {
+  const enrollments = loadCachedEnrollments();
+  let denominator = 0;
+  for (const [classKey, counts] of Object.entries(record.classes || {})) {
+    const enrolled = enrollments.get(normalizeClassKey(classKey));
+    if (enrolled && enrolled > 0) {
+      denominator += enrolled;
+    } else {
+      // Without a known enrollment, the best available proxy is the number of
+      // students recorded for that class, which keeps the metric bounded.
+      denominator += (counts.presentBoys || 0) + (counts.presentGirls || 0);
+    }
+  }
+
+  if (denominator <= 0) return 0;
+  return Math.round((totalPresent / denominator) * 100);
+}
+
+function normalizeClassKey(key: string): string {
+  return key.trim().toUpperCase();
+}
+
+/**
+ * Enrollment totals, read from the local cache that saveClassEnrollments always
+ * writes. Deliberately synchronous: the history list renders in a loop and
+ * awaiting Firestore per record would stall it.
+ */
+function loadCachedEnrollments(): Map<string, number> {
+  const map = new Map<string, number>();
+  const push = (list: ClassEnrollment[]) => {
+    for (const e of list) {
+      if (!e?.classKey) continue;
+      map.set(normalizeClassKey(e.classKey), e.totalEnrollment || (e.enrolledBoys + e.enrolledGirls));
+    }
+  };
+
+  try {
+    const local = localStorage.getItem('school_class_enrollments');
+    if (local) {
+      const parsed = JSON.parse(local);
+      if (Array.isArray(parsed) && parsed.length) {
+        push(parsed);
+        return map;
+      }
+    }
+  } catch {
+    // fall through to the built-in defaults
+  }
+
+  push(DEFAULT_GRADE_ENROLLMENTS);
+  return map;
 }
 
 export async function loadAttendanceDates(): Promise<{ date: string; totalPresent: number; percentage: number }[]> {
@@ -332,46 +443,59 @@ export async function loadAttendanceDates(): Promise<{ date: string; totalPresen
     const attCol = collection(db, 'daily_attendance');
     const q = query(attCol, orderBy('date', 'desc'), limit(30));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => {
-      const data = doc.data() as DailyAttendanceRecord;
-      // In a real app we might store totalPresent in the record itself for easy querying
-      // For now we return a placeholder or calculate it if needed.
-      let totalP = 0;
-      let totalE = 1; // dummy denominator
-      Object.values(data.classes || {}).forEach(c => {
-        totalP += (c.presentBoys || 0) + (c.presentGirls || 0);
-      });
+    const fromFirestore = snapshot.docs.map(d => {
+      const data = d.data() as DailyAttendanceRecord;
+      const totalPresent = countTotalPresent(data);
       return {
         date: data.date,
-        totalPresent: totalP,
-        percentage: 0 // Placeholder
+        totalPresent,
+        // Derived from the live enrollment totals so the history list is a real
+        // metric rather than the constant 0% this used to return.
+        percentage: resolveAttendancePercentage(data, totalPresent),
       };
     });
+
+    // getDocs resolves with an EMPTY snapshot (it does not throw) whenever the
+    // client cannot reach Firestore, so a pure `return` here rendered a blank
+    // history list even though records were cached locally. Merge the local
+    // records for any date Firestore did not return; Firestore stays the source
+    // of truth for the dates it does return.
+    const merged = new Map(fromFirestore.map(d => [d.date, d]));
+    for (const local of readLocalAttendanceDates()) {
+      if (!merged.has(local.date)) merged.set(local.date, local);
+    }
+    return [...merged.values()].sort((a, b) => b.date.localeCompare(a.date));
   } catch (err) {
     console.warn("Error fetching attendance dates", err);
   }
-  
-  // Local fallback
+
+  return readLocalAttendanceDates().sort((a, b) => b.date.localeCompare(a.date));
+}
+
+/** Attendance history from the local per-date cache written by saveAttendanceRecord. */
+function readLocalAttendanceDates(): { date: string; totalPresent: number; percentage: number }[] {
   const dates: { date: string; totalPresent: number; percentage: number }[] = [];
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
     if (key && key.startsWith('attendance_')) {
       const str = localStorage.getItem(key);
       if (str) {
-        const data = JSON.parse(str) as DailyAttendanceRecord;
-        let totalP = 0;
-        Object.values(data.classes || {}).forEach(c => {
-          totalP += (c.presentBoys || 0) + (c.presentGirls || 0);
-        });
-        dates.push({
-          date: data.date,
-          totalPresent: totalP,
-          percentage: 0
-        });
+        try {
+          const data = JSON.parse(str) as DailyAttendanceRecord;
+          if (!data?.date) continue;
+          const totalPresent = countTotalPresent(data);
+          dates.push({
+            date: data.date,
+            totalPresent,
+            percentage: resolveAttendancePercentage(data, totalPresent),
+          });
+        } catch {
+          // A corrupt local entry should not abort the whole history list.
+        }
       }
     }
   }
-  return dates.sort((a, b) => b.date.localeCompare(a.date));
+  return dates;
 }
 
 export function exportAttendanceCSV(date: string, rows: ClassAttendanceRow[], summary: SchoolAttendanceSummary): void {

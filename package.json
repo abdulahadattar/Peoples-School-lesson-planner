@@ -11,6 +11,7 @@
     "lint": "tsc --noEmit",
     "test": "node scripts/test-all.mjs",
     "test:local": "node scripts/test-local.mjs",
+    "test:attendance": "node --import tsx scripts/test-attendance-integrity.mjs",
     "validate": "npm run lint && npm run build && npm run test:local"
   },
   "dependencies": {

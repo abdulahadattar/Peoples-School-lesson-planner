@@ -634,7 +634,7 @@ export async function createApp(): Promise<Express> {
         date,
         classes,
         notes: notes || '',
-        recordedBy: recordedBy || 'Miss Shahida',
+        recordedBy: recordedBy || 'Unassigned',
         updatedAt: Date.now(),
       };
       saveAttendanceStore(store);

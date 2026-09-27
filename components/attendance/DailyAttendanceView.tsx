@@ -17,6 +17,7 @@ import {
   Clock,
   ShieldCheck,
   RefreshCw,
+  AlertTriangle,
   FileSpreadsheet,
 } from 'lucide-react';
 import {
@@ -60,7 +61,7 @@ export const DailyAttendanceView: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(getCurrentUser());
   const [showEnrollmentModal, setShowEnrollmentModal] = useState<boolean>(false);
   const [inputs, setInputs] = useState<Record<string, { presentBoys: number | ''; presentGirls: number | ''; classTeacher?: string }>>({});
-  const [recordedBy, setRecordedBy] = useState<string>(schoolConfig?.classes?.[0]?.classTeacher || 'Miss Shahida');
+  const [recordedBy, setRecordedBy] = useState<string>(schoolConfig?.classes?.[0]?.classTeacher || '');
   const [notes, setNotes] = useState<string>('');
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -69,6 +70,10 @@ export const DailyAttendanceView: React.FC = () => {
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
   const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
+  // Set when the selected date's record could not be read. While this is set the
+  // register is NOT cleared and saving is blocked, so an outage cannot cause the
+  // real figures for a date to be overwritten.
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [historyList, setHistoryList] = useState<{ date: string; totalPresent: number; percentage: number }[]>([]);
   const [showHistoryDrawer, setShowHistoryDrawer] = useState<boolean>(false);
@@ -159,7 +164,18 @@ export const DailyAttendanceView: React.FC = () => {
     setIsLoading(true);
     setSaveSuccess(false);
     try {
-      const record = await loadAttendanceRecord(date);
+      const result = await loadAttendanceRecord(date);
+      if (result.status === 'error') {
+        // Do NOT clear the form. An unreadable date is not an empty date, and
+        // saveAttendanceRecord overwrites unconditionally - a teacher seeing a
+        // blank register would silently destroy the real numbers for that day.
+        setLoadError(result.error);
+        setIsLoading(false);
+        return;
+      }
+      setLoadError(null);
+
+      const record = result.record;
       if (record && record.classes && Object.keys(record.classes).length > 0) {
         const loadedInputs: Record<string, { presentBoys: number | ''; presentGirls: number | ''; classTeacher?: string }> = {};
         Object.entries(record.classes).forEach(([key, val]) => {
@@ -181,8 +197,8 @@ export const DailyAttendanceView: React.FC = () => {
         setLastSavedTime(null);
         setHasUnsavedChanges(false);
       }
-    } catch (err) {
-      console.error('Failed to load attendance:', err);
+    } catch (err: any) {
+      setLoadError(`Could not load attendance for ${date}: ${err?.message || err}`);
     } finally {
       setIsLoading(false);
     }
@@ -260,6 +276,17 @@ export const DailyAttendanceView: React.FC = () => {
 
   // Save Attendance to Server & Local DB
   const handleSave = async () => {
+    // Refuse to write when the existing record could not be read. saveAttendanceRecord
+    // uses an unconditional setDoc, so saving here would destroy that day's real
+    // attendance numbers with whatever is currently on screen.
+    if (loadError) {
+      showToast(
+        'Attendance for this date could not be loaded, so it will not be overwritten. Reload the date and try again.',
+        'error'
+      );
+      return;
+    }
+
     setIsSaving(true);
     try {
       const classesData: Record<string, { presentBoys: number; presentGirls: number; classTeacher?: string }> = {};
@@ -843,7 +870,8 @@ export const DailyAttendanceView: React.FC = () => {
           <button
             type="button"
             onClick={handleSave}
-            disabled={isSaving}
+            disabled={isSaving || !!loadError}
+            title={loadError ? 'Attendance for this date could not be loaded, so it will not be overwritten.' : undefined}
             className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold rounded-xl brand-gradient text-white hover:opacity-90 disabled:opacity-50 transition-all shadow-md active:scale-95"
           >
             {isSaving ? (
@@ -855,6 +883,33 @@ export const DailyAttendanceView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Load failure: the register below may be empty because the read failed, not
+          because the day was never marked. Saving is disabled until this clears. */}
+      {loadError && (
+        <div
+          role="alert"
+          className="flex items-start gap-3 p-4 rounded-2xl border border-red-300/60 bg-red-50 text-red-900 shadow-soft"
+        >
+          <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-red-600" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold">Attendance for {selectedDate} could not be loaded</p>
+            <p className="text-xs mt-1 leading-relaxed">{loadError}</p>
+            <p className="text-xs mt-2 leading-relaxed font-semibold">
+              The register below is empty because of this error, not because nothing was recorded.
+              Saving has been disabled so the real figures for this date cannot be overwritten.
+            </p>
+            <button
+              type="button"
+              onClick={() => loadDateAttendance(selectedDate)}
+              className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors active:scale-95"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Retry loading {selectedDate}</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Grade-by-Grade Attendance Table */}
       <div className="glass-card rounded-2xl border border-brand-border shadow-soft overflow-hidden">
@@ -877,7 +932,7 @@ export const DailyAttendanceView: React.FC = () => {
                 setRecordedBy(e.target.value);
                 setHasUnsavedChanges(true);
               }}
-              placeholder="Miss Shahida"
+              placeholder="e.g. Miss Shahida"
               className="h-8 px-2.5 text-xs rounded-lg bg-brand-bg border border-brand-border text-brand-text-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
             />
           </div>
@@ -1123,7 +1178,8 @@ export const DailyAttendanceView: React.FC = () => {
             <button
               type="button"
               onClick={handleSave}
-              disabled={isSaving}
+              disabled={isSaving || !!loadError}
+              title={loadError ? 'Attendance for this date could not be loaded, so it will not be overwritten.' : undefined}
               className="px-4 py-2 text-xs font-bold rounded-xl brand-gradient text-white hover:opacity-90 disabled:opacity-50 transition-all shadow-sm active:scale-95"
             >
               {isSaving ? 'Saving...' : 'Save Roster'}
