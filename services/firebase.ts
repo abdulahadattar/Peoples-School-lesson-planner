@@ -1,10 +1,47 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  doc,
+  getDocFromServer,
+} from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+
+/**
+ * Firestore is initialised with a persistent local cache so reads still resolve
+ * while the network is unavailable.
+ *
+ * Without this, every read went straight to the server: any brief connectivity
+ * problem made a document unreadable ("the client is offline"), which surfaced
+ * as an attendance register that refused to load its figures even though the
+ * device already had them. Writes are still queued and sent on reconnect.
+ */
+function createFirestore() {
+  try {
+    return initializeFirestore(
+      app,
+      {
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager(),
+        }),
+      },
+      firebaseConfig.firestoreDatabaseId
+    );
+  } catch (error) {
+    // initializeFirestore throws if the instance was already created, and
+    // persistence can be refused (private browsing, storage pressure). Either
+    // way the app must still run, just without an offline cache.
+    console.warn('Firestore local cache unavailable, continuing without it:', error);
+    return getFirestore(app, firebaseConfig.firestoreDatabaseId);
+  }
+}
+
+export const db = createFirestore();
 export const auth = getAuth(app);
 
 export enum OperationType {

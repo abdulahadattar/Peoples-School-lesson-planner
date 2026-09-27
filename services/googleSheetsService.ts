@@ -160,6 +160,24 @@ export function rowToStudentRecord(row: string[], rowIndex: number): StudentReco
 }
 
 /**
+ * The first 17 columns of a student row (A-Q) are per-student metadata:
+ * registration number, institution, address, and enrolment counts. The app does
+ * not read these back per record - the compact payload strips `rawMetadata` and
+ * refills it from a single shared row - so they must never be written during an
+ * update. Everything from column R onwards is the student data the app owns.
+ */
+export const STUDENT_META_COLUMN_COUNT = 17;
+export const FIRST_STUDENT_DATA_COLUMN = 'R';
+export const LAST_STUDENT_DATA_COLUMN = 'AO';
+/** Number of app-owned student fields, i.e. R through AO. */
+const EXPECTED_STUDENT_DATA_COLUMNS = 24;
+
+/** Sheet range covering only the app-owned student columns for one row. */
+export function studentDataRange(sheetTitle: string, rowNumber: number): string {
+  return `'${sheetTitle}'!${FIRST_STUDENT_DATA_COLUMN}${rowNumber}:${LAST_STUDENT_DATA_COLUMN}${rowNumber}`;
+}
+
+/**
  * Converts a StudentRecord back into the full 41-element row array for Google Sheets
  */
 export function studentRecordToRow(record: StudentRecord): string[] {
@@ -176,7 +194,13 @@ export function studentRecordToRow(record: StudentRecord): string[] {
   // empty rather than being invented.
   if (!meta[4]) meta[4] = "People'S School Jamshoro";
 
-  return [
+  // Any field the record does not carry becomes an explicit empty cell.
+  // Left as undefined it serialises to null in the request body, and Sheets
+  // treats a null under valueInputOption=USER_ENTERED as "clear this cell" -
+  // so a record missing one optional field silently blanked that column on save.
+  const cell = (v: unknown) => (v === undefined || v === null ? '' : String(v));
+
+  const row: string[] = [
     meta[0] || String(record.rowNumber - 1),
     meta[1] || 'N/A',
     meta[2] || '',
@@ -194,31 +218,43 @@ export function studentRecordToRow(record: StudentRecord): string[] {
     meta[14] || '',
     meta[15] || '',
     meta[16] || '',
-    record.grNo,
-    record.studentName,
-    record.bFormNo,
-    record.fatherName,
-    record.gender,
-    record.dobDay,
-    record.dobMonth,
-    record.dobYear,
-    record.classAdmitted,
-    record.currentClass,
-    record.parentCnic,
-    record.religion,
-    record.address,
-    record.parentContact,
-    record.emergencyContact,
-    record.admissionDay,
-    record.admissionMonth,
-    record.admissionYear,
-    record.section,
-    record.partnerContact,
-    record.shift,
-    record.medium,
-    record.picture,
-    record.status,
+    cell(record.grNo),
+    cell(record.studentName),
+    cell(record.bFormNo),
+    cell(record.fatherName),
+    cell(record.gender),
+    cell(record.dobDay),
+    cell(record.dobMonth),
+    cell(record.dobYear),
+    cell(record.classAdmitted),
+    cell(record.currentClass),
+    cell(record.parentCnic),
+    cell(record.religion),
+    cell(record.address),
+    cell(record.parentContact),
+    cell(record.emergencyContact),
+    cell(record.admissionDay),
+    cell(record.admissionMonth),
+    cell(record.admissionYear),
+    cell(record.section),
+    cell(record.partnerContact),
+    cell(record.shift),
+    cell(record.medium),
+    cell(record.picture),
+    cell(record.status),
   ];
+
+  // Guard the A:Q / R boundary: if a field is ever added or removed, the update
+  // path would start writing the wrong columns, so fail loudly instead.
+  if (row.length !== STUDENT_META_COLUMN_COUNT + (EXPECTED_STUDENT_DATA_COLUMNS)) {
+    console.warn(
+      `studentRecordToRow produced ${row.length} columns, expected ${
+        STUDENT_META_COLUMN_COUNT + EXPECTED_STUDENT_DATA_COLUMNS
+      }. The register update range may be misaligned.`
+    );
+  }
+
+  return row;
 }
 
 export interface FetchSheetResult {
@@ -548,7 +584,15 @@ export async function updateSheetRecord(
   const rowNum = student.rowNumber;
 
   // Try direct Google Sheets API v4
-  const range = `'${sheetTitle}'!A${rowNum}:AO${rowNum}`;
+  //
+  // Only the app-owned columns (R onwards) are written. This previously wrote the
+  // whole row A:AO, where columns A-Q came from rawMetadata - which in compact
+  // mode is stripped per record and refilled from a single shared sheet row. Every
+  // edit therefore stamped another student's registration number, address and
+  // enrolment counts over the row being edited, and blanked the rest. Leaving
+  // A-Q untouched keeps each student's own metadata intact.
+  const range = studentDataRange(sheetTitle, rowNum);
+  const values = rowValues.slice(STUDENT_META_COLUMN_COUNT);
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
     range
   )}?valueInputOption=USER_ENTERED`;
@@ -562,7 +606,7 @@ export async function updateSheetRecord(
     body: JSON.stringify({
       range,
       majorDimension: 'ROWS',
-      values: [rowValues],
+      values: [values],
     }),
   });
 
@@ -584,6 +628,9 @@ export async function updateSheetRecord(
           sheetTitle,
           rowNumber: rowNum,
           rowValues,
+          // Server must apply the same column restriction as the direct call.
+          startColumn: FIRST_STUDENT_DATA_COLUMN,
+          metaColumnCount: STUDENT_META_COLUMN_COUNT,
         }),
       });
       if (serverRes.ok) {

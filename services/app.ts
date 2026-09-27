@@ -532,6 +532,8 @@ export async function createApp(): Promise<Express> {
         sheetTitle = 'Jamshoro South Final SPD (2)',
         rowNumber,
         rowValues,
+        startColumn = 'R',
+        metaColumnCount = 17,
       } = req.body || {};
 
       if (!rowNumber || !Array.isArray(rowValues)) {
@@ -539,7 +541,12 @@ export async function createApp(): Promise<Express> {
         return;
       }
 
-      const range = `'${sheetTitle}'!A${rowNumber}:AO${rowNumber}`;
+      // Mirrors the client: an edit writes only the app-owned student columns.
+      // Writing the full A:AO row stamped another student's metadata (columns
+      // A-Q) over the row being edited, because the compact payload does not
+      // carry per-record rawMetadata.
+      const range = `'${sheetTitle}'!${startColumn}${rowNumber}:AO${rowNumber}`;
+      const values = rowValues.slice(metaColumnCount);
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
         range
       )}?valueInputOption=USER_ENTERED`;
@@ -553,7 +560,7 @@ export async function createApp(): Promise<Express> {
         body: JSON.stringify({
           range,
           majorDimension: 'ROWS',
-          values: [rowValues],
+          values: [values],
         }),
       });
 

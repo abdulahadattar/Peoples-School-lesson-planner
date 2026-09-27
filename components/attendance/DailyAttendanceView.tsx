@@ -70,10 +70,14 @@ export const DailyAttendanceView: React.FC = () => {
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
   const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
-  // Set when the selected date's record could not be read. While this is set the
-  // register is NOT cleared and saving is blocked, so an outage cannot cause the
-  // real figures for a date to be overwritten.
+  // Set when the selected date's record could not be read. It is a WARNING, not a
+  // blocker: the register is left blank because of a failed read, and saving from
+  // that blank state overwrites the date (or creates it). The teacher is asked to
+  // confirm before that happens.
   const [loadError, setLoadError] = useState<string | null>(null);
+  // Once the teacher has acknowledged the blank-state warning for this date, stop
+  // asking on every subsequent save.
+  const [saveConfirmedOverBlank, setSaveConfirmedOverBlank] = useState<boolean>(false);
 
   const [historyList, setHistoryList] = useState<{ date: string; totalPresent: number; percentage: number }[]>([]);
   const [showHistoryDrawer, setShowHistoryDrawer] = useState<boolean>(false);
@@ -163,14 +167,14 @@ export const DailyAttendanceView: React.FC = () => {
   const loadDateAttendance = useCallback(async (date: string) => {
     setIsLoading(true);
     setSaveSuccess(false);
+    setSaveConfirmedOverBlank(false);
     try {
       const result = await loadAttendanceRecord(date);
       if (result.status === 'error') {
-        // Do NOT clear the form. An unreadable date is not an empty date, and
-        // saveAttendanceRecord overwrites unconditionally - a teacher seeing a
-        // blank register would silently destroy the real numbers for that day.
+        // Do NOT silently present an unreadable date as an empty day. Leave the
+        // register blank but flag it, so the teacher is told the figures on screen
+        // are not what was previously recorded before they overwrite the date.
         setLoadError(result.error);
-        setIsLoading(false);
         return;
       }
       setLoadError(null);
@@ -276,15 +280,21 @@ export const DailyAttendanceView: React.FC = () => {
 
   // Save Attendance to Server & Local DB
   const handleSave = async () => {
-    // Refuse to write when the existing record could not be read. saveAttendanceRecord
-    // uses an unconditional setDoc, so saving here would destroy that day's real
-    // attendance numbers with whatever is currently on screen.
-    if (loadError) {
-      showToast(
-        'Attendance for this date could not be loaded, so it will not be overwritten. Reload the date and try again.',
-        'error'
+    // Saving is intentionally allowed even when the previous record could not be
+    // read. saveAttendanceRecord does an unconditional setDoc, so this overwrites
+    // the date when a record already exists and creates one when it does not -
+    // which is what a teacher recording today's register needs. Blocking the save
+    // outright would leave them unable to record attendance at all whenever
+    // Firestore is briefly unreachable, so the risk is surfaced as a confirmation
+    // instead of a hard block.
+    if (loadError && !saveConfirmedOverBlank) {
+      const proceed = window.confirm(
+        `${loadError}\n\nThe register below is blank because of this, not because nothing was recorded. ` +
+        `Saving now will overwrite any existing record for ${selectedDate} with the figures entered here.\n\n` +
+        `Save anyway?`
       );
-      return;
+      if (!proceed) return;
+      setSaveConfirmedOverBlank(true);
     }
 
     setIsSaving(true);
@@ -870,8 +880,8 @@ export const DailyAttendanceView: React.FC = () => {
           <button
             type="button"
             onClick={handleSave}
-            disabled={isSaving || !!loadError}
-            title={loadError ? 'Attendance for this date could not be loaded, so it will not be overwritten.' : undefined}
+            disabled={isSaving}
+            title={loadError ? 'The register below is blank because loading failed - saving will overwrite this date' : undefined}
             className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold rounded-xl brand-gradient text-white hover:opacity-90 disabled:opacity-50 transition-all shadow-md active:scale-95"
           >
             {isSaving ? (
@@ -884,25 +894,27 @@ export const DailyAttendanceView: React.FC = () => {
         </div>
       </div>
 
-      {/* Load failure: the register below may be empty because the read failed, not
-          because the day was never marked. Saving is disabled until this clears. */}
+      {/* Load failure: the register below is blank because the read failed, not
+          because the day was never marked. Saving is still allowed - it overwrites
+          the date, or creates it if none exists - but the teacher is warned. */}
       {loadError && (
         <div
           role="alert"
-          className="flex items-start gap-3 p-4 rounded-2xl border border-red-300/60 bg-red-50 text-red-900 shadow-soft"
+          className="flex items-start gap-3 p-4 rounded-2xl border border-amber-300/70 bg-amber-50 text-amber-900 shadow-soft"
         >
-          <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-red-600" />
+          <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-amber-600" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold">Attendance for {selectedDate} could not be loaded</p>
+            <p className="text-sm font-bold">Working offline — {selectedDate} was not loaded from the server</p>
             <p className="text-xs mt-1 leading-relaxed">{loadError}</p>
-            <p className="text-xs mt-2 leading-relaxed font-semibold">
-              The register below is empty because of this error, not because nothing was recorded.
-              Saving has been disabled so the real figures for this date cannot be overwritten.
+            <p className="text-xs mt-2 leading-relaxed">
+              The register below is blank because of this, not because nothing was recorded. You can
+              still save: this will overwrite {selectedDate} if a record already exists, or create it if
+              it does not. Figures are stored on this device and sync to the server when it is reachable.
             </p>
             <button
               type="button"
               onClick={() => loadDateAttendance(selectedDate)}
-              className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors active:scale-95"
+              className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors active:scale-95"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               <span>Retry loading {selectedDate}</span>
@@ -1178,8 +1190,8 @@ export const DailyAttendanceView: React.FC = () => {
             <button
               type="button"
               onClick={handleSave}
-              disabled={isSaving || !!loadError}
-              title={loadError ? 'Attendance for this date could not be loaded, so it will not be overwritten.' : undefined}
+              disabled={isSaving}
+              title={loadError ? 'The register below is blank because loading failed - saving will overwrite this date' : undefined}
               className="px-4 py-2 text-xs font-bold rounded-xl brand-gradient text-white hover:opacity-90 disabled:opacity-50 transition-all shadow-sm active:scale-95"
             >
               {isSaving ? 'Saving...' : 'Save Roster'}
