@@ -249,13 +249,20 @@ async function runVerification() {
       fail('React app did not mount within timeout');
     }
 
-    const guestButtonText = await cdpClient.evaluate(`
-      (() => {
-        const btns = Array.from(document.querySelectorAll('button'));
-        const guest = btns.find(b => b.textContent.includes('Explore as Guest'));
-        return guest ? guest.textContent.trim() : null;
-      })()
-    `);
+    // The login gate is now gated on Firebase finishing its session restore, so
+    // the Guest button appears one tick later than it used to. Poll for it rather
+    // than asserting immediately.
+    let guestButtonText = null;
+    for (let attempt = 0; attempt < 25 && !guestButtonText; attempt++) {
+      guestButtonText = await cdpClient.evaluate(`
+        (() => {
+          const btns = Array.from(document.querySelectorAll('button'));
+          const guest = btns.find(b => b.textContent.includes('Explore as Guest'));
+          return guest ? guest.textContent.trim() : null;
+        })()
+      `);
+      if (!guestButtonText) await new Promise(r => setTimeout(r, 300));
+    }
 
     if (guestButtonText) {
       pass('Auth modal rendered with Guest mode option', guestButtonText);
