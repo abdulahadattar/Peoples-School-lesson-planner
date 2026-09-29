@@ -174,6 +174,33 @@ async function main() {
       await page.screenshot({ path: path.join(ARTIFACTS, 'mobile-nav.png') });
     }
     await page.setViewportSize({ width: 1440, height: 900 });
+
+    // ── 6. DOM-only helper, exercised against a real canvas ──────
+    hdr('Browser-only helpers');
+    try {
+      // compressImage needs a canvas and a FileReader, so it cannot be unit
+      // tested under plain Node. Exercise it in the page instead of leaving
+      // it as the one unverified export in the pure-logic inventory.
+      const img = await page.evaluate(async () => {
+        const mod = await import('/utils/payloadOptimizer.ts');
+        const c = document.createElement('canvas');
+        c.width = 1600; c.height = 1200;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#3355ff'; ctx.fillRect(0, 0, 1600, 1200);
+        ctx.fillStyle = '#ffcc00'; ctx.fillRect(100, 100, 800, 600);
+        const blob = await new Promise(res => c.toBlob(b => res(b), 'image/png'));
+        const out = await mod.compressImage(blob, 320, 0.75);
+        return { mimeType: out.mimeType, sizeBytes: out.sizeBytes, prefix: out.dataUrl.slice(0, 30), original: blob.size };
+      });
+      if (!/^data:image\/(webp|jpeg|png)/.test(img.prefix)) throw new Error(`unexpected data url: ${img.prefix}`);
+      if (!(img.sizeBytes > 0)) throw new Error('sizeBytes must be positive');
+      if (!(img.sizeBytes < img.original)) {
+        throw new Error(`did not shrink: ${img.sizeBytes} from ${img.original}`);
+      }
+      pass('compressImage resizes and re-encodes', `${img.mimeType}, ${img.sizeBytes}B from ${img.original}B`);
+    } catch (err) {
+      fail('compressImage', (err && err.message) || String(err));
+    }
   } catch (err) {
     fail('E2E run', (err && err.message) || String(err));
     await page.screenshot({ path: path.join(ARTIFACTS, 'crash.png') }).catch(() => {});
@@ -183,7 +210,6 @@ async function main() {
       await browser.close().catch(() => {});
     }
   }
-
   reportConsole(recorded);
 }
 
