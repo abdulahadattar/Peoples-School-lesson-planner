@@ -22,6 +22,7 @@
     "test:sheets-sync": "node --import tsx --import ./scripts/test-hooks/alias-idb.mjs scripts/test-sheets-sync-diagnostics.mjs",
     "test:unit": "tsx scripts/unit-tests.ts",
     "test:unit:local": "tsx scripts/unit/localFirst.test.ts",
+    "test:rules": "node scripts/test-firestore-rules.mjs",
     "test:keys": "node scripts/gemini-probe.mjs",
     "test:e2e": "node scripts/e2e-smoke.mjs",
     "test:docs": "node scripts/test-doc-pipeline.mjs",
