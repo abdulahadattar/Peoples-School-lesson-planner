@@ -68,9 +68,25 @@ export function isKnownSubject(raw: string): boolean {
   return key in SUBJECT_ALIASES;
 }
 
-/** Strict canonical equality (timetable cells ↔ roster subjects). */
+/**
+ * Strict canonical equality (timetable cells ↔ roster subjects).
+ *
+ * The comparison is case-insensitive on purpose. SUBJECT_ALIASES maps variants
+ * onto a canonical label, but it does not list every canonical label as a key
+ * of its own: 'urdu' and 'physics' are keys, so `normalizeSubject('URDU')`
+ * already yields 'Urdu', while 'mathematics' is only the *output* of
+ * 'maths'/'math', so `normalizeSubject('MATHEMATICS')` used to pass through
+ * unchanged. That made subject identity depend on capitalisation for exactly
+ * the subjects whose canonical form is missing from the map, and a timetable
+ * cell written as "MATHEMATICS" failed to match the roster's "Mathematics",
+ * leaving the Live Monitor slot unassigned.
+ *
+ * Comparing lowercased normalised values can only turn a previously-false
+ * comparison into a true one where the two differed solely by case, which is
+ * the intended meaning of "same subject".
+ */
 export function subjectsEqual(a: string, b: string): boolean {
-  return normalizeSubject(a) === normalizeSubject(b);
+  return normalizeSubject(a).toLowerCase() === normalizeSubject(b).toLowerCase();
 }
 
 /**
