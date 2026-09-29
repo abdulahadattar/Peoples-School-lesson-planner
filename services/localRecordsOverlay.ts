@@ -82,6 +82,18 @@ export function hasLocalRecord(rowNumber: number): boolean {
 }
 
 /**
+ * Columns the sheet owns as identity.
+ *
+ * A locally cached record can be stale: a student can be promoted to the next
+ * class, or a GR number can be corrected on the sheet, and a teacher editing
+ * attendance on a phone can hold a copy from hours earlier. Letting that stale
+ * copy win would move a student between classes and reassign their GR number
+ * in the register, so the sheet stays authoritative for these two and every
+ * other locally edited column is the teacher's.
+ */
+const SHEET_OWNED_IDENTITY = ['grNo', 'currentClass'] as const satisfies readonly (keyof StudentRecord)[];
+
+/**
  * Overlays unsynced edits onto sheet records. A row that exists only locally
  * (an unsynced new student) is appended so the teacher can still see it.
  */
@@ -97,9 +109,18 @@ export function applyLocalOverlay(records: StudentRecord[]): StudentRecord[] {
     const local = map[k];
     if (!local) return;
     const existing = byRow.get(local.rowNumber);
-    // Keep the sheet's identity columns but take the locally edited values, so
-    // a row that the sheet has not seen yet still renders.
-    byRow.set(local.rowNumber, existing ? { ...existing, ...local } : local);
+    // A row the sheet has never seen has no authoritative identity to protect,
+    // so the local record is rendered as-is.
+    if (!existing) {
+      byRow.set(local.rowNumber, local);
+      return;
+    }
+    // Take the teacher's local edit, then restore the sheet's identity columns.
+    // Spreading `local` last alone would let a stale local copy overwrite them,
+    // which is the opposite of what the merge is meant to do.
+    const merged: StudentRecord = { ...existing, ...local };
+    for (const col of SHEET_OWNED_IDENTITY) merged[col] = existing[col];
+    byRow.set(local.rowNumber, merged);
   });
 
   return Array.from(byRow.values()).sort((a, b) => a.rowNumber - b.rowNumber);

@@ -12,6 +12,7 @@
 import {
   queueSheetSync, listPendingSync, pendingSyncCount, pendingScopes,
   clearPendingSync, clearAllPendingSync, markSyncAttempt, subscribeSyncQueue,
+  getQueueHealth, acknowledgeDroppedEdits,
 } from '../../services/sheetSyncQueue';
 import {
   saveLocalRecord, clearLocalRecord, getLocalOverlay, localOverlayCount,
@@ -189,16 +190,19 @@ it('does not mutate the caller\'s array or its records', () => {
   eq(JSON.stringify(input), snapshot, 'input must be untouched');
 });
 
-it('RISK: local copy overwrites sheet identity columns, not just edited fields', () => {
+it('FIXED: the sheet keeps its identity columns, local keeps the edits', () => {
   reset();
-  // The code comment says "Keep the sheet's identity columns but take the
-  // locally edited values", but the spread is { ...existing, ...local }, so a
-  // STALE local copy wins for every field including grNo/currentClass.
+  // This test used to DOCUMENT a bug: the code comment promised "Keep the
+  // sheet's identity columns" while the spread was { ...existing, ...local },
+  // so a stale local copy won for every field including grNo/currentClass.
+  // The merge now restores the sheet's identity after taking the local edit.
   saveLocalRecord(rec(5, { grNo: 'GR5-OLD', currentClass: 'IX-A', studentName: 'Edited' }));
-  const merged = applyLocalOverlay([rec(5, { grNo: 'GR5-CORRECTED-BY-SHEET', currentClass: 'XI-B', studentName: 'FromSheet' })]);
-  eq(merged[0].grNo, 'GR5-OLD', 'DOCUMENTS the risk: stale local grNo wins');
-  eq(merged[0].currentClass, 'IX-A', 'DOCUMENTS the risk: stale local currentClass wins');
-  eq(merged[0].studentName, 'Edited', 'and the intended edit does apply');
+  const merged = applyLocalOverlay([
+    rec(5, { grNo: 'GR5-CORRECTED-BY-SHEET', currentClass: 'XI-B', studentName: 'FromSheet' }),
+  ]);
+  eq(merged[0].grNo, 'GR5-CORRECTED-BY-SHEET', 'the sheet owns the GR number');
+  eq(merged[0].currentClass, 'XI-B', 'the sheet owns the class');
+  eq(merged[0].studentName, 'Edited', "and the teacher's own edit still applies");
 });
 
 it('survives corrupt localStorage without throwing', () => {
@@ -285,6 +289,114 @@ it('config exposes the timetable sheet id and tab list', () => {
   eq(C.TIMETABLE_SHEET_TABS.length > 0, true);
   eq(C.TIMETABLE_SHEET_URL.includes(C.TIMETABLE_SHEET_ID), true, 'URL must embed the id');
 });
+/* Regression: the sheet stays authoritative for identity columns */
+
+function clearAllLocalRecords() {
+  for (const k of Object.keys(getLocalOverlay())) clearLocalRecord(Number(k));
+}
+
+describe('Regression: a stale local copy cannot rewrite a student identity');
+
+it('cannot demote a student who was promoted on the sheet', () => {
+  reset();
+  clearAllLocalRecords();
+  // The sheet says X-A (promoted); the teacher's phone still holds an unsynced
+  // copy from when the student was in IX.
+  saveLocalRecord(rec(5, { currentClass: 'IX', fatherName: 'Ali Khan' }));
+  const out = applyLocalOverlay([rec(5, { currentClass: 'X-A', fatherName: 'Ali' })]);
+  eq(out.length, 1);
+  eq(out[0].currentClass, 'X-A', 'stale local class must not demote the student');
+  eq(out[0].fatherName, 'Ali Khan', "the teacher's own edit must still apply");
+  clearAllLocalRecords();
+});
+
+it('cannot reassign a corrected GR number', () => {
+  reset();
+  clearAllLocalRecords();
+  saveLocalRecord(rec(6, { grNo: 'GR-OLD' }));
+  const out = applyLocalOverlay([rec(6, { grNo: 'GR-NEW' })]);
+  eq(out[0].grNo, 'GR-NEW', 'the sheet owns the GR number');
+  clearAllLocalRecords();
+});
+
+it('a row the sheet has never seen still renders in full', () => {
+  reset();
+  clearAllLocalRecords();
+  // Nothing authoritative to protect, so the new student appears as entered.
+  saveLocalRecord(rec(999, { currentClass: 'XI-A', studentName: 'New Student' }));
+  const out = applyLocalOverlay([]);
+  eq(out.length, 1);
+  eq(out[0].studentName, 'New Student');
+  eq(out[0].currentClass, 'XI-A');
+  clearAllLocalRecords();
+});
+
+it('rows stay sorted by row number after a merge', () => {
+  reset();
+  clearAllLocalRecords();
+  saveLocalRecord(rec(30));
+  const out = applyLocalOverlay([rec(10), rec(20)]);
+  eq(out.map(r => r.rowNumber), [10, 20, 30]);
+  clearAllLocalRecords();
+});
+
+describe('Regression: a full sync queue never loses edits silently');
+
+it('a fresh queue reports nothing lost', () => {
+  clearAllPendingSync();
+  acknowledgeDroppedEdits();
+  const h = getQueueHealth();
+  eq(h.dropped, 0);
+  eq(h.capacity, 200);
+  eq(h.pending, 0);
+});
+
+it('keeps the newest 200 and reports the 5 it could not keep', () => {
+  reset();
+  clearAllPendingSync();
+  acknowledgeDroppedEdits();
+  const originalWarn = console.warn;
+  const warned: string[] = [];
+  console.warn = (...a: unknown[]) => { warned.push(String(a[0])); };
+  try {
+    for (let i = 0; i < 205; i++) {
+      queueSheetSync({ target: 'records', scope: `row-${i}`, label: `Row ${i}`, payload: { i } });
+    }
+  } finally {
+    console.warn = originalWarn;
+  }
+  const h = getQueueHealth();
+  eq(h.pending, 200, 'the queue stays capped');
+  eq(h.dropped, 5, 'the five oldest edits must be reported as lost');
+  eq(warned.some(w => w.includes('dropped')), true, 'losing edits must warn the teacher');
+  const scopes = listPendingSync().map(e => e.scope);
+  eq(scopes.includes('row-204'), true, 'the newest edit must survive');
+  eq(scopes.includes('row-0'), false, 'the oldest edit is the one dropped');
+  clearAllPendingSync();
+  acknowledgeDroppedEdits();
+});
+
+it('the counter accumulates across overflows and can be acknowledged', () => {
+  reset();
+  clearAllPendingSync();
+  acknowledgeDroppedEdits();
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  try {
+    for (let i = 0; i < 202; i++) queueSheetSync({ target: 'records', scope: `a-${i}`, label: `A${i}`, payload: {} });
+    for (let i = 0; i < 202; i++) queueSheetSync({ target: 'records', scope: `b-${i}`, label: `B${i}`, payload: {} });
+  } finally {
+    console.warn = originalWarn;
+  }
+  // Once the queue is full, every further enqueue evicts one older entry, so a
+  // second batch of 202 costs 2 on the first pass and 1 per remaining enqueue.
+  eq(getQueueHealth().dropped, 2 + 202, 'the counter accumulates, not resets');
+  acknowledgeDroppedEdits();
+  eq(getQueueHealth().dropped, 0, 'acknowledging clears the counter');
+  clearAllPendingSync();
+});
+
+
 
 
 /* ── summary ──────────────────────────────────────────────────── */
