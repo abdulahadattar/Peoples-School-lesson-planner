@@ -45,6 +45,7 @@ import {
   updateSheetRecord,
   addSheetRecord,
   exportRecordsToCSV,
+  classifySheetsWriteError,
 } from '../../services/googleSheetsService';
 import {
   initAuth,
@@ -54,6 +55,9 @@ import {
   getCurrentUser,
 } from '../../services/googleAuth';
 import { fetchAllDossiers } from '../../services/documentClientService';
+import { applyLocalOverlay, saveLocalRecord } from '../../services/localRecordsOverlay';
+import { queueSheetSync } from '../../services/sheetSyncQueue';
+import { PendingSyncBanner } from '../ui/PendingSyncBanner';
 import { StudentDossier } from '../../types/documentArchive';
 import { GoogleSignInButton } from './GoogleSignInButton';
 import { StudentDetailModal } from './StudentDetailModal';
@@ -330,7 +334,9 @@ export const StudentRecordsView: React.FC = () => {
       ]);
 
       if (sheetResult.status === 'fulfilled') {
-        setRecords(sheetResult.value.records);
+        // Unsynced local edits are layered on top of the sheet so a change the
+        // teacher already made stays visible until the sheet confirms it.
+        setRecords(applyLocalOverlay(sheetResult.value.records));
         setLastSynced(sheetResult.value.lastSynced);
         if (isManualRefresh) {
           showNotification(`Successfully synchronized ${sheetResult.value.records.length} records from Google Sheet.`);
@@ -660,23 +666,43 @@ export const StudentRecordsView: React.FC = () => {
         // Reload fresh data from Google Sheet
         await loadRecords(true);
       } else {
-        // Not authenticated with Google: apply update locally and explain how to sync to cloud
-        if (isAdd) {
-          const newStudentWithRow = {
-            ...student,
-            rowNumber: records.length + 2,
-          };
-          setRecords((prev) => [newStudentWithRow, ...prev]);
-          showNotification(
-            `Added ${student.studentName} to local records. Sign in with Google above to push edits directly to your spreadsheet.`,
-            'info'
-          );
+        // No usable Google Sheets token.
+        //
+        // The Sheets token expires about every hour while the Firebase session
+        // stays alive, so this is a routine state, not an edge case. It used to
+        // be reported as an "info" local save, which meant an edit to the
+        // official register silently never reached the sheet and the teacher
+        // believed it had. It is now an explicit error, and the change is NOT
+        // applied locally - a half-saved register is worse than a refused one.
+        await googleSignIn().catch(() => null);
+        const retryToken = await getAccessToken();
+        if (retryToken) {
+          if (isAdd) {
+            await addSheetRecord(student, retryToken, DEFAULT_SPREADSHEET_ID, DEFAULT_SHEET_TITLE);
+            showNotification(`Student ${student.studentName} added successfully to Google Sheet.`);
+          } else {
+            await updateSheetRecord(student, retryToken, DEFAULT_SPREADSHEET_ID, DEFAULT_SHEET_TITLE);
+            showNotification(`Row #${student.rowNumber} (${student.studentName}) updated successfully in Google Sheet.`);
+          }
+          await loadRecords(true);
         } else {
-          setRecords((prev) =>
-            prev.map((item) => (item.rowNumber === student.rowNumber ? student : item))
-          );
+          // No Google access, but the edit itself is sound. Keep it on the
+          // device and in the sync queue instead of throwing the work away: the
+          // teacher is told the register has not caught up yet and that
+          // reconnecting is what pushes it. The change is applied locally so it
+          // is visible immediately and survives a reload, and the row is marked
+          // as waiting for the sheet.
+          saveLocalRecord(student);
+          queueSheetSync({
+            target: 'records',
+            scope: String(student.rowNumber),
+            label: `${isAdd ? 'Add' : 'Update'} ${student.studentName} (row ${student.rowNumber})`,
+            payload: student,
+          });
           showNotification(
-            `Updated ${student.studentName} locally. Sign in with Google above to push edits directly to your spreadsheet.`,
+            `${student.studentName} was saved on this device but has NOT reached Google Sheets yet, ` +
+            `so the official register is unchanged. Sign in with Google using the button in the header, ` +
+            `then press Sync to push this change.`,
             'info'
           );
         }
@@ -693,17 +719,42 @@ export const StudentRecordsView: React.FC = () => {
     } catch (err: any) {
       console.error('Error saving record:', err);
       const errMsg = err?.message || '';
-      if (
-        errMsg.toLowerCase().includes('permission') ||
-        errMsg.toLowerCase().includes('403') ||
-        errMsg.toLowerCase().includes('protected')
-      ) {
-        showNotification(
-          'Google Sheet is protected or View-Only in Google Drive. You do not have direct write access to this spreadsheet in the cloud.',
-          'error'
-        );
+      // Google returns 403 for expired tokens, missing scopes, quota and
+      // genuine sharing problems alike. The old check mapped all of them to
+      // "the sheet is protected or View-Only", which pointed the user at Drive
+      // sharing when the fix was reconnecting - and it did so right after they
+      // had just reconnected, so it looked like reconnecting had failed. The
+      // classifier keeps the real cause and always shows Google's detail.
+      const classified = classifySheetsWriteError(errMsg);
+      if (classified.kind === 'permission') {
+        showNotification(classified.message, 'error');
+      } else if (classified.kind === 'unknown' && !errMsg) {
+        showNotification('Could not reach Google Sheets to save this record.', 'error');
       } else {
-        showNotification(errMsg || 'Failed to update Google Sheet.', 'error');
+        // Anything else is recoverable: keep the edit locally and queue it so
+        // the change reaches the sheet on the next successful sync.
+        saveLocalRecord(student);
+        queueSheetSync({
+          target: 'records',
+          scope: String(student.rowNumber),
+          label: `${isAdd ? 'Add' : 'Update'} ${student.studentName} (row ${student.rowNumber})`,
+          payload: student,
+        });
+        showNotification(
+          `${student.studentName} was saved in the app and is waiting to reach Google Sheets. ` +
+            `${classified.kind === 'unknown' ? '' : classified.message}`,
+          'info'
+        );
+        // Close the dialog the same way the success path does: the edit is now
+        // durable locally even though it has not reached the sheet yet.
+        setConfirmationState({
+          isOpen: false,
+          title: '',
+          student: null,
+          diffs: [],
+          isAdd: false,
+          isSubmitting: false,
+        });
       }
       setConfirmationState((prev) => ({ ...prev, isSubmitting: false }));
     }
@@ -741,6 +792,7 @@ export const StudentRecordsView: React.FC = () => {
 
   return (
     <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-8 py-6 space-y-6">
+      <PendingSyncBanner />
       {/* Toast Notification */}
       {notification && (
         <div

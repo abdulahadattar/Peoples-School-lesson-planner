@@ -38,6 +38,8 @@ import {
 } from '../../services/attendanceService';
 import { printHtml } from '../../utils/printHelper';
 import { fetchSheetData, StudentRecord, syncAttendanceToSheet } from '../../services/googleSheetsService';
+import { queueSheetSync } from '../../services/sheetSyncQueue';
+import { PendingSyncBanner } from '../ui/PendingSyncBanner';
 import { getAccessToken, getCurrentUser, initAuth } from '../../services/googleAuth';
 import { isUserAdmin } from '../../services/adminService';
 import { EnrollmentEditorModal } from './EnrollmentEditorModal';
@@ -343,15 +345,39 @@ export const DailyAttendanceView: React.FC = () => {
       } catch (syncErr: any) {
         console.error('Attendance Google Sheet sync failed:', syncErr);
         sheetMessage = syncErr?.message || 'Unknown sheet sync error';
+        // The app save already succeeded and Firestore holds the record, so a
+        // sheet failure must not lose the work. Queue the date and tell the
+        // teacher the sheet is behind rather than leaving them to re-enter it.
+        queueSheetSync({
+          target: 'attendance',
+          scope: selectedDate,
+          label: `Attendance for ${selectedDate}`,
+          payload: {
+            date: selectedDate,
+            recordedBy: inChargeName,
+            notes,
+            summary: {
+              totalEnrolled: schoolSummary.totalEnrolled,
+              totalPresent: schoolSummary.totalPresent,
+              totalAbsent: schoolSummary.totalAbsent,
+              overallPercentage: schoolSummary.overallPercentage,
+            },
+            rows: attendanceRows,
+          },
+        });
       }
 
       setSaveSuccess(true);
       setHasUnsavedChanges(false);
       setLastSavedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
       if (sheetMessage) {
+        const sheetOk = sheetMessage.startsWith('Attendance synced');
         showToast(
-          `Daily attendance for ${selectedDate} saved to the app. Google Sheet: ${sheetMessage}`,
-          sheetMessage.startsWith('Attendance synced') ? 'success' : 'error'
+          sheetOk
+            ? `Daily attendance for ${selectedDate} saved to the app. Google Sheet: ${sheetMessage}`
+            : `Daily attendance for ${selectedDate} is saved in the app, but the Google Sheet has not caught up yet (${sheetMessage}). ` +
+              `Reconnect Google in the header, then press Sync to push it. Nothing is lost - the record is safe.`,
+          sheetOk ? 'success' : 'info'
         );
       } else {
         showToast(`Daily attendance for ${selectedDate} saved successfully!`, 'success');
@@ -539,6 +565,7 @@ export const DailyAttendanceView: React.FC = () => {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 py-6 space-y-6 animate-fadeInUp">
+      <PendingSyncBanner />
       {/* Toast Notification */}
       {notification && (
         <div

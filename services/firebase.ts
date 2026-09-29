@@ -85,11 +85,17 @@ async function testConnection() {
 }
 testConnection();
 
-export {
-  loginWithGoogle,
-  googleSignIn,
-  getAccessToken,
-  logoutUser,
-  logout,
-} from './googleAuth';
+// `loginWithGoogle`/`googleSignIn`/`getAccessToken`/`logout` are deliberately
+// NOT re-exported from here.
+//
+// Re-exporting them made this module import ./googleAuth, while googleAuth
+// imports `auth` from here - a cycle. Module evaluation order then decides
+// whether that is harmless or fatal, and it was fatal: the bundler built
+// googleAuth's namespace object (which re-exported `auth`) before this file
+// had reached `export const auth`, so the production build died at startup
+// with "Cannot access 'auth' before initialization" and rendered a blank
+// page. Vite's dev server ordered the modules differently and hid it.
+//
+// Consumers import those helpers straight from ./googleAuth instead, which
+// leaves this module a leaf that nothing imports back.
 

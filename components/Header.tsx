@@ -2,10 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { MenuIcon, MoonIcon, SunIcon } from './icons/MiscIcons';
 import { PhssjLogo } from './Logo';
 import { View } from '../types';
-import { auth, loginWithGoogle, logoutUser } from '../services/firebase';
+// The Google sign-in helpers come from googleAuth, not firebase: firebase used to
+// re-export them, which made it import googleAuth while googleAuth imports
+// `auth` from firebase. That cycle only failed in the production build, where it
+// blanked the app on load. See the note in services/firebase.ts.
+import { auth } from '../services/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { isUserAdmin } from '../services/adminService';
-import { ShieldCheck, LogIn, LogOut } from 'lucide-react';
+import { ShieldCheck, LogIn, LogOut, AlertTriangle, Clock } from 'lucide-react';
+import { isGoogleTokenExpired, googleSignIn, loginWithGoogle, logoutUser, GOOGLE_TOKEN_EVENT } from '../services/googleAuth';
 import { motion } from 'motion/react';
 
 type Theme = 'light' | 'dark';
@@ -37,6 +42,11 @@ const Header: React.FC<HeaderProps> = ({
   onOpenLoginGate,
 }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  // Minutes left on the Google Sheets connection. The token Google issues lasts
+  // about an hour and has no refresh path, so this surfaces the remaining time
+  // and prompts for a re-connect before an edit is ever refused.
+  const [sheetsMinutesLeft, setSheetsMinutesLeft] = useState<number | null>(null);
+  const [sheetsExpired, setSheetsExpired] = useState<boolean>(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -44,6 +54,47 @@ const Header: React.FC<HeaderProps> = ({
     });
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!currentUser) {
+      setSheetsMinutesLeft(null);
+      setSheetsExpired(true);
+      return;
+    }
+    const read = () => {
+      const expiry = localStorage.getItem('google_token_expiry');
+      const has = !!localStorage.getItem('google_access_token');
+      if (!has || !expiry) {
+        setSheetsMinutesLeft(null);
+        setSheetsExpired(true);
+        return;
+      }
+      const ms = parseInt(expiry, 10) - Date.now();
+      if (ms <= 0) {
+        setSheetsMinutesLeft(0);
+        setSheetsExpired(true);
+      } else {
+        setSheetsMinutesLeft(Math.ceil(ms / 60000));
+        setSheetsExpired(false);
+      }
+    };
+    read();
+    const id = setInterval(read, 30000);
+    // Cross-tab: `storage` fires only in *other* tabs, so this covers a
+    // reconnect performed elsewhere.
+    window.addEventListener('storage', read);
+    // Same tab: googleAuth broadcasts on every token write. Without this the
+    // countdown stayed stuck on the pre-reconnect value until a reload, because
+    // a `storage` event never fires in the tab that wrote it.
+    window.addEventListener(GOOGLE_TOKEN_EVENT, read);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener('storage', read);
+      window.removeEventListener(GOOGLE_TOKEN_EVENT, read);
+    };
+  }, [currentUser]);
+
+  const sheetsConnected = !sheetsExpired && (sheetsMinutesLeft ?? 0) > 0;
 
   const isAdmin = isUserAdmin(currentUser?.email);
 
@@ -104,6 +155,35 @@ const Header: React.FC<HeaderProps> = ({
                   <ShieldCheck className="w-3 h-3" />
                   <span>Admin</span>
                 </span>
+              )}
+
+              {/* The Firebase session outlives the Google Sheets access token,
+                  which expires roughly hourly and cannot be refreshed. Showing
+                  the time remaining (and prompting before it runs out) keeps
+                  register and attendance edits from being silently refused. */}
+              {sheetsConnected ? (
+                <span
+                  title={`Google Sheets connected for about ${sheetsMinutesLeft} more minute(s). Register and attendance edits save to the sheet until then.`}
+                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold border ${
+                    (sheetsMinutesLeft ?? 0) <= 10
+                      ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-800/80'
+                      : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/80'
+                  }`}
+                >
+                  <Clock className="w-3 h-3" />
+                  <span>{sheetsMinutesLeft}m</span>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => googleSignIn()}
+                  title="Google Sheets access has expired. Click to re-connect so register and attendance edits can be saved."
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 text-[10px] font-bold border border-amber-300 dark:border-amber-800/80 hover:bg-amber-100 active:scale-95 transition-colors"
+                >
+                  <AlertTriangle className="w-3 h-3" />
+                  <span className="hidden sm:inline">Reconnect Sheets</span>
+                  <span className="sm:hidden">!</span>
+                </button>
               )}
             </div>
 

@@ -27,6 +27,16 @@ import {
   exportSingleClassToExcel,
   exportSingleTeacherToExcel,
 } from '../../services/timetableExcelExport';
+import {
+  useTimetableSheetSync,
+  timetableSheetSignature,
+  type TimetablePushResult,
+} from '../../hooks/useTimetableSheetSync';
+import {
+  loadTimetableWithSheetMerge,
+  type TimetableSheetSnapshot,
+} from '../../services/timetableSheetService';
+import { googleSignIn } from '../../services/googleAuth';
 
 interface TimetableEditorTabProps {
   config: SchoolConfig;
@@ -46,6 +56,56 @@ const DEFAULT_BASE_PERIODS: { no: number; start: string; end: string; friStart: 
   { no: 6, start: '12:00 PM', end: '12:40 PM', friStart: '—', friEnd: '—' },
   { no: 7, start: '12:40 PM', end: '01:20 PM', friStart: '—', friEnd: '—' },
 ];
+
+/** The editor keys the working copy by class label, and a merge result may come
+ *  back as a list. Sheet classes carry provenance on every period (row numbers,
+ *  raw cells) that is useful for writing back but has no business in Firestore,
+ *  so the shape is rebuilt explicitly. An unusable result is ignored rather than
+ *  allowed to blank the page. */
+function toClassMap(classes: TimetableClassEntry[]): Record<string, TimetableClassEntry> {
+  const map: Record<string, TimetableClassEntry> = {};
+  classes.forEach(c => {
+    if (!c || !c.label) return;
+    map[c.label] = {
+      label: c.label,
+      classTeacher: c.classTeacher,
+      periods: (c.periods || []).map(p => ({
+        no: p.no,
+        start: p.start,
+        end: p.end,
+        friStart: p.friStart,
+        friEnd: p.friEnd,
+        mon: p.mon,
+        tue: p.tue,
+        wed: p.wed,
+        thu: p.thu,
+        fri: p.fri,
+        sat: p.sat,
+      })),
+    };
+  });
+  return map;
+}
+
+/**
+ * Overlay the sheet on the working copy. Returns null when the result cannot be
+ * trusted, so a caller leaves the page untouched instead of blanking it.
+ */
+function mergeSheetOverLocal(
+  localClasses: TimetableClassEntry[],
+  snapshot: TimetableSheetSnapshot
+): { classes: TimetableClassEntry[]; degraded: number } | null {
+  try {
+    // generatedAt is metadata only: the merge replaces it with the sheet's read
+    // time, and only `classes` is read from the local side.
+    const merged = loadTimetableWithSheetMerge({ generatedAt: '', classes: localClasses }, snapshot);
+    const classes = merged?.data?.classes;
+    if (!Array.isArray(classes) || classes.length === 0) return null;
+    return { classes: classes as TimetableClassEntry[], degraded: merged?.degraded?.length ?? 0 };
+  } catch {
+    return null;
+  }
+}
 
 export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
   config,
@@ -168,6 +228,64 @@ export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
   });
 
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // ── GOOGLE SHEETS SYNC ───────────────────────────────────────────────
+  // The sheet is read on an infrequent background cadence (15 min) and on
+  // demand. Nothing here is ever written to Google automatically: a push only
+  // happens from the explicit "Sync to Google Sheets" button, after a dry-run
+  // preview the teacher confirms. The Firestore save path above is untouched
+  // and never waits for Google.
+  const sheetSync = useTimetableSheetSync();
+  const [pushPreview, setPushPreview] = useState<TimetablePushResult | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  // Set while the Google popup is open. The expired-token strip carries its own
+  // Reconnect button so a teacher never has to hunt up to the Header badge - on
+  // narrow screens that badge collapses to a bare "!" with no label.
+  const [reconnecting, setReconnecting] = useState(false);
+
+  // Feed the hook the working copy. timetableMap only changes identity on a
+  // real edit, so the diff is not recomputed on every keystroke elsewhere.
+  const timetableClasses = useMemo(() => Object.values(timetableMap), [timetableMap]);
+  const setLocalClasses = sheetSync.setLocalClasses;
+  useEffect(() => {
+    setLocalClasses(timetableClasses);
+  }, [timetableClasses, setLocalClasses]);
+
+  // Signature of the snapshot the working copy currently reflects. Compared
+  // against the live one to tell "the sheet moved under your unsaved edits"
+  // apart from "the sheet is unchanged".
+  const [loadedSheetSignature, setLoadedSheetSignature] = useState<string | null>(null);
+  const currentSheetSignature = useMemo(
+    () => timetableSheetSignature(sheetSync.snapshot),
+    [sheetSync.snapshot]
+  );
+
+  // SHEET -> APP, automatically. A newly polled snapshot is merged straight in
+  // whenever nothing is being edited, so a timetable change made in Google
+  // reaches this page on its own. With unsaved edits the working copy is left
+  // alone, because replacing work in progress would lose it: the status strip
+  // flags the conflict and offers Refresh instead.
+  useEffect(() => {
+    if (!sheetSync.snapshot || !currentSheetSignature) return;
+    if (currentSheetSignature === loadedSheetSignature) return;
+    if (hasUnsavedChanges) return;
+    const merged = mergeSheetOverLocal(timetableClasses, sheetSync.snapshot);
+    if (merged) setTimetableMap(toClassMap(merged.classes));
+    setLoadedSheetSignature(currentSheetSignature);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSheetSignature, hasUnsavedChanges, timetableClasses, sheetSync.snapshot]);
+
+  const sheetChangedUnderEdits =
+    hasUnsavedChanges &&
+    loadedSheetSignature !== null &&
+    currentSheetSignature !== '' &&
+    currentSheetSignature !== loadedSheetSignature;
+
+  const lastSyncedLabel = useMemo(() => {
+    if (!sheetSync.lastSyncedAt) return 'not synced yet';
+    const at = new Date(sheetSync.lastSyncedAt);
+    return `last synced ${at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  }, [sheetSync.lastSyncedAt]);
 
   // Cell Editing Modal State
   const [editingCell, setEditingCell] = useState<{
@@ -524,6 +642,71 @@ export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
     showNotice('All timetable changes synced to cloud database successfully!');
   };
 
+  // SHEET -> APP: read the sheet now, bypassing the cache, and merge it in.
+  const handleRefreshFromSheet = async () => {
+    if (hasUnsavedChanges) {
+      const goAhead = window.confirm(
+        'Refresh from the Google Sheet now? The sheet is the master copy of the timetable, so the unsaved edits on this page will be replaced by its values.'
+      );
+      if (!goAhead) return;
+    }
+
+    setSyncing(true);
+    const snapshot = await sheetSync.refreshNow().finally(() => setSyncing(false));
+    if (!snapshot) {
+      showNotice('Could not read the Google Sheet. Check your connection and try again.');
+      return;
+    }
+
+    const merged = mergeSheetOverLocal(timetableClasses, snapshot);
+    if (merged) setTimetableMap(toClassMap(merged.classes));
+    setLoadedSheetSignature(timetableSheetSignature(snapshot));
+    setHasUnsavedChanges(false);
+    setPushPreview(null);
+    showNotice(
+      merged && merged.degraded > 0
+        ? `Refreshed from the Google Sheet. ${merged.degraded} tab${merged.degraded === 1 ? '' : 's'} could not be read, so those classes kept their saved values.`
+        : 'Timetable refreshed from the Google Sheet.'
+    );
+  };
+
+  // APP -> SHEET, step 1: dry run only, then ask.
+  const handleSyncToSheet = async () => {
+    setSyncing(true);
+    const preview = await sheetSync.previewPush(timetableClasses).finally(() => setSyncing(false));
+    if (preview.needsReconnect) return; // the strip already explains this
+    if (preview.cellCount === 0) {
+      setPushPreview(null);
+      showNotice(preview.message);
+      return;
+    }
+    setPushPreview(preview);
+  };
+
+  // APP -> SHEET, step 2: the only call in the app that writes to the sheet.
+  const handleConfirmPushToSheet = async () => {
+    setSyncing(true);
+    const result = await sheetSync.pushToSheet(timetableClasses).finally(() => setSyncing(false));
+    setPushPreview(null);
+    if (result.needsReconnect) return; // the strip already explains this
+    if (result.ok && result.snapshot) {
+      setLoadedSheetSignature(timetableSheetSignature(result.snapshot));
+    }
+    showNotice(result.message);
+  };
+
+  // Expired Sheets token, recovered from inside the timetable. The local Firestore
+  // save has already happened by the time this can run, so re-authorising is
+  // purely about being able to push afterwards - it never blocks an edit.
+  const handleReconnectSheets = async () => {
+    setReconnecting(true);
+    try {
+      await googleSignIn();
+    } finally {
+      setReconnecting(false);
+    }
+  };
+
   // EXCEL EXPORTS
   const handleExportAllClassesExcel = () => {
     const file = exportClassWiseTimetableToExcel(timetableMap, teachers, 'Peoples Secondary School');
@@ -735,6 +918,165 @@ export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
             {isSaving ? 'Syncing...' : 'Save to Cloud'}
           </button>
         </div>
+      </div>
+
+      {/* ─────────────────────────────────────────────────────────────
+          GOOGLE SHEETS STATUS STRIP
+          One line of state, two explicit actions. The sheet is re-read on a
+          slow background cadence (TIMETABLE_SHEET_POLL_MS) rather than on every
+          focus, and nothing is ever written to Google without the dry-run
+          preview below being confirmed.
+          ───────────────────────────────────────────────────────────── */}
+      <div className="bg-brand-surface border border-brand-border rounded-xl px-3.5 py-2.5 shadow-xs space-y-2">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] text-brand-text-secondary">
+          <span className="inline-flex items-center gap-1.5 font-bold text-brand-text-primary">
+            <span
+              className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                sheetSync.unreachable
+                  ? 'bg-rose-500'
+                  : sheetSync.error || sheetSync.needsReconnect
+                  ? 'bg-amber-500'
+                  : 'bg-emerald-500'
+              }`}
+            />
+            Timetable Sheet
+          </span>
+
+          <span title="Last successful read of the timetable sheet">
+            {lastSyncedLabel}
+          </span>
+
+          <span className="text-brand-border">·</span>
+          <span>
+            {sheetSync.nextRefreshLabel
+              ? `next refresh in ${sheetSync.nextRefreshLabel}`
+              : 'automatic refresh paused'}
+          </span>
+
+          {sheetSync.sheetChangesCount > 0 && (
+            <span
+              className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 font-bold"
+              title="Cells where the app and the Google Sheet currently disagree. Refresh from the sheet to pull them in, or sync to push your edits."
+            >
+              {sheetSync.sheetChangesCount} difference{sheetSync.sheetChangesCount === 1 ? '' : 's'}
+            </span>
+          )}
+
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleRefreshFromSheet}
+              disabled={syncing}
+              className="px-3 py-1.5 rounded-xl bg-brand-bg hover:bg-brand-border text-brand-text-primary border border-brand-border text-[11px] font-semibold transition-colors disabled:opacity-50"
+              title="Re-read the Google Sheet now, ignoring the cache, and merge it into this page."
+            >
+              {sheetSync.refreshing ? 'Refreshing...' : 'Refresh from sheet'}
+            </button>
+            <button
+              type="button"
+              onClick={handleSyncToSheet}
+              disabled={syncing || sheetSync.needsReconnect}
+              className="px-3 py-1.5 rounded-xl bg-brand-primary/10 hover:bg-brand-primary/20 text-brand-primary border border-brand-primary/30 text-[11px] font-semibold transition-colors disabled:opacity-50"
+              title="Preview the cells that would change in the Google Sheet, then confirm before anything is written. The sheet's layout is never changed."
+            >
+              {syncing && !sheetSync.refreshing ? 'Working...' : 'Sync to Google Sheets'}
+            </button>
+          </div>
+        </div>
+
+        {/* Expired token: the local save already succeeded, so this only ever
+            asks for a reconnect. The button lives here rather than only in the
+            Header because the Header badge collapses to an unlabelled "!" on
+            narrow screens, leaving no obvious way back from this page. */}
+        {sheetSync.needsReconnect && (
+          <div className="px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-[11px] text-amber-800 dark:text-amber-200 flex flex-wrap items-center gap-2">
+            <span className="font-bold">Reconnect Sheets to sync.</span>
+            <span>
+              Google Sheets access has expired. Saving to the cloud is unaffected and the
+              sheet keeps refreshing either way.
+            </span>
+            <button
+              type="button"
+              onClick={() => void handleReconnectSheets()}
+              disabled={reconnecting}
+              className="ml-auto px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold transition-colors disabled:opacity-50"
+              title="Open Google's sign-in to get a new Sheets access token, then press Sync to Google Sheets."
+            >
+              {reconnecting ? 'Opening Google...' : 'Reconnect Google'}
+            </button>
+            <button
+              type="button"
+              onClick={sheetSync.dismissNeedsReconnect}
+              className="px-2 py-1 rounded-lg font-bold underline hover:no-underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {/* The sheet moved under edits that are still only in the browser. */}
+        {sheetChangedUnderEdits && (
+          <div className="px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-[11px] text-amber-800 dark:text-amber-200">
+            <span className="font-bold">The sheet changed since you loaded it</span> - refresh before
+            syncing, or your edits will overwrite those changes in Google.
+          </div>
+        )}
+
+        {/* Back-off state. Polling has stopped, so offer Retry rather than
+            retrying a sheet that is not answering. */}
+        {sheetSync.unreachable && (
+          <div className="px-3 py-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-[11px] text-rose-800 dark:text-rose-200 flex flex-wrap items-center gap-2">
+            <span className="font-bold">Could not reach the sheet.</span>
+            <span>{sheetSync.error || 'Automatic refresh has been paused.'}</span>
+            <button
+              type="button"
+              onClick={sheetSync.startPolling}
+              disabled={sheetSync.refreshing}
+              className="ml-auto px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold transition-colors disabled:opacity-50"
+            >
+              {sheetSync.refreshing ? 'Retrying...' : 'Retry'}
+            </button>
+          </div>
+        )}
+
+        {/* Non-fatal read error while polling is still in play. */}
+        {!sheetSync.unreachable && sheetSync.error && !sheetSync.needsReconnect && (
+          <div className="px-3 py-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-[11px] text-rose-800 dark:text-rose-200">
+            Last read of the sheet failed: {sheetSync.error}
+          </div>
+        )}
+
+        {/* Push confirmation. This is the gate in front of the only write. */}
+        {pushPreview && pushPreview.cellCount > 0 && (
+          <div className="px-3 py-2 rounded-lg bg-brand-primary/5 border border-brand-primary/30 text-[11px] text-brand-text-primary flex flex-wrap items-center gap-2">
+            <span className="font-bold">
+              Write {pushPreview.cellCount} cell{pushPreview.cellCount === 1 ? '' : 's'}
+            </span>
+            <span className="text-brand-text-secondary">
+              {pushPreview.tabLabels.length > 0
+                ? `to the ${pushPreview.tabLabels.join(', ')} tab${pushPreview.tabLabels.length === 1 ? '' : 's'} in the Google Sheet.`
+                : 'in the Google Sheet.'}{' '}
+              Only timetable cells change - the sheet's own layout is left alone.
+              {pushPreview.skipped.length > 0 && ` ${pushPreview.skipped.length} tab${pushPreview.skipped.length === 1 ? '' : 's'} will be skipped.`}
+            </span>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPushPreview(null)}
+                className="px-2.5 py-1 rounded-lg bg-brand-bg hover:bg-brand-border border border-brand-border text-brand-text-secondary font-semibold transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmPushToSheet}
+                className="px-2.5 py-1 rounded-lg bg-brand-primary hover:bg-brand-primary-hover text-white font-bold transition-colors"
+              >
+                Write to sheet
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ─────────────────────────────────────────────────────────────

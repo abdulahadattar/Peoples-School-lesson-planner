@@ -111036,8 +111036,9 @@ async function createApp() {
     console.log("[server] Request:", req.method, req.path);
     next();
   });
-  const sharedSecret = process.env.AUTONOMA_SHARED_SECRET || "e1ae84345a120f3f25ce10158da374307faadfeb1a091b997299ae55777d166a";
-  const signingSecret = process.env.AUTONOMA_SIGNING_SECRET || "043b60e656b726705d559a6489a73ccaf57c234f5e01b384f5f62936c1a0aaaa";
+  // SECURITY (docs/ALPHA_STATUS.md F1): committed secret literals removed; env only.
+  const sharedSecret = (process.env.AUTONOMA_SHARED_SECRET || "").trim();
+  const signingSecret = (process.env.AUTONOMA_SIGNING_SECRET || "").trim();
   const autonomaHandler = createAutonomaHandler(sharedSecret, signingSecret);
   app.get("/api/health", (_req, res) => {
     console.log("[server] /api/health route hit");

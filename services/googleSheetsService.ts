@@ -819,6 +819,91 @@ function describeAttendanceSyncError(status: number, body: string, context: stri
   return new Error(`Attendance sheet sync failed (HTTP ${status}) while ${context}. Detail: ${detail}`);
 }
 
+/**
+ * Classify a Google Sheets write failure so the UI says the right thing.
+ *
+ * The previous check treated any error mentioning `403` as "the sheet is
+ * protected or View-Only". Google uses 403 for far more than sharing: an
+ * expired or invalid access token, a missing scope, and a quota breach all come
+ * back 403. Reporting those as a Drive-permission problem sent the user to
+ * Google Drive to fix sharing when the actual fix was reconnecting Google -
+ * and the problem was reported right after reconnecting, which made it look
+ * like the reconnect had failed.
+ *
+ * `kind` is what the caller should do about it:
+ * - `auth`      - reconnect (a token problem)
+ * - `scope`     - re-authorise so the Sheets scope is granted
+ * - `permission`- the sheet genuinely needs Editor sharing
+ * - `quota`     - retry later
+ * - `unknown`   - show the detail as-is
+ */
+export type SheetsWriteErrorKind = 'auth' | 'scope' | 'permission' | 'quota' | 'unknown';
+
+export function classifySheetsWriteError(errMessage: string): {
+  kind: SheetsWriteErrorKind;
+  message: string;
+} {
+  const raw = (errMessage || '').trim();
+  const m = raw.toLowerCase();
+  // Keep the underlying detail visible: a diagnosis the user cannot check is a
+  // diagnosis they cannot act on.
+  const detail = raw ? `Google said: ${raw}` : '';
+
+  // Auth failures first. They dominate the 403 space and are the most
+  // commonly mis-attributed, so they are tested before permission.
+  if (
+    m.includes('401') ||
+    m.includes('invalid authentication credentials') ||
+    m.includes('token has been expired') ||
+    m.includes('token expired') ||
+    m.includes('token has been expired or revoked') ||
+    m.includes('invalid_grant') ||
+    (m.includes('403') && (m.includes('token') || m.includes('bearer') || m.includes('credential')))
+  ) {
+    return {
+      kind: 'auth',
+      message:
+        'Google rejected the sign-in because the access token is expired or invalid. ' +
+        `Press "Reconnect Google" to get a fresh token, then press Sync again. ${detail}`,
+    };
+  }
+
+  if (m.includes('scope') || m.includes('insufficient authentication scopes')) {
+    return {
+      kind: 'scope',
+      message:
+        'This account has not granted the Google Sheets permission. ' +
+        `Sign in with Google again and accept the Sheets access prompt. ${detail}`,
+    };
+  }
+
+  if (m.includes('ratelimit') || m.includes('rate limit') || m.includes('quota')) {
+    return {
+      kind: 'quota',
+      message:
+        'Google is rate-limiting writes to this spreadsheet. ' +
+        `Wait a minute and press Sync again. ${detail}`,
+    };
+  }
+
+  if (
+    m.includes('permission') ||
+    m.includes('does not have permission') ||
+    (m.includes('403') && m.includes('forbidden')) ||
+    m.includes('protected')
+  ) {
+    return {
+      kind: 'permission',
+      message:
+        'Google Sheet is protected or View-Only in Google Drive. ' +
+        'You do not have direct write access to this spreadsheet in the cloud. ' +
+        `Ask the sheet owner to share it with you as an Editor. ${detail}`,
+    };
+  }
+
+  return { kind: 'unknown', message: raw };
+}
+
 export async function syncAttendanceToSheet(
   record: {
     date: string;
