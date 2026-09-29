@@ -40,6 +40,7 @@ const TEST_FILES = [
   'scripts/unit/teacherRoster.test.ts',
   'scripts/unit/availability.test.ts',
   'scripts/unit/selectors.test.ts',
+  'scripts/unit/rendering.test.ts',
 ];
 
 const testText = TEST_FILES
