@@ -12,6 +12,19 @@ dist
 dist-ssr
 *.local
 
+# Never commit API keys or env backups
+.env
+.env.*
+*.bak
+
+# Screenshots produced by the browser E2E suite
+test-artifacts/
+
+# Local tooling state — contains project ids / worktrees with their own env files
+.vercel/
+.freebuff/
+.kilo/worktrees/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
