@@ -24,6 +24,7 @@
     "test:unit:local": "tsx scripts/unit/localFirst.test.ts",
     "test:unit:guard": "tsx scripts/unit/extractedNameGuard.test.ts",
     "test:unit:roster": "tsx scripts/unit/teacherRoster.test.ts",
+    "test:unit:availability": "tsx scripts/unit/availability.test.ts",
     "test:coverage": "node scripts/test-coverage-gaps.mjs",
     "test:rules": "node scripts/test-firestore-rules.mjs",
     "test:keys": "node scripts/gemini-probe.mjs",

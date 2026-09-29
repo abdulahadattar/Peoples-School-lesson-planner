@@ -36,6 +36,9 @@ const MODULES = [
 const TEST_FILES = [
   'scripts/unit-tests.ts',
   'scripts/unit/localFirst.test.ts',
+  'scripts/unit/extractedNameGuard.test.ts',
+  'scripts/unit/teacherRoster.test.ts',
+  'scripts/unit/availability.test.ts',
 ];
 
 const testText = TEST_FILES
