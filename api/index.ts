@@ -330,15 +330,85 @@ function createAutonomaHandler(sharedSecret: string, signingSecret: string) {
   });
 }
 
-const sharedSecret = process.env.AUTONOMA_SHARED_SECRET || 'e1ae84345a120f3f25ce10158da374307faadfeb1a091b997299ae55777d166a';
-const signingSecret = process.env.AUTONOMA_SIGNING_SECRET || '043b60e656b726705d559a6489a73ccaf57c234f5e01b384f5f62936c1a0aaaa';
-const autonomaHandler = createAutonomaHandler(sharedSecret, signingSecret);
+// ===== Autonoma secrets: environment only, no literal fallback =====
+// There is deliberately NO committed default here. A stale literal signs every
+// request with the wrong key and the only symptom is a bare
+// 401 {"error":"Invalid HMAC signature","code":"INVALID_SIGNATURE"}, which reads
+// as an Autonoma outage instead of a misconfiguration (see finding F1 in
+// docs/ALPHA_STATUS.md). Keep this block in sync with services/app.ts.
+const IS_PRODUCTION = process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL);
+
+function missingAutonomaSecrets(sharedSecret: string, signingSecret: string): string[] {
+  const missing: string[] = [];
+  if (!sharedSecret) missing.push('AUTONOMA_SHARED_SECRET');
+  if (!signingSecret) missing.push('AUTONOMA_SIGNING_SECRET');
+  return missing;
+}
+
+// @autonoma-ai/sdk rejects sharedSecret === signingSecret with SAME_SECRETS on
+// every request, so the dev-only pair must always be two distinct values.
+function generateDevAutonomaSecrets(): { sharedSecret: string; signingSecret: string } {
+  const sharedSecret = crypto.randomBytes(32).toString('hex');
+  let signingSecret = crypto.randomBytes(32).toString('hex');
+  while (signingSecret === sharedSecret) {
+    signingSecret = crypto.randomBytes(32).toString('hex');
+  }
+  return { sharedSecret, signingSecret };
+}
+
+function resolveAutonomaSecrets(): { sharedSecret: string; signingSecret: string } {
+  const sharedSecret = (process.env.AUTONOMA_SHARED_SECRET || '').trim();
+  const signingSecret = (process.env.AUTONOMA_SIGNING_SECRET || '').trim();
+
+  if (sharedSecret && sharedSecret === signingSecret) {
+    const message =
+      '[autonoma] AUTONOMA_SHARED_SECRET and AUTONOMA_SIGNING_SECRET must be different: ' +
+      '@autonoma-ai/sdk rejects identical secrets with SAME_SECRETS.';
+    if (IS_PRODUCTION) {
+      console.error(message);
+      throw new Error(message);
+    }
+    console.warn(`${message} Using a generated dev-only pair for this boot.`);
+    return generateDevAutonomaSecrets();
+  }
+
+  const missing = missingAutonomaSecrets(sharedSecret, signingSecret);
+  if (missing.length > 0) {
+    const message =
+      `[autonoma] Missing environment variable(s): ${missing.join(', ')}. ` +
+      'Set them in Vercel project settings (deployed) or in .env locally (see .env.example). ' +
+      'An empty or stale value answers every signed request with 401 INVALID_SIGNATURE.';
+    if (IS_PRODUCTION) {
+      // Fail fast: a production deployment without Autonoma credentials must not
+      // start, otherwise the failure only shows up as an unexplained 401.
+      console.error(`${message} Refusing to start.`);
+      throw new Error(`${message} Refusing to start.`);
+    }
+    // Local dev stays bootable, but the generated pair is dev-only: an external
+    // Autonoma caller cannot sign a request this process will accept.
+    console.warn(
+      `${message} Continuing with a generated, dev-only secret pair; ` +
+        'Autonoma signing will NOT match an external caller.'
+    );
+    return generateDevAutonomaSecrets();
+  }
+
+  return { sharedSecret, signingSecret };
+}
+
+const { sharedSecret: AUTONOMA_SHARED_SECRET, signingSecret: AUTONOMA_SIGNING_SECRET } =
+  resolveAutonomaSecrets();
+
+const autonomaHandler = createAutonomaHandler(AUTONOMA_SHARED_SECRET, AUTONOMA_SIGNING_SECRET);
 
 // ===== API Routes =====
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
+// The handler is always constructed: production throws at boot when a secret is
+// missing (fail fast) and local dev generates a dev-only pair, so the previous
+// "not configured -> 503 AUTONOMA_NOT_CONFIGURED" branch is now unreachable.
 app.post('/api/autonoma', (req, res) => {
   autonomaHandler(req, res);
 });
@@ -1049,14 +1119,36 @@ app.get('/api/documents/export-zip', (_req, res) => {
 });
 
 // SPA fallback
+// Express 5 rejects a bare absolute path in res.sendFile (NotFoundError, which
+// the error handler below turns into a 500 for every page load), so the
+// filename must be passed together with a `root`.
 if (process.env.NODE_ENV !== 'production') {
-  app.get('/*{path}', (_req, res) => {
-    res.sendFile(path.join(process.cwd(), 'index.html'));
+  // Must be the SAME pattern as the production branch below. The previous
+  // value here was '/*{path}', which Express 5 (path-to-regexp v8) rejects at
+  // registration time with
+  //   TypeError: Missing parameter name at index 2: /*{path}
+  // so importing this module outside production threw before any route could
+  // be reached, breaking `vercel dev` and any local test of the function.
+  // Verified against Express 5: '*{name}' registers cleanly and matches '/',
+  // '/records/123' and '/a/b/c'. Bare '*' and '/*{path}' both throw.
+  app.get('*all', (_req, res) => {
+    res.sendFile('index.html', { root: process.cwd() }, (err) => {
+      if (err) {
+        console.error('[api] SPA fallback failed:', err);
+        if (!res.headersSent) res.status(500).send('Failed to serve index.html');
+      }
+    });
   });
 } else {
-  app.use(express.static(path.join(process.cwd(), 'dist')));
+  const distPath = path.join(process.cwd(), 'dist');
+  app.use(express.static(distPath));
   app.get('*all', (_req, res) => {
-    res.sendFile(path.join(process.cwd(), 'dist', 'index.html'));
+    res.sendFile('index.html', { root: distPath }, (err) => {
+      if (err) {
+        console.error('[api] SPA fallback failed:', err);
+        if (!res.headersSent) res.status(500).send('Failed to serve index.html');
+      }
+    });
   });
 }
 

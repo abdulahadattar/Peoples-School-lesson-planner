@@ -165,15 +165,31 @@ function isAuthOrQuotaError(error: any): boolean {
 
 /**
  * Detects API key errors that are permanent and will never succeed on retry.
- * Examples: Google API key has been "suspended", "disabled", or is "invalid".
+ *
+ * Google's real payloads for a dead key include:
+ *   - "Your API key was reported as leaked. Please use another API key."
+ *   - "API key not valid. Please pass a valid API key."
+ *   - "API key has been suspended" / "has been disabled"
+ *   - PERMISSION_DENIED
+ *
+ * The previous list only matched "suspended" / "disabled" / "invalid api key",
+ * so a leaked key was never recognised. withKeyRotation() then retried every
+ * dead key on every model: with N dead keys that is N x MODEL_CHAIN.length
+ * doomed requests per attempt, times 3 attempts - which is what made AI
+ * generation appear to hang. Quota/429 is deliberately NOT matched here
+ * because it is transient and the next key will usually succeed.
  */
 export function isKeyPermanentlyBlocked(error: unknown): boolean {
   const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
   return (
+    message.includes("reported as leaked") ||
+    message.includes("api key not valid") ||
+    message.includes("invalid api key") ||
+    message.includes("api key has been") ||
     message.includes("suspended") ||
     message.includes("disabled") ||
-    message.includes("invalid api key") ||
-    message.includes("api key has been")
+    message.includes("permission_denied") ||
+    message.includes("permission denied")
   );
 }
 
