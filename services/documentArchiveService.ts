@@ -6,6 +6,7 @@ import AdmZip from 'adm-zip';
 import { ZipArchive, Archiver } from 'archiver';
 import { PDFDocument } from 'pdf-lib';
 import { cleanAndParseJson } from './jsonHelpers.js';
+import { sanitizeScriptNameField } from './extractedNameGuard.js';
 import {
   StudentDocumentRecord,
   StudentDossier,
@@ -2501,14 +2502,39 @@ async function processSingleDocument(
       ? toEnglishTitleCase(aiResult.paternalGrandfatherName)
       : undefined;
 
+    // The Urdu/Sindhi fields were previously copied straight from the model, so
+    // a paragraph of its own reasoning could land in the dossier as a "name".
+    // Guard them with the same intent as isInvalidPersonName(), but by shape:
+    // prose, line breaks and embedded NADRA numbers are all rejected, while
+    // real Arabic-script names pass through untouched.
+    const rejectName = (field: string) => (reason: string) => {
+      addJobLog(
+        jobId,
+        'warn',
+        'NADRA_PARSE',
+        `Rejected ${field} from the extracted record: ${reason}`,
+        {
+          grNo: currentGr,
+          filename: item.originalFilename,
+          details: `${field}: ${reason}`,
+        }
+      );
+    };
+    const scriptName = (field: string, value?: string) =>
+      sanitizeScriptNameField(value, rejectName(field));
+    const cleanUrduName = scriptName('studentNameUrdu', aiResult.studentNameUrdu);
+    const cleanSindhiName = scriptName('studentNameSindhi', aiResult.studentNameSindhi);
+    const cleanFatherUrdu = scriptName('fatherNameUrdu', aiResult.fatherNameUrdu);
+    const cleanFatherSindhi = scriptName('fatherNameSindhi', aiResult.fatherNameSindhi);
+
     const extractedData: ExtractedStudentInfo = {
       grNo: currentGr !== 'UNASSIGNED' ? currentGr : aiResult.grNo,
       studentName: cleanStudName,
-      studentNameUrdu: aiResult.studentNameUrdu,
-      studentNameSindhi: aiResult.studentNameSindhi,
+      studentNameUrdu: cleanUrduName,
+      studentNameSindhi: cleanSindhiName,
       fatherName: cleanFatherName,
-      fatherNameUrdu: aiResult.fatherNameUrdu,
-      fatherNameSindhi: aiResult.fatherNameSindhi,
+      fatherNameUrdu: cleanFatherUrdu,
+      fatherNameSindhi: cleanFatherSindhi,
       applicantName: cleanApplicantName,
       applicantCnic: normalizeNadraNumber(aiResult.applicantCnic),
       children: aiResult.children,
