@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build",
+    "build": "node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js build",
     "start": "node api/index.js",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
@@ -17,7 +17,14 @@
     "test:token": "node --import tsx scripts/test-token-freshness.mjs",
     "verify:attendance": "node scripts/verify-attendance-save.mjs",
     "audit:runtime": "node scripts/audit-runtime.mjs",
-    "validate": "npm run lint && npm run build && npm run test:local"
+    "validate": "npm run lint && npm run build && npm run test:local",
+    "test:storage": "node --import tsx scripts/test-storage-adapter.mjs",
+    "test:sheets-sync": "node --import tsx --import ./scripts/test-hooks/alias-idb.mjs scripts/test-sheets-sync-diagnostics.mjs",
+    "test:unit": "tsx scripts/unit-tests.ts",
+    "test:keys": "node scripts/gemini-probe.mjs",
+    "test:e2e": "node scripts/e2e-smoke.mjs",
+    "diagnose:records": "node scripts/diagnose-records.mjs",
+    "test:all": "npm run lint && npm run test:unit && npm run test && npm run test:e2e"
   },
   "dependencies": {
     "@autonoma-ai/sdk": "^0.2.9",
@@ -32,6 +39,7 @@
     "express": "^5.2.1",
     "file-saver": "^2.0.5",
     "firebase": "^12.18.0",
+    "firebase-admin": "^14.5.0",
     "idb-keyval": "^6.2.1",
     "lucide-react": "^1.43.0",
     "motion": "^13.3.0",

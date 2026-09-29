@@ -16,5 +16,16 @@ dist/
 # must never reach the repository.
 data/student_documents/
 data/*.json
+# Autonoma SDK mirror tables. The local server writes these under
+# process.cwd()/data, and they are runtime state (context owners, journal rows,
+# receipts), not source. Left untracked they show up as untracked noise in every
+# `git status` and risk being committed.
+data/autonoma/
 !data/timetable.json
 !data/teachers.json
+
+# Screenshots and text dumps written by the browser suites
+# (scripts/e2e-smoke.mjs, scripts/diagnose-records.mjs). These capture the live
+# Student Records register, so they contain real student names, GR numbers and
+# guardian names. They must never be committed.
+test-artifacts/
