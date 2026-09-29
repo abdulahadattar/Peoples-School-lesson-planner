@@ -245,6 +245,14 @@ export interface BatchProcessingJob {
   duplicateCount: number;
   failedCount?: number;
   successCount?: number;
+  /**
+   * Pages that were archived but never analysed, because every Gemini key
+   * timed out (or errored) and classifyImage fell back to OTHER_UNCLASSIFIED.
+   * These are counted in successCount as "archived", but they carry no
+   * classification or extracted data, so the UI must surface them separately
+   * instead of implying a clean run.
+   */
+  unclassifiedCount?: number;
   status: 'uploading' | 'processing' | 'completed' | 'paused' | 'failed';
   currentStage?: string;
   currentStageDescription?: string;

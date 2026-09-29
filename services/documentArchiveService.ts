@@ -2691,6 +2691,10 @@ async function processSingleDocument(
     );
 
     saveStores();
+    // Non-persisted marker so the queue worker can tell "AI actually analysed
+    // this" from "every key timed out and we fell back to OTHER_UNCLASSIFIED".
+    // modelUsed === 'none' is only set by the exhaustion path in classifyImage.
+    (docRecord as any)._aiExhausted = modelUsed === 'none';
     return docRecord;
   } catch (error: any) {
     console.error(`[documentArchiveService] Failed processing ${item.originalFilename}:`, error);
@@ -3518,6 +3522,13 @@ async function runBackgroundQueue(serverKeys: string[]) {
             }
             if (doc && job) {
               job.successCount = (job.successCount || 0) + 1;
+              // A page that every key timed out on is archived but NOT analysed.
+              // Counting it only in successCount made a batch that lost its AI
+              // entirely report "6/6 ok, 0 failed" while one document was
+              // meaningless OTHER_UNCLASSIFIED filler.
+              if ((doc as any)._aiExhausted) {
+                job.unclassifiedCount = (job.unclassifiedCount || 0) + 1;
+              }
             }
           } catch (err: any) {
             console.error(`[documentArchiveService] Error processing queue item:`, err);
@@ -3532,7 +3543,7 @@ async function runBackgroundQueue(serverKeys: string[]) {
             if (job.remainingFiles === 0 && processingQueue.filter((q) => q.jobId === job.id).length === 0) {
               job.status = (job.failedCount || 0) > 0 && (job.successCount || 0) === 0 ? 'failed' : 'completed';
               job.currentStage = 'COMPLETE';
-              job.currentStageDescription = `Batch complete: ${job.processedFiles} processed, ${job.flaggedCount || 0} flagged, ${job.failedCount || 0} failed.`;
+              job.currentStageDescription = `Batch complete: ${job.processedFiles} processed, ${job.flaggedCount || 0} flagged, ${job.failedCount || 0} failed${job.unclassifiedCount ? `, ${job.unclassifiedCount} unclassified (AI unreachable)` : ''}.`;
               job.completedAt = new Date().toISOString();
             }
             saveStores();
@@ -3584,7 +3595,7 @@ export async function ingestUploadedArchive(
     flaggedCount: 0,
     duplicateCount: 0,
     failedCount: 0,
-    successCount: 0,
+    successCount: 0,    unclassifiedCount: 0,
     status: 'uploading',
     currentStage: 'PDF_EXTRACT',
     currentStageDescription: `Unpacking archive ${originalFilename}...`,
@@ -3737,7 +3748,7 @@ export function createBatchJob(expectedFilesCount: number = 0): BatchProcessingJ
     flaggedCount: 0,
     duplicateCount: 0,
     failedCount: 0,
-    successCount: 0,
+    successCount: 0,    unclassifiedCount: 0,
     status: 'uploading',
     currentStage: 'UPLOAD',
     currentStageDescription: `Receiving ${expectedFilesCount} documents...`,
@@ -4012,7 +4023,7 @@ export async function ingestIndividualFiles(
     flaggedCount: 0,
     duplicateCount: 0,
     failedCount: 0,
-    successCount: 0,
+    successCount: 0,    unclassifiedCount: 0,
     status: 'processing',
     currentStage: 'AI_VISION',
     currentStageDescription: `Processing ${files.length} document scans`,
