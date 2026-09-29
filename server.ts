@@ -19,7 +19,40 @@ interface ServerSheetCacheEntry {
 const sheetCache: Record<string, ServerSheetCacheEntry> = {};
 const SHEET_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
+/**
+ * Load local .env files into process.env.
+ *
+ * `npm run dev` runs this file through tsx, which (unlike Vite's own dev
+ * server) does NOT populate process.env from .env.local. Without this the
+ * /api/gemini proxy always answered 401 "GEMINI_API_KEY is not configured"
+ * even when .env.local held valid keys.
+ *
+ * Existing variables always win so real deployment env (Vercel) is untouched.
+ */
+function loadLocalEnvFiles() {
+  for (const file of ['.env.local', '.env']) {
+    const full = path.join(process.cwd(), file);
+    if (!fs.existsSync(full)) continue;
+    let text = '';
+    try {
+      text = fs.readFileSync(full, 'utf-8');
+    } catch {
+      continue;
+    }
+    for (const line of text.split(/\r?\n/)) {
+      const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+      if (!match) continue;
+      const [, name, rawValue] = match;
+      if (process.env[name] !== undefined) continue; // real env wins
+      const value = rawValue.trim().replace(/^["']|["']$/g, '');
+      if (value) process.env[name] = value;
+    }
+  }
+}
+
 async function startServer() {
+  loadLocalEnvFiles();
+
   const app = express();
   const PORT = 3000;
 

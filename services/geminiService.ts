@@ -142,15 +142,28 @@ function isAuthOrQuotaError(error: any): boolean {
 
 /**
  * Detects API key errors that are permanent and will never succeed on retry.
- * Examples: Google API key has been "suspended", "disabled", or is "invalid".
+ *
+ * Google's real payloads for a dead key include:
+ *   - "Your API key was reported as leaked. Please use another API key."
+ *   - "API key not valid. Please pass a valid API key."
+ *   - "API key has been suspended" / "has been disabled"
+ * Permission errors are also permanent for that key.
+ *
+ * Missing these made the app retry every dead key on every model before giving
+ * up (17 keys x 3 models x 3 attempts = 153 doomed requests per generation),
+ * which is what made generation appear to freeze.
  */
 export function isKeyPermanentlyBlocked(error: unknown): boolean {
   const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
   return (
+    message.includes("reported as leaked") ||
+    message.includes("api key not valid") ||
+    message.includes("invalid api key") ||
+    message.includes("api key has been") ||
     message.includes("suspended") ||
     message.includes("disabled") ||
-    message.includes("invalid api key") ||
-    message.includes("api key has been")
+    message.includes("permission_denied") ||
+    message.includes("permission denied")
   );
 }
 
