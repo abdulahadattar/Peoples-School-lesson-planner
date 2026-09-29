@@ -39,6 +39,7 @@ const TEST_FILES = [
   'scripts/unit/extractedNameGuard.test.ts',
   'scripts/unit/teacherRoster.test.ts',
   'scripts/unit/availability.test.ts',
+  'scripts/unit/selectors.test.ts',
 ];
 
 const testText = TEST_FILES
