@@ -113,12 +113,14 @@ export const DEFAULT_MODEL = "gemini-3.5-flash-lite";
  * healthy keys; if every key fails on it, it moves to the next model on all keys,
  * and so on.
  *
- * >>> DO NOT EDIT FROM MEMORY. Read docs/VERIFIED_STACK.md section 4 first, then
- * >>> run `npm run probe:models` to confirm each id really answers, and update
- * >>> that doc in the same commit.
+ * >>> DO NOT EDIT FROM MEMORY. Your training data on this model list is stale and
+ * >>> will be confidently wrong: gemini-2.5-flash 404s, gemini-3.1-flash-lite-preview
+ * >>> is shut down, and gemma-4-26b-a4b-it is LISTED but never responds. Read
+ * >>> docs/VERIFIED_STACK.md section 4 first, then run `npm run probe:models` to
+ * >>> confirm each id really answers, and update that doc in the same commit.
  * >>>
  * >>> Official sources:
- * >>>   models      https://ai.google.dev/gemini-api/docs/models
+ * >>>   models       https://ai.google.dev/gemini-api/docs/models
  * >>>   deprecations https://ai.google.dev/gemini-api/docs/deprecations
  * >>>   API errors   https://ai.google.dev/gemini-api/docs/api-errors
  *

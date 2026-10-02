@@ -2,6 +2,12 @@
 
 **Last verified: 2026-10-02** (re-verify with the commands in section 2 before trusting anything here)
 
+> **For AI agents:** if you arrived here from memory — a remembered API shape, a
+> remembered version number, a remembered model id — stop and re-verify. Every
+> entry below was measured, and several plausible-sounding facts in this repo
+> are demonstrably false (see section 6). Do not add to this file from recall;
+> add from a probe run.
+
 This file is the single source of truth for "what is actually installed, what is
 currently supported upstream, and where the authoritative docs live". It exists
 because several model names, package versions and doc URLs in this repo have

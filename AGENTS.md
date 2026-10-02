@@ -1,3 +1,96 @@
+# PHSSJ Portal — Agent Operating Rules (read this first)
+
+## 0. Your prior knowledge is untrusted input
+
+**Do not work on this codebase from memory.** Not the framework APIs, not the
+package versions, not the model ids, not the config file layout, not the
+"breaking changes" you remember. Treat every recollection as a *hypothesis to
+verify*, never as a fact to build on.
+
+This is not caution for its own sake — every one of these was wrong at least once
+in this repo, and each was caught by checking rather than by remembering:
+
+| Recollection | Reality (verified 2026-10-02) |
+| :--- | :--- |
+| "Recharts docs are at `recharts.org/en-US/api`" | 404. v3 docs moved to `recharts.github.io`. |
+| "`gemini-2.5-flash` is a safe fallback" | HTTP 404, "no longer available to new users". |
+| "If it appears in ListModels, it works" | `gemma-4-26b-a4b-it` is listed but hangs forever. |
+| "`package.json` says what's installed" | Lockfile had `@google/genai` 1.52.0 while the range said `^1.29.0`. |
+| "npm 404 means the package is gone" | npmjs.com 403s bots; that's bot protection, not a dead package. |
+| "The alpha worktree is in `.kilo/worktrees/alpha`" | Moved to `D:\Peoples-School-lesson-planner-alpha`. |
+
+A confident, specific, wrong answer is **worse** than "let me check", because it
+lands in the diff looking authoritative. If you did not verify it in this session,
+you did not know it.
+
+### The rule
+
+Before you write code that depends on an external fact, get it from one of these,
+in priority order:
+
+1. **The source itself** — read the file. Don't infer it from a filename.
+2. **The official documentation** — the URL in that file's header comment, or the
+   index in [`docs/VERIFIED_STACK.md`](docs/VERIFIED_STACK.md) section 5.
+3. **The live system** — run the probe. Do not reason about what it would return.
+4. **A repo skill** — see below.
+
+Then **cite what you used** (the URL, the command, the version) in the code
+comment or the commit message, so the next agent can re-verify instead of
+re-deriving. If you could verify nothing, say so explicitly rather than
+guessing quietly.
+
+---
+
+## 1. Use the skills — do not improvise
+
+Load and follow an existing skill before improvising a process.
+
+- Canonical skills: `skills/` in the `testing` worktree (`D:\Peoples-School-lesson-planner\skills`)
+- Cursor mirror: `.cursor/skills/` (same content)
+- Start with `skills/README.md` for the vetted list and provenance.
+
+| Task | Skill |
+| :--- | :--- |
+| Writing a new feature | `spec-driven-development` (PRD before code) |
+| Fixing a bug | `debugging-and-error-recovery`, `test-driven-development` |
+| Reviewing a diff | `code-review-and-quality`, `code-review-excellence` |
+| Auth, injection, XSS, rules | `security-and-hardening`, `frontend-security-coder` |
+| Accessibility | `fixing-accessibility`, `accessibility-compliance-accessibility-audit` |
+| Animations | `fixing-motion-performance` |
+| Firestore / auth | `firebase` |
+| Browser-driven checks | `browser-automation`, `e2e-testing-patterns` |
+
+A skill that exists is a decision already made. Deviating from it needs a reason,
+not a preference.
+
+---
+
+## 2. Verify with the probes, then update the record
+
+[`docs/VERIFIED_STACK.md`](docs/VERIFIED_STACK.md) is the source of truth for
+installed versions, the live Gemini model chain, and official documentation
+URLs. Keep it true:
+
+```bash
+npm run verify:docs   # assert every cited doc URL still resolves
+npm run probe:models  # assert each Gemini model id really answers
+npm run test:keys     # key pool health + chain resolution
+```
+
+Every key source file (`services/geminiService.ts`, `services/firebase.ts`,
+`services/exportService.ts`, `vite.config.ts`, `firestore.rules`,
+`scripts/lib/gemini-keys.mjs`) carries a header comment with the official doc
+links for its subsystem. Read it before editing that file.
+
+Hard rules that follow:
+- Never add a model id not observed returning 200 by `npm run probe:models`.
+- Never bump a major dependency on a version diff alone — read the upstream
+  migration guide linked in `VERIFIED_STACK.md` section 3.
+- Update `VERIFIED_STACK.md` in the same commit as any dependency/model change,
+  with the real probe output and a new "Last verified" date.
+
+---
+
 # Autonoma SDK Integration & Deployment - Maintenance Notes
 
 ## CRITICAL: You are in the ALPHA worktree
@@ -9,31 +102,6 @@ checked out on branch `alpha`. All work here belongs to `alpha` only.
   branch. Do NOT edit files there for alpha work.
 - Verify before editing: `git -C D:\Peoples-School-lesson-planner-alpha rev-parse --abbrev-ref HEAD` → must print `alpha`.
 - Same repo, same remote: `origin` = `https://github.com/abdulahadattar/Peoples-School-lesson-planner`, branch `alpha`.
-
-## CRITICAL: Verify upstream, don't recall it
-
-Model ids, package versions and doc URLs in this repo have all drifted from
-reality before. **Never change one from memory.**
-
-[`docs/VERIFIED_STACK.md`](docs/VERIFIED_STACK.md) is the source of truth for
-installed versions, the live Gemini model probe, and official documentation
-URLs. Each key source file (`services/geminiService.ts`, `services/firebase.ts`,
-`services/exportService.ts`, `vite.config.ts`, `firestore.rules`) carries a
-header comment with the official doc links for that subsystem — read it first.
-
-```bash
-npm run verify:docs   # assert every official doc URL still resolves
-npm run probe:models  # assert each Gemini model id really answers
-npm run test:keys     # key pool health + chain resolution
-```
-
-Rules that follow from this:
-- Do not add a model id that has not been observed returning 200 by `probe:models`.
-  Presence in `ListModels` is **not** proof — `gemma-4-26b-a4b-it` is advertised
-  but hangs indefinitely (documented in VERIFIED_STACK.md section 4).
-- Do not bump a major dependency on the strength of a version diff alone; read
-  the upstream migration guide linked in VERIFIED_STACK.md section 3.
-- Update VERIFIED_STACK.md in the same commit as any such change.
 
 ## Branch/URL Mapping
 | Branch | URL | Environment | Status |

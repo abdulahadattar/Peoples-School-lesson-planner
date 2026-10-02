@@ -2,6 +2,17 @@
 
 An intelligent lesson plan and exam paper generator for teachers, aligned with the Sindh Textbook Board (STBB) curriculum from ECCE to Class XII.
 
+> ### ⚠️ AI agents: read `AGENTS.md` before changing anything
+>
+> **Do not work on this codebase from memory.** Framework APIs, package
+> versions, Gemini model ids and doc URLs here have all drifted from upstream —
+> a confident answer from recall is likely to be wrong. Verify against the
+> official docs and the live probes, and use the vetted skills in `skills/`.
+>
+> Start with [`AGENTS.md`](./AGENTS.md) (operating rules) and
+> [`docs/VERIFIED_STACK.md`](./docs/VERIFIED_STACK.md) (installed versions, live
+> model probe, official documentation index).
+
 ## Deployments
 
 | Branch | URL | Environment |
