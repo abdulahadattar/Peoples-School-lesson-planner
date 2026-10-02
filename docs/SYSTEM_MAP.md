@@ -74,6 +74,13 @@ When expanding assistant tools, background tasks, or multi-agent workflows, cons
 | **`services/geminiService.ts`** | Production Gemini integration featuring: 1) Round-robin key rotation with cooldowns; 2) `MODEL_CHAIN` fallback (`gemini-3.5-flash-lite` -> `gemini-3.1-flash-lite` -> `gemini-2.5-flash`); 3) PDF context fetching. |
 | **`services/schoolConfigService.ts`** | Central authority for timetable bells, period definitions, class sections, and teacher assignments. Syncs in real time with Firestore `settings/school_config`. |
 | **`services/timetableConflictEngine.ts`** | Graph-like schedule checker resolving overlapping teacher assignments and period splits. |
+| **Offline sheet sync** | Local-first queue and overlay. Reference and invariants: [OFFLINE_SYNC.md](./OFFLINE_SYNC.md). |
+| ↳ **`services/sheetSyncQueue.ts`** | localStorage queue capped at 200 entries, one per scope. A storage failure counts as a dropped edit and returns `false`. |
+| ↳ **`services/localRecordsOverlay.ts`** | Local values that shadow sheet data until the write lands. |
+| ↳ **`hooks/useSheetSyncQueue.ts`** | Drain loop, token state, and health (`droppedCount`, `capacity`, `queueNearlyFull`) for the UI. |
+| ↳ **`components/ui/PendingSyncBanner.tsx`** | Mounted once in `App.tsx`. The only surface allowed to promise "nothing is lost", and only when `droppedCount === 0`. |
+| ↳ **`services/timetableSheetWriter.ts`** | Timetable grid writes with row/column guards. Owns `parseCsvToGrid`; aborts the run on auth/scope errors. |
+| ↳ **`services/timetableSheetService.ts`** | Timetable grid reads. Imports `parseCsvToGrid` **from the writer** so both sides agree on row numbers. |
 | **`firestore.rules`** | Firestore security rules. Current vulnerability: allows unauthenticated writes to `daily_attendance`, `attendanceRecords`, and `substitutions` if `id` matches string regex. |
 
 ---
@@ -82,9 +89,40 @@ When expanding assistant tools, background tasks, or multi-agent workflows, cons
 
 1. **Firestore Permissive Security Rules**:
    - `daily_attendance`, `attendanceRecords`, and `substitutions` allow unrestricted write access (`allow create, update: if isValidId(...)`) without verifying Firebase Auth credentials.
-2. **Plaintext Secrets in Repo**:
-   - `AGENTS.md` currently lists HMAC shared secrets and signing keys in plain text.
+2. **Secrets in git history**:
+   - The hardcoded Autonoma secret literals were removed from `api/index.ts`,
+     `services/app.ts` and `AGENTS.md` on 2026-09-27 (production now refuses to boot
+     without both environment variables). They **remain in git history**, so rotation
+     is still outstanding — this is a rotation task, not a working-tree task.
 3. **Large File Monoliths**:
    - `DocumentArchiveCenterView.tsx` (111 KB) and `documentArchiveService.ts` (202 KB) are fragile and prone to partial AI code truncations.
 4. **Vercel vs Local Execution Inconsistency**:
    - Because `api/index.ts` was made standalone to satisfy Vercel bundling, any changes to document processing in `services/documentArchiveService.ts` will **not** automatically execute in Vercel production unless synchronized.
+5. **Attendance/records fan-out (open, architectural)**:
+   - One shared `onSnapshot` covering all teacher records pushes every edit to every
+     open client; traffic scales with the square of active teachers. Fix needs a
+     per-teacher subcollection plus a `firestore.rules` change. See
+     [OFFLINE_SYNC.md](./OFFLINE_SYNC.md) §6 O1.
+6. **One whole-sheet download per edit (open)**:
+   - Each record save performs a Sheets write and then a full `loadRecords(true)`
+     re-download of the entire sheet. There is **no** periodic polling — the 30 s
+     intervals are local token-expiry checks only. See
+     [OFFLINE_SYNC.md](./OFFLINE_SYNC.md) §6 O2.
+
+### Fixed 2026-10-01 (offline sheet sync)
+
+Three silent-data-loss defects, all confirmed and covered by `npm run test:unit:sheets`:
+
+- **Silent drop on storage failure** — `queueSheetSync` swallowed `localStorage`
+  throws and returned success, so quota errors discarded edits while the banner said
+  nothing was lost. Now returns `false` and increments the drop counter.
+- **Banner invisible outside the roster view** — it was mounted per-view, so Timetable
+  and Settings never showed sync failures. Now mounted once in `App.tsx`.
+- **Read/write parser mismatch** — the timetable reader used the trimming,
+  blank-row-dropping `parseCSV` while the writer used positional `parseCsvToGrid`, so
+  a blank row in a sheet shifted every subsequent write into a neighbour's cell.
+  Both sides now share one parser.
+
+Also: auth and scope errors now abort the remaining write batches instead of
+attempting every class tab against a dead token (the Sheets quota is
+60 writes/minute/user), and the reconnect prompt moved onto the banner itself.

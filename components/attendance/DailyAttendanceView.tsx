@@ -39,7 +39,6 @@ import {
 import { printHtml } from '../../utils/printHelper';
 import { fetchSheetData, StudentRecord, syncAttendanceToSheet } from '../../services/googleSheetsService';
 import { queueSheetSync } from '../../services/sheetSyncQueue';
-import { PendingSyncBanner } from '../ui/PendingSyncBanner';
 import { getAccessToken, getCurrentUser, initAuth } from '../../services/googleAuth';
 import { isUserAdmin } from '../../services/adminService';
 import { EnrollmentEditorModal } from './EnrollmentEditorModal';
@@ -565,7 +564,6 @@ export const DailyAttendanceView: React.FC = () => {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 py-6 space-y-6 animate-fadeInUp">
-      <PendingSyncBanner />
       {/* Toast Notification */}
       {notification && (
         <div

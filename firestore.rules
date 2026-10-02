@@ -46,6 +46,21 @@ service cloud.firestore {
       allow get, list: if true;
       allow create, update, delete: if isAdmin();
     }
+
+    // Pending student-record edits, shared between teachers so an edit made on
+    // one device is visible on another until it is pushed to Google Sheets.
+    // Deliberately NOT world-readable like daily_attendance/substitutions: these
+    // documents carry student names, parent CNICs and B-Form numbers, so a
+    // signed-in teacher is the minimum bar.
+    //
+    // The key is the identity of the pending change: the sheet row number for an
+    // edit, or `add-<gr-number>` for a new student. Keying adds on the GR number
+    // (rather than something random) is what stops a second pending document being
+    // created for a student who is already waiting to be added.
+    match /student_record_edits/{rowKey} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isSignedIn() && isValidId(rowKey);
+    }
   }
 }
 

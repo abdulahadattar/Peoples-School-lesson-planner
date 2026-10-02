@@ -291,24 +291,32 @@ export async function clearClientSheetCache(spreadsheetId: string = DEFAULT_SPRE
 /**
  * Fetch records from Google Sheets with app-level payload minimization & IndexedDB caching.
  * Uses HTTP 304 conditional revalidation, Gzip compression, and compact JSON payloads.
+ *
+ * `cacheMaxAgeMs` is how old a cached copy may be before this call is allowed to
+ * go to the network. It defaults to `CLIENT_CACHE_TTL_MS` (10 minutes), but the
+ * caller owns that policy: the register deliberately passes a 12-hour window so
+ * simply opening the view does not re-request the sheet. Note this gates the
+ * REQUEST, not the payload: once a request is made, an unchanged sheet still
+ * returns 304 with no body because of the ETag below.
  */
 export async function fetchSheetData(
   spreadsheetId: string = DEFAULT_SPREADSHEET_ID,
   gid: string = DEFAULT_GID,
   accessToken?: string | null,
-  forceRefresh: boolean = false
+  forceRefresh: boolean = false,
+  cacheMaxAgeMs: number = CLIENT_CACHE_TTL_MS
 ): Promise<FetchSheetResult> {
   const cacheKeySuffix = `${spreadsheetId}_${gid}`;
   const memoryKey = `${spreadsheetId}-${gid}-${accessToken ? 'auth' : 'public'}`;
 
   // 1. Check in-memory cache first if not force refresh
-  if (!forceRefresh && inMemorySheetCache[memoryKey] && Date.now() - inMemorySheetCache[memoryKey].timestamp < CLIENT_CACHE_TTL_MS) {
+  if (!forceRefresh && inMemorySheetCache[memoryKey] && Date.now() - inMemorySheetCache[memoryKey].timestamp < cacheMaxAgeMs) {
     return { ...inMemorySheetCache[memoryKey].data, fromCache: true };
   }
 
   // 2. Check IndexedDB persistent cache
   const idbCached = await getCachedStudentRecords(cacheKeySuffix);
-  if (!forceRefresh && idbCached && Date.now() - idbCached.timestamp < CLIENT_CACHE_TTL_MS && idbCached.records.length > 0) {
+  if (!forceRefresh && idbCached && Date.now() - idbCached.timestamp < cacheMaxAgeMs && idbCached.records.length > 0) {
     const cachedResult: FetchSheetResult = {
       records: idbCached.records,
       spreadsheetId: idbCached.spreadsheetId || spreadsheetId,
@@ -580,8 +588,18 @@ export async function updateSheetRecord(
     throw new Error('Google Sign-In is required to update records directly in Google Sheets.');
   }
 
-  const rowValues = studentRecordToRow(student);
   const rowNum = student.rowNumber;
+  // Same guard the batch writer applies. A student without a sheet row (a new one)
+  // would build the illegal range `R0:AO0`. This function has no callers today -
+  // record writes go through `batchUpdateSheetRecords` - but an unguarded exported
+  // writer is a trap for whoever revives it.
+  if (!Number.isInteger(rowNum) || rowNum <= 0) {
+    throw new Error(
+      `Refusing to update row ${rowNum}: a student with no sheet row must be added, not updated.`
+    );
+  }
+
+  const rowValues = studentRecordToRow(student);
 
   // Try direct Google Sheets API v4
   //
@@ -644,6 +662,143 @@ export async function updateSheetRecord(
 
   await clearClientSheetCache(spreadsheetId);
   return { success: true, message: 'Row updated successfully in Google Sheet.' };
+}
+
+/**
+ * How many rows go into one `values:batchUpdate` request.
+ *
+ * The Sheets API accepts more per request, but this is the granularity at which
+ * a failure costs work: if a request fails, every row in it has to be retried.
+ * 50 keeps a single blip cheap while still collapsing a morning's edits into a
+ * handful of requests instead of one per student.
+ */
+export const RECORD_BATCH_SIZE = 50;
+
+export interface BatchRecordWriteFailure {
+  rowNumber: number;
+  message: string;
+}
+
+export interface BatchRecordWriteResult {
+  /** Rows the sheet accepted. */
+  updated: number;
+  /** Rows that still need pushing, with the reason. */
+  failures: BatchRecordWriteFailure[];
+  /** Requests actually sent, so callers can show the saving. */
+  requests: number;
+}
+
+/**
+ * Writes many edited rows in as few requests as possible.
+ *
+ * The old path called `updateSheetRecord` once per student (one HTTP request
+ * each) and then re-downloaded the entire sheet. Sending every pending row in a
+ * single `values:batchUpdate` cuts N requests to 1 per 50 rows, which matters
+ * against the 60-writes-per-minute-per-user quota: a teacher fixing a class of 40
+ * students used 40 requests before and can now use 1.
+ *
+ * Only the app-owned columns (R onwards) are written, for the same reason
+ * `updateSheetRecord` slices them: columns A-Q come from the sheet and writing
+ * them back stamped one student's registration data over another's.
+ */
+export async function batchUpdateSheetRecords(
+  students: StudentRecord[],
+  accessToken: string,
+  spreadsheetId: string = DEFAULT_SPREADSHEET_ID,
+  sheetTitle: string = DEFAULT_SHEET_TITLE,
+): Promise<BatchRecordWriteResult> {
+  if (!accessToken) {
+    throw new Error('Google Sign-In is required to update records directly in Google Sheets.');
+  }
+
+  const result: BatchRecordWriteResult = { updated: 0, failures: [], requests: 0 };
+  if (!students.length) return result;
+
+  // Rows with no positive number are NEW students, which must be appended rather
+  // than written over an existing row. Emitting one would produce `R0:AO0`, which
+  // is not a legal A1 range - and because `values:batchUpdate` is request-atomic,
+  // that single bad row fails the whole chunk and takes up to RECORD_BATCH_SIZE
+  // genuine edits down with it. Reject it here so it cannot reach the wire.
+  const writable: StudentRecord[] = [];
+  for (const student of students) {
+    if (Number.isInteger(student.rowNumber) && student.rowNumber > 0) {
+      writable.push(student);
+    } else {
+      result.failures.push({
+        rowNumber: student.rowNumber,
+        message: 'A new student has no sheet row yet and must be added, not updated.',
+      });
+    }
+  }
+  if (!writable.length) return result;
+
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchUpdate`;
+
+  for (let i = 0; i < writable.length; i += RECORD_BATCH_SIZE) {
+    const chunk = writable.slice(i, i + RECORD_BATCH_SIZE);
+    const data = chunk.map((student) => ({
+      range: studentDataRange(sheetTitle, student.rowNumber),
+      majorDimension: 'ROWS',
+      values: [studentRecordToRow(student).slice(STUDENT_META_COLUMN_COUNT)],
+    }));
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ valueInputOption: 'USER_ENTERED', data }),
+      });
+    } catch (err: any) {
+      // Network-level failure: the whole chunk stays pending.
+      const message = err?.message || String(err);
+      chunk.forEach((s) => result.failures.push({ rowNumber: s.rowNumber, message }));
+      continue;
+    }
+    result.requests++;
+
+    if (response.ok) {
+      result.updated += chunk.length;
+      continue;
+    }
+
+    const body = await response.text().catch(() => '');
+    // The status MUST be part of the classified string. Google's body text alone
+    // is not enough - a 401 whose body says only "Unauthorized" matches none of
+    // the classifier's auth phrases, so the dead token would be filed as an
+    // unknown error and the loop would keep retrying every remaining chunk,
+    // spending the 60-writes/min quota on requests that cannot succeed.
+    const classified = classifySheetsWriteError(`HTTP ${response.status}${body ? `: ${body}` : ''}`);
+    const message = classified.kind === 'unknown'
+      ? body || `Google Sheets rejected the batch (HTTP ${response.status})`
+      : classified.message;
+    chunk.forEach((s) => result.failures.push({ rowNumber: s.rowNumber, message }));
+
+    // A dead token or a missing scope cannot succeed on the next chunk either.
+    // Stop and let the caller prompt for a reconnect rather than burning the
+    // rest of the quota producing identical failures.
+    if (classified.kind === 'auth' || classified.kind === 'scope') {
+      for (let j = i + RECORD_BATCH_SIZE; j < writable.length; j++) {
+        result.failures.push({ rowNumber: writable[j].rowNumber, message });
+      }
+      break;
+    }
+  }
+
+  if (result.updated > 0) {
+    // A cache-clear failure must not turn a successful write into a reported
+    // failure: the rows really are in the sheet, and the next read revalidates
+    // anyway. This also keeps the function testable without IndexedDB.
+    try {
+      await clearClientSheetCache(spreadsheetId);
+    } catch (err) {
+      console.warn('[googleSheetsService] could not clear the client sheet cache:', err);
+    }
+  }
+  return result;
 }
 
 /**

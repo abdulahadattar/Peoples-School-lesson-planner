@@ -7,9 +7,12 @@ Ground-truth working doc for the `alpha` branch. Companion to
 | --- | --- |
 | Branch | `alpha` |
 | Worktree | `d:\Peoples-School-lesson-planner\.kilo\worktrees\alpha` |
-| HEAD | `cfdba63` (in sync with `origin/alpha`) |
+| HEAD | `17b694d` (in sync with `origin/alpha`) |
 | Deploy URL | https://phssjamshoroportalalpha.vercel.app |
-| Last verified | 2026-09-27 |
+| Last verified | 2026-10-01 |
+
+> Uncommitted at time of writing: the offline sheet-sync work described in
+> [OFFLINE_SYNC.md](./OFFLINE_SYNC.md) and recorded in §9 below.
 
 > **Worktree warning.** The repository has three worktrees:
 >
@@ -343,13 +346,12 @@ so the SDK's `SAME_SECRETS` error cannot occur.
    builds or serves it. B2 sanitised the two secret literals inside it. The
    right fix is `git rm --cached api/_bundle.cjs` (plus regenerate-from-source
    or gitignore). Needs a scope decision.
-2. **Pre-existing bug, unrelated to B2:** `api/index.ts` registers
-   `app.get('/*{path}', ...)` in the non-production branch (HEAD line 1053,
-   ~1126 now). Express 5 rejects this at import time with
-   `PathError: Missing parameter name at index 2` whenever
-   `NODE_ENV !== 'production'`, so `api/index.ts` cannot be imported locally.
-   It does not affect `npm run dev` (which uses `services/app.ts`) or
-   production (which uses `'*all'`).
+2. ~~**Pre-existing bug, unrelated to B2:** `api/index.ts` registers
+   `app.get('/*{path}', ...)` in the non-production branch, which Express 5 rejects
+   at import time.~~ **Resolved.** Both branches now register `app.get('*all', ...)`
+   (`api/index.ts:1134` and `:1145`) with a comment recording the `'/*{path}'`
+   failure and the verified replacement, so importing the function outside
+   production no longer throws.
 3. **Secret rotation.** Both Autonoma secrets remain in git history, so they
    should be rotated even though the literals are gone from the working tree.
 
@@ -358,8 +360,10 @@ so the SDK's `SAME_SECRETS` error cannot occur.
 | Blocker | Needed from | Impact |
 | --- | --- | --- |
 | Firebase service-account credential | user | Entire Track C blocked; durable storage cannot be verified |
-| Subagent daily rate limit (~23h) | time | A1, A2, C1 must be redone |
-| Decisions 1–3 above | user | Scope of the `api/_bundle.cjs` cleanup and the Express 5 route fix |
+| Decision: shared listener → per-teacher subcollection (§8 O1) | user | Fan-out fix; requires a `firestore.rules` change and deploy |
+| Decision: which sheet re-pull strategy (§8 O2) | user | Removes ~90% redundant whole-sheet pulls |
+| Decision: `api/_bundle.cjs` cleanup (4.43 MB, tracked, unreferenced) | user | Delete from the index, gitignore, or regenerate from source |
+| ~~Subagent daily rate limit (~23h)~~ | time | Lapsed — recorded 2026-09-27, well past by 2026-10-01; A1/A2/C1 can be redone |
 
 ## 7. Test harness caveats
 
@@ -379,9 +383,66 @@ An earlier reading that the **production build fails to mount** was
 `chrome-error://chromewebdata/` network error page with no `#root` at all.
 Re-test with the server confirmed alive before drawing any conclusion.
 
-## 8. Change log
+## 8. Offline sheet sync audit & fixes (2026-10-01)
+
+Subsystem reference and the invariants that must not regress:
+[OFFLINE_SYNC.md](./OFFLINE_SYNC.md). Raw audit output: `.audit/duplicates.md`,
+`.audit/wireup.md`.
+
+### Fixed and verified
+
+| Defect | Was | Now |
+| --- | --- | --- |
+| Silent drop on storage failure | `queueSheetSync` swallowed `localStorage` throws, returned success; `dropped` stayed 0 | Returns `false`, drop counter increments, UI admits the loss |
+| Reassurance that lied | Banner always said "Nothing is lost" | Reassurance gated on `droppedCount === 0`; red alert otherwise; warns at 80% capacity |
+| Banner only on one view | Mounted per-view; Timetable/Settings showed nothing | Mounted once in `App.tsx` |
+| Read/write parser mismatch | Reader used `parseCSV` (trims, drops blank rows, renumbers); writer used positional `parseCsvToGrid` | Reader imports `parseCsvToGrid` from the writer — one source of truth |
+| Auth errors burned quota | Every class tab retried against a dead token | Aborts the run on `auth`/`scope`, sets `needsReconnect`; non-auth errors still continue |
+| Error handling duplicated | Only 1 of 4 write call sites used `classifySheetsWriteError` | All sheet-write failures route through the shared classifier |
+| Overlay stuck in the UI | Local edits lingered after a successful drain | `subscribeLocalOverlay` + a records ref clears them without a re-apply loop |
+
+A real bug surfaced while testing the fix: the writer discarded the HTTP status
+whenever Google returned a body, so `401` never reached the classifier and a dead
+token was reported as an unknown write error. The status is now prefixed into the
+classified string.
+
+### Verification
+
+```
+tsc --noEmit                 clean, zero diagnostics
+scripts/unit/*.test.ts       154 passed across 7 suites
+scripts/unit-tests.ts         75 passed
+test-coverage-gaps.mjs        111/111 exports covered (100%) — unchanged
+test-firestore-rules.mjs      green
+test:unit:sheets (new)        9 regression tests, no network
+```
+
+### Still open (needs a decision, not code)
+
+Labels match §6 of [OFFLINE_SYNC.md](./OFFLINE_SYNC.md).
+
+1. **O1 — Fan-out**: one shared `onSnapshot` for all teacher records; whole documents go to
+   every client on every keystroke. Fix changes the security model.
+2. **O2 — One whole-sheet download per edit**: every record save writes to the sheet
+   and then re-downloads it in full (`loadRecords(true)` after each save). There is no
+   periodic polling to remove; the fix is batching writes and pulling on a schedule.
+3. **Dead code** reported by `npm run audit:wiring` and verified by hand:
+   - `components/ui/Touch.tsx` — 5 exports, no importer from app or test.
+   - `services/storage/index.ts` — 5 exports, no importer. The live path is
+     `services/storageService.ts` (7 importers), so this adapter directory is orphaned.
+   - `utils/payloadOptimizer.ts` — 3 exports, imported **only** by
+     `scripts/unit-tests.ts`: asserted by a suite, reachable by no user. It is also in
+     the `test-coverage-gaps.mjs` inventory, so part of the "100% covered" figure
+     covers code nothing calls.
+   The tool's export-level list is deliberately looser: "exported but referenced only
+   inside its own file" is a de-export candidate, not a deletion candidate.
+
+## 9. Change log
 
 | Date | Change |
 | --- | --- |
 | 2026-09-27 | Initial diagnosis; F1–F6 recorded; task breakdown created |
 | 2026-09-27 | Local build green (26 passed / 0 failed); app verified in browser via agent-browser (guest mode renders). B1 + B2 complete and verified. A1/A2/C1 failed on subagent rate limit. |
+| 2026-10-01 | Offline sheet-sync audit. 3 silent-data-loss defects fixed (storage-drop, banner visibility, parser mismatch) plus auth-abort and shared error classification. New suite `scripts/unit/timetableSync.test.ts` and tool `scripts/wiring-audit.mjs`. `tsc` clean; 229 unit tests green; coverage inventory unchanged at 111/111. Docs: added `OFFLINE_SYNC.md`, filled the empty `## Testing` section in `README.md`, corrected the stale "plaintext secrets in AGENTS.md" claim in `SYSTEM_MAP.md`, refreshed `HEAD` here. |
+| 2026-10-01 | Records moved to a shared Firestore store (`student_record_edits`) instead of localStorage, so an edit is visible to every teacher and every device and survives a refresh. Saves no longer write to Sheets; "Sync to Sheet" pushes everything in one action and signs in first when the ~1 h token has lapsed. Reads gated to a 12-hour window. Three adversarial review rounds found 12 real defects in the first attempt (new-student rows 400-ing whole batches, colliding add documents, stale post-sync view, offline hang, duplicate appends, stranded legacy queue entries); all fixed and now covered by 3 new suites (`recordBatch`, `sheetPullSchedule`, `sharedEdits`). `tsc` clean; 180 unit tests green; rules harness PASS (18 sites). Corrected three false claims I had made earlier in this session: a 30 s sheet poll, a shared Firestore listener over teacher records, and a list of "dead code" entries that do not exist. |
+

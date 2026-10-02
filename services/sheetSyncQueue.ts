@@ -52,7 +52,23 @@ function readDropped(): number {
   }
 }
 
-function write(entries: PendingSyncEntry[]) {
+/** Adds to the lost-edit counter. Losing the counter is not worth losing the queue over. */
+function bumpDropped(count: number): void {
+  if (count <= 0) return;
+  try {
+    localStorage.setItem(DROPPED_KEY, String(readDropped() + count));
+  } catch {
+    // Nothing useful to do if storage is unavailable.
+  }
+}
+
+/**
+ * Persist the queue.
+ * @returns true when the entries are safely in localStorage. Callers that are
+ *          committing a new edit must treat `false` as a lost edit, because the
+ *          data is gone from memory as soon as the caller lets go of it.
+ */
+function write(entries: PendingSyncEntry[]): boolean {
   // Entries are stored newest-first, so slicing off the tail drops the OLDEST,
   // which is the right thing to keep: the most recent edit is the current state
   // of that roster. A cap is still necessary, because an unbounded queue in
@@ -64,21 +80,21 @@ function write(entries: PendingSyncEntry[]) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(kept));
   } catch (err) {
+    // A rejected write (usually the 5 MB localStorage quota) discards the whole
+    // queue, so every entry the caller still believes is pending is already
+    // gone. Counting only the overflow case, as this used to, reported a healthy
+    // queue while edits were silently evaporating.
     console.warn('Could not persist the pending sync queue', err);
-    return;
+    return false;
   }
   if (overflow > 0) {
-    const total = readDropped() + overflow;
-    try {
-      localStorage.setItem(DROPPED_KEY, String(total));
-    } catch {
-      // Losing the counter is not worth losing the queue over.
-    }
+    bumpDropped(overflow);
     console.warn(
       `[sheetSyncQueue] ${overflow} pending edit(s) exceeded the ${MAX_ENTRIES}-entry queue and were dropped ` +
-        `(${total} dropped in total). Those changes are NOT in the sheet.`,
+        `(${readDropped()} dropped in total). Those changes are NOT in the sheet.`,
     );
   }
+  return true;
 }
 
 /** How the offline queue is doing, for a UI notice or a diagnostics call. */
@@ -116,7 +132,15 @@ export function queueSheetSync(entry: Omit<PendingSyncEntry, 'id' | 'queuedAt' |
   // One outstanding change per target+scope: re-editing a date should supersede
   // the queued write, not stack up copies of the same roster.
   const filtered = entries.filter((e) => !(e.target === entry.target && e.scope === entry.scope));
-  write([next, ...filtered]);
+  if (!write([next, ...filtered])) {
+    // A failed setItem leaves the previously stored value untouched, so what was
+    // lost is exactly this one edit. It still counts as dropped: the caller has
+    // already told the teacher the change is saved and waiting, and it is neither.
+    bumpDropped(1);
+    console.warn(
+      `[sheetSyncQueue] The edit "${entry.label || entry.scope}" could not be queued and is NOT in the sheet.`,
+    );
+  }
   notify();
   return next;
 }

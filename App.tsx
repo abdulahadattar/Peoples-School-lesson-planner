@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Theme, PaperConfig, Teacher, View } from './types';
 import Header from './components/Header';
+import { PendingSyncBanner } from './components/ui/PendingSyncBanner';
 import HomeView from './components/HomeView';
 import SubjectSelector from './components/SubjectSelector';
 import PaperPanel from './components/PaperPanel';
@@ -359,6 +360,17 @@ const App: React.FC = () => {
             sessionStorage.removeItem('phssj_guest_mode');
           }}
         />
+
+        {/*
+          App-wide, not per-view: the offline Sheets queue is a single global
+          store, and a token expiry or a queue overflow can happen while the
+          teacher is on any view. It used to be mounted inside the attendance and
+          records views only, so the "changes did not reach the sheet" and
+          "edits were dropped" warnings were invisible everywhere else - which is
+          exactly when they matter. It sits above the scrolling region, so it
+          stays on screen while the view body scrolls underneath.
+        */}
+        <PendingSyncBanner className="shrink-0 mx-3.5 mt-2 sm:mx-6" />
 
         <AnimatePresence mode="wait">
           <motion.div

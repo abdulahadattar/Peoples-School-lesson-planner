@@ -106,15 +106,47 @@ it('markSyncAttempt increments attempts and records the error', () => {
   eq(e.lastError, 'HTTP 401');
 });
 
-it('RISK: attempts and queue size are uncapped by design', () => {
+it('RISK: attempts are uncapped; queue size is capped and the loss is counted', () => {
   reset();
   const a = queueSheetSync({ target: 'records', scope: '1', label: 'a', payload: 1 });
   for (let i = 0; i < 50; i++) markSyncAttempt(a.id, `err${i}`);
   eq(listPendingSync()[0].attempts, 50, 'attempts grows without limit');
-  // The queue itself IS capped, silently dropping the oldest entries.
+  // The queue itself IS capped, and the overflow must be counted, not silent.
   for (let i = 0; i < 260; i++) queueSheetSync({ target: 'records', scope: `s${i}`, label: 'x', payload: i });
   eq(pendingSyncCount(), 200, 'MAX_ENTRIES = 200 is enforced');
-  eq(listPendingSync().some(e => e.scope === 's0'), false, 'oldest entries dropped silently, no warning');
+  eq(listPendingSync().some(e => e.scope === 's0'), false, 'oldest entries are the ones dropped');
+  const health = getQueueHealth();
+  eq(health.capacity, 200, 'health reports the cap');
+  eq(health.pending, 200, 'health.pending matches the queue');
+  eq(health.dropped > 0, true, 'overflow must be counted, not dropped silently');
+});
+
+it('acknowledgeDroppedEdits clears only the loss counter', () => {
+  reset();
+  for (let i = 0; i < 260; i++) queueSheetSync({ target: 'records', scope: `s${i}`, label: 'x', payload: i });
+  eq(getQueueHealth().dropped > 0, true, 'primed with a loss');
+  acknowledgeDroppedEdits();
+  eq(getQueueHealth().dropped, 0, 'counter cleared after the user was told');
+  eq(pendingSyncCount(), 200, 'acknowledging must not touch the queue itself');
+});
+
+it('a localStorage refusal counts the edit as dropped, not queued', () => {
+  reset();
+  const store = (globalThis as any).localStorage;
+  const realSet = store.setItem.bind(store);
+  // Realistic failure: the queue value grows past the ~5 MB quota, so the
+  // merge-for-a-new-edit is rejected while the previously stored value survives.
+  store.setItem = (k: string, v: string) => {
+    if (k === 'phssj_pending_sheet_sync_v1') throw new Error('QuotaExceededError');
+    realSet(k, v);
+  };
+  try {
+    queueSheetSync({ target: 'records', scope: '99', label: 'big', payload: 1 });
+  } finally {
+    store.setItem = realSet;
+  }
+  eq(pendingSyncCount(), 0, 'the refused edit must not appear as pending');
+  eq(getQueueHealth().dropped, 1, 'a refused write is a lost edit and must be counted');
 });
 
 it('survives corrupt localStorage without throwing', () => {

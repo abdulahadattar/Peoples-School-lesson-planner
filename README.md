@@ -56,6 +56,35 @@ npm run build
 
 ## Testing
 
+Run from the project root. On Windows PowerShell, set UTF-8 output first or the
+Unicode ticks in the test output render as mojibake (see
+[docs/ALPHA_STATUS.md](./docs/ALPHA_STATUS.md)).
+
+```powershell
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+```
+
+| Command | Covers |
+| --- | --- |
+| `npm run lint` | `tsc --noEmit` across the whole project |
+| `npm run test:unit` | Aggregate pure-logic suite (timetable, conflicts, roster, selectors, rendering) |
+| `npm run test:unit:sheets` | Offline sheet-sync invariants — see [docs/OFFLINE_SYNC.md](./docs/OFFLINE_SYNC.md) |
+| `npm run test:unit:local` | Local-first read/write behaviour |
+| `npm run test:unit:roster` | Teacher roster resolution |
+| `npm run test:unit:availability` | Teacher availability logic |
+| `npm run test:unit:selectors` | Dropdown/select state |
+| `npm run test:unit:rendering` | Rendering helpers |
+| `npm run test:coverage` | Which exported symbols have no test (inventory, not line coverage) |
+| `npm run test:rules` | `firestore.rules` simulation |
+| `npm run test:keys` | Live Gemini key and model-chain probe |
+| `npm run test:e2e` | Browser smoke suite (dev server must be running) |
+| `npm run audit:wiring` | Code that exists but nothing calls — dead hooks and orphan features |
+| `npm run validate` | lint + build + local suite |
+| `npm test` | E2E: infra, SLO data, API keys, PDF validation, AI generation |
+
+The unit suites run under plain Node via `tsx` — no browser, no network. Anything
+that touches the Sheets or Gemini API injects a fake `fetch` instead.
+
 ## Deployment
 
 All changes are pushed to GitHub and automatically deployed by Vercel's GitHub integration:
@@ -67,14 +96,6 @@ All changes are pushed to GitHub and automatically deployed by Vercel's GitHub i
 **Do NOT deploy manually via Vercel CLI.** Simply push to the appropriate branch:
 ```bash
 git push origin <branch>
-```
-
-```bash
-# Run E2E tests (26 tests: dev server, PDF proxy, SLO data, API keys, PDF validation, AI generation)
-npm test
-
-# For deployed testing:
-TEST_BASE_URL=https://phssjamshoroportalalpha.vercel.app npm test
 ```
 
 ## Tech Stack

@@ -41,6 +41,10 @@ const TEST_FILES = [
   'scripts/unit/availability.test.ts',
   'scripts/unit/selectors.test.ts',
   'scripts/unit/rendering.test.ts',
+  'scripts/unit/timetableSync.test.ts',
+  'scripts/unit/sheetPullSchedule.test.ts',
+  'scripts/unit/recordBatch.test.ts',
+  'scripts/unit/sharedEdits.test.ts',
   // compressImage needs a canvas, so it is asserted in the browser suite
   // rather than a Node unit suite. Including it here keeps the inventory honest.
   'scripts/e2e-smoke.mjs',

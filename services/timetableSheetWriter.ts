@@ -841,7 +841,14 @@ export async function applyTimetableWrites(
     writesByTab.set(write.tabName, list);
   }
 
+  // Set once a write fails for a reason every remaining write would fail for
+  // too. Google allows 60 write requests per user per minute; pushing the rest
+  // of a plan through a revoked token spends that budget on requests that cannot
+  // succeed, and turns one sign-in problem into twenty reported write errors.
+  let haltForReconnect = false;
+
   for (const [tabName, writes] of writesByTab) {
+    if (haltForReconnect) break;
     const classLabel = classLabelByTab.get(tabName) ?? tabName;
     const guardProblem = verifyTabAgainstGuard(tabName, writes, plan.guards?.[tabName]);
     if (guardProblem) {
@@ -854,6 +861,26 @@ export async function applyTimetableWrites(
 
     const tabResult: TimetableTabResult = { tabName, classLabel, ok: true, cellsWritten: 0, ranges: [] };
     const ranges = groupWritesIntoRanges(writes);
+
+    /** Records a failed range and promotes the message to whatever the shared
+     *  classifier can say about it, which is usually more useful than Google's.
+     *
+     *  The status code is prefixed deliberately. The classifier keys on it, and
+     *  Google's own body text is not enough: a 401 whose body says only
+     *  "Unauthorized" matches none of its phrases, so without the number here a
+     *  dead token reads as an unknown write error and is never retried
+     *  correctly. */
+    const reportFailure = async (rangeLabel: string, raw: string) => {
+      const message = `Sheet write failed for ${rangeLabel}: ${raw}`;
+      const classified = await classifyWriteError(message);
+      const shown = classified.kind === 'unknown' ? message : classified.message;
+      tabResult.ok = false;
+      tabResult.error = shown;
+      result.ok = false;
+      result.errors.push({ tabName, range: rangeLabel, message: shown });
+      return classified.kind;
+    };
+
     for (const range of ranges) {
       const url = `${SHEETS_VALUES_BASE}/${TIMETABLE_SHEET_ID}/values/${encodeURIComponent(range.range)}?valueInputOption=RAW`;
       try {
@@ -867,21 +894,21 @@ export async function applyTimetableWrites(
         });
         if (!response.ok) {
           const text = await safeText(response);
-          const message = `Sheet write failed for ${range.range}: ${text || response.status}`;
-          tabResult.ok = false;
-          tabResult.error = message;
-          result.ok = false;
-          result.errors.push({ tabName, range: range.range, message });
+          const kind = await reportFailure(
+            range.range,
+            `HTTP ${response.status}${text ? `: ${text}` : ''}`,
+          );
+          if (kind === 'auth' || kind === 'scope') {
+            result.needsReconnect = true;
+            haltForReconnect = true;
+            break;
+          }
           continue;
         }
         tabResult.ranges.push(range.range);
         tabResult.cellsWritten += range.cells;
       } catch (err) {
-        const message = `Sheet write failed for ${range.range}: ${(err as Error)?.message ?? String(err)}`;
-        tabResult.ok = false;
-        tabResult.error = message;
-        result.ok = false;
-        result.errors.push({ tabName, range: range.range, message });
+        await reportFailure(range.range, (err as Error)?.message ?? String(err));
       }
     }
     if (tabResult.ok && tabResult.cellsWritten > 0) {
@@ -899,6 +926,24 @@ async function safeText(response: Response): Promise<string> {
     return (await response.text()).slice(0, 400);
   } catch {
     return '';
+  }
+}
+
+/**
+ * Routes a write failure through the classifier the register and attendance
+ * paths already use, so a dead token is reported as a sign-in problem rather
+ * than as an opaque write error.
+ *
+ * Imported lazily for the same reason googleAuth is: it keeps this module
+ * importable from a plain Node/test context that has no browser storage behind
+ * it. Falling back to 'unknown' is always safe - it means "no special handling".
+ */
+async function classifyWriteError(message: string): Promise<{ kind: string; message: string }> {
+  try {
+    const { classifySheetsWriteError } = await import('./googleSheetsService');
+    return classifySheetsWriteError(message);
+  } catch {
+    return { kind: 'unknown', message };
   }
 }
 

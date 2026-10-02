@@ -93,6 +93,9 @@ export function hasLocalRecord(rowNumber: number): boolean {
  */
 const SHEET_OWNED_IDENTITY = ['grNo', 'currentClass'] as const satisfies readonly (keyof StudentRecord)[];
 
+export { SHEET_OWNED_IDENTITY };
+
+
 /**
  * Overlays unsynced edits onto sheet records. A row that exists only locally
  * (an unsynced new student) is appended so the teacher can still see it.

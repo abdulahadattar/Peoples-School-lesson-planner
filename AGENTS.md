@@ -73,6 +73,24 @@ curl -X POST https://phssjamshoroportalalpha.vercel.app/api/autonoma \
 # Use Node.js script with HMAC signing (see scripts/test-all.mjs pattern)
 ```
 
+### Unit, type and wiring checks
+
+These need no server, no browser and no network, and are the ones to run before
+touching attendance, records or timetable sheet sync.
+
+```bash
+npm run lint              # tsc --noEmit over the whole project
+npm run test:unit         # aggregate pure-logic suite
+npm run test:unit:sheets  # offline sheet-sync invariants (docs/OFFLINE_SYNC.md)
+npm run test:coverage     # exports with no test at all
+npm run audit:wiring      # hooks/features that exist but nothing calls
+```
+
+`audit:wiring` reports code written but never connected. Treat its output as a
+decision list, not a delete list — some entries are deliberate seams kept for a
+planned feature, and a few are asserted by tests that pass against a function no
+user can currently reach.
+
 ## Files
 - `api/index.ts` - Self-contained serverless function with all 5 factories and handler
 - `server.ts` - Local dev server with all routes

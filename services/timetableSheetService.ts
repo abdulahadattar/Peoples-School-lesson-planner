@@ -27,8 +27,15 @@ import {
   timetableCsvUrl,
   type TimetableSheetTab,
 } from './timetableSheetConfig';
-import { parseCSV } from './googleSheetsService';
 import { detectLayout, readCell, type SheetDayKey, type SheetLayout } from './timetableSheetLayout';
+// The writer's parser, not googleSheetsService.parseCSV. That one trims every
+// cell and drops rows that collapse to nothing, which renumbers every sheet row
+// below the gap - so `SheetPeriod.row1` would index the compacted array instead
+// of the real sheet. These tabs are hand-maintained grids whose blank rows and
+// trailing spaces carry meaning, and the writer refuses to use the trimming
+// parser for exactly that reason; reading with it while writing without it meant
+// the two halves of the sync saw structurally different grids for one tab.
+import { parseCsvToGrid } from './timetableSheetWriter';
 import type { TimetableClassEntry, TimetableData, TimetablePeriod } from './timetable';
 
 /* ── Public types ────────────────────────────────────────────────── */
@@ -497,7 +504,7 @@ export async function fetchTimetableTabCsv(
       throw new Error(`timetable tab gid ${gid} returned an HTML page instead of CSV (sheet may not be public)`);
     }
     if (!text.trim()) throw new Error(`timetable tab gid ${gid} returned an empty body`);
-    const grid = parseCSV(text);
+    const grid = parseCsvToGrid(text);
     if (!grid.length) throw new Error(`timetable tab gid ${gid} parsed to zero rows`);
     tabGridCache.set(gid, { at: Date.now(), value: grid });
     return grid;

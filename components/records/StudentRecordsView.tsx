@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Search,
   Filter,
@@ -42,8 +42,6 @@ import {
   DEFAULT_GID,
   DEFAULT_SHEET_TITLE,
   fetchSheetData,
-  updateSheetRecord,
-  addSheetRecord,
   exportRecordsToCSV,
   classifySheetsWriteError,
 } from '../../services/googleSheetsService';
@@ -55,9 +53,14 @@ import {
   getCurrentUser,
 } from '../../services/googleAuth';
 import { fetchAllDossiers } from '../../services/documentClientService';
-import { applyLocalOverlay, saveLocalRecord } from '../../services/localRecordsOverlay';
-import { queueSheetSync } from '../../services/sheetSyncQueue';
-import { PendingSyncBanner } from '../ui/PendingSyncBanner';
+import {
+  publishSharedEdit,
+  subscribeSharedEdits,
+  applySharedEdits,
+  setMirrorErrorHandler,
+  type SharedRecordEdit,
+} from '../../services/sharedRecordEdits';
+import { shouldPullSheet, markSheetPulled, SHEET_PULL_CHECK_MS, SHEET_PULL_INTERVAL_MS } from '../../services/sheetPullSchedule';
 import { StudentDossier } from '../../types/documentArchive';
 import { GoogleSignInButton } from './GoogleSignInButton';
 import { StudentDetailModal } from './StudentDetailModal';
@@ -211,6 +214,15 @@ const StudentAvatar: React.FC<StudentAvatarProps> = ({
 export const StudentRecordsView: React.FC = () => {
   const { config: schoolConfig, isAdmin, saveConfig } = useSchoolConfig();
   const [records, setRecords] = useState<StudentRecord[]>([]);
+  // The rows exactly as the sheet returned them, before unsynced local edits
+  // were layered on top. The overlay must be re-applied from this copy and not
+  // from `records`: once a queued write lands, its overlay entry is cleared, and
+  // re-applying onto already-overlaid rows would keep showing the local value
+  // forever - the exact staleness the overlay exists to prevent.
+  const sheetRecordsRef = useRef<StudentRecord[]>([]);
+  /** Pending edits published by other teachers. Held in a ref so the loader can
+   *  read the latest set without being re-created on every change. */
+  const sharedEditsRef = useRef<SharedRecordEdit[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -320,26 +332,91 @@ export const StudentRecordsView: React.FC = () => {
     };
   }, []);
 
+  /**
+   * Surface shared-store failures to the teacher.
+   *
+   * `services/sharedRecordEdits` reports every problem through this hook. Without
+   * a subscriber those reports were `console.warn` only, which a teacher never
+   * sees - so a failed mirror looked identical to a successful save.
+   */
+  useEffect(() => {
+    setMirrorErrorHandler((message) => showNotification(message, 'error'));
+    return () => setMirrorErrorHandler(null);
+  }, []);
+
+  /**
+   * Pending edits from Firestore, live.
+   *
+   * Records no longer use a device-local overlay. A localStorage copy is visible
+   * only in the browser that made it, disappears when that browser's data is
+   * cleared, and is tied to one device - none of which is acceptable for the
+   * official register. The pending edit lives in `student_record_edits`, so the
+   * teacher who made it, every other signed-in teacher, and every device read the
+   * same value from the moment it is saved.
+   */
+  useEffect(() => {
+    return subscribeSharedEdits((edits) => {
+      const previousCount = sharedEditsRef.current.length;
+      sharedEditsRef.current = edits;
+
+      // The pending set SHRANK, so at least one edit has just been accepted by the
+      // sheet - here or on another device. `sheetRecordsRef` still holds the
+      // pre-sync base, so merging over it would leave accepted rows showing their
+      // old values until the next scheduled pull, up to 12 hours later.
+      //
+      // Deliberately "fewer", not "none": a partial sync that cleared one of two
+      // edits leaves that one row stale, and waiting for the count to hit zero
+      // would leave it stale for good if the other edit kept failing.
+      if (edits.length < previousCount) {
+        void loadRecords(true, true);
+        return;
+      }
+
+      if (sheetRecordsRef.current.length === 0) return;
+      setRecords(applySharedEdits(sheetRecordsRef.current, edits));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Fetch initial sheet data & student document dossiers
-  const loadRecords = async (isManualRefresh = false) => {
-    if (isManualRefresh) setIsRefreshing(true);
-    else setIsLoading(true);
+  const loadRecords = async (isManualRefresh = false, silent = false) => {
+    // A silent reload is a correction (e.g. after a sync landed), not user
+    // action: it must not flash a spinner or announce itself.
+    if (isManualRefresh && !silent) setIsRefreshing(true);
+    else if (!isManualRefresh) setIsLoading(true);
     setError(null);
 
     try {
       const token = authToken || (await getAccessToken());
       const [sheetResult, dossiersResult] = await Promise.allSettled([
-        fetchSheetData(DEFAULT_SPREADSHEET_ID, DEFAULT_GID, token, isManualRefresh),
+        // The 12-hour window is passed as the cache's max age so that opening the
+        // view inside the window serves the cache and issues NO request at all.
+        // Without this the service's own 10-minute TTL would still hit the
+        // network, which is not the behaviour the schedule promises.
+        fetchSheetData(
+          DEFAULT_SPREADSHEET_ID,
+          DEFAULT_GID,
+          token,
+          isManualRefresh,
+          SHEET_PULL_INTERVAL_MS
+        ),
         fetchAllDossiers(),
       ]);
 
       if (sheetResult.status === 'fulfilled') {
-        // Unsynced local edits are layered on top of the sheet so a change the
-        // teacher already made stays visible until the sheet confirms it.
-        setRecords(applyLocalOverlay(sheetResult.value.records));
+        // Layering order is sheet -> other teachers' pending edits -> this
+        // teacher's own unsynced edits, so the person looking at the screen
+        // always sees their own work but never loses sight of everyone else's.
+        sheetRecordsRef.current = sheetResult.value.records;
+        setRecords(applySharedEdits(sheetResult.value.records, sharedEditsRef.current));
         setLastSynced(sheetResult.value.lastSynced);
         if (isManualRefresh) {
-          showNotification(`Successfully synchronized ${sheetResult.value.records.length} records from Google Sheet.`);
+          // Only a deliberate pull resets the 12-hour clock. Recording a
+          // cache-served read here would delay the next real pull by 12 hours.
+          markSheetPulled();
+          if (!silent) {
+            showNotification(`Successfully synchronized ${sheetResult.value.records.length} records from Google Sheet.`);
+          }
         }
       } else {
         throw sheetResult.reason;
@@ -364,7 +441,28 @@ export const StudentRecordsView: React.FC = () => {
   };
 
   useEffect(() => {
-    loadRecords();
+    // A real network read only when the cached register is older than the 12-hour
+    // window (or has no recorded timestamp); otherwise the cached copy is shown
+    // and the timer below handles the next scheduled pull. This replaces
+    // re-downloading the entire sheet after every single edit.
+    void loadRecords(shouldPullSheet());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * The 12-hour pull, checked rather than polled.
+   *
+   * Each tick is a timestamp comparison with no network cost, and a fetch happens
+   * only once the window has genuinely elapsed. A teacher who leaves the app open
+   * all day therefore still picks up sheet-side edits, without the request storm
+   * the old per-edit reload caused.
+   */
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (shouldPullSheet()) void loadRecords(true);
+    }, SHEET_PULL_CHECK_MS);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSignIn = async () => {
@@ -651,61 +749,40 @@ export const StudentRecordsView: React.FC = () => {
     setConfirmationState((prev) => ({ ...prev, isSubmitting: true }));
 
     try {
-      const token = authToken || (await getAccessToken());
+      const editorName = authUser?.displayName || authUser?.email || 'Authorized Teacher';
 
-      if (token) {
-        const editorName = authUser?.displayName || authUser?.email || 'Authorized Teacher';
-        // Authenticated with Google: sync directly to spreadsheet!
-        if (isAdd) {
-          await addSheetRecord(student, token, DEFAULT_SPREADSHEET_ID, DEFAULT_SHEET_TITLE);
-          showNotification(`Student ${student.studentName} added successfully to Google Sheet (suggestion edit by ${editorName}).`);
-        } else {
-          await updateSheetRecord(student, token, DEFAULT_SPREADSHEET_ID, DEFAULT_SHEET_TITLE);
-          showNotification(`Row #${student.rowNumber} (${student.studentName}) updated successfully in Google Sheet (suggestion edit by ${editorName}).`);
-        }
-        // Reload fresh data from Google Sheet
-        await loadRecords(true);
+      // Local-first, and deliberately NOT a write to Google Sheets.
+      //
+      // This used to call addSheetRecord/updateSheetRecord inline and then reload
+      // the entire sheet, so every single student cost one Sheets write plus a full
+      // download. Worse, when the ~1 hour Sheets token had lapsed the same block
+      // called googleSignIn(), so a teacher editing twenty students could be asked
+      // to sign in twenty times. Nothing here touches the token now: the register
+      // is written once, when the teacher presses "Sync to Sheet".
+      // Firestore is the ONLY store for a pending record edit.
+      //
+      // This deliberately does NOT fall back to localStorage. A device-local copy
+      // is invisible to other teachers, disappears when the browser is cleared,
+      // and is pinned to one machine - so it presents as a saved edit that every
+      // other teacher, and every future session, silently lacks. If the shared
+      // write does not land, the teacher is told the change was not saved.
+      const shared = await publishSharedEdit(student, isAdd ? 'add' : 'update');
+
+      if (shared) {
+        showNotification(
+          `${student.studentName} saved (edit by ${editorName}). Everyone can see it now. Press "Sync to Sheet" when you are done to update the sheet itself.`,
+          'success'
+        );
       } else {
-        // No usable Google Sheets token.
-        //
-        // The Sheets token expires about every hour while the Firebase session
-        // stays alive, so this is a routine state, not an edge case. It used to
-        // be reported as an "info" local save, which meant an edit to the
-        // official register silently never reached the sheet and the teacher
-        // believed it had. It is now an explicit error, and the change is NOT
-        // applied locally - a half-saved register is worse than a refused one.
-        await googleSignIn().catch(() => null);
-        const retryToken = await getAccessToken();
-        if (retryToken) {
-          if (isAdd) {
-            await addSheetRecord(student, retryToken, DEFAULT_SPREADSHEET_ID, DEFAULT_SHEET_TITLE);
-            showNotification(`Student ${student.studentName} added successfully to Google Sheet.`);
-          } else {
-            await updateSheetRecord(student, retryToken, DEFAULT_SPREADSHEET_ID, DEFAULT_SHEET_TITLE);
-            showNotification(`Row #${student.rowNumber} (${student.studentName}) updated successfully in Google Sheet.`);
-          }
-          await loadRecords(true);
-        } else {
-          // No Google access, but the edit itself is sound. Keep it on the
-          // device and in the sync queue instead of throwing the work away: the
-          // teacher is told the register has not caught up yet and that
-          // reconnecting is what pushes it. The change is applied locally so it
-          // is visible immediately and survives a reload, and the row is marked
-          // as waiting for the sheet.
-          saveLocalRecord(student);
-          queueSheetSync({
-            target: 'records',
-            scope: String(student.rowNumber),
-            label: `${isAdd ? 'Add' : 'Update'} ${student.studentName} (row ${student.rowNumber})`,
-            payload: student,
-          });
-          showNotification(
-            `${student.studentName} was saved on this device but has NOT reached Google Sheets yet, ` +
-            `so the official register is unchanged. Sign in with Google using the button in the header, ` +
-            `then press Sync to push this change.`,
-            'info'
-          );
-        }
+        showNotification(
+          `Could not save ${student.studentName}: the shared records store was unreachable. ` +
+            `Check your connection and that you are signed in, then try again. Nothing was changed.`,
+          'error'
+        );
+        // Leave the dialog open so the teacher can retry rather than believing a
+        // change was stored when it was not.
+        setConfirmationState((prev) => ({ ...prev, isSubmitting: false }));
+        return;
       }
 
       setConfirmationState({
@@ -717,45 +794,15 @@ export const StudentRecordsView: React.FC = () => {
         isSubmitting: false,
       });
     } catch (err: any) {
-      console.error('Error saving record:', err);
-      const errMsg = err?.message || '';
-      // Google returns 403 for expired tokens, missing scopes, quota and
-      // genuine sharing problems alike. The old check mapped all of them to
-      // "the sheet is protected or View-Only", which pointed the user at Drive
-      // sharing when the fix was reconnecting - and it did so right after they
-      // had just reconnected, so it looked like reconnecting had failed. The
-      // classifier keeps the real cause and always shows Google's detail.
-      const classified = classifySheetsWriteError(errMsg);
-      if (classified.kind === 'permission') {
-        showNotification(classified.message, 'error');
-      } else if (classified.kind === 'unknown' && !errMsg) {
-        showNotification('Could not reach Google Sheets to save this record.', 'error');
-      } else {
-        // Anything else is recoverable: keep the edit locally and queue it so
-        // the change reaches the sheet on the next successful sync.
-        saveLocalRecord(student);
-        queueSheetSync({
-          target: 'records',
-          scope: String(student.rowNumber),
-          label: `${isAdd ? 'Add' : 'Update'} ${student.studentName} (row ${student.rowNumber})`,
-          payload: student,
-        });
-        showNotification(
-          `${student.studentName} was saved in the app and is waiting to reach Google Sheets. ` +
-            `${classified.kind === 'unknown' ? '' : classified.message}`,
-          'info'
-        );
-        // Close the dialog the same way the success path does: the edit is now
-        // durable locally even though it has not reached the sheet yet.
-        setConfirmationState({
-          isOpen: false,
-          title: '',
-          student: null,
-          diffs: [],
-          isAdd: false,
-          isSubmitting: false,
-        });
-      }
+      // Nothing in the try block raises a Google Sheets error any more, so this
+      // only catches unexpected failures (the shared write rejecting, or a bug).
+      // Report plainly and keep the dialog open so the teacher can retry, rather
+      // than closing it and implying the edit was stored.
+      console.error('Error saving record locally:', err);
+      showNotification(
+        `Could not save ${student.studentName} on this device: ${err?.message || err}. The change was not stored.`,
+        'error'
+      );
       setConfirmationState((prev) => ({ ...prev, isSubmitting: false }));
     }
   };
@@ -792,7 +839,6 @@ export const StudentRecordsView: React.FC = () => {
 
   return (
     <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-8 py-6 space-y-6">
-      <PendingSyncBanner />
       {/* Toast Notification */}
       {notification && (
         <div

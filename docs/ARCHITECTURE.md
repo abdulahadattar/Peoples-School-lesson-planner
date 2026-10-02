@@ -19,7 +19,7 @@ This document defines the standard structure, naming conventions, and subsystem 
 │   ├── live/                # Timetable live monitor cards & headers
 │   ├── records/             # Student records, dossiers, and document tabs
 │   ├── settings/            # School configuration, timetable slots, periods
-│   ├── ui/                  # Reusable atomic UI elements (buttons, badges)
+│   ├── ui/                  # Reusable atomic UI elements (buttons, badges, PendingSyncBanner)
 │   ├── BreakDutiesPanel.tsx # Teacher break/recess duty scheduling panel
 │   ├── DocumentArchiveCenterView.tsx # Main student OCR & document hub
 │   ├── GenerationStatusPanel.tsx     # AI lesson planner & exam status bar
@@ -40,12 +40,16 @@ This document defines the standard structure, naming conventions, and subsystem 
 │   └── index.ts             # Curriculum registry and lookup helpers
 │
 ├── docs/                    # Technical documentation & architecture specs
+│   ├── ALPHA_STATUS.md      # Working status, findings & verification log
+│   ├── ALPHA_DIFF_REVIEW.md # Point-in-time review of the 2026-09-27 diff
 │   ├── ARCHITECTURE.md      # Structure and naming standards (this file)
+│   ├── OFFLINE_SYNC.md      # Offline sheet-sync subsystem: invariants & open issues
 │   └── SYSTEM_MAP.md        # Topology, deployment, and Google MCP plans
 │
 ├── hooks/                   # Custom React stateful hooks
 │   ├── useGeneralGeneration.ts # Gemini generation orchestration
 │   ├── useSchoolConfig.ts   # Firestore-backed school config listener
+│   ├── useSheetSyncQueue.ts # Offline sheet-sync drain loop and queue health
 │   └── useSelection.ts      # Class, subject, chapter select state
 │
 ├── services/                # Backend & Frontend Business Logic Services
@@ -69,7 +73,14 @@ This document defines the standard structure, naming conventions, and subsystem 
 │   ├── substitutionService.ts # Absent teacher substitution resolver
 │   ├── teacherRoster.ts     # Teacher roster list and assignments
 │   ├── timetable.ts         # Master weekly timetable definitions
-│   └── timetableConflictEngine.ts # Timetable overlap detector
+│   ├── timetableConflictEngine.ts # Timetable overlap detector
+│   ├── timetableSheetConfig.ts # Sheet tab naming and A1 layout configuration
+│   ├── timetableSheetLayout.ts # Grid layout detection: rows, day columns, guards
+│   ├── timetableSheetWriter.ts # Grid writes + `parseCsvToGrid` (see OFFLINE_SYNC.md)
+│   ├── timetableSheetService.ts # Grid reads (imports the writer's parser)
+│   ├── sheetSyncQueue.ts    # Offline queue: localStorage, capped, counts dropped edits
+│   ├── localRecordsOverlay.ts # Local edits shadowing sheet data until written
+│   └── extractedNameGuard.ts  # Guards against model names leaking into exported names
 │
 
 ---
