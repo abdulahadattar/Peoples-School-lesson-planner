@@ -148,9 +148,9 @@ it('every declared tab has a usable, unique gid', () => {
   const gids = TIMETABLE_SHEET_TABS.map(t => t.gid);
   eq(new Set(gids).size, gids.length, 'tab gids must be unique');
 });
-it('cache and poll intervals are minutes, not seconds or milliseconds', () => {
-  eq(TIMETABLE_SHEET_CACHE_TTL_MS, 15 * 60 * 1000);
-  eq(TIMETABLE_SHEET_POLL_MS, 15 * 60 * 1000);
+it('cache and poll intervals are hours/days, not minutes', () => {
+  eq(TIMETABLE_SHEET_CACHE_TTL_MS, 24 * 60 * 60 * 1000);
+  eq(TIMETABLE_SHEET_POLL_MS, 24 * 60 * 60 * 1000);
   for (const v of [TIMETABLE_SHEET_CACHE_TTL_MS, TIMETABLE_SHEET_POLL_MS]) {
     if (v < 60_000) throw new Error(`interval ${v} is under a minute`);
   }

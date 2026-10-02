@@ -62,8 +62,8 @@ export function timetableCsvUrl(gid: number): string {
 }
 
 /**
- * The timetable does not change daily, so the sheet is polled infrequently.
- * A manual Refresh always bypasses the cache.
+ * The timetable does not change daily, so the sheet is polled infrequently (daily / 24 hours)
+ * and can be refreshed manually at any time.
  */
-export const TIMETABLE_SHEET_CACHE_TTL_MS = 15 * 60 * 1000;
-export const TIMETABLE_SHEET_POLL_MS = 15 * 60 * 1000;
+export const TIMETABLE_SHEET_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+export const TIMETABLE_SHEET_POLL_MS = 24 * 60 * 60 * 1000;

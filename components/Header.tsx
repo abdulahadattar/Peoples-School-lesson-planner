@@ -11,6 +11,7 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { isUserAdmin } from '../services/adminService';
 import { ShieldCheck, LogIn, LogOut, AlertTriangle, Clock } from 'lucide-react';
 import { isGoogleTokenExpired, googleSignIn, loginWithGoogle, logoutUser, GOOGLE_TOKEN_EVENT } from '../services/googleAuth';
+import { IconButton } from './ui/Touch';
 import { motion } from 'motion/react';
 
 type Theme = 'light' | 'dark';
@@ -101,13 +102,13 @@ const Header: React.FC<HeaderProps> = ({
   return (
     <header className="h-14 md:h-16 px-3.5 md:px-6 bg-brand-surface/85 dark:bg-brand-surface/95 backdrop-blur-xl border-b border-brand-border flex items-center justify-between sticky top-0 z-30 shadow-xs">
       <div className="flex items-center gap-2.5 sm:gap-3.5">
-        <button
+        <IconButton
           onClick={onOpenSidebar}
           aria-label="Open navigation"
-          className="md:hidden p-2 text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg rounded-xl transition-all duration-200 active:scale-90 min-w-[44px] min-h-[44px] flex items-center justify-center"
+          className="md:hidden"
         >
           <MenuIcon className="w-5 h-5" />
-        </button>
+        </IconButton>
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white dark:bg-slate-900 shadow-soft border border-brand-border flex items-center justify-center flex-shrink-0 p-0.5 ring-1 ring-black/5 dark:ring-white/10">
             <PhssjLogo className="w-full h-full rounded-full" />

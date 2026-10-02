@@ -7,6 +7,7 @@ import { ZipArchive, Archiver } from 'archiver';
 import { PDFDocument } from 'pdf-lib';
 import { cleanAndParseJson } from './jsonHelpers.js';
 import { sanitizeScriptNameField } from './extractedNameGuard.js';
+import { createStorageAdapter } from './storage/index.js';
 import {
   StudentDocumentRecord,
   StudentDossier,
