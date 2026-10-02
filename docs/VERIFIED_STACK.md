@@ -67,6 +67,62 @@ page said so — run `npm run probe:models` and use its output.
 feature or a security fix requires it, run `npm run validate` plus the affected
 `test:*` suites, and update this table in the same commit.
 
+### 3a. `@google/genai` 1.x -> 2.x is a LOW-risk bump (contrary to first read)
+
+Checked against the v2.0.0 release notes and the official migration guide:
+
+- The v2.0.0 release states the breaking changes are **"Interactions Only"** --
+  `generateContent` usage is **unaffected**. This app only ever calls
+  `generateContent`, directly over REST in `services/geminiService.ts`.
+- What actually changed in the Interactions API (relevant only if we ever adopt
+  it): the `outputs` array became a `steps` array; `response_mime_type` was
+  replaced by a polymorphic `response_format`; SSE events were renamed
+  (`interaction.created`, `interaction.completed`); legacy `response_format`
+  was deprecated.
+- The legacy schema was removed **June 8, 2026** for the Interactions API.
+  REST callers opt in with the `Api-Revision: 2026-05-20` header.
+- Note the irony: staying on SDK 1.x does **not** avoid schema changes. It only
+  means we would not receive new Interactions features if we adopted it later.
+
+Sources: <https://github.com/googleapis/js-genai/releases/tag/v2.0.0> and
+<https://ai.google.dev/gemini-api/docs/interactions-breaking-changes-may-2026>
+
+**Verdict:** safe to bump on its own. Still verify with `npm run probe:models`
+and `npm run test:keys` afterwards, because the SDK wraps the same endpoint.
+
+### 3b. `xlsx` -- the npm package is stale by design, and we are on it
+
+SheetJS stopped publishing to the npm registry. The registry copy is frozen at
+**0.18.5** and is documented upstream as "a known registry bug". The
+authoritative source is their CDN, currently **0.20.3**:
+
+```
+https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz
+```
+
+Upgrade command, per the SheetJS docs:
+
+```
+npm rm --save xlsx
+npm i --save https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz
+```
+
+- **Security:** the 0.18.5 line predates fixes for known prototype-pollution and
+  ReDoS advisories (Snyk SNYK-JS-XLSX-5457926 and later). SheetJS state the
+  issue is resolved in 0.19.3+, and that current Snyk tooling still mis-reports
+  it. We currently ship the vulnerable range.
+- **Blast radius here is small.** `services/timetableExcelExport.ts` is the only
+  consumer, and it uses stable core API -- `XLSX.utils.book_new`,
+  `aoa_to_sheet`, `book_append_sheet`, `XLSX.writeFile` -- all unchanged
+  across 0.18 -> 0.20.
+- **Caveat when upgrading:** in Node **ESM** contexts SheetJS requires explicit
+  dependency loading (`XLSX.set_fs(fs)`, `set_readable`, `set_cptable`). We
+  use `writeFile`, so check the browser/node bundle split carefully.
+- SheetJS also recommends **vendoring** the tarball into the repo to decouple
+  builds from their CDN.
+
+Source: <https://docs.sheetjs.com/docs/getting-started/installation/nodejs/>
+
 ---
 
 ## 4. Gemini model chain — live probe results (2026-10-02)
@@ -186,4 +242,51 @@ Every URL below is asserted live by `npm run verify:docs`.
 | OWASP Top 10 | <https://owasp.org/www-project-top-ten/> |
 | WCAG 2.2 | <https://www.w3.org/TR/WCAG22/> |
 
-<!-- SECTION-6-AND-ONWARD -->
+---
+
+## 6. Facts that were wrong in this repo, or in my own first pass
+
+Kept so nobody re-introduces them.
+
+- **Recharts docs are not on `recharts.org/en-US/api`.** That path is 404, as is
+  `/en-US/guide/api/`. The v3 docs moved to `recharts.github.io`.
+- **`gemini-2.5-flash` is gone** for new users (404). It was still hardcoded in
+  the probe's model list.
+- **`gemini-3.1-flash-lite-preview` is shut down** per the models page, while
+  the non-preview `gemini-3.1-flash-lite` still works. Easy to confuse.
+- **npmjs.com returns 403 to bots.** That is bot protection, not a dead package.
+  Use `registry.npmjs.org` for machine checks, which is why
+  `check-doc-links.mjs` checks the registry API.
+- **The `.kilo/worktrees/alpha` paths are stale.** The alpha worktree now lives
+  at `D:\Peoples-School-lesson-planner-alpha`. Anything resolving keys or docs
+  through the old path is looking in a folder that no longer exists (see
+  `ENV_FILES` in `scripts/lib/gemini-keys.mjs`).
+
+Corrections to my own earlier claims in this file, made after searching rather
+than inferring:
+
+- **"`@google/genai` v2 is a major rewrite"** was an overstatement. Its breaking
+  changes are confined to the Interactions API; `generateContent` is untouched.
+  See section 3a.
+- **"npm `xlsx` 0.18.5 is the latest"** is wrong. npm is frozen at 0.18.5 by
+  design; the real current release is 0.20.3 on cdn.sheetjs.com, and the 0.18.5
+  line predates prototype-pollution/ReDoS fixes. See section 3b.
+- **"docx 9 is a breaking major"** overstated it too. The 9.0.0 release notes are
+  overwhelmingly additive (SVG images, LaTeX math, patch-document export); the
+  real change is that shapes, watermarks and charts moved to subpath exports.
+
+---
+
+## 7. Maintenance
+
+Run this before and after any dependency or model change:
+
+```
+npm run verify:docs     # doc links still resolve
+npm run probe:models    # model ids still answer
+npm run test:keys       # key pool + chain health
+npm run validate        # tsc + build + local tests
+```
+
+Update the tables in sections 3 and 4 with the real output, and bump
+**Last verified** at the top.
