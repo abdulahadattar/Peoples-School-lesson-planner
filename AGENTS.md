@@ -10,6 +10,31 @@ checked out on branch `alpha`. All work here belongs to `alpha` only.
 - Verify before editing: `git -C D:\Peoples-School-lesson-planner-alpha rev-parse --abbrev-ref HEAD` → must print `alpha`.
 - Same repo, same remote: `origin` = `https://github.com/abdulahadattar/Peoples-School-lesson-planner`, branch `alpha`.
 
+## CRITICAL: Verify upstream, don't recall it
+
+Model ids, package versions and doc URLs in this repo have all drifted from
+reality before. **Never change one from memory.**
+
+[`docs/VERIFIED_STACK.md`](docs/VERIFIED_STACK.md) is the source of truth for
+installed versions, the live Gemini model probe, and official documentation
+URLs. Each key source file (`services/geminiService.ts`, `services/firebase.ts`,
+`services/exportService.ts`, `vite.config.ts`, `firestore.rules`) carries a
+header comment with the official doc links for that subsystem — read it first.
+
+```bash
+npm run verify:docs   # assert every official doc URL still resolves
+npm run probe:models  # assert each Gemini model id really answers
+npm run test:keys     # key pool health + chain resolution
+```
+
+Rules that follow from this:
+- Do not add a model id that has not been observed returning 200 by `probe:models`.
+  Presence in `ListModels` is **not** proof — `gemma-4-26b-a4b-it` is advertised
+  but hangs indefinitely (documented in VERIFIED_STACK.md section 4).
+- Do not bump a major dependency on the strength of a version diff alone; read
+  the upstream migration guide linked in VERIFIED_STACK.md section 3.
+- Update VERIFIED_STACK.md in the same commit as any such change.
+
 ## Branch/URL Mapping
 | Branch | URL | Environment | Status |
 |--------|-----|-------------|--------|

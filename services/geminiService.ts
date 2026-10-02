@@ -113,21 +113,38 @@ export const DEFAULT_MODEL = "gemini-3.5-flash-lite";
  * healthy keys; if every key fails on it, it moves to the next model on all keys,
  * and so on.
  *
- * Every id below was verified against the live generateContent endpoint. The
- * chain intentionally excludes ids that now return 404, because each dead entry
- * adds a full round of retries before the chain can move on:
- *   gemini-2.5-flash-lite  404 "no longer available to new users"
- *   gemini-2.0-flash       404 "no longer available"
- *   gemini-1.5-flash       404 not found
- *   gemma-4-26b-it         404 not found
+ * >>> DO NOT EDIT FROM MEMORY. Read docs/VERIFIED_STACK.md section 4 first, then
+ * >>> run `npm run probe:models` to confirm each id really answers, and update
+ * >>> that doc in the same commit.
+ * >>>
+ * >>> Official sources:
+ * >>>   models      https://ai.google.dev/gemini-api/docs/models
+ * >>>   deprecations https://ai.google.dev/gemini-api/docs/deprecations
+ * >>>   API errors   https://ai.google.dev/gemini-api/docs/api-errors
  *
- * Chain order (measured against the live endpoint with a real document image across
- * all five configured keys, see scripts/probe-chain.mjs):
- *   1. gemini-3.5-flash-lite  5/5 keys  ~2.0s
- *   2. gemma-4-26b-a4b-it     5/5 keys  ~2.1s
- *   3. gemini-3.1-flash-lite  4/5 keys ~11.4s
- *   4. gemini-3.5-flash       3/5 keys ~11.9s
- *   5. gemini-flash-latest    2/5 keys ~12.9s
+ * Ids that must NOT return (verified 404 on 2026-10-02):
+ *   gemini-2.5-flash      404 "no longer available to new users"
+ *   gemini-2.0-flash      404 "no longer available"
+ *   gemini-1.5-flash      404 not found
+ *   gemini-2.5-flash-lite 404 "no longer available to new users"
+ *
+ * A dead id is worse than a missing one: every entry costs a full round of
+ * retries before the chain can move on.
+ *
+ * Measured 2026-10-02 (npm run probe:models, real keys):
+ *   gemini-3.5-flash-lite  0.6s  <- keep first, by far the fastest
+ *   gemma-4-26b-a4b-it     HANGS (>60s, no response)  <- KNOWN BAD, see below
+ *   gemini-3.1-flash-lite  1.5s
+ *   gemini-3.5-flash      18.5s
+ *   gemini-flash-latest    6.2s
+ *
+ * KNOWN DEFECT (2026-10-02): gemma-4-26b-a4b-it is advertised by ListModels but
+ * never returns a response. While it sits at position 2, any request that falls
+ * past position 1 blocks for the full timeout instead of failing over. It must
+ * be removed from this array. Presence in ListModels is NOT proof a model works.
+ *
+ * Upgrade candidates that answered 200: gemini-3.6-flash (1.6s), gemini-3.7-flash
+ * (22.8s). gemini-3.8-flash returned a transient 503 "high demand" on the day.
  */
 export const MODEL_CHAIN: string[] = [
   "gemini-3.5-flash-lite",

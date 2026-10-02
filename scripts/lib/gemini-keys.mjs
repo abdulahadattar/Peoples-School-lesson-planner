@@ -9,12 +9,24 @@ import path from 'path';
 
 export const API_ROOT = 'https://generativelanguage.googleapis.com/v1beta';
 
-/** The models the application hardcodes in services/geminiService.ts. */
+/**
+ * The models the application hardcodes in services/geminiService.ts.
+ *
+ * WARNING: this list is a hand-maintained copy and it HAS DRIFTED. On 2026-10-02
+ * it still contained `gemini-2.5-flash` (now 404) while omitting three ids that
+ * the app really uses. Prefer importing MODEL_CHAIN from services/geminiService
+ * so the probe can never test a different chain than the app runs.
+ * See docs/VERIFIED_STACK.md section 4.
+ */
 export const APP_MODEL_CHAIN = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-2.5-flash'];
 
 /**
- * Env files that may hold a Gemini key. `.kilo/worktrees/*` is included
- * because the alpha worktree keeps the live AI-Studio keys there.
+ * Env files that may hold a Gemini key.
+ *
+ * NOTE: the `.kilo/worktrees/alpha` entries are STALE. The alpha worktree moved
+ * to `D:\Peoples-School-lesson-planner-alpha`; this checkout is now that folder,
+ * so `.env.local` here is the live one. The legacy paths are harmless but never
+ * resolve. Remove them when you next touch this list.
  */
 export const ENV_FILES = [
   '.env.local',

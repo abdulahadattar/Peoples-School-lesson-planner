@@ -10,6 +10,25 @@ import {
 } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
+/**
+ * Firebase client bootstrap.
+ *
+ * Official references — read before changing auth, persistence or rules:
+ *   Web setup        https://firebase.google.com/docs/web/setup
+ *   Auth             https://firebase.google.com/docs/auth
+ *   Firestore rules  https://firebase.google.com/docs/firestore/security/rules-structure
+ *   Admin SDK (Node) https://firebase.google.com/docs/admin/setup
+ *
+ * Security model: every read/write is gated by firestore.rules, which denies by
+ * default (`allow read, write: if false`) and re-opens narrow, explicit paths.
+ * A change here is meaningless without a matching rules change — test with
+ * `npm run test:rules`. Never widen a rule to "make a read work" without
+ * checking who is allowed to see that data.
+ *
+ * Installed firebase is 12.19.0 (current). Version table: docs/VERIFIED_STACK.md
+ * section 3.
+ */
+
 const app = initializeApp(firebaseConfig);
 
 /**

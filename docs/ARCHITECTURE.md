@@ -7,7 +7,7 @@ This document defines the standard structure, naming conventions, and subsystem 
 ## 1. Directory Structure Standard
 
 ```
-.kilo/worktrees/alpha/
+D:\Peoples-School-lesson-planner-alpha/
 ├── api/                     # Production Vercel Serverless Function entry points
 │   └── index.ts             # Express handler served by Vercel
 │
@@ -44,7 +44,8 @@ This document defines the standard structure, naming conventions, and subsystem 
 │   ├── ALPHA_DIFF_REVIEW.md # Point-in-time review of the 2026-09-27 diff
 │   ├── ARCHITECTURE.md      # Structure and naming standards (this file)
 │   ├── OFFLINE_SYNC.md      # Offline sheet-sync subsystem: invariants & open issues
-│   └── SYSTEM_MAP.md        # Topology, deployment, and Google MCP plans
+│   ├── SYSTEM_MAP.md        # Topology, deployment, and Google MCP plans
+│   └── VERIFIED_STACK.md    # Installed versions, live model probe, official doc URLs
 │
 ├── hooks/                   # Custom React stateful hooks
 │   ├── useGeneralGeneration.ts # Gemini generation orchestration

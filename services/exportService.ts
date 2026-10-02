@@ -18,6 +18,25 @@ import saveAs from 'file-saver';
 import { LessonPlan, GeneratedPaper, PaperQuestion, PaperSection, TeacherInfo } from '../types';
 import { parseTextWithEquations, dataUrlToBase64 } from './equationRenderer';
 import { latexToUnicodeText } from './latexSanitizer';
+
+/**
+ * DOCX / PDF export.
+ *
+ * Official references — read before changing document construction:
+ *   docx.js      https://docx.js.org/
+ *   pdf-lib      https://github.com/Hopding/pdf-lib
+ *   KaTeX        https://katex.org/docs/
+ *
+ * Installed docx is 8.5.0; upstream is 9.x. In v9 shapes, watermarks and charts
+ * moved to subpath exports (`docx/shapes`, `docx/watermarks`, `docx/charts`) and
+ * are no longer bundled into the main entry, so an upgrade changes the import
+ * list above, not just the version. See docs/VERIFIED_STACK.md section 3.
+ *
+ * Content note: values here originate from Gemini output and from Sheets. They
+ * are untrusted text. Sanitise/serialise through latexSanitizer and
+ * equationRenderer before rendering rather than interpolating raw model output
+ * into markup.
+ */
 import {
   hasOptions,
   layoutOptions,
