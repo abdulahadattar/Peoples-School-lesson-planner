@@ -73,49 +73,85 @@ function unfilter(pixels, width, height, colorType) {
 // --- decode ---
 const { width, height, colorType, pixels } = parsePng(fs.readFileSync(input));
 const { bpp, rgb } = unfilter(pixels, width, height, colorType);
-const at = (x, y, out = rgb, bw = width, bbpp = bpp) => {
-  const i = (y * bw + x) * bbpp;
-  return [out[i], out[i + 1], out[i + 2]];
-};
-const isWhite = (c) => c[0] > 245 && c[1] > 245 && c[2] > 245;
+// --- circular restoration & RGBA generation ---
+const targetSize = 400;
+const targetCenter = targetSize / 2;
+const targetRadius = 188;
 
-// --- emblem ink bbox, excluding the stray top-right corner artifact ---
-const artifactZone = (x, y) => x > width - 60 && y < 42; // blue triangle noise
-let minX = width, minY = height, maxX = -1, maxY = -1;
-for (let y = 0; y < height; y++) {
-  for (let x = 0; x < width; x++) {
-    if (artifactZone(x, y)) continue;
-    if (!isWhite(at(x, y))) {
-      if (x < minX) minX = x;
-      if (x > maxX) maxX = x;
-      if (y < minY) minY = y;
-      if (y > maxY) maxY = y;
+const srcCx = 174.5;
+const srcCy = 177.5;
+const srcRx = 150.25;
+const srcRy = 129.75;
+
+function getSrcPixel(x, y) {
+  x = Math.max(0, Math.min(width - 1, x));
+  y = Math.max(0, Math.min(height - 1, y));
+  const idx = (y * width + x) * bpp;
+  return [rgb[idx], rgb[idx + 1], rgb[idx + 2]];
+}
+
+function sampleBilinear(x, y) {
+  const x0 = Math.floor(x);
+  const y0 = Math.floor(y);
+  const x1 = x0 + 1;
+  const y1 = y0 + 1;
+  const fx = x - x0;
+  const fy = y - y0;
+
+  const p00 = getSrcPixel(x0, y0);
+  const p10 = getSrcPixel(x1, y0);
+  const p01 = getSrcPixel(x0, y1);
+  const p11 = getSrcPixel(x1, y1);
+
+  const r = (1 - fx) * (1 - fy) * p00[0] + fx * (1 - fy) * p10[0] + (1 - fx) * fy * p01[0] + fx * fy * p11[0];
+  const g = (1 - fx) * (1 - fy) * p00[1] + fx * (1 - fy) * p10[1] + (1 - fx) * fy * p01[1] + fx * fy * p11[1];
+  const b = (1 - fx) * (1 - fy) * p00[2] + fx * (1 - fy) * p10[2] + (1 - fx) * fy * p01[2] + fx * fy * p11[2];
+
+  return [Math.round(r), Math.round(g), Math.round(b)];
+}
+
+const outRgba = Buffer.alloc(targetSize * targetSize * 4);
+
+for (let ty = 0; ty < targetSize; ty++) {
+  for (let tx = 0; tx < targetSize; tx++) {
+    const dx = (tx + 0.5) - targetCenter;
+    const dy = (ty + 0.5) - targetCenter;
+    const dist = Math.hypot(dx, dy);
+    const outIdx = (ty * targetSize + tx) * 4;
+
+    if (dist > targetRadius + 1.2) {
+      outRgba[outIdx] = 0;
+      outRgba[outIdx + 1] = 0;
+      outRgba[outIdx + 2] = 0;
+      outRgba[outIdx + 3] = 0;
+      continue;
     }
+
+    let alpha = 1.0;
+    if (dist > targetRadius - 0.8) {
+      alpha = Math.max(0, Math.min(1, 0.5 - (dist - targetRadius) / 1.6));
+    }
+
+    const norm = dist / targetRadius;
+    const clampedNorm = Math.min(norm, 0.992);
+    const angle = Math.atan2(dy, dx);
+
+    const u = Math.cos(angle) * clampedNorm;
+    const v = Math.sin(angle) * clampedNorm;
+
+    const sx = srcCx + u * srcRx;
+    const sy = srcCy + v * srcRy;
+
+    const [r, g, b] = sampleBilinear(sx, sy);
+
+    outRgba[outIdx] = r;
+    outRgba[outIdx + 1] = g;
+    outRgba[outIdx + 2] = b;
+    outRgba[outIdx + 3] = Math.round(alpha * 255);
   }
 }
-if (maxX < 0) throw new Error('No emblem content found');
-console.log(`Emblem ink bbox: x ${minX}..${maxX}, y ${minY}..${maxY} (${maxX - minX + 1}x${maxY - minY + 1})`);
 
-const contentW = maxX - minX + 1;
-const contentH = maxY - minY + 1;
-const pad = Math.round(Math.max(contentW, contentH) * 0.07); // breathing room (~7%)
-const side = Math.max(contentW, contentH) + pad * 2;
-const offX = Math.floor((side - contentW) / 2);
-const offY = Math.floor((side - contentH) / 2);
-
-// --- build square, white-canvas output ---
-const out = Buffer.alloc(side * side * 3, 255);
-for (let y = 0; y < contentH; y++) {
-  for (let x = 0; x < contentW; x++) {
-    const c = at(minX + x, minY + y);
-    const d = ((offY + y) * side + (offX + x)) * 3;
-    out[d] = c[0];
-    out[d + 1] = c[1];
-    out[d + 2] = c[2];
-  }
-}
-
-// --- write PNG (RGB, filter 0) ---
+// --- write PNG (RGBA, colorType 6) ---
 const crcTable = (() => {
   const t = new Uint32Array(256);
   for (let n = 0; n < 256; n++) {
@@ -138,22 +174,23 @@ const chunk = (type, data) => {
   o.writeUInt32BE(crc32(Buffer.concat([Buffer.from(type, 'ascii'), data])), 8 + data.length);
   return o;
 };
-const raw = Buffer.alloc(side * (1 + side * 3));
-for (let y = 0; y < side; y++) {
-  raw[y * (1 + side * 3)] = 0;
-  for (let x = 0; x < side; x++) {
-    const s = (y * side + x) * 3;
-    const d = y * (1 + side * 3) + 1 + x * 3;
-    raw[d] = out[s];
-    raw[d + 1] = out[s + 1];
-    raw[d + 2] = out[s + 2];
+const raw = Buffer.alloc(targetSize * (1 + targetSize * 4));
+for (let y = 0; y < targetSize; y++) {
+  raw[y * (1 + targetSize * 4)] = 0;
+  for (let x = 0; x < targetSize; x++) {
+    const s = (y * targetSize + x) * 4;
+    const d = y * (1 + targetSize * 4) + 1 + x * 4;
+    raw[d] = outRgba[s];
+    raw[d + 1] = outRgba[s + 1];
+    raw[d + 2] = outRgba[s + 2];
+    raw[d + 3] = outRgba[s + 3];
   }
 }
 const ihdr = Buffer.alloc(13);
-ihdr.writeUInt32BE(side, 0);
-ihdr.writeUInt32BE(side, 4);
+ihdr.writeUInt32BE(targetSize, 0);
+ihdr.writeUInt32BE(targetSize, 4);
 ihdr[8] = 8;
-ihdr[9] = 2;
+ihdr[9] = 6;
 fs.writeFileSync(
   input,
   Buffer.concat([
@@ -163,4 +200,4 @@ fs.writeFileSync(
     chunk('IEND', Buffer.alloc(0)),
   ])
 );
-console.log(`Wrote square ${side}x${side} → ${input}`);
+console.log(`Wrote circular RGBA ${targetSize}x${targetSize} → ${input}`);

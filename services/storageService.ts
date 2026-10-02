@@ -140,19 +140,33 @@ export async function saveExamPaperToDb(
   return item;
 }
 
+/**
+ * Updates an existing saved paper in place, preserving its id, createdAt and
+ * teacherInfo so editing a paper from History does not create a duplicate row.
+ *
+ * Returns true when the record was updated. If the id is no longer present
+ * (record deleted in another tab, or a stale link) the paper is saved as a new
+ * record and the new id is written back onto `updatedPaper.savedPaperId`, so a
+ * previously silent no-op cannot drop the teacher's edit.
+ */
 export async function updateSavedPaperInDb(
   id: string,
   updatedPaper: GeneratedPaper
-): Promise<void> {
+): Promise<boolean> {
   const current = await getSavedPapers();
   const index = current.findIndex(p => p.id === id);
   if (index !== -1) {
     current[index] = {
       ...current[index],
-      paper: updatedPaper,
+      paper: { ...updatedPaper, savedPaperId: id },
     };
     await set(PAPERS_KEY, [...current]);
+    return true;
   }
+
+  const created = await saveExamPaperToDb(updatedPaper);
+  updatedPaper.savedPaperId = created.id;
+  return false;
 }
 
 export async function deleteSavedPaper(id: string): Promise<void> {

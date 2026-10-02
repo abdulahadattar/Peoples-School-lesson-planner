@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { LessonPlan, GeneratedPaper, TeacherInfo, ExportFormat, PaperQuestion } from '../types';
-import { ArrowLeftIcon, DownloadIcon, ChevronLeftIcon, ChevronRightIcon, RefreshIcon, SparklesIcon } from './icons/MiscIcons';
+import { ArrowLeftIcon, DownloadIcon, ChevronLeftIcon, ChevronRightIcon, RefreshIcon, CheckCircleIcon } from './icons/MiscIcons';
 import {
   paperSectionNote,
   sectionInstruction,
@@ -9,7 +9,7 @@ import KaTeXText from './KaTeXText';
 import { PhssjLogo } from './Logo';
 import Spinner from './ui/Spinner';
 import { QuestionEditor } from './QuestionEditor';
-import { saveExamPaperToDb } from '../services/storageService';
+import { saveExamPaperToDb, updateSavedPaperInDb } from '../services/storageService';
 
 interface ResultsViewProps {
   lessonPlans: LessonPlan[];
@@ -53,6 +53,26 @@ const ResultsView: React.FC<ResultsViewProps> = ({
     window.dispatchEvent(new CustomEvent('phssj-math-scale-changed', { detail: { scale: clamped } }));
   };
 
+  /**
+   * Persists an edited paper.
+   *
+   * Every question add/edit/delete used to call saveExamPaperToDb directly,
+   * which mints a fresh id on every call and prepends it - so editing one paper
+   * three times left three near-identical rows in the History Archive. When the
+   * paper was opened from History we now know its stored id and update that
+   * record in place; a genuinely new paper still gets a new entry.
+   */
+  const persistPaperEdit = (paper: GeneratedPaper) => {
+    if (paper.savedPaperId) {
+      return updateSavedPaperInDb(paper.savedPaperId, paper);
+    }
+    return saveExamPaperToDb(paper, { name: teacherName, schoolName })
+      .then(saved => {
+        // Remember the id so subsequent edits on this same paper also update in place.
+        paper.savedPaperId = saved.id;
+      });
+  };
+
   const handleUpdateQuestion = (sIdx: number, qIdx: number, updatedQuestion: PaperQuestion) => {
     if (!papers || papers.length === 0) return;
     const paper = papers[0];
@@ -63,7 +83,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
     );
     newPaper.totalMarks = calculatedMarks;
     onUpdatePaper?.(newPaper);
-    saveExamPaperToDb(newPaper).catch(console.error);
+    persistPaperEdit(newPaper).catch(console.error);
   };
 
   const handleDeleteQuestion = (sIdx: number, qIdx: number) => {
@@ -77,7 +97,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
     );
     newPaper.totalMarks = calculatedMarks;
     onUpdatePaper?.(newPaper);
-    saveExamPaperToDb(newPaper).catch(console.error);
+    persistPaperEdit(newPaper).catch(console.error);
   };
 
   const handleAddQuestion = (sIdx: number) => {
@@ -90,7 +110,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
     const newQ: PaperQuestion = {
       id: `q_${Date.now()}`,
       type: isMcq ? 'mcq' : (section.title.toLowerCase().includes('short') ? 'short' : 'long'),
-      question: 'New question text goes here (click edit to modify or regenerate with AI)',
+      question: 'New question text goes here (click edit to modify or regenerate)',
       marks: defaultMarks,
       options: isMcq ? ['Option A', 'Option B', 'Option C', 'Option D'] : undefined,
     };
@@ -100,7 +120,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
     );
     newPaper.totalMarks = calculatedMarks;
     onUpdatePaper?.(newPaper);
-    saveExamPaperToDb(newPaper).catch(console.error);
+    persistPaperEdit(newPaper).catch(console.error);
   };
 
   const handleExportPaper = async (paper: GeneratedPaper) => {
@@ -144,7 +164,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
                   onClick={() => setSelectedPlanIndex(prev => Math.max(0, prev - 1))}
                   disabled={selectedPlanIndex === 0}
                   aria-label="Previous plan"
-                  className="p-1.5 rounded-lg border border-brand-border hover:bg-brand-bg disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 active:scale-90"
+                  className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center border border-brand-border hover:bg-brand-bg disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 active:scale-90 active:bg-brand-bg"
                 >
                   <ChevronLeftIcon className="w-4 h-4" />
                 </button>
@@ -155,7 +175,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
                   onClick={() => setSelectedPlanIndex(prev => Math.min(lessonPlans.length - 1, prev + 1))}
                   disabled={selectedPlanIndex === lessonPlans.length - 1}
                   aria-label="Next plan"
-                  className="p-1.5 rounded-lg border border-brand-border hover:bg-brand-bg disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 active:scale-90"
+                  className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center border border-brand-border hover:bg-brand-bg disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 active:scale-90 active:bg-brand-bg"
                 >
                   <ChevronRightIcon className="w-4 h-4" />
                 </button>
@@ -177,8 +197,8 @@ const ResultsView: React.FC<ResultsViewProps> = ({
           <div className="max-w-3xl mx-auto space-y-6 animate-fadeInUp">
             <div className="glass-card rounded-xl p-4">
               <div className="flex items-start gap-3">
-                <div className="w-12 h-12 rounded-full bg-white border border-brand-border flex items-center justify-center overflow-hidden flex-shrink-0">
-                  <PhssjLogo className="w-full h-full" />
+                <div className="w-12 h-12 rounded-full bg-white dark:bg-slate-900 border border-brand-border shadow-soft flex items-center justify-center flex-shrink-0 p-1 ring-1 ring-black/5 dark:ring-white/10">
+                  <PhssjLogo className="w-full h-full rounded-full" />
                 </div>
                 <div className="min-w-0">
                   <h1 className="text-xl font-bold text-brand-text-primary mb-1 leading-tight">{selectedPlan.title}</h1>
@@ -301,8 +321,8 @@ const ResultsView: React.FC<ResultsViewProps> = ({
         <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4 md:p-6">
           <div className="max-w-3xl mx-auto animate-fadeInUp">
             <div className="glass-card rounded-xl p-4 mb-6 text-center">
-              <div className="w-14 h-14 rounded-full bg-white border border-brand-border flex items-center justify-center overflow-hidden mx-auto mb-3 shadow-soft">
-                <PhssjLogo className="w-full h-full" />
+              <div className="w-14 h-14 rounded-full bg-white dark:bg-slate-900 border border-brand-border flex items-center justify-center mx-auto mb-3 shadow-soft p-1 ring-1 ring-black/5 dark:ring-white/10">
+                <PhssjLogo className="w-full h-full rounded-full" />
               </div>
               <h1 className="text-lg font-bold text-brand-text-primary mb-1">{schoolName}</h1>
               <h2 className="text-xl font-bold text-brand-text-primary mb-2">{paper.title}</h2>
@@ -373,7 +393,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
                       <RefreshIcon className="w-3.5 h-3.5" />
                     </div>
                     <span className="text-xs sm:text-sm text-brand-text-secondary group-hover:text-brand-text-primary transition-colors truncate">
-                      Revise paper with AI (e.g., add MCQs, change marks, regenerate section)...
+                      Revise paper (add MCQs, change marks, regenerate a section)...
                     </span>
                     <span className="hidden sm:inline-flex text-[11px] font-semibold text-brand-primary bg-brand-primary/10 px-2.5 py-1 rounded-lg ml-auto border border-brand-primary/20">
                       Revise
@@ -411,13 +431,13 @@ const ResultsView: React.FC<ResultsViewProps> = ({
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-brand-primary animate-pulse" />
                         <span className="text-xs font-bold text-brand-primary uppercase tracking-wider">
-                          AI Paper Revision
+                          Paper Revision
                         </span>
                       </div>
                       <button
                         onClick={() => { setShowRevision(false); setRevisionPrompt(''); }}
                         aria-label="Close revision"
-                        className="p-1 rounded-lg text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg transition-colors active:scale-90"
+                        className="p-1 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg transition-colors active:scale-90 active:bg-brand-bg"
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -475,7 +495,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
                           </>
                         ) : (
                           <>
-                            <SparklesIcon className="w-3.5 h-3.5" />
+                            <CheckCircleIcon className="w-3.5 h-3.5" />
                             <span>Apply Revision</span>
                           </>
                         )}
@@ -494,8 +514,8 @@ const ResultsView: React.FC<ResultsViewProps> = ({
   // Empty state
   return (
     <div className="flex flex-col items-center justify-center h-full text-center p-8 animate-fadeInUp">
-      <div className="w-20 h-20 rounded-full bg-white shadow-glass border border-brand-border flex items-center justify-center overflow-hidden mb-5">
-        <PhssjLogo className="w-full h-full" />
+      <div className="w-20 h-20 rounded-full bg-white dark:bg-slate-900 shadow-glass border border-brand-border flex items-center justify-center mb-5 p-1.5 ring-4 ring-brand-primary/10">
+        <PhssjLogo className="w-full h-full rounded-full" />
       </div>
       <h2 className="text-xl font-bold text-brand-text-primary mb-2">No results yet</h2>
       <p className="text-brand-text-secondary mb-6 max-w-md leading-relaxed text-sm">

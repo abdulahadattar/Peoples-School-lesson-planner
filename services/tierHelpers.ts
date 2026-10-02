@@ -65,7 +65,19 @@ export const TIER_CONFIG: Record<ClassTier, TierConfig> = {
  */
 export function getClassTier(classLabel: string): ClassTier {
   const lbl = classLabel.trim().toUpperCase();
-  if (lbl.startsWith('IV')) return 'primary';
+  if (
+    lbl.startsWith('ECCE') ||
+    lbl.startsWith('I-') ||
+    lbl === 'IA' ||
+    lbl === 'IB' ||
+    lbl === 'I' ||
+    lbl.startsWith('II-') ||
+    lbl === 'II' ||
+    lbl.startsWith('III') ||
+    lbl.startsWith('IV')
+  ) {
+    return 'primary';
+  }
   if (lbl.startsWith('V-') || lbl === 'V') return 'elementary';
   if (lbl.startsWith('VI') || lbl.startsWith('VII') || lbl.startsWith('VIII')) return 'middle';
   return 'secondary';

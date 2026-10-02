@@ -55,7 +55,7 @@ const GenerationStatusPanel: React.FC<GenerationStatusPanelProps> = ({
   };
 
   return (
-    <div className="fixed bottom-6 right-6 w-[400px] max-w-[90vw] glass-card rounded-2xl overflow-hidden z-50 flex flex-col animate-slideUp shadow-glass">
+    <div className="fixed bottom-6 right-6 w-[400px] max-w-[90vw] glass-card rounded-2xl overflow-hidden z-[130] flex flex-col animate-slideUp shadow-glass">
       {/* Header */}
       <div className="flex justify-between items-center p-4 border-b border-brand-border bg-brand-surface/60">
         <div className="flex items-center gap-3 min-w-0">

@@ -18,7 +18,6 @@ import {
   PieChart as PieIcon,
   Filter,
   ArrowUpRight,
-  Sparkles,
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
@@ -201,10 +200,10 @@ export const ClassAnalyticsCharts: React.FC<ClassAnalyticsChartsProps> = ({
           </div>
           <div>
             <h2 className="text-base font-extrabold text-brand-text-primary tracking-tight">
-              Class Distribution & Student Visualizations
+              Class Distribution
             </h2>
             <p className="text-xs text-brand-text-secondary mt-0.5">
-              Interactive breakdown across {classData.length} grade levels. Click any bar to instantly filter the records table.
+              Students across {classData.length} classes. Click a bar to filter the records table.
             </p>
           </div>
         </div>
@@ -261,7 +260,7 @@ export const ClassAnalyticsCharts: React.FC<ClassAnalyticsChartsProps> = ({
             type="button"
             onClick={() => setIsCollapsed((prev) => !prev)}
             title={isCollapsed ? 'Expand Charts' : 'Collapse Charts'}
-            className="p-1.5 rounded-xl border border-brand-border bg-white dark:bg-brand-surface text-brand-text-secondary hover:text-brand-text-primary transition-colors"
+            className="p-1.5 rounded-xl min-w-[36px] min-h-[36px] flex items-center justify-center border border-brand-border bg-white dark:bg-brand-surface text-brand-text-secondary hover:text-brand-text-primary transition-colors active:bg-brand-bg"
           >
             {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
           </button>

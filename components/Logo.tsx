@@ -12,7 +12,7 @@ export const PhssjLogo: React.FC<LogoProps> = ({ className = 'h-10 w-10', alt = 
   if (hasError) {
     return (
       <div
-        className={`${className} flex items-center justify-center rounded-full bg-gradient-to-tr from-blue-700 via-blue-600 to-emerald-600 text-white font-bold text-xs select-none shadow-soft`}
+        className={`${className} aspect-square flex items-center justify-center rounded-full bg-gradient-to-tr from-blue-700 via-blue-600 to-emerald-600 text-white font-bold text-xs select-none shadow-soft`}
         title="Peoples Higher Secondary School Jamshoro"
       >
         <span>PHSSJ</span>
@@ -25,7 +25,7 @@ export const PhssjLogo: React.FC<LogoProps> = ({ className = 'h-10 w-10', alt = 
       src="/logos/phssj.png"
       alt={alt}
       onError={() => setHasError(true)}
-      className={`${className} object-contain select-none transition-transform duration-300 hover:scale-105`}
+      className={`${className} aspect-square object-contain rounded-full select-none transition-transform duration-300 hover:scale-105`}
       draggable={false}
     />
   );
@@ -66,8 +66,8 @@ export const SchoolBrandBadge: React.FC<{
   showAffiliation?: boolean;
 }> = ({ compact = false, showAffiliation = true }) => (
   <div className="flex items-center gap-3">
-    <div className={`${compact ? 'w-9 h-9' : 'w-11 h-11'} rounded-2xl bg-white shadow-card border border-brand-border flex items-center justify-center overflow-hidden p-0.5 flex-shrink-0`}>
-      <PhssjLogo className="w-full h-full" />
+    <div className={`${compact ? 'w-9 h-9' : 'w-11 h-11'} rounded-full bg-white dark:bg-slate-900 shadow-card border border-brand-border flex items-center justify-center flex-shrink-0 p-0.5 ring-1 ring-black/5 dark:ring-white/10`}>
+      <PhssjLogo className="w-full h-full rounded-full" />
     </div>
     <div className="leading-tight min-w-0">
       <h3 className={`${compact ? 'text-xs sm:text-sm' : 'text-sm sm:text-base'} font-bold text-brand-text-primary tracking-tight truncate`}>

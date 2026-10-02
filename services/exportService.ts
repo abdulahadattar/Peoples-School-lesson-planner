@@ -13,12 +13,30 @@ import {
   ISectionOptions,
   ImageRun,
   HorizontalPositionAlign,
-  VerticalAlign as DocxVerticalAlign,
 } from 'docx';
 import saveAs from 'file-saver';
 import { LessonPlan, GeneratedPaper, PaperQuestion, PaperSection, TeacherInfo } from '../types';
 import { parseTextWithEquations, dataUrlToBase64 } from './equationRenderer';
 import { latexToUnicodeText } from './latexSanitizer';
+
+/**
+ * DOCX / PDF export.
+ *
+ * Official references — read before changing document construction:
+ *   docx.js      https://docx.js.org/
+ *   pdf-lib      https://github.com/Hopding/pdf-lib
+ *   KaTeX        https://katex.org/docs/
+ *
+ * Installed docx is 8.5.0; upstream is 9.x. In v9 shapes, watermarks and charts
+ * moved to subpath exports (`docx/shapes`, `docx/watermarks`, `docx/charts`) and
+ * are no longer bundled into the main entry, so an upgrade changes the import
+ * list above, not just the version. See docs/VERIFIED_STACK.md section 3.
+ *
+ * Content note: values here originate from Gemini output and from Sheets. They
+ * are untrusted text. Sanitise/serialise through latexSanitizer and
+ * equationRenderer before rendering rather than interpolating raw model output
+ * into markup.
+ */
 import {
   hasOptions,
   layoutOptions,
@@ -77,15 +95,16 @@ const parseTextForDocx = async (text: string, mathScale: number = 100): Promise<
     if (seg.type === 'equation' && seg.image) {
       // Convert data URL to base64 and create an ImageRun at its natural size
       // (measured in CSS px before the 2x rasterization).
-      const base64 = dataUrlToBase64(seg.image);
-      const scaleMultiplier = mathScale / 100;
-      runs.push(new ImageRun({
-        data: base64,
-        transformation: {
-          width: Math.min(Math.round((seg.width || 120) * scaleMultiplier), 480),
-          height: Math.min(Math.round((seg.height || 24) * scaleMultiplier), 140),
-        },
-      }));
+const base64 = dataUrlToBase64(seg.image);
+       const scaleMultiplier = mathScale / 100;
+       runs.push(new ImageRun({
+         data: base64,
+         transformation: {
+           width: Math.min(Math.round((seg.width || 120) * scaleMultiplier), 480),
+           height: Math.min(Math.round((seg.height || 24) * scaleMultiplier), 140),
+         },
+         type: 'png',
+       }));
     } else {
       // Plain text — check for bold/italic markdown
       runs.push(...parseMarkdownRuns(seg.value));
@@ -603,7 +622,7 @@ export const exportPaperAsDocx = async (paper: GeneratedPaper, teacherInfo?: Tea
         ],
         borders: noBorders,
         width: { size: 50, type: WidthType.PERCENTAGE },
-        verticalAlign: DocxVerticalAlign.CENTER,
+        verticalAlign: VerticalAlign.CENTER,
     });
 
     for (let sIdx = 0; sIdx < paper.sections.length; sIdx++) {

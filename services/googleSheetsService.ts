@@ -160,64 +160,101 @@ export function rowToStudentRecord(row: string[], rowIndex: number): StudentReco
 }
 
 /**
+ * The first 17 columns of a student row (A-Q) are per-student metadata:
+ * registration number, institution, address, and enrolment counts. The app does
+ * not read these back per record - the compact payload strips `rawMetadata` and
+ * refills it from a single shared row - so they must never be written during an
+ * update. Everything from column R onwards is the student data the app owns.
+ */
+export const STUDENT_META_COLUMN_COUNT = 17;
+export const FIRST_STUDENT_DATA_COLUMN = 'R';
+export const LAST_STUDENT_DATA_COLUMN = 'AO';
+/** Number of app-owned student fields, i.e. R through AO. */
+const EXPECTED_STUDENT_DATA_COLUMNS = 24;
+
+/** Sheet range covering only the app-owned student columns for one row. */
+export function studentDataRange(sheetTitle: string, rowNumber: number): string {
+  return `'${sheetTitle}'!${FIRST_STUDENT_DATA_COLUMN}${rowNumber}:${LAST_STUDENT_DATA_COLUMN}${rowNumber}`;
+}
+
+/**
  * Converts a StudentRecord back into the full 41-element row array for Google Sheets
  */
 export function studentRecordToRow(record: StudentRecord): string[] {
-  // Default metadata for People's School Jamshoro if missing
   const meta = [...(record.rawMetadata || [])];
   while (meta.length < 17) {
     meta.push('');
   }
+  // Only genuinely school-wide constants are filled in here. This function used
+  // to invent a registration number ('190400001'), a full address, and a set of
+  // enrolment counts (25/24/473/68/16/541) whenever rawMetadata was empty - which
+  // is precisely the case for a newly added student. Those fabricated values were
+  // written straight into the live register, producing a duplicate ID row and
+  // enrollment figures belonging to a different student. Unknown values now stay
+  // empty rather than being invented.
   if (!meta[4]) meta[4] = "People'S School Jamshoro";
-  if (!meta[5]) meta[5] = 'Ziauddin University';
-  if (!meta[13]) meta[13] = 'Jamshoro (South)';
-  if (!meta[14]) meta[14] = 'Kotri';
-  if (!meta[15]) meta[15] = 'Sindh University';
-  if (!meta[16]) meta[16] = 'Sindh University Housing Society Phase 1';
 
-  return [
+  // Any field the record does not carry becomes an explicit empty cell.
+  // Left as undefined it serialises to null in the request body, and Sheets
+  // treats a null under valueInputOption=USER_ENTERED as "clear this cell" -
+  // so a record missing one optional field silently blanked that column on save.
+  const cell = (v: unknown) => (v === undefined || v === null ? '' : String(v));
+
+  const row: string[] = [
     meta[0] || String(record.rowNumber - 1),
     meta[1] || 'N/A',
-    meta[2] || '190400001',
-    meta[3] || 'Higher Secondary',
+    meta[2] || '',
+    meta[3] || '',
     meta[4] || "People'S School Jamshoro",
-    meta[5] || 'Ziauddin University',
-    meta[6] || 'PAS/LEGIS/B-12',
-    meta[7] || '25',
-    meta[8] || '24',
-    meta[9] || '473',
-    meta[10] || '68',
-    meta[11] || '16',
-    meta[12] || '541',
-    meta[13] || 'Jamshoro (South)',
-    meta[14] || 'Kotri',
-    meta[15] || 'Sindh University',
-    meta[16] || 'Sindh University Housing Society Phase 1',
-    record.grNo,
-    record.studentName,
-    record.bFormNo,
-    record.fatherName,
-    record.gender,
-    record.dobDay,
-    record.dobMonth,
-    record.dobYear,
-    record.classAdmitted,
-    record.currentClass,
-    record.parentCnic,
-    record.religion,
-    record.address,
-    record.parentContact,
-    record.emergencyContact,
-    record.admissionDay,
-    record.admissionMonth,
-    record.admissionYear,
-    record.section,
-    record.partnerContact,
-    record.shift,
-    record.medium,
-    record.picture,
-    record.status,
+    meta[5] || '',
+    meta[6] || '',
+    meta[7] || '',
+    meta[8] || '',
+    meta[9] || '',
+    meta[10] || '',
+    meta[11] || '',
+    meta[12] || '',
+    meta[13] || '',
+    meta[14] || '',
+    meta[15] || '',
+    meta[16] || '',
+    cell(record.grNo),
+    cell(record.studentName),
+    cell(record.bFormNo),
+    cell(record.fatherName),
+    cell(record.gender),
+    cell(record.dobDay),
+    cell(record.dobMonth),
+    cell(record.dobYear),
+    cell(record.classAdmitted),
+    cell(record.currentClass),
+    cell(record.parentCnic),
+    cell(record.religion),
+    cell(record.address),
+    cell(record.parentContact),
+    cell(record.emergencyContact),
+    cell(record.admissionDay),
+    cell(record.admissionMonth),
+    cell(record.admissionYear),
+    cell(record.section),
+    cell(record.partnerContact),
+    cell(record.shift),
+    cell(record.medium),
+    cell(record.picture),
+    cell(record.status),
   ];
+
+  // Guard the A:Q / R boundary: if a field is ever added or removed, the update
+  // path would start writing the wrong columns, so fail loudly instead.
+  if (row.length !== STUDENT_META_COLUMN_COUNT + (EXPECTED_STUDENT_DATA_COLUMNS)) {
+    console.warn(
+      `studentRecordToRow produced ${row.length} columns, expected ${
+        STUDENT_META_COLUMN_COUNT + EXPECTED_STUDENT_DATA_COLUMNS
+      }. The register update range may be misaligned.`
+    );
+  }
+
+  return row;
 }
 
 export interface FetchSheetResult {
@@ -254,24 +291,32 @@ export async function clearClientSheetCache(spreadsheetId: string = DEFAULT_SPRE
 /**
  * Fetch records from Google Sheets with app-level payload minimization & IndexedDB caching.
  * Uses HTTP 304 conditional revalidation, Gzip compression, and compact JSON payloads.
+ *
+ * `cacheMaxAgeMs` is how old a cached copy may be before this call is allowed to
+ * go to the network. It defaults to `CLIENT_CACHE_TTL_MS` (10 minutes), but the
+ * caller owns that policy: the register deliberately passes a 12-hour window so
+ * simply opening the view does not re-request the sheet. Note this gates the
+ * REQUEST, not the payload: once a request is made, an unchanged sheet still
+ * returns 304 with no body because of the ETag below.
  */
 export async function fetchSheetData(
   spreadsheetId: string = DEFAULT_SPREADSHEET_ID,
   gid: string = DEFAULT_GID,
   accessToken?: string | null,
-  forceRefresh: boolean = false
+  forceRefresh: boolean = false,
+  cacheMaxAgeMs: number = CLIENT_CACHE_TTL_MS
 ): Promise<FetchSheetResult> {
   const cacheKeySuffix = `${spreadsheetId}_${gid}`;
   const memoryKey = `${spreadsheetId}-${gid}-${accessToken ? 'auth' : 'public'}`;
 
   // 1. Check in-memory cache first if not force refresh
-  if (!forceRefresh && inMemorySheetCache[memoryKey] && Date.now() - inMemorySheetCache[memoryKey].timestamp < CLIENT_CACHE_TTL_MS) {
+  if (!forceRefresh && inMemorySheetCache[memoryKey] && Date.now() - inMemorySheetCache[memoryKey].timestamp < cacheMaxAgeMs) {
     return { ...inMemorySheetCache[memoryKey].data, fromCache: true };
   }
 
   // 2. Check IndexedDB persistent cache
   const idbCached = await getCachedStudentRecords(cacheKeySuffix);
-  if (!forceRefresh && idbCached && Date.now() - idbCached.timestamp < CLIENT_CACHE_TTL_MS && idbCached.records.length > 0) {
+  if (!forceRefresh && idbCached && Date.now() - idbCached.timestamp < cacheMaxAgeMs && idbCached.records.length > 0) {
     const cachedResult: FetchSheetResult = {
       records: idbCached.records,
       spreadsheetId: idbCached.spreadsheetId || spreadsheetId,
@@ -543,11 +588,29 @@ export async function updateSheetRecord(
     throw new Error('Google Sign-In is required to update records directly in Google Sheets.');
   }
 
-  const rowValues = studentRecordToRow(student);
   const rowNum = student.rowNumber;
+  // Same guard the batch writer applies. A student without a sheet row (a new one)
+  // would build the illegal range `R0:AO0`. This function has no callers today -
+  // record writes go through `batchUpdateSheetRecords` - but an unguarded exported
+  // writer is a trap for whoever revives it.
+  if (!Number.isInteger(rowNum) || rowNum <= 0) {
+    throw new Error(
+      `Refusing to update row ${rowNum}: a student with no sheet row must be added, not updated.`
+    );
+  }
+
+  const rowValues = studentRecordToRow(student);
 
   // Try direct Google Sheets API v4
-  const range = `'${sheetTitle}'!A${rowNum}:AO${rowNum}`;
+  //
+  // Only the app-owned columns (R onwards) are written. This previously wrote the
+  // whole row A:AO, where columns A-Q came from rawMetadata - which in compact
+  // mode is stripped per record and refilled from a single shared sheet row. Every
+  // edit therefore stamped another student's registration number, address and
+  // enrolment counts over the row being edited, and blanked the rest. Leaving
+  // A-Q untouched keeps each student's own metadata intact.
+  const range = studentDataRange(sheetTitle, rowNum);
+  const values = rowValues.slice(STUDENT_META_COLUMN_COUNT);
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
     range
   )}?valueInputOption=USER_ENTERED`;
@@ -561,7 +624,7 @@ export async function updateSheetRecord(
     body: JSON.stringify({
       range,
       majorDimension: 'ROWS',
-      values: [rowValues],
+      values: [values],
     }),
   });
 
@@ -583,6 +646,9 @@ export async function updateSheetRecord(
           sheetTitle,
           rowNumber: rowNum,
           rowValues,
+          // Server must apply the same column restriction as the direct call.
+          startColumn: FIRST_STUDENT_DATA_COLUMN,
+          metaColumnCount: STUDENT_META_COLUMN_COUNT,
         }),
       });
       if (serverRes.ok) {
@@ -596,6 +662,143 @@ export async function updateSheetRecord(
 
   await clearClientSheetCache(spreadsheetId);
   return { success: true, message: 'Row updated successfully in Google Sheet.' };
+}
+
+/**
+ * How many rows go into one `values:batchUpdate` request.
+ *
+ * The Sheets API accepts more per request, but this is the granularity at which
+ * a failure costs work: if a request fails, every row in it has to be retried.
+ * 50 keeps a single blip cheap while still collapsing a morning's edits into a
+ * handful of requests instead of one per student.
+ */
+export const RECORD_BATCH_SIZE = 50;
+
+export interface BatchRecordWriteFailure {
+  rowNumber: number;
+  message: string;
+}
+
+export interface BatchRecordWriteResult {
+  /** Rows the sheet accepted. */
+  updated: number;
+  /** Rows that still need pushing, with the reason. */
+  failures: BatchRecordWriteFailure[];
+  /** Requests actually sent, so callers can show the saving. */
+  requests: number;
+}
+
+/**
+ * Writes many edited rows in as few requests as possible.
+ *
+ * The old path called `updateSheetRecord` once per student (one HTTP request
+ * each) and then re-downloaded the entire sheet. Sending every pending row in a
+ * single `values:batchUpdate` cuts N requests to 1 per 50 rows, which matters
+ * against the 60-writes-per-minute-per-user quota: a teacher fixing a class of 40
+ * students used 40 requests before and can now use 1.
+ *
+ * Only the app-owned columns (R onwards) are written, for the same reason
+ * `updateSheetRecord` slices them: columns A-Q come from the sheet and writing
+ * them back stamped one student's registration data over another's.
+ */
+export async function batchUpdateSheetRecords(
+  students: StudentRecord[],
+  accessToken: string,
+  spreadsheetId: string = DEFAULT_SPREADSHEET_ID,
+  sheetTitle: string = DEFAULT_SHEET_TITLE,
+): Promise<BatchRecordWriteResult> {
+  if (!accessToken) {
+    throw new Error('Google Sign-In is required to update records directly in Google Sheets.');
+  }
+
+  const result: BatchRecordWriteResult = { updated: 0, failures: [], requests: 0 };
+  if (!students.length) return result;
+
+  // Rows with no positive number are NEW students, which must be appended rather
+  // than written over an existing row. Emitting one would produce `R0:AO0`, which
+  // is not a legal A1 range - and because `values:batchUpdate` is request-atomic,
+  // that single bad row fails the whole chunk and takes up to RECORD_BATCH_SIZE
+  // genuine edits down with it. Reject it here so it cannot reach the wire.
+  const writable: StudentRecord[] = [];
+  for (const student of students) {
+    if (Number.isInteger(student.rowNumber) && student.rowNumber > 0) {
+      writable.push(student);
+    } else {
+      result.failures.push({
+        rowNumber: student.rowNumber,
+        message: 'A new student has no sheet row yet and must be added, not updated.',
+      });
+    }
+  }
+  if (!writable.length) return result;
+
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchUpdate`;
+
+  for (let i = 0; i < writable.length; i += RECORD_BATCH_SIZE) {
+    const chunk = writable.slice(i, i + RECORD_BATCH_SIZE);
+    const data = chunk.map((student) => ({
+      range: studentDataRange(sheetTitle, student.rowNumber),
+      majorDimension: 'ROWS',
+      values: [studentRecordToRow(student).slice(STUDENT_META_COLUMN_COUNT)],
+    }));
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ valueInputOption: 'USER_ENTERED', data }),
+      });
+    } catch (err: any) {
+      // Network-level failure: the whole chunk stays pending.
+      const message = err?.message || String(err);
+      chunk.forEach((s) => result.failures.push({ rowNumber: s.rowNumber, message }));
+      continue;
+    }
+    result.requests++;
+
+    if (response.ok) {
+      result.updated += chunk.length;
+      continue;
+    }
+
+    const body = await response.text().catch(() => '');
+    // The status MUST be part of the classified string. Google's body text alone
+    // is not enough - a 401 whose body says only "Unauthorized" matches none of
+    // the classifier's auth phrases, so the dead token would be filed as an
+    // unknown error and the loop would keep retrying every remaining chunk,
+    // spending the 60-writes/min quota on requests that cannot succeed.
+    const classified = classifySheetsWriteError(`HTTP ${response.status}${body ? `: ${body}` : ''}`);
+    const message = classified.kind === 'unknown'
+      ? body || `Google Sheets rejected the batch (HTTP ${response.status})`
+      : classified.message;
+    chunk.forEach((s) => result.failures.push({ rowNumber: s.rowNumber, message }));
+
+    // A dead token or a missing scope cannot succeed on the next chunk either.
+    // Stop and let the caller prompt for a reconnect rather than burning the
+    // rest of the quota producing identical failures.
+    if (classified.kind === 'auth' || classified.kind === 'scope') {
+      for (let j = i + RECORD_BATCH_SIZE; j < writable.length; j++) {
+        result.failures.push({ rowNumber: writable[j].rowNumber, message });
+      }
+      break;
+    }
+  }
+
+  if (result.updated > 0) {
+    // A cache-clear failure must not turn a successful write into a reported
+    // failure: the rows really are in the sheet, and the next read revalidates
+    // anyway. This also keeps the function testable without IndexedDB.
+    try {
+      await clearClientSheetCache(spreadsheetId);
+    } catch (err) {
+      console.warn('[googleSheetsService] could not clear the client sheet cache:', err);
+    }
+  }
+  return result;
 }
 
 /**
@@ -715,6 +918,147 @@ export function exportRecordsToCSV(records: StudentRecord[], filename: string = 
   document.body.removeChild(link);
 }
 
+/** Header layout of the attendance sheet. */
+const ATTENDANCE_HEADERS = [
+  'Date', 'Recorded By', 'Class', 'Enrolled Boys', 'Enrolled Girls', 'Attendance %',
+  'Total Enrolled', 'Present Boys', 'Present Girls', 'Total Present', 'Total Absent',
+  'Notes', 'Class Teacher', 'Timestamp',
+];
+const ATTENDANCE_TAB = 'Sheet1';
+const ATTENDANCE_COLUMNS = ATTENDANCE_HEADERS.length; // A..N
+
+/**
+ * Turns a Sheets API failure into something a teacher can act on.
+ *
+ * These used to be swallowed: a non-OK response that was not the Excel-file case
+ * fell through to the server fallback and then to a generic
+ * "sheet sync pending authorization" message, while the app reported the save as
+ * successful. A 403 for a missing scope, a 400 for a wrong tab name and a 401 for
+ * an expired token all looked identical from the UI.
+ */
+function describeAttendanceSyncError(status: number, body: string, context: string): Error {
+  const detail = (() => {
+    try {
+      const parsed = JSON.parse(body);
+      return parsed?.error?.message || parsed?.error_description || body;
+    } catch {
+      return body;
+    }
+  })().slice(0, 400);
+
+  if (status === 401) {
+    return new Error(
+      `Google rejected the sign-in token (401) while ${context}. Sign out and sign in again with Google, ` +
+      `then retry.`
+    );
+  }
+  if (status === 403) {
+    return new Error(
+      `Google denied write access (403) while ${context}. The signed-in account needs Editor access to the ` +
+      `attendance sheet, and must re-authorise to grant the Google Sheets scope. Sign out, sign in again, ` +
+      `and ask the sheet owner to share it with you as an editor. Detail: ${detail}`
+    );
+  }
+  if (status === 404) {
+    return new Error(
+      `The attendance sheet or its "${ATTENDANCE_TAB}" tab was not found (404) while ${context}. ` +
+      `Check the spreadsheet ID and that the tab is still named "${ATTENDANCE_TAB}".`
+    );
+  }
+  if (status === 400) {
+    return new Error(
+      `Google rejected the request (400) while ${context}. This usually means the tab name is wrong or the ` +
+      `row shape does not match the sheet. Detail: ${detail}`
+    );
+  }
+  return new Error(`Attendance sheet sync failed (HTTP ${status}) while ${context}. Detail: ${detail}`);
+}
+
+/**
+ * Classify a Google Sheets write failure so the UI says the right thing.
+ *
+ * The previous check treated any error mentioning `403` as "the sheet is
+ * protected or View-Only". Google uses 403 for far more than sharing: an
+ * expired or invalid access token, a missing scope, and a quota breach all come
+ * back 403. Reporting those as a Drive-permission problem sent the user to
+ * Google Drive to fix sharing when the actual fix was reconnecting Google -
+ * and the problem was reported right after reconnecting, which made it look
+ * like the reconnect had failed.
+ *
+ * `kind` is what the caller should do about it:
+ * - `auth`      - reconnect (a token problem)
+ * - `scope`     - re-authorise so the Sheets scope is granted
+ * - `permission`- the sheet genuinely needs Editor sharing
+ * - `quota`     - retry later
+ * - `unknown`   - show the detail as-is
+ */
+export type SheetsWriteErrorKind = 'auth' | 'scope' | 'permission' | 'quota' | 'unknown';
+
+export function classifySheetsWriteError(errMessage: string): {
+  kind: SheetsWriteErrorKind;
+  message: string;
+} {
+  const raw = (errMessage || '').trim();
+  const m = raw.toLowerCase();
+  // Keep the underlying detail visible: a diagnosis the user cannot check is a
+  // diagnosis they cannot act on.
+  const detail = raw ? `Google said: ${raw}` : '';
+
+  // Auth failures first. They dominate the 403 space and are the most
+  // commonly mis-attributed, so they are tested before permission.
+  if (
+    m.includes('401') ||
+    m.includes('invalid authentication credentials') ||
+    m.includes('token has been expired') ||
+    m.includes('token expired') ||
+    m.includes('token has been expired or revoked') ||
+    m.includes('invalid_grant') ||
+    (m.includes('403') && (m.includes('token') || m.includes('bearer') || m.includes('credential')))
+  ) {
+    return {
+      kind: 'auth',
+      message:
+        'Google rejected the sign-in because the access token is expired or invalid. ' +
+        `Press "Reconnect Google" to get a fresh token, then press Sync again. ${detail}`,
+    };
+  }
+
+  if (m.includes('scope') || m.includes('insufficient authentication scopes')) {
+    return {
+      kind: 'scope',
+      message:
+        'This account has not granted the Google Sheets permission. ' +
+        `Sign in with Google again and accept the Sheets access prompt. ${detail}`,
+    };
+  }
+
+  if (m.includes('ratelimit') || m.includes('rate limit') || m.includes('quota')) {
+    return {
+      kind: 'quota',
+      message:
+        'Google is rate-limiting writes to this spreadsheet. ' +
+        `Wait a minute and press Sync again. ${detail}`,
+    };
+  }
+
+  if (
+    m.includes('permission') ||
+    m.includes('does not have permission') ||
+    (m.includes('403') && m.includes('forbidden')) ||
+    m.includes('protected')
+  ) {
+    return {
+      kind: 'permission',
+      message:
+        'Google Sheet is protected or View-Only in Google Drive. ' +
+        'You do not have direct write access to this spreadsheet in the cloud. ' +
+        `Ask the sheet owner to share it with you as an Editor. ${detail}`,
+    };
+  }
+
+  return { kind: 'unknown', message: raw };
+}
+
 export async function syncAttendanceToSheet(
   record: {
     date: string;
@@ -730,118 +1074,146 @@ export async function syncAttendanceToSheet(
   },
   accessToken?: string | null
 ): Promise<{ success: boolean; message: string }> {
-  try {
-    const headerValues = ['Date', 'Recorded By', 'Class', 'Enrolled Boys', 'Enrolled Girls', 'Attendance %', 'Total Enrolled', 'Present Boys', 'Present Girls', 'Total Present', 'Total Absent', 'Notes', 'Timestamp'];
-    
-    const rowsToAppend = record.rows.map(r => [
-      record.date,
-      r.classTeacher || 'Class Teacher',
-      r.displayName,
-      r.enrolledBoys,
-      r.enrolledGirls,
-      `${r.percentage}%`,
-      r.totalEnrolled,
-      typeof r.presentBoys === 'number' ? r.presentBoys : 0,
-      typeof r.presentGirls === 'number' ? r.presentGirls : 0,
-      r.totalPresent,
-      r.absentTotal,
-      record.notes || '',
-      new Date().toISOString()
-    ]);
+  const timestamp = new Date().toISOString();
 
-    // Add the summary row at the end
-    rowsToAppend.push([
-      record.date,
-      record.recordedBy || 'Miss Shahida',
-      'TOTAL ATTENDANCE',
-      '',
-      '',
-      `${record.summary.overallPercentage}%`,
-      record.summary.totalEnrolled,
-      '',
-      '',
-      record.summary.totalPresent,
-      record.summary.totalAbsent,
-      record.notes || '',
-      new Date().toISOString()
-    ]);
+  const rowsToWrite = record.rows.map(r => [
+    record.date,
+    // The recorder, not the class teacher. This column previously carried the
+    // class teacher, so the sheet showed "Class In-Charge" or a teacher's name as
+    // who signed the register; the class teacher now has its own column.
+    record.recordedBy || 'Unassigned',
+    r.displayName,
+    r.enrolledBoys,
+    r.enrolledGirls,
+    `${r.percentage}%`,
+    r.totalEnrolled,
+    typeof r.presentBoys === 'number' ? r.presentBoys : 0,
+    typeof r.presentGirls === 'number' ? r.presentGirls : 0,
+    r.totalPresent,
+    r.absentTotal,
+    record.notes || '',
+    r.classTeacher || '',
+    timestamp,
+  ]);
 
-    if (accessToken) {
-      // 1. Check headers
-      try {
-        const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${ATTENDANCE_SPREADSHEET_ID}/values/${encodeURIComponent(`'Sheet1'!A1:M1`)}`;
-        const getRes = await fetch(getUrl, {
-          headers: { Authorization: `Bearer ${accessToken}` }
-        });
-        if (getRes.ok) {
-          const getData = await getRes.json();
-          const firstHeader = getData.values?.[0]?.[2];
-          // If headers are missing, or if it has the OLD headers (where Col C was 'Total Enrolled' instead of 'Class')
-          if (!getData.values || getData.values.length === 0 || getData.values[0].length === 0 || firstHeader !== 'Class') {
-            // Write new expanded headers
-            const updateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${ATTENDANCE_SPREADSHEET_ID}/values/${encodeURIComponent(`'Sheet1'!A1:M1`)}?valueInputOption=USER_ENTERED`;
-            await fetch(updateUrl, {
-              method: 'PUT',
-              headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ range: `'Sheet1'!A1:M1`, majorDimension: 'ROWS', values: [headerValues] }),
-            });
-            
-            // Wait a moment before appending to ensure headers are flushed, though usually synchronous
-          }
-        }
-      } catch (err) {
-        console.warn('Could not check/update headers', err);
-      }
+  rowsToWrite.push([
+    record.date,
+    record.recordedBy || 'Unassigned',
+    'TOTAL ATTENDANCE',
+    '',
+    '',
+    `${record.summary.overallPercentage}%`,
+    record.summary.totalEnrolled,
+    '',
+    '',
+    record.summary.totalPresent,
+    record.summary.totalAbsent,
+    record.notes || '',
+    '',
+    timestamp,
+  ]);
 
-      // 2. Append rows
-      const range = `'Sheet1'!A:A`;
-      const url = `https://sheets.googleapis.com/v4/spreadsheets/${ATTENDANCE_SPREADSHEET_ID}/values/${encodeURIComponent(
-        range
-      )}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          range,
-          majorDimension: 'ROWS',
-          values: rowsToAppend,
-        }),
-      });
-
-      if (response.ok) {
-        return { success: true, message: 'Attendance synced successfully to Google Sheet!' };
-      } else {
-        const errorText = await response.text();
-        if (errorText.includes('Office file') || errorText.includes('FAILED_PRECONDITION')) {
-          throw new Error('This operation is not supported because the spreadsheet is an Excel file. Please open the file in Google Drive and select "Save as Google Sheets".');
-        }
-      }
-    }
-
-    // Fallback to server route
-    const serverRes = await fetch('/api/attendance/sync-sheet', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      },
-      body: JSON.stringify({
-        spreadsheetId: ATTENDANCE_SPREADSHEET_ID,
-        rowValues: rowsToAppend,
-      }),
-    });
-
-    if (serverRes.ok) {
-      return { success: true, message: 'Attendance synced successfully to Google Sheet via server!' };
-    }
-  } catch (err) {
-    console.warn('Attendance Google Sheet sync warning:', err);
+  if (!accessToken) {
+    throw new Error(
+      'Your Google sign-in has expired, so the register was not sent to the sheet. ' +
+      'Sign out and sign in with Google again (the sheet needs that to stay connected), then save again. ' +
+      'The register itself is saved in the app either way.'
+    );
   }
 
-  return { success: false, message: 'Attendance saved locally and server, sheet sync pending authorization.' };
+  const authHeaders = { Authorization: `Bearer ${accessToken}` };
+  const jsonHeaders = { ...authHeaders, 'Content-Type': 'application/json' };
+  const api = (path: string) =>
+    `https://sheets.googleapis.com/v4/spreadsheets/${ATTENDANCE_SPREADSHEET_ID}/values/${path}`;
+  const fullRange = `'${ATTENDANCE_TAB}'!A1:N1`;
+
+  // 1. Ensure the header row matches, checking every column rather than one cell.
+  const headerRes = await fetch(api(encodeURIComponent(fullRange)), { headers: authHeaders });
+  if (!headerRes.ok) {
+    throw describeAttendanceSyncError(
+      headerRes.status,
+      await headerRes.text(),
+      'reading the attendance sheet header'
+    );
+  }
+  const headerData = await headerRes.json();
+  const currentHeader: string[] = headerData.values?.[0] || [];
+  const headerMatches =
+    currentHeader.length >= ATTENDANCE_COLUMNS &&
+    ATTENDANCE_HEADERS.every((h, i) => (currentHeader[i] || '').trim() === h);
+
+  if (!headerMatches) {
+    const headerPut = await fetch(`${api(encodeURIComponent(fullRange))}?valueInputOption=RAW`, {
+      method: 'PUT',
+      headers: jsonHeaders,
+      body: JSON.stringify({ range: fullRange, majorDimension: 'ROWS', values: [ATTENDANCE_HEADERS] }),
+    });
+    if (!headerPut.ok) {
+      throw describeAttendanceSyncError(
+        headerPut.status,
+        await headerPut.text(),
+        'writing the attendance sheet header'
+      );
+    }
+  }
+
+  // 2. Replace any existing block for this date.
+  //
+  // The sync used to append unconditionally, so re-saving a date left a second,
+  // conflicting set of rows in the sheet while Firestore kept a single record -
+  // the two drifted apart. Rows for the date are located and cleared first so
+  // the sheet always mirrors the saved record.
+  const allValuesRes = await fetch(api(encodeURIComponent(`'${ATTENDANCE_TAB}'!A:A`)), {
+    headers: authHeaders,
+  });
+  if (!allValuesRes.ok) {
+    throw describeAttendanceSyncError(
+      allValuesRes.status,
+      await allValuesRes.text(),
+      'scanning the attendance sheet for existing rows'
+    );
+  }
+  const allValues = (await allValuesRes.json()).values || [];
+  const rowsToClear: number[] = [];
+  allValues.forEach((row, idx) => {
+    if (String(row?.[0] ?? '').trim() === record.date) rowsToClear.push(idx + 1);
+  });
+
+  if (rowsToClear.length) {
+    const requests = rowsToClear.map((r) => ({
+      range: `'${ATTENDANCE_TAB}'!A${r}:N${r}`,
+    }));
+    const clearRes = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${ATTENDANCE_SPREADSHEET_ID}/values:batchClear`,
+      {
+        method: 'POST',
+        headers: jsonHeaders,
+        body: JSON.stringify({ ranges: requests.map((x) => x.range) }),
+      }
+    );
+    if (!clearRes.ok) {
+      throw describeAttendanceSyncError(
+        clearRes.status,
+        await clearRes.text(),
+        `clearing the previous rows for ${record.date}`
+      );
+    }
+  }
+
+  // 3. Write the current figures.
+  const appendRange = `'${ATTENDANCE_TAB}'!A:A`;
+  const appendRes = await fetch(
+    `${api(encodeURIComponent(appendRange))}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+    {
+      method: 'POST',
+      headers: jsonHeaders,
+      body: JSON.stringify({ range: appendRange, majorDimension: 'ROWS', values: rowsToWrite }),
+    }
+  );
+  if (!appendRes.ok) {
+    throw describeAttendanceSyncError(appendRes.status, await appendRes.text(), `writing ${record.date}`);
+  }
+
+  return { success: true, message: 'Attendance synced to Google Sheet!' };
 }
 

@@ -10,13 +10,14 @@ import {
   UserCheck,
   UserX,
   History,
-  Sparkles,
+  Info,
   ChevronLeft,
   ChevronRight,
   RotateCcw,
   Clock,
   ShieldCheck,
   RefreshCw,
+  AlertTriangle,
   FileSpreadsheet,
 } from 'lucide-react';
 import {
@@ -33,9 +34,16 @@ import {
   loadAttendanceDates,
   exportAttendanceCSV,
   cleanAttendanceInCharge,
+  loadClassEnrollments,
 } from '../../services/attendanceService';
+import { printHtml } from '../../utils/printHelper';
 import { fetchSheetData, StudentRecord, syncAttendanceToSheet } from '../../services/googleSheetsService';
-import { getAccessToken } from '../../services/googleAuth';
+import { queueSheetSync } from '../../services/sheetSyncQueue';
+import { getAccessToken, getCurrentUser, initAuth } from '../../services/googleAuth';
+import { isUserAdmin } from '../../services/adminService';
+import { EnrollmentEditorModal } from './EnrollmentEditorModal';
+import { useSchoolConfig } from '../../hooks/useSchoolConfig';
+import { User } from 'firebase/auth';
 import { PhssjLogo } from '../Logo';
 
 export const DailyAttendanceView: React.FC = () => {
@@ -48,10 +56,13 @@ export const DailyAttendanceView: React.FC = () => {
     return `${year}-${month}-${day}`;
   };
 
+  const { config: schoolConfig, saveConfig } = useSchoolConfig();
   const [selectedDate, setSelectedDate] = useState<string>(getTodayStr());
   const [enrollments, setEnrollments] = useState<ClassEnrollment[]>(DEFAULT_GRADE_ENROLLMENTS);
+  const [currentUser, setCurrentUser] = useState<User | null>(getCurrentUser());
+  const [showEnrollmentModal, setShowEnrollmentModal] = useState<boolean>(false);
   const [inputs, setInputs] = useState<Record<string, { presentBoys: number | ''; presentGirls: number | ''; classTeacher?: string }>>({});
-  const [recordedBy, setRecordedBy] = useState<string>('Miss Shahida');
+  const [recordedBy, setRecordedBy] = useState<string>(schoolConfig?.classes?.[0]?.classTeacher || '');
   const [notes, setNotes] = useState<string>('');
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -60,46 +71,116 @@ export const DailyAttendanceView: React.FC = () => {
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
   const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
+  // Set when the selected date's record could not be read. It is a WARNING, not a
+  // blocker: the register is left blank because of a failed read, and saving from
+  // that blank state overwrites the date (or creates it). The teacher is asked to
+  // confirm before that happens.
+  const [loadError, setLoadError] = useState<string | null>(null);
+  // Once the teacher has acknowledged the blank-state warning for this date, stop
+  // asking on every subsequent save.
+  const [saveConfirmedOverBlank, setSaveConfirmedOverBlank] = useState<boolean>(false);
 
   const [historyList, setHistoryList] = useState<{ date: string; totalPresent: number; percentage: number }[]>([]);
   const [showHistoryDrawer, setShowHistoryDrawer] = useState<boolean>(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'info' | 'error'; message: string } | null>(null);
+
+  const isAdmin = useMemo(() => isUserAdmin(currentUser?.email), [currentUser]);
+
+  // Derive class teachers map from school config
+  const classTeachersMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    if (schoolConfig?.classes) {
+      schoolConfig.classes.forEach((c) => {
+        if (c.classTeacher) map[c.classKey] = c.classTeacher;
+      });
+    }
+    return map;
+  }, [schoolConfig?.classes]);
+
+  // Derive manual enrollments from school config
+  const manualEnrollments: ClassEnrollment[] = useMemo(() => {
+    if (!schoolConfig?.classes?.length) return DEFAULT_GRADE_ENROLLMENTS;
+    return schoolConfig.classes.map((c) => ({
+      classKey: c.classKey,
+      romanName: c.romanName,
+      displayName: c.displayName,
+      enrolledBoys: c.enrolledBoys,
+      enrolledGirls: c.enrolledGirls,
+      totalEnrollment: c.totalEnrollment || c.enrolledBoys + c.enrolledGirls,
+    }));
+  }, [schoolConfig?.classes]);
+
+  // Auth listener for admin privileges
+  useEffect(() => {
+    const unsub = initAuth(
+      (u) => setCurrentUser(u),
+      () => setCurrentUser(null)
+    );
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
+  }, []);
 
   const showToast = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 4000);
   };
 
-  const refreshEnrollments = useCallback(async (force = false) => {
-    setIsSyncingEnrollment(true);
-    try {
-      const token = await getAccessToken();
-      const res = await fetchSheetData(undefined, undefined, token, force);
-      if (res.records && res.records.length > 0) {
-        const liveEnrollments = computeEnrollmentsFromRecords(res.records);
-        setEnrollments(liveEnrollments);
-        if (force) {
-          showToast('Live enrollment sync complete!', 'success');
-        }
+  const refreshEnrollments = useCallback(
+    async (force = false) => {
+      if (schoolConfig?.enrollmentMode === 'manual' && !force) {
+        setEnrollments(manualEnrollments);
+        return;
       }
-    } catch (err) {
-      console.warn('Falling back to default verified school enrollment:', err);
-    } finally {
-      setIsSyncingEnrollment(false);
-    }
-  }, []);
+      setIsSyncingEnrollment(true);
+      try {
+        const token = await getAccessToken();
+        const res = await fetchSheetData(undefined, undefined, token, force);
+        if (res.records && res.records.length > 0) {
+          const liveEnrollments = computeEnrollmentsFromRecords(res.records, manualEnrollments);
+          setEnrollments(liveEnrollments);
+          if (force) {
+            showToast('Live enrollment sync complete!', 'success');
+          }
+        } else {
+          setEnrollments(manualEnrollments);
+        }
+      } catch (err) {
+        console.warn('Falling back to manual configured school enrollment:', err);
+        setEnrollments(manualEnrollments);
+      } finally {
+        setIsSyncingEnrollment(false);
+      }
+    },
+    [schoolConfig?.enrollmentMode, manualEnrollments]
+  );
 
-  // 1. Load live active enrollment from Google Sheets student records
+  // Sync enrollments when mode or classes change
   useEffect(() => {
-    refreshEnrollments();
-  }, [refreshEnrollments]);
+    if (schoolConfig?.enrollmentMode === 'manual') {
+      setEnrollments(manualEnrollments);
+    } else {
+      refreshEnrollments();
+    }
+  }, [schoolConfig?.enrollmentMode, manualEnrollments, refreshEnrollments]);
 
   // 2. Load attendance for the selected date
   const loadDateAttendance = useCallback(async (date: string) => {
     setIsLoading(true);
     setSaveSuccess(false);
+    setSaveConfirmedOverBlank(false);
     try {
-      const record = await loadAttendanceRecord(date);
+      const result = await loadAttendanceRecord(date);
+      if (result.status === 'error') {
+        // Do NOT silently present an unreadable date as an empty day. Leave the
+        // register blank but flag it, so the teacher is told the figures on screen
+        // are not what was previously recorded before they overwrite the date.
+        setLoadError(result.error);
+        return;
+      }
+      setLoadError(null);
+
+      const record = result.record;
       if (record && record.classes && Object.keys(record.classes).length > 0) {
         const loadedInputs: Record<string, { presentBoys: number | ''; presentGirls: number | ''; classTeacher?: string }> = {};
         Object.entries(record.classes).forEach(([key, val]) => {
@@ -121,8 +202,8 @@ export const DailyAttendanceView: React.FC = () => {
         setLastSavedTime(null);
         setHasUnsavedChanges(false);
       }
-    } catch (err) {
-      console.error('Failed to load attendance:', err);
+    } catch (err: any) {
+      setLoadError(`Could not load attendance for ${date}: ${err?.message || err}`);
     } finally {
       setIsLoading(false);
     }
@@ -144,8 +225,8 @@ export const DailyAttendanceView: React.FC = () => {
 
   // Derived Rows & Summary
   const attendanceRows: ClassAttendanceRow[] = useMemo(() => {
-    return buildAttendanceRows(enrollments, inputs);
-  }, [enrollments, inputs]);
+    return buildAttendanceRows(enrollments, inputs, classTeachersMap);
+  }, [enrollments, inputs, classTeachersMap]);
 
   const schoolSummary: SchoolAttendanceSummary = useMemo(() => {
     return calculateSchoolSummary(selectedDate, attendanceRows);
@@ -200,6 +281,23 @@ export const DailyAttendanceView: React.FC = () => {
 
   // Save Attendance to Server & Local DB
   const handleSave = async () => {
+    // Saving is intentionally allowed even when the previous record could not be
+    // read. saveAttendanceRecord does an unconditional setDoc, so this overwrites
+    // the date when a record already exists and creates one when it does not -
+    // which is what a teacher recording today's register needs. Blocking the save
+    // outright would leave them unable to record attendance at all whenever
+    // Firestore is briefly unreachable, so the risk is surfaced as a confirmation
+    // instead of a hard block.
+    if (loadError && !saveConfirmedOverBlank) {
+      const proceed = window.confirm(
+        `${loadError}\n\nThe register below is blank because of this, not because nothing was recorded. ` +
+        `Saving now will overwrite any existing record for ${selectedDate} with the figures entered here.\n\n` +
+        `Save anyway?`
+      );
+      if (!proceed) return;
+      setSaveConfirmedOverBlank(true);
+    }
+
     setIsSaving(true);
     try {
       const classesData: Record<string, { presentBoys: number; presentGirls: number; classTeacher?: string }> = {};
@@ -222,9 +320,15 @@ export const DailyAttendanceView: React.FC = () => {
 
       await saveAttendanceRecord(record);
 
+      // The sheet result is reported separately. Firestore (and the local cache)
+      // is the source of truth, so a sheet failure must not fail the save, but it
+      // must NOT be reported as a success either - previously every failure was
+      // swallowed and the user saw "saved successfully" while nothing reached
+      // the sheet.
+      let sheetMessage = '';
       try {
         const token = await getAccessToken();
-        await syncAttendanceToSheet({
+        const result = await syncAttendanceToSheet({
           date: selectedDate,
           recordedBy: inChargeName,
           notes,
@@ -236,13 +340,47 @@ export const DailyAttendanceView: React.FC = () => {
           },
           rows: attendanceRows,
         }, token);
-      } catch (syncErr) {
-        console.warn('Google Sheet attendance sync note:', syncErr);
+        sheetMessage = result.message;
+      } catch (syncErr: any) {
+        console.error('Attendance Google Sheet sync failed:', syncErr);
+        sheetMessage = syncErr?.message || 'Unknown sheet sync error';
+        // The app save already succeeded and Firestore holds the record, so a
+        // sheet failure must not lose the work. Queue the date and tell the
+        // teacher the sheet is behind rather than leaving them to re-enter it.
+        queueSheetSync({
+          target: 'attendance',
+          scope: selectedDate,
+          label: `Attendance for ${selectedDate}`,
+          payload: {
+            date: selectedDate,
+            recordedBy: inChargeName,
+            notes,
+            summary: {
+              totalEnrolled: schoolSummary.totalEnrolled,
+              totalPresent: schoolSummary.totalPresent,
+              totalAbsent: schoolSummary.totalAbsent,
+              overallPercentage: schoolSummary.overallPercentage,
+            },
+            rows: attendanceRows,
+          },
+        });
       }
+
       setSaveSuccess(true);
       setHasUnsavedChanges(false);
       setLastSavedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-      showToast(`Daily attendance for ${selectedDate} saved successfully!`, 'success');
+      if (sheetMessage) {
+        const sheetOk = sheetMessage.startsWith('Attendance synced');
+        showToast(
+          sheetOk
+            ? `Daily attendance for ${selectedDate} saved to the app. Google Sheet: ${sheetMessage}`
+            : `Daily attendance for ${selectedDate} is saved in the app, but the Google Sheet has not caught up yet (${sheetMessage}). ` +
+              `Reconnect Google in the header, then press Sync to push it. Nothing is lost - the record is safe.`,
+          sheetOk ? 'success' : 'info'
+        );
+      } else {
+        showToast(`Daily attendance for ${selectedDate} saved successfully!`, 'success');
+      }
       refreshHistory();
     } catch (err) {
       console.error('Save failed:', err);
@@ -265,12 +403,6 @@ export const DailyAttendanceView: React.FC = () => {
 
   // Print Daily Attendance Slip
   const handlePrint = () => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      alert('Please allow popups to generate the official attendance slip.');
-      return;
-    }
-
     const formattedDate = new Date(selectedDate).toLocaleDateString('en-GB', {
       weekday: 'long',
       day: 'numeric',
@@ -405,12 +537,7 @@ export const DailyAttendanceView: React.FC = () => {
       </html>
     `;
 
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-    }, 400);
+    printHtml(html);
   };
 
   // Color helper for attendance percentage
@@ -440,7 +567,7 @@ export const DailyAttendanceView: React.FC = () => {
       {/* Toast Notification */}
       {notification && (
         <div
-          className={`fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium transition-all duration-300 ${
+          className={`fixed bottom-6 right-6 z-[130] flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium transition-all duration-300 ${
             notification.type === 'success'
               ? 'bg-emerald-900/90 text-white border-emerald-700'
               : notification.type === 'error'
@@ -453,7 +580,7 @@ export const DailyAttendanceView: React.FC = () => {
           ) : notification.type === 'error' ? (
             <AlertCircle className="w-4 h-4 text-rose-400" />
           ) : (
-            <Sparkles className="w-4 h-4 text-brand-primary" />
+            <Info className="w-4 h-4 text-brand-primary" />
           )}
           <span>{notification.message}</span>
         </div>
@@ -476,10 +603,10 @@ export const DailyAttendanceView: React.FC = () => {
             </div>
             <p className="text-xs text-brand-text-secondary mt-0.5 flex items-center gap-2">
               Enter Boys and Girls present for each grade. Formulas auto-sum totals, percentages, and progress bars.
-              <button 
+              <button
                 onClick={() => refreshEnrollments(true)}
                 disabled={isSyncingEnrollment}
-                className="inline-flex items-center gap-1 hover:text-brand-primary transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1 min-h-[36px] px-2 -mx-2 rounded-lg hover:bg-brand-bg active:bg-brand-primary/15 hover:text-brand-primary transition-colors disabled:opacity-50"
                 title="Force refresh live enrollments from Google Sheets"
               >
                 <RefreshCw className={`w-3 h-3 ${isSyncingEnrollment ? 'animate-spin' : ''}`} />
@@ -491,13 +618,15 @@ export const DailyAttendanceView: React.FC = () => {
 
         {/* Date Selector & Navigation Controls */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Day Navigation */}
+          {/* Day Navigation. The arrows are 28px in the markup, which is below a
+              comfortable thumb target, so they carry a 44px hit area on touch. */}
           <div className="inline-flex items-center bg-brand-surface rounded-xl border border-brand-border p-1 shadow-xs">
             <button
               type="button"
               onClick={() => changeDateBy(-1)}
               title="Previous Day"
-              className="p-1.5 text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg rounded-lg transition-colors"
+              aria-label="Previous Day"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg active:bg-brand-primary/15 rounded-lg transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -508,7 +637,7 @@ export const DailyAttendanceView: React.FC = () => {
                 type="date"
                 value={selectedDate}
                 onChange={e => setSelectedDate(e.target.value)}
-                className="text-xs font-semibold text-brand-text-primary bg-transparent focus:outline-none cursor-pointer"
+                className="text-xs font-semibold text-brand-text-primary bg-transparent focus:outline-none cursor-pointer min-h-[40px]"
               />
             </div>
 
@@ -516,7 +645,8 @@ export const DailyAttendanceView: React.FC = () => {
               type="button"
               onClick={() => changeDateBy(1)}
               title="Next Day"
-              className="p-1.5 text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg rounded-lg transition-colors"
+              aria-label="Next Day"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg active:bg-brand-primary/15 rounded-lg transition-colors"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -559,10 +689,67 @@ export const DailyAttendanceView: React.FC = () => {
             </span>
           </div>
 
-          <div className="flex items-center gap-3 text-xs text-brand-text-secondary">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-brand-text-secondary">
             <span>
               Active Roster: <strong className="text-brand-text-primary">{schoolSummary.totalEnrolled}</strong>
             </span>
+
+            {/* Admin Enrollment Source Mode Toggle */}
+            <div className="inline-flex items-center rounded-xl bg-slate-100 dark:bg-slate-800 p-0.5 border border-brand-border shadow-xs">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (schoolConfig.enrollmentMode !== 'manual') {
+                    if (isAdmin) {
+                      await saveConfig({ ...schoolConfig, enrollmentMode: 'manual' });
+                      showToast('Switched enrollment source to Manual School Register');
+                    } else {
+                      showToast('Admin privilege required to switch global enrollment mode', 'info');
+                    }
+                  }
+                }}
+                className={`px-2 py-1 min-h-[32px] rounded-lg text-[10px] font-bold transition-all active:scale-[0.97] ${
+                  schoolConfig.enrollmentMode === 'manual'
+                    ? 'bg-white dark:bg-brand-surface text-brand-primary shadow-xs'
+                    : 'text-brand-text-secondary hover:text-brand-text-primary'
+                }`}
+                title="Use configured manual enrollment register"
+              >
+                Manual
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (schoolConfig.enrollmentMode !== 'google_sheet') {
+                    if (isAdmin) {
+                      await saveConfig({ ...schoolConfig, enrollmentMode: 'google_sheet' });
+                      showToast('Switched enrollment source to Google Sheet Live Extract');
+                    } else {
+                      showToast('Admin privilege required to switch global enrollment mode', 'info');
+                    }
+                  }
+                }}
+                className={`px-2 py-1 min-h-[32px] rounded-lg text-[10px] font-bold transition-all active:scale-[0.97] ${
+                  schoolConfig.enrollmentMode === 'google_sheet'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-brand-text-secondary hover:text-brand-text-primary'
+                }`}
+                title="Extract live class counts from Google Sheet records"
+              >
+                Sheet Sync
+              </button>
+            </div>
+
+            <button
+              type="button"
+              id="header-edit-enrollments-btn"
+              onClick={() => setShowEnrollmentModal(true)}
+              className="inline-flex items-center justify-center gap-1 min-h-[32px] text-[11px] font-semibold text-blue-600 hover:text-blue-700 active:bg-blue-200/80 bg-blue-50/80 hover:bg-blue-100/80 px-2 py-1 rounded-md border border-blue-200 transition-colors"
+              title="Official school enrollment configuration"
+            >
+              <ShieldCheck className="w-3 h-3 text-blue-600" />
+              <span>Enrollments</span>
+            </button>
             {isSyncingEnrollment && (
               <span className="inline-flex items-center gap-1 text-[10px] text-brand-primary">
                 <RefreshCw className="w-3 h-3 animate-spin" /> Syncing
@@ -669,6 +856,22 @@ export const DailyAttendanceView: React.FC = () => {
       {/* Action Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-brand-surface p-3.5 rounded-2xl border border-brand-border shadow-xs">
         <div className="flex flex-wrap items-center gap-2">
+          {/* Class Enrollments Admin / View */}
+          <button
+            type="button"
+            id="action-toolbar-enrollments-btn"
+            onClick={() => setShowEnrollmentModal(true)}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-xl border transition-all shadow-xs ${
+              isAdmin
+                ? 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-300'
+                : 'bg-brand-bg hover:bg-brand-border text-brand-text-primary border-brand-border'
+            }`}
+            title="Configure official school enrollments"
+          >
+            <ShieldCheck className={`w-3.5 h-3.5 ${isAdmin ? 'text-blue-600' : 'text-brand-text-secondary'}`} />
+            <span>Class Enrollments {isAdmin ? '(Admin)' : ''}</span>
+          </button>
+
           {/* Clear Form */}
           <button
             type="button"
@@ -719,6 +922,7 @@ export const DailyAttendanceView: React.FC = () => {
             type="button"
             onClick={handleSave}
             disabled={isSaving}
+            title={loadError ? 'The register below is blank because loading failed - saving will overwrite this date' : undefined}
             className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold rounded-xl brand-gradient text-white hover:opacity-90 disabled:opacity-50 transition-all shadow-md active:scale-95"
           >
             {isSaving ? (
@@ -730,6 +934,35 @@ export const DailyAttendanceView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Load failure: the register below is blank because the read failed, not
+          because the day was never marked. Saving is still allowed - it overwrites
+          the date, or creates it if none exists - but the teacher is warned. */}
+      {loadError && (
+        <div
+          role="alert"
+          className="flex items-start gap-3 p-4 rounded-2xl border border-amber-300/70 bg-amber-50 text-amber-900 shadow-soft"
+        >
+          <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-amber-600" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold">Working offline — {selectedDate} was not loaded from the server</p>
+            <p className="text-xs mt-1 leading-relaxed">{loadError}</p>
+            <p className="text-xs mt-2 leading-relaxed">
+              The register below is blank because of this, not because nothing was recorded. You can
+              still save: this will overwrite {selectedDate} if a record already exists, or create it if
+              it does not. Figures are stored on this device and sync to the server when it is reachable.
+            </p>
+            <button
+              type="button"
+              onClick={() => loadDateAttendance(selectedDate)}
+              className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors active:scale-95"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Retry loading {selectedDate}</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Grade-by-Grade Attendance Table */}
       <div className="glass-card rounded-2xl border border-brand-border shadow-soft overflow-hidden">
@@ -752,7 +985,7 @@ export const DailyAttendanceView: React.FC = () => {
                 setRecordedBy(e.target.value);
                 setHasUnsavedChanges(true);
               }}
-              placeholder="Miss Shahida"
+              placeholder="e.g. Miss Shahida"
               className="h-8 px-2.5 text-xs rounded-lg bg-brand-bg border border-brand-border text-brand-text-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
             />
           </div>
@@ -823,6 +1056,8 @@ export const DailyAttendanceView: React.FC = () => {
                         <div className="relative w-20">
                           <input
                             type="number"
+  inputMode="numeric"
+  autoComplete="off"
                             min="0"
                             max={row.enrolledBoys}
                             placeholder="0"
@@ -849,6 +1084,8 @@ export const DailyAttendanceView: React.FC = () => {
                         <div className="relative w-20">
                           <input
                             type="number"
+  inputMode="numeric"
+  autoComplete="off"
                             min="0"
                             max={row.enrolledGirls}
                             placeholder="0"
@@ -995,6 +1232,7 @@ export const DailyAttendanceView: React.FC = () => {
               type="button"
               onClick={handleSave}
               disabled={isSaving}
+              title={loadError ? 'The register below is blank because loading failed - saving will overwrite this date' : undefined}
               className="px-4 py-2 text-xs font-bold rounded-xl brand-gradient text-white hover:opacity-90 disabled:opacity-50 transition-all shadow-sm active:scale-95"
             >
               {isSaving ? 'Saving...' : 'Save Roster'}
@@ -1005,7 +1243,7 @@ export const DailyAttendanceView: React.FC = () => {
 
       {/* History / Archive Drawer Modal */}
       {showHistoryDrawer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+        <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
           <div className="bg-brand-surface rounded-2xl border border-brand-border shadow-2xl max-w-lg w-full overflow-hidden animate-scaleUp">
             <div className="p-5 border-b border-brand-border flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -1030,16 +1268,17 @@ export const DailyAttendanceView: React.FC = () => {
                 </div>
               ) : (
                 historyList.map(item => (
-                  <div
+                  <button
+                    type="button"
                     key={item.date}
                     onClick={() => {
                       setSelectedDate(item.date);
                       setShowHistoryDrawer(false);
                     }}
-                    className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                    className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between active:scale-[0.99] ${
                       item.date === selectedDate
                         ? 'bg-brand-primary/10 border-brand-primary text-brand-primary font-bold'
-                        : 'bg-brand-bg hover:bg-brand-border/40 border-brand-border text-brand-text-primary'
+                        : 'bg-brand-bg hover:bg-brand-border/40 active:bg-brand-border/60 border-brand-border text-brand-text-primary'
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
@@ -1059,7 +1298,7 @@ export const DailyAttendanceView: React.FC = () => {
 
                     <div className="flex items-center gap-3">
                       <span className="text-xs font-semibold">
-                        {item.totalPresent} / 866
+                        {item.totalPresent} / {schoolSummary.totalEnrolled}
                       </span>
                       <span
                         className={`text-xs font-bold px-2 py-0.5 rounded ${getBadgeBg(
@@ -1069,7 +1308,7 @@ export const DailyAttendanceView: React.FC = () => {
                         {item.percentage}%
                       </span>
                     </div>
-                  </div>
+                  </button>
                 ))
               )}
             </div>
@@ -1086,6 +1325,18 @@ export const DailyAttendanceView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Admin Enrollment Editor Modal */}
+      <EnrollmentEditorModal
+        isOpen={showEnrollmentModal}
+        onClose={() => setShowEnrollmentModal(false)}
+        currentEnrollments={enrollments}
+        onSave={(updated) => {
+          setEnrollments(updated);
+          showToast('Official class enrollments successfully updated and saved!', 'success');
+        }}
+        currentUser={currentUser}
+      />
     </div>
   );
 };

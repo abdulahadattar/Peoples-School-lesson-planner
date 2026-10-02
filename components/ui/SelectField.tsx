@@ -196,7 +196,7 @@ export const SelectField: React.FC<SelectFieldProps> = ({
     );
   }, [selectableOptions, searchQuery]);
 
-  // Handle clicking outside to close
+  // Handle clicking outside or scrolling container to close cleanly
   useEffect(() => {
     if (!isOpen) return;
     const handleClickOutside = (e: MouseEvent | TouchEvent) => {
@@ -205,11 +205,21 @@ export const SelectField: React.FC<SelectFieldProps> = ({
         setSearchQuery('');
       }
     };
+    const handleScrollOutside = (e: Event) => {
+      if (listRef.current && listRef.current.contains(e.target as Node)) {
+        return;
+      }
+      setIsOpen(false);
+      setSearchQuery('');
+    };
+
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('touchstart', handleClickOutside);
+    window.addEventListener('scroll', handleScrollOutside, { capture: true, passive: true });
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
+      window.removeEventListener('scroll', handleScrollOutside, { capture: true });
     };
   }, [isOpen]);
 
@@ -439,7 +449,7 @@ export const SelectField: React.FC<SelectFieldProps> = ({
                   e.stopPropagation();
                   selectValue('');
                 }}
-                className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 text-brand-text-tertiary hover:text-brand-text-primary transition-colors cursor-pointer"
+                className="p-1 rounded min-w-[36px] min-h-[36px] flex items-center justify-center-md hover:bg-slate-200 dark:hover:bg-slate-700 text-brand-text-tertiary hover:text-brand-text-primary transition-colors cursor-pointer active:bg-slate-200"
                 title="Clear selection"
               >
                 <X className="w-3.5 h-3.5" />
@@ -491,7 +501,7 @@ export const SelectField: React.FC<SelectFieldProps> = ({
               ref={listRef}
               role="listbox"
               aria-label={label || 'Select options'}
-              className="max-h-72 overflow-y-auto p-2 space-y-1.5 custom-scrollbar"
+              className="max-h-72 overflow-y-auto overscroll-contain p-2 space-y-1.5 custom-scrollbar"
             >
               {/* Optional Placeholder / Unselect Option */}
               {placeholderOption && !searchQuery && (

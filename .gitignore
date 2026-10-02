@@ -1,24 +1,33 @@
-# Logs
-logs
+# Environment
+.env.local
+.vercel/
+
+# Node
+node_modules/
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+dist/
+api/_bundle.cjs
+api/*.cjs
 
-node_modules
-dist
-dist-ssr
-*.local
+.vercel
+.env*
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+# Runtime-generated data. timetable.json and teachers.json are tracked because
+# the app imports them; everything else here is produced at runtime and includes
+# real student identity documents (CNIC scans, B-Forms, student photos), so it
+# must never reach the repository.
+data/student_documents/
+data/*.json
+# Autonoma SDK mirror tables. The local server writes these under
+# process.cwd()/data, and they are runtime state (context owners, journal rows,
+# receipts), not source. Left untracked they show up as untracked noise in every
+# `git status` and risk being committed.
+data/autonoma/
+!data/timetable.json
+!data/teachers.json
+
+# Screenshots and text dumps written by the browser suites
+# (scripts/e2e-smoke.mjs, scripts/diagnose-records.mjs). These capture the live
+# Student Records register, so they contain real student names, GR numbers and
+# guardian names. They must never be committed.
+test-artifacts/

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Search,
   Filter,
@@ -10,6 +10,7 @@ import {
   Eye,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   Users,
   GraduationCap,
   FileSpreadsheet,
@@ -22,7 +23,18 @@ import {
   ArrowDown,
   ArrowUpDown,
   BarChart3,
+  Lock,
+  Unlock,
+  ShieldCheck,
+  ShieldAlert,
+  ZoomIn,
+  FolderOpen,
+  LayoutGrid,
+  List,
+  FileText,
+  Camera,
 } from 'lucide-react';
+import { useSchoolConfig } from '../../hooks/useSchoolConfig';
 import {
   StudentRecord,
   DEFAULT_SPREADSHEET_URL,
@@ -30,9 +42,8 @@ import {
   DEFAULT_GID,
   DEFAULT_SHEET_TITLE,
   fetchSheetData,
-  updateSheetRecord,
-  addSheetRecord,
   exportRecordsToCSV,
+  classifySheetsWriteError,
 } from '../../services/googleSheetsService';
 import {
   initAuth,
@@ -41,6 +52,16 @@ import {
   getAccessToken,
   getCurrentUser,
 } from '../../services/googleAuth';
+import { fetchAllDossiers } from '../../services/documentClientService';
+import {
+  publishSharedEdit,
+  subscribeSharedEdits,
+  applySharedEdits,
+  setMirrorErrorHandler,
+  type SharedRecordEdit,
+} from '../../services/sharedRecordEdits';
+import { shouldPullSheet, markSheetPulled, SHEET_PULL_CHECK_MS, SHEET_PULL_INTERVAL_MS } from '../../services/sheetPullSchedule';
+import { StudentDossier } from '../../types/documentArchive';
 import { GoogleSignInButton } from './GoogleSignInButton';
 import { StudentDetailModal } from './StudentDetailModal';
 import { StudentEditModal } from './StudentEditModal';
@@ -64,8 +85,144 @@ export type SortField =
 
 export type SortDirection = 'asc' | 'desc';
 
+/**
+ * Collapses a GR number to a single comparable key so a roster cell and a scanned
+ * dossier still join when their formatting differs. The sheet may hold "56", " 56 ",
+ * "056" or "56.0", while the archive keys folders by the number parsed out of the
+ * scan filename. Without this, a real photo silently failed to attach to its student.
+ */
+const normalizeGrKey = (raw: string): string => {
+  const digits = raw.replace(/[^0-9]/g, '');
+  if (!digits) return raw.trim().toUpperCase();
+  return String(parseInt(digits, 10));
+};
+
+/**
+ * Resolves the best available photo for a student. The dossier-level avatarUrl is
+ * preferred, but if it is missing or its file 404s we fall back to any successfully
+ * classified STUDENT_PHOTO document in the same dossier.
+ */
+const resolveAvatarUrl = (dossier?: StudentDossier): string | undefined => {
+  if (!dossier) return undefined;
+  if (dossier.avatarUrl) return dossier.avatarUrl;
+  const photo = dossier.documents?.find(
+    (d) => d.classification === 'STUDENT_PHOTO' && d.status !== 'duplicate' && d.url
+  );
+  return photo?.url;
+};
+
+interface StudentAvatarProps {
+  name: string;
+  grNo?: string;
+  avatarUrl?: string;
+  /** Tried in order if avatarUrl 404s, e.g. a STUDENT_PHOTO found in the dossier. */
+  fallbackUrls?: string[];
+  size?: 'sm' | 'md' | 'lg';
+  onClick?: () => void;
+}
+
+const StudentAvatar: React.FC<StudentAvatarProps> = ({
+  name,
+  grNo = '',
+  avatarUrl,
+  fallbackUrls,
+  size = 'md',
+  onClick,
+}) => {
+  const candidates = useMemo(
+    () => [avatarUrl, ...(fallbackUrls || [])].filter((u): u is string => Boolean(u)),
+    [avatarUrl, fallbackUrls]
+  );
+  const [candidateIndex, setCandidateIndex] = useState(0);
+
+  // Reset the candidate cursor whenever the set of candidate photos changes.
+  useEffect(() => {
+    setCandidateIndex(0);
+  }, [candidates]);
+
+  const activeUrl = candidates[candidateIndex];
+
+  const sizeClasses = {
+    sm: 'w-7 h-7 text-[10px]',
+    md: 'w-8 h-8 text-xs',
+    lg: 'w-11 h-11 text-sm',
+  }[size];
+
+  const initials = useMemo(() => {
+    if (!name) return 'S';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }, [name]);
+
+  const colorIndex = useMemo(() => {
+    let hash = 0;
+    const str = grNo || name || 'S';
+    for (let i = 0; i < str.length; i++) {
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return Math.abs(hash) % 6;
+  }, [grNo, name]);
+
+  const bgGradients = [
+    'from-indigo-600 to-blue-600 text-white',
+    'from-emerald-600 to-teal-700 text-white',
+    'from-violet-600 to-purple-700 text-white',
+    'from-amber-600 to-orange-700 text-white',
+    'from-rose-600 to-pink-700 text-white',
+    'from-sky-600 to-cyan-700 text-white',
+  ];
+
+  if (activeUrl) {
+    return (
+      <div
+        onClick={onClick}
+        className={`${sizeClasses} rounded-full border border-brand-border/80 overflow-hidden flex-shrink-0 shadow-xs relative group/avatar ${
+          onClick ? 'cursor-pointer hover:ring-2 hover:ring-brand-primary transition-all' : ''
+        }`}
+        title={`${name} (Click to inspect photo)`}
+      >
+        <img
+          src={activeUrl}
+          alt={name}
+          className="w-full h-full object-cover"
+          onError={() => setCandidateIndex((i) => i + 1)}
+          loading="lazy"
+        />
+        {onClick && (
+          <div className="absolute inset-0 bg-black/35 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center">
+            <ZoomIn className="w-3 h-3 text-white" />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      onClick={onClick}
+      className={`${sizeClasses} rounded-full bg-gradient-to-br ${bgGradients[colorIndex]} font-bold flex items-center justify-center flex-shrink-0 shadow-xs select-none border border-white/25 ${
+        onClick ? 'cursor-pointer hover:opacity-90 transition-opacity' : ''
+      }`}
+      title={name}
+    >
+      {initials}
+    </div>
+  );
+};
+
 export const StudentRecordsView: React.FC = () => {
+  const { config: schoolConfig, isAdmin, saveConfig } = useSchoolConfig();
   const [records, setRecords] = useState<StudentRecord[]>([]);
+  // The rows exactly as the sheet returned them, before unsynced local edits
+  // were layered on top. The overlay must be re-applied from this copy and not
+  // from `records`: once a queued write lands, its overlay entry is cleared, and
+  // re-applying onto already-overlaid rows would keep showing the local value
+  // forever - the exact staleness the overlay exists to prevent.
+  const sheetRecordsRef = useRef<StudentRecord[]>([]);
+  /** Pending edits published by other teachers. Held in a ref so the loader can
+   *  read the latest set without being re-created on every change. */
+  const sharedEditsRef = useRef<SharedRecordEdit[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -115,8 +272,14 @@ export const StudentRecordsView: React.FC = () => {
 
   // Modals
   const [detailStudent, setDetailStudent] = useState<StudentRecord | null>(null);
+  const [detailModalTab, setDetailModalTab] = useState<'details' | 'documents'>('details');
   const [editStudent, setEditStudent] = useState<StudentRecord | null>(null);
   const [isAddMode, setIsAddMode] = useState<boolean>(false);
+
+  // Document Dossier & Avatar state
+  const [dossiersByGr, setDossiersByGr] = useState<Record<string, StudentDossier>>({});
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<{ url: string; name: string; grNo: string } | null>(null);
+  const [viewMode, setViewMode] = useState<'auto' | 'table' | 'cards'>('auto');
 
   // Confirmation modal state
   const [confirmationState, setConfirmationState] = useState<{
@@ -169,19 +332,104 @@ export const StudentRecordsView: React.FC = () => {
     };
   }, []);
 
-  // Fetch initial sheet data
-  const loadRecords = async (isManualRefresh = false) => {
-    if (isManualRefresh) setIsRefreshing(true);
-    else setIsLoading(true);
+  /**
+   * Surface shared-store failures to the teacher.
+   *
+   * `services/sharedRecordEdits` reports every problem through this hook. Without
+   * a subscriber those reports were `console.warn` only, which a teacher never
+   * sees - so a failed mirror looked identical to a successful save.
+   */
+  useEffect(() => {
+    setMirrorErrorHandler((message) => showNotification(message, 'error'));
+    return () => setMirrorErrorHandler(null);
+  }, []);
+
+  /**
+   * Pending edits from Firestore, live.
+   *
+   * Records no longer use a device-local overlay. A localStorage copy is visible
+   * only in the browser that made it, disappears when that browser's data is
+   * cleared, and is tied to one device - none of which is acceptable for the
+   * official register. The pending edit lives in `student_record_edits`, so the
+   * teacher who made it, every other signed-in teacher, and every device read the
+   * same value from the moment it is saved.
+   */
+  useEffect(() => {
+    return subscribeSharedEdits((edits) => {
+      const previousCount = sharedEditsRef.current.length;
+      sharedEditsRef.current = edits;
+
+      // The pending set SHRANK, so at least one edit has just been accepted by the
+      // sheet - here or on another device. `sheetRecordsRef` still holds the
+      // pre-sync base, so merging over it would leave accepted rows showing their
+      // old values until the next scheduled pull, up to 12 hours later.
+      //
+      // Deliberately "fewer", not "none": a partial sync that cleared one of two
+      // edits leaves that one row stale, and waiting for the count to hit zero
+      // would leave it stale for good if the other edit kept failing.
+      if (edits.length < previousCount) {
+        void loadRecords(true, true);
+        return;
+      }
+
+      if (sheetRecordsRef.current.length === 0) return;
+      setRecords(applySharedEdits(sheetRecordsRef.current, edits));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fetch initial sheet data & student document dossiers
+  const loadRecords = async (isManualRefresh = false, silent = false) => {
+    // A silent reload is a correction (e.g. after a sync landed), not user
+    // action: it must not flash a spinner or announce itself.
+    if (isManualRefresh && !silent) setIsRefreshing(true);
+    else if (!isManualRefresh) setIsLoading(true);
     setError(null);
 
     try {
       const token = authToken || (await getAccessToken());
-      const result = await fetchSheetData(DEFAULT_SPREADSHEET_ID, DEFAULT_GID, token, isManualRefresh);
-      setRecords(result.records);
-      setLastSynced(result.lastSynced);
-      if (isManualRefresh) {
-        showNotification(`Successfully synchronized ${result.records.length} records from Google Sheet.`);
+      const [sheetResult, dossiersResult] = await Promise.allSettled([
+        // The 12-hour window is passed as the cache's max age so that opening the
+        // view inside the window serves the cache and issues NO request at all.
+        // Without this the service's own 10-minute TTL would still hit the
+        // network, which is not the behaviour the schedule promises.
+        fetchSheetData(
+          DEFAULT_SPREADSHEET_ID,
+          DEFAULT_GID,
+          token,
+          isManualRefresh,
+          SHEET_PULL_INTERVAL_MS
+        ),
+        fetchAllDossiers(),
+      ]);
+
+      if (sheetResult.status === 'fulfilled') {
+        // Layering order is sheet -> other teachers' pending edits -> this
+        // teacher's own unsynced edits, so the person looking at the screen
+        // always sees their own work but never loses sight of everyone else's.
+        sheetRecordsRef.current = sheetResult.value.records;
+        setRecords(applySharedEdits(sheetResult.value.records, sharedEditsRef.current));
+        setLastSynced(sheetResult.value.lastSynced);
+        if (isManualRefresh) {
+          // Only a deliberate pull resets the 12-hour clock. Recording a
+          // cache-served read here would delay the next real pull by 12 hours.
+          markSheetPulled();
+          if (!silent) {
+            showNotification(`Successfully synchronized ${sheetResult.value.records.length} records from Google Sheet.`);
+          }
+        }
+      } else {
+        throw sheetResult.reason;
+      }
+
+      if (dossiersResult.status === 'fulfilled') {
+        const dMap: Record<string, StudentDossier> = {};
+        for (const d of dossiersResult.value) {
+          if (d.grNo) {
+            dMap[normalizeGrKey(String(d.grNo))] = d;
+          }
+        }
+        setDossiersByGr(dMap);
       }
     } catch (err: any) {
       console.error('Failed to load Google Sheet data:', err);
@@ -193,7 +441,28 @@ export const StudentRecordsView: React.FC = () => {
   };
 
   useEffect(() => {
-    loadRecords();
+    // A real network read only when the cached register is older than the 12-hour
+    // window (or has no recorded timestamp); otherwise the cached copy is shown
+    // and the timer below handles the next scheduled pull. This replaces
+    // re-downloading the entire sheet after every single edit.
+    void loadRecords(shouldPullSheet());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * The 12-hour pull, checked rather than polled.
+   *
+   * Each tick is a timestamp comparison with no network cost, and a fetch happens
+   * only once the window has genuinely elapsed. A teacher who leaves the app open
+   * all day therefore still picks up sheet-side edits, without the request storm
+   * the old per-edit reload caused.
+   */
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (shouldPullSheet()) void loadRecords(true);
+    }, SHEET_PULL_CHECK_MS);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSignIn = async () => {
@@ -425,14 +694,32 @@ export const StudentRecordsView: React.FC = () => {
     setCurrentPage(1);
   }, [searchQuery, selectedClass, selectedSection, selectedStatus, selectedGender, pageSize, sortField, sortDirection]);
 
+  const isSheetEditingLocked = !schoolConfig.sheetEditingEnabled && !isAdmin;
+
   // Open Edit flow
   const handleOpenEdit = (student: StudentRecord) => {
+    if (isSheetEditingLocked) {
+      showNotification(
+        schoolConfig.sheetEditingLockedMessage ||
+          'Student records editing is locked by School Administration. View-only access is active.',
+        'error'
+      );
+      return;
+    }
     setIsAddMode(false);
     setEditStudent(student);
   };
 
   // Open Add Student flow
   const handleOpenAdd = () => {
+    if (isSheetEditingLocked) {
+      showNotification(
+        schoolConfig.sheetEditingLockedMessage ||
+          'Student records addition is locked by School Administration. View-only access is active.',
+        'error'
+      );
+      return;
+    }
     setIsAddMode(true);
     setEditStudent(null);
   };
@@ -462,41 +749,40 @@ export const StudentRecordsView: React.FC = () => {
     setConfirmationState((prev) => ({ ...prev, isSubmitting: true }));
 
     try {
-      const token = authToken || (await getAccessToken());
+      const editorName = authUser?.displayName || authUser?.email || 'Authorized Teacher';
 
-      if (token) {
-        const editorName = authUser?.displayName || authUser?.email || 'Authorized Teacher';
-        // Authenticated with Google: sync directly to spreadsheet!
-        if (isAdd) {
-          await addSheetRecord(student, token, DEFAULT_SPREADSHEET_ID, DEFAULT_SHEET_TITLE);
-          showNotification(`Student ${student.studentName} added successfully to Google Sheet (suggestion edit by ${editorName}).`);
-        } else {
-          await updateSheetRecord(student, token, DEFAULT_SPREADSHEET_ID, DEFAULT_SHEET_TITLE);
-          showNotification(`Row #${student.rowNumber} (${student.studentName}) updated successfully in Google Sheet (suggestion edit by ${editorName}).`);
-        }
-        // Reload fresh data from Google Sheet
-        await loadRecords(true);
+      // Local-first, and deliberately NOT a write to Google Sheets.
+      //
+      // This used to call addSheetRecord/updateSheetRecord inline and then reload
+      // the entire sheet, so every single student cost one Sheets write plus a full
+      // download. Worse, when the ~1 hour Sheets token had lapsed the same block
+      // called googleSignIn(), so a teacher editing twenty students could be asked
+      // to sign in twenty times. Nothing here touches the token now: the register
+      // is written once, when the teacher presses "Sync to Sheet".
+      // Firestore is the ONLY store for a pending record edit.
+      //
+      // This deliberately does NOT fall back to localStorage. A device-local copy
+      // is invisible to other teachers, disappears when the browser is cleared,
+      // and is pinned to one machine - so it presents as a saved edit that every
+      // other teacher, and every future session, silently lacks. If the shared
+      // write does not land, the teacher is told the change was not saved.
+      const shared = await publishSharedEdit(student, isAdd ? 'add' : 'update');
+
+      if (shared) {
+        showNotification(
+          `${student.studentName} saved (edit by ${editorName}). Everyone can see it now. Press "Sync to Sheet" when you are done to update the sheet itself.`,
+          'success'
+        );
       } else {
-        // Not authenticated with Google: apply update locally and explain how to sync to cloud
-        if (isAdd) {
-          const newStudentWithRow = {
-            ...student,
-            rowNumber: records.length + 2,
-          };
-          setRecords((prev) => [newStudentWithRow, ...prev]);
-          showNotification(
-            `Added ${student.studentName} to local records. Sign in with Google above to push edits directly to your spreadsheet.`,
-            'info'
-          );
-        } else {
-          setRecords((prev) =>
-            prev.map((item) => (item.rowNumber === student.rowNumber ? student : item))
-          );
-          showNotification(
-            `Updated ${student.studentName} locally. Sign in with Google above to push edits directly to your spreadsheet.`,
-            'info'
-          );
-        }
+        showNotification(
+          `Could not save ${student.studentName}: the shared records store was unreachable. ` +
+            `Check your connection and that you are signed in, then try again. Nothing was changed.`,
+          'error'
+        );
+        // Leave the dialog open so the teacher can retry rather than believing a
+        // change was stored when it was not.
+        setConfirmationState((prev) => ({ ...prev, isSubmitting: false }));
+        return;
       }
 
       setConfirmationState({
@@ -508,8 +794,15 @@ export const StudentRecordsView: React.FC = () => {
         isSubmitting: false,
       });
     } catch (err: any) {
-      console.error('Error saving record:', err);
-      showNotification(err?.message || 'Failed to update Google Sheet.', 'error');
+      // Nothing in the try block raises a Google Sheets error any more, so this
+      // only catches unexpected failures (the shared write rejecting, or a bug).
+      // Report plainly and keep the dialog open so the teacher can retry, rather
+      // than closing it and implying the edit was stored.
+      console.error('Error saving record locally:', err);
+      showNotification(
+        `Could not save ${student.studentName} on this device: ${err?.message || err}. The change was not stored.`,
+        'error'
+      );
       setConfirmationState((prev) => ({ ...prev, isSubmitting: false }));
     }
   };
@@ -549,7 +842,7 @@ export const StudentRecordsView: React.FC = () => {
       {/* Toast Notification */}
       {notification && (
         <div
-          className={`fixed top-20 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-glass border text-xs font-semibold animate-fadeInUp ${
+          className={`fixed top-20 right-6 z-[130] flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-glass border text-xs font-semibold animate-fadeInUp ${
             notification.type === 'error'
               ? 'bg-rose-50 dark:bg-rose-950/90 text-rose-800 dark:text-rose-200 border-rose-200 dark:border-rose-800'
               : notification.type === 'info'
@@ -591,7 +884,7 @@ export const StudentRecordsView: React.FC = () => {
             School Student Records & Register
           </h1>
           <p className="text-xs text-brand-text-secondary max-w-2xl leading-relaxed">
-            Connected to official Peoples Higher Secondary School spreadsheet. Filter, search students by name, father name, or contact number, and edit records with automatic two-way cloud sync.
+            Search, filter and edit student records. Changes sync back to the Google Sheet.
           </p>
         </div>
 
@@ -611,9 +904,15 @@ export const StudentRecordsView: React.FC = () => {
           <button
             type="button"
             onClick={handleOpenAdd}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-all"
+            disabled={isSheetEditingLocked}
+            title={isSheetEditingLocked ? 'Editing locked by school admin' : 'Add Student'}
+            className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold shadow-soft transition-all ${
+              isSheetEditingLocked
+                ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                : 'text-white bg-brand-primary hover:bg-brand-primary/90 active:scale-95'
+            }`}
           >
-            <Plus className="w-3.5 h-3.5" />
+            {isSheetEditingLocked ? <Lock className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
             <span>Add Student</span>
           </button>
 
@@ -637,6 +936,64 @@ export const StudentRecordsView: React.FC = () => {
           </a>
         </div>
       </div>
+
+      {/* Administrative Lockout / View-Only Status Banner */}
+      {!schoolConfig.sheetEditingEnabled && (
+        <div
+          className={`p-4 rounded-2xl border shadow-soft flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+            isAdmin
+              ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800'
+              : 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className={`p-2 rounded-xl flex-shrink-0 ${
+                isAdmin
+                  ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300'
+                  : 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300'
+              }`}
+            >
+              {isAdmin ? <ShieldCheck className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+            </div>
+            <div>
+              <h4
+                className={`text-xs font-bold ${
+                  isAdmin ? 'text-emerald-900 dark:text-emerald-200' : 'text-amber-900 dark:text-amber-200'
+                }`}
+              >
+                {isAdmin
+                  ? 'Admin Edit Override Active'
+                  : 'View-Only Mode'}
+              </h4>
+              <p
+                className={`text-xs mt-0.5 leading-relaxed ${
+                  isAdmin ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-800 dark:text-amber-300'
+                }`}
+              >
+                {isAdmin
+                  ? 'Editing is locked for standard users. You can still edit as Administrator.'
+                  : schoolConfig.sheetEditingLockedMessage ||
+                    'Editing is locked by School Administration. You can view, search, and export.'}
+              </p>
+            </div>
+          </div>
+
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={async () => {
+                await saveConfig({ ...schoolConfig, sheetEditingEnabled: true });
+                showNotification('Google Sheet editing enabled for all school users.');
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-emerald-800 dark:text-emerald-200 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/60 dark:hover:bg-emerald-900 transition-colors self-start sm:self-auto flex-shrink-0"
+            >
+              <Unlock className="w-3.5 h-3.5" />
+              <span>Unlock for Everyone</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Statistics Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -704,17 +1061,21 @@ export const StudentRecordsView: React.FC = () => {
           <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-text-secondary" />
             <input
-              type="text"
+              type="search"
+              inputMode="search"
+              enterKeyHint="search"
+              autoComplete="off"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Find student name, father name, contact number, GR#, B.Form, CNIC..."
-              className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-brand-bg border border-brand-border focus:outline-hidden focus:ring-1 focus:ring-brand-primary text-xs text-brand-text-primary placeholder:text-brand-text-secondary"
+              className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-brand-bg border border-brand-border focus:outline-hidden focus:ring-1 focus:ring-brand-primary text-xs text-brand-text-primary placeholder:text-brand-text-secondary [&::-webkit-search-cancel-button]:hidden"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-secondary hover:text-brand-text-primary p-1 rounded-md"
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 min-w-[32px] min-h-[32px] flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary active:bg-brand-bg rounded-md transition-colors"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -729,7 +1090,7 @@ export const StudentRecordsView: React.FC = () => {
               <select
                 value={selectedClass}
                 onChange={(e) => setSelectedClass(e.target.value)}
-                className="bg-transparent border-0 font-semibold text-brand-text-primary focus:outline-hidden cursor-pointer"
+                className="bg-transparent border-0 font-semibold text-brand-text-primary focus:outline-hidden cursor-pointer min-h-[40px] py-1"
               >
                 <option value="all">All</option>
                 {classOptions.map((c) => (
@@ -746,7 +1107,7 @@ export const StudentRecordsView: React.FC = () => {
               <select
                 value={selectedSection}
                 onChange={(e) => setSelectedSection(e.target.value)}
-                className="bg-transparent border-0 font-semibold text-brand-text-primary focus:outline-hidden cursor-pointer"
+                className="bg-transparent border-0 font-semibold text-brand-text-primary focus:outline-hidden cursor-pointer min-h-[40px] py-1"
               >
                 <option value="all">All</option>
                 {sectionOptions.map((s) => (
@@ -763,7 +1124,7 @@ export const StudentRecordsView: React.FC = () => {
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                className="bg-transparent border-0 font-semibold text-brand-text-primary focus:outline-hidden cursor-pointer"
+                className="bg-transparent border-0 font-semibold text-brand-text-primary focus:outline-hidden cursor-pointer min-h-[40px] py-1"
               >
                 <option value="all">All</option>
                 {statusOptions.map((s) => (
@@ -780,7 +1141,7 @@ export const StudentRecordsView: React.FC = () => {
               <select
                 value={selectedGender}
                 onChange={(e) => setSelectedGender(e.target.value)}
-                className="bg-transparent border-0 font-semibold text-brand-text-primary focus:outline-hidden cursor-pointer"
+                className="bg-transparent border-0 font-semibold text-brand-text-primary focus:outline-hidden cursor-pointer min-h-[40px] py-1"
               >
                 <option value="all">All</option>
                 <option value="male">Male</option>
@@ -811,23 +1172,67 @@ export const StudentRecordsView: React.FC = () => {
         </div>
 
         {/* Results summary bar */}
-        <div className="flex items-center justify-between text-xs text-brand-text-secondary pt-1 border-t border-brand-border/60">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-brand-text-secondary pt-1 border-t border-brand-border/60">
           <span>
             Showing <strong className="text-brand-text-primary">{filteredRecords.length}</strong> of{' '}
             <strong className="text-brand-text-primary">{records.length}</strong> school records
           </span>
-          <div className="flex items-center gap-2">
-            <span>Rows per page:</span>
-            <select
-              value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value))}
-              className="bg-brand-bg border border-brand-border rounded-lg px-2 py-0.5 text-xs text-brand-text-primary focus:outline-hidden"
-            >
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-              <option value={200}>200</option>
-            </select>
+          <div className="flex items-center gap-3">
+            {/* View Mode Toggle */}
+            <div className="flex items-center bg-brand-bg rounded-lg p-0.5 border border-brand-border">
+              <button
+                type="button"
+                onClick={() => setViewMode('auto')}
+                className={`px-2.5 py-1.5 min-h-[36px] rounded text-xs font-semibold transition-colors flex items-center justify-center gap-1 active:scale-[0.97] ${
+                  viewMode === 'auto'
+                    ? 'bg-white dark:bg-brand-surface text-brand-primary shadow-2xs'
+                    : 'text-brand-text-secondary hover:text-brand-text-primary'
+                }`}
+                title="Auto Layout (Cards on mobile, Table on desktop)"
+              >
+                Auto
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`px-2.5 py-1.5 min-h-[36px] rounded text-xs font-semibold transition-colors flex items-center justify-center gap-1 active:scale-[0.97] ${
+                  viewMode === 'table'
+                    ? 'bg-white dark:bg-brand-surface text-brand-primary shadow-2xs'
+                    : 'text-brand-text-secondary hover:text-brand-text-primary'
+                }`}
+                title="Force Table View"
+              >
+                <List className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Table</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('cards')}
+                className={`px-2.5 py-1.5 min-h-[36px] rounded text-xs font-semibold transition-colors flex items-center justify-center gap-1 active:scale-[0.97] ${
+                  viewMode === 'cards'
+                    ? 'bg-white dark:bg-brand-surface text-brand-primary shadow-2xs'
+                    : 'text-brand-text-secondary hover:text-brand-text-primary'
+                }`}
+                title="Card View (Mobile Optimized)"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Cards</span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <span>Rows:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                className="bg-brand-bg border border-brand-border rounded-lg px-2 min-h-[36px] py-1 text-xs text-brand-text-primary focus:outline-hidden cursor-pointer"
+              >
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value={200}>200</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
@@ -877,14 +1282,18 @@ export const StudentRecordsView: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto custom-scrollbar">
+          <div className={`${viewMode === 'cards' ? 'hidden' : 'overflow-x-auto custom-scrollbar'}`}>
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="border-b border-brand-border bg-slate-50/80 dark:bg-slate-900/60 font-semibold text-brand-text-secondary uppercase tracking-wider text-[10px]">
                   {/* Sticky GR# column only - with clean separator */}
                   <th
+                    tabIndex={0}
+                    role="columnheader"
+                    aria-sort={sortField === 'grNo' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('grNo'); } }}
                     onClick={() => handleSort('grNo')}
-                    className="py-3 px-3.5 sticky left-0 z-20 bg-slate-50 dark:bg-slate-900 border-r border-brand-border shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] w-20 min-w-[72px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
+                    className="py-3 px-3.5 md:sticky md:left-0 z-20 bg-slate-50 dark:bg-slate-900 border-r border-brand-border md:shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] w-20 min-w-[72px] cursor-pointer hover:bg-slate-100 active:bg-slate-200 dark:hover:bg-slate-800 dark:active:bg-slate-700 transition-colors select-none group/th"
                     title="Click to sort by GR#"
                   >
                     <div className="flex items-center justify-between gap-1">
@@ -895,6 +1304,10 @@ export const StudentRecordsView: React.FC = () => {
 
                   {/* Name of Student - Non-sticky so adjacent columns never slide under it */}
                   <th
+                    tabIndex={0}
+                    role="columnheader"
+                    aria-sort={sortField === 'studentName' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('studentName'); } }}
                     onClick={() => handleSort('studentName')}
                     className="py-3 px-4 min-w-[200px] border-r border-brand-border/40 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
                     title="Click to sort by Name of Student"
@@ -907,6 +1320,10 @@ export const StudentRecordsView: React.FC = () => {
 
                   {/* Father / Guardian Name - Clean, unobstructed */}
                   <th
+                    tabIndex={0}
+                    role="columnheader"
+                    aria-sort={sortField === 'fatherName' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('fatherName'); } }}
                     onClick={() => handleSort('fatherName')}
                     className="py-3 px-4 min-w-[210px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
                     title="Click to sort by Father / Guardian Name"
@@ -919,6 +1336,10 @@ export const StudentRecordsView: React.FC = () => {
 
                   {/* Class & Sec */}
                   <th
+                    tabIndex={0}
+                    role="columnheader"
+                    aria-sort={sortField === 'currentClass' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('currentClass'); } }}
                     onClick={() => handleSort('currentClass')}
                     className="py-3 px-3 text-center min-w-[105px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
                     title="Click to sort by Class & Section"
@@ -931,6 +1352,10 @@ export const StudentRecordsView: React.FC = () => {
 
                   {/* Gender */}
                   <th
+                    tabIndex={0}
+                    role="columnheader"
+                    aria-sort={sortField === 'gender' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('gender'); } }}
                     onClick={() => handleSort('gender')}
                     className="py-3 px-3 text-center min-w-[80px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
                     title="Click to sort by Gender"
@@ -943,6 +1368,10 @@ export const StudentRecordsView: React.FC = () => {
 
                   {/* DOB */}
                   <th
+                    tabIndex={0}
+                    role="columnheader"
+                    aria-sort={sortField === 'dob' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('dob'); } }}
                     onClick={() => handleSort('dob')}
                     className="py-3 px-3 text-center min-w-[105px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
                     title="Click to sort by Date of Birth"
@@ -955,6 +1384,10 @@ export const StudentRecordsView: React.FC = () => {
 
                   {/* Parent Contact */}
                   <th
+                    tabIndex={0}
+                    role="columnheader"
+                    aria-sort={sortField === 'parentContact' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('parentContact'); } }}
                     onClick={() => handleSort('parentContact')}
                     className="py-3 px-4 min-w-[150px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
                     title="Click to sort by Parent Contact"
@@ -967,6 +1400,10 @@ export const StudentRecordsView: React.FC = () => {
 
                   {/* Emergency Contact */}
                   <th
+                    tabIndex={0}
+                    role="columnheader"
+                    aria-sort={sortField === 'emergencyContact' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('emergencyContact'); } }}
                     onClick={() => handleSort('emergencyContact')}
                     className="py-3 px-4 min-w-[150px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
                     title="Click to sort by Emergency Contact"
@@ -979,6 +1416,10 @@ export const StudentRecordsView: React.FC = () => {
 
                   {/* Status */}
                   <th
+                    tabIndex={0}
+                    role="columnheader"
+                    aria-sort={sortField === 'status' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('status'); } }}
                     onClick={() => handleSort('status')}
                     className="py-3 px-3 text-center min-w-[120px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
                     title="Click to sort by Status"
@@ -991,6 +1432,10 @@ export const StudentRecordsView: React.FC = () => {
 
                   {/* B.Form No. */}
                   <th
+                    tabIndex={0}
+                    role="columnheader"
+                    aria-sort={sortField === 'bFormNo' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('bFormNo'); } }}
                     onClick={() => handleSort('bFormNo')}
                     className="py-3 px-4 min-w-[140px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
                     title="Click to sort by B.Form No."
@@ -1003,6 +1448,10 @@ export const StudentRecordsView: React.FC = () => {
 
                   {/* Parent CNIC */}
                   <th
+                    tabIndex={0}
+                    role="columnheader"
+                    aria-sort={sortField === 'parentCnic' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('parentCnic'); } }}
                     onClick={() => handleSort('parentCnic')}
                     className="py-3 px-4 min-w-[140px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
                     title="Click to sort by Parent CNIC"
@@ -1015,6 +1464,10 @@ export const StudentRecordsView: React.FC = () => {
 
                   {/* Address */}
                   <th
+                    tabIndex={0}
+                    role="columnheader"
+                    aria-sort={sortField === 'address' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('address'); } }}
                     onClick={() => handleSort('address')}
                     className="py-3 px-4 min-w-[200px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
                     title="Click to sort by Address"
@@ -1029,146 +1482,390 @@ export const StudentRecordsView: React.FC = () => {
                   <th className="py-3 px-4 min-w-[140px]">Partner Contact</th>
                   <th className="py-3 px-3 text-center min-w-[80px]">Shift</th>
                   <th className="py-3 px-3 text-center min-w-[90px]">Medium</th>
-                  <th className="py-3 px-3 text-center min-w-[70px]">Picture</th>
-                  <th className="py-3 px-3 text-center sticky right-0 z-20 bg-slate-50 dark:bg-slate-900 border-l border-brand-border shadow-xs w-24">
+                  <th className="py-3 px-3 text-center min-w-[110px]">Docs & Scans</th>
+                  <th className="py-3 px-3 text-center md:sticky md:right-0 z-20 bg-slate-50 dark:bg-slate-900 border-l border-brand-border md:shadow-xs w-28">
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-brand-border/60">
-                {paginatedRecords.map((student) => (
-                  <tr
-                    key={student.rowNumber}
-                    className="hover:bg-brand-bg/80 transition-colors group"
-                  >
-                    {/* Sticky GR# */}
-                    <td className="py-2.5 px-3.5 sticky left-0 z-10 bg-white dark:bg-brand-surface group-hover:bg-brand-bg border-r border-brand-border shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] font-mono font-bold text-brand-primary whitespace-nowrap">
-                      {student.grNo || '—'}
-                    </td>
+                {paginatedRecords.map((student) => {
+                  const grClean = normalizeGrKey(String(student.grNo || ''));
+                  const dossier = dossiersByGr[grClean];
+                  const docCount = dossier?.documents?.length || 0;
+                  const hasFlags = (dossier?.allFlags?.length || 0) > 0;
+                  const resolvedAvatar = resolveAvatarUrl(dossier);
 
-                    {/* Student Name - Non-sticky so it never clips or overlaps father name */}
-                    <td className="py-2.5 px-4 bg-white dark:bg-brand-surface group-hover:bg-brand-bg border-r border-brand-border/40 whitespace-nowrap">
-                      <button
-                        type="button"
-                        onClick={() => setDetailStudent(student)}
-                        className="font-bold text-brand-text-primary hover:text-brand-primary text-left truncate block max-w-[220px] transition-colors"
-                        title={student.studentName}
-                      >
-                        {student.studentName || '—'}
-                      </button>
-                    </td>
+                  return (
+                    <tr
+                      key={student.rowNumber}
+                      className="hover:bg-brand-bg/80 transition-colors group"
+                    >
+                      {/* Sticky GR# */}
+                      <td className="py-2.5 px-3.5 md:sticky md:left-0 z-10 bg-white dark:bg-brand-surface group-hover:bg-brand-bg border-r border-brand-border md:shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] font-mono font-bold text-brand-primary whitespace-nowrap">
+                        {student.grNo || '—'}
+                      </td>
 
-                    {/* Father / Guardian Name - Completely visible and never cut off */}
-                    <td className="py-2.5 px-4 text-brand-text-primary font-medium whitespace-nowrap min-w-[210px]" title={student.fatherName}>
-                      {student.fatherName || '—'}
-                    </td>
+                      {/* Student Name with Circular Student Avatar */}
+                      <td className="py-2.5 px-4 bg-white dark:bg-brand-surface group-hover:bg-brand-bg border-r border-brand-border/40 whitespace-nowrap">
+                        <div className="flex items-center gap-2.5">
+                          <StudentAvatar
+                            name={student.studentName}
+                            grNo={student.grNo}
+                            avatarUrl={resolvedAvatar}
+                            size="md"
+                            onClick={() => {
+                              if (resolvedAvatar) {
+                                setAvatarPreviewUrl({
+                                  url: resolvedAvatar,
+                                  name: student.studentName,
+                                  grNo: student.grNo,
+                                });
+                              } else {
+                                setDetailStudent(student);
+                                setDetailModalTab('details');
+                              }
+                            }}
+                          />
+                          <div className="min-w-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDetailStudent(student);
+                                setDetailModalTab('details');
+                              }}
+                              className="font-bold text-brand-text-primary hover:text-brand-primary text-left truncate block max-w-[200px] transition-colors"
+                              title={student.studentName}
+                            >
+                              {student.studentName || '—'}
+                            </button>
+                            {docCount > 0 ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDetailStudent(student);
+                                  setDetailModalTab('documents');
+                                }}
+                                className={`inline-flex items-center gap-1 text-[10px] font-mono font-medium px-1.5 py-0.2 rounded transition-colors ${
+                                  hasFlags
+                                    ? 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100'
+                                    : 'text-brand-primary bg-brand-primary/10 hover:bg-brand-primary/20'
+                                }`}
+                                title={`${docCount} documents attached${hasFlags ? ' (has discrepancies)' : ''}`}
+                              >
+                                <FolderOpen className="w-2.5 h-2.5" />
+                                <span>{docCount} {docCount === 1 ? 'doc' : 'docs'}</span>
+                                {hasFlags && <AlertTriangle className="w-2.5 h-2.5 text-amber-600" />}
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDetailStudent(student);
+                                  setDetailModalTab('documents');
+                                }}
+                                className="text-[10px] text-brand-text-secondary hover:text-brand-primary transition-colors flex items-center gap-0.5 min-h-[36px] px-1.5 -mx-1.5 rounded-lg hover:bg-brand-bg active:bg-brand-primary/15"
+                                title="Attach student document scan"
+                              >
+                                <Camera className="w-2.5 h-2.5 opacity-60" />
+                                <span>Attach</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </td>
 
-                    <td className="py-2.5 px-3 text-center">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-md font-mono text-[11px] font-bold bg-brand-bg border border-brand-border text-brand-text-primary">
-                        {student.currentClass || '—'}
-                        {student.section ? `-${student.section}` : ''}
+                      {/* Father / Guardian Name - Completely visible and never cut off */}
+                      <td className="py-2.5 px-4 text-brand-text-primary font-medium whitespace-nowrap min-w-[210px]" title={student.fatherName}>
+                        {student.fatherName || '—'}
+                      </td>
+
+                      <td className="py-2.5 px-3 text-center">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md font-mono text-[11px] font-bold bg-brand-bg border border-brand-border text-brand-text-primary">
+                          {student.currentClass || '—'}
+                          {student.section ? `-${student.section}` : ''}
+                        </span>
+                      </td>
+
+                      <td className="py-2.5 px-3 text-center text-brand-text-secondary">
+                        {student.gender || '—'}
+                      </td>
+
+                      <td className="py-2.5 px-3 text-center font-mono text-[11px] text-brand-text-secondary">
+                        {student.dobDay && student.dobMonth && student.dobYear
+                          ? `${student.dobDay}/${student.dobMonth}/${student.dobYear}`
+                          : '—'}
+                      </td>
+
+                      <td className="py-2.5 px-4 font-mono text-[11px]">
+                        {student.parentContact && student.parentContact !== 'NA' && student.parentContact !== 'N/A' ? (
+                          <a
+                            href={`tel:${student.parentContact}`}
+                            className="text-brand-primary hover:underline flex items-center gap-1"
+                          >
+                            <Phone className="w-3 h-3 flex-shrink-0" />
+                            <span>{student.parentContact}</span>
+                          </a>
+                        ) : (
+                          <span className="text-brand-text-secondary">NA</span>
+                        )}
+                      </td>
+
+                      <td className="py-2.5 px-4 font-mono text-[11px]">
+                        {student.emergencyContact && student.emergencyContact !== 'NA' && student.emergencyContact !== 'N/A' ? (
+                          <span className="text-brand-text-primary">{student.emergencyContact}</span>
+                        ) : (
+                          <span className="text-brand-text-secondary">NA</span>
+                        )}
+                      </td>
+
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                        {getStatusBadge(student.status)}
+                      </td>
+
+                      <td className="py-2.5 px-4 font-mono text-[11px] text-brand-text-secondary truncate max-w-[140px]">
+                        {student.bFormNo || '—'}
+                      </td>
+
+                      <td className="py-2.5 px-4 font-mono text-[11px] text-brand-text-secondary truncate max-w-[140px]">
+                        {student.parentCnic || '—'}
+                      </td>
+
+                      <td className="py-2.5 px-4 text-brand-text-secondary text-[11px] truncate max-w-[220px]" title={student.address}>
+                        {student.address || '—'}
+                      </td>
+
+                      <td className="py-2.5 px-3 text-center font-mono text-[11px] text-brand-text-secondary">
+                        {student.classAdmitted || '—'}
+                      </td>
+
+                      <td className="py-2.5 px-3 text-center font-mono text-[11px] text-brand-text-secondary">
+                        {student.admissionDay && student.admissionMonth && student.admissionYear
+                          ? `${student.admissionDay}/${student.admissionMonth}/${student.admissionYear}`
+                          : '—'}
+                      </td>
+
+                      <td className="py-2.5 px-4 font-mono text-[11px] text-brand-text-secondary truncate max-w-[140px]">
+                        {student.partnerContact || '—'}
+                      </td>
+
+                      <td className="py-2.5 px-3 text-center text-brand-text-secondary">
+                        {student.shift || 'Morning'}
+                      </td>
+
+                      <td className="py-2.5 px-3 text-center text-brand-text-secondary">
+                        {student.medium || 'English'}
+                      </td>
+
+                      {/* Docs & Scans Badge */}
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDetailStudent(student);
+                            setDetailModalTab('documents');
+                          }}
+                          className={`inline-flex items-center justify-center gap-1 min-h-[36px] px-2 py-1 rounded-lg text-[11px] font-semibold transition-all border active:scale-[0.97] ${
+                            docCount > 0
+                              ? hasFlags
+                                ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 hover:bg-amber-100 active:bg-amber-200 dark:active:bg-amber-950/70'
+                                : 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 active:bg-emerald-200 dark:active:bg-emerald-950/70'
+                              : 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800/60 dark:text-slate-400 dark:border-slate-700 hover:bg-slate-100 active:bg-slate-200 dark:active:bg-slate-700'
+                          }`}
+                          title={docCount > 0 ? `View ${docCount} documents for ${student.studentName}` : 'Attach documents'}
+                        >
+                          <FolderOpen className="w-3 h-3" />
+                          <span>{docCount > 0 ? `${docCount} Docs` : 'Attach'}</span>
+                          {hasFlags && <AlertTriangle className="w-3 h-3 text-amber-600 flex-shrink-0" />}
+                        </button>
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-2.5 px-3 text-center md:sticky md:right-0 z-10 bg-white dark:bg-brand-surface group-hover:bg-brand-bg border-l border-brand-border">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDetailStudent(student);
+                              setDetailModalTab('details');
+                            }}
+                            title="View Profile"
+                            className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-primary hover:bg-brand-surface transition-colors active:bg-brand-surface"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDetailStudent(student);
+                              setDetailModalTab('documents');
+                            }}
+                            title="View Documents & Scans"
+                            className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-primary hover:bg-brand-surface transition-colors active:bg-brand-surface"
+                          >
+                            <FolderOpen className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(student)}
+                            title={isSheetEditingLocked ? 'Editing locked by school admin' : 'Edit Student Record'}
+                            disabled={isSheetEditingLocked}
+                            className={`p-1.5 rounded-lg transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center ${
+                              isSheetEditingLocked
+                                ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
+                                : 'text-brand-text-secondary hover:text-brand-primary hover:bg-brand-surface active:bg-brand-primary/15'
+                            }`}
+                          >
+                            {isSheetEditingLocked ? <Lock className="w-3.5 h-3.5" /> : <Edit2 className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Mobile / Responsive Card Layout (Shown when viewMode === 'cards' or on mobile in 'auto' mode) */}
+        {!isLoading && !error && paginatedRecords.length > 0 && (
+          <div
+            className={`${
+              viewMode === 'cards' ? 'block' : viewMode === 'table' ? 'hidden' : 'block lg:hidden'
+            } divide-y divide-brand-border/60 bg-white dark:bg-brand-surface`}
+          >
+            {paginatedRecords.map((student) => {
+              const grClean = normalizeGrKey(String(student.grNo || ''));
+              const dossier = dossiersByGr[grClean];
+              const docCount = dossier?.documents?.length || 0;
+              const hasFlags = (dossier?.allFlags?.length || 0) > 0;
+              const resolvedAvatar = resolveAvatarUrl(dossier);
+
+              return (
+                <div key={student.rowNumber} className="p-3.5 hover:bg-brand-bg/50 transition-colors space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <StudentAvatar
+                        name={student.studentName}
+                        grNo={student.grNo}
+                        avatarUrl={resolvedAvatar}
+                        size="lg"
+                        onClick={() => {
+                          if (resolvedAvatar) {
+                            setAvatarPreviewUrl({
+                              url: resolvedAvatar,
+                              name: student.studentName,
+                              grNo: student.grNo,
+                            });
+                          } else {
+                            setDetailStudent(student);
+                            setDetailModalTab('details');
+                          }
+                        }}
+                      />
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono text-[11px] font-bold text-brand-primary bg-brand-primary/10 px-1.5 py-0.5 rounded border border-brand-primary/20">
+                            GR# {student.grNo || '—'}
+                          </span>
+                          <span className="font-mono text-[11px] font-semibold text-brand-text-secondary bg-brand-bg px-1.5 py-0.5 rounded border border-brand-border">
+                            {student.currentClass || '—'}{student.section ? `-${student.section}` : ''}
+                          </span>
+                          {getStatusBadge(student.status)}
+                        </div>
+                        <h4
+                          onClick={() => {
+                            setDetailStudent(student);
+                            setDetailModalTab('details');
+                          }}
+                          className="font-bold text-brand-text-primary text-sm tracking-tight mt-1 hover:text-brand-primary cursor-pointer transition-colors"
+                        >
+                          {student.studentName || '—'}
+                        </h4>
+                        <p className="text-xs text-brand-text-secondary">
+                          S/O {student.fatherName || '—'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Secondary Details & Quick Contact */}
+                  <div className="grid grid-cols-2 gap-2 text-xs bg-brand-bg/60 p-2.5 rounded-xl border border-brand-border/50">
+                    <div>
+                      <span className="text-[10px] text-brand-text-secondary uppercase font-semibold block">Date of Birth</span>
+                      <span className="font-mono text-xs text-brand-text-primary">
+                        {student.dobDay && student.dobMonth && student.dobYear
+                          ? `${student.dobDay}/${student.dobMonth}/${student.dobYear}`
+                          : '—'}
                       </span>
-                    </td>
-
-                    <td className="py-2.5 px-3 text-center text-brand-text-secondary">
-                      {student.gender || '—'}
-                    </td>
-
-                    <td className="py-2.5 px-3 text-center font-mono text-[11px] text-brand-text-secondary">
-                      {student.dobDay && student.dobMonth && student.dobYear
-                        ? `${student.dobDay}/${student.dobMonth}/${student.dobYear}`
-                        : '—'}
-                    </td>
-
-                    <td className="py-2.5 px-4 font-mono text-[11px]">
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-brand-text-secondary uppercase font-semibold block">Contact</span>
                       {student.parentContact && student.parentContact !== 'NA' && student.parentContact !== 'N/A' ? (
                         <a
                           href={`tel:${student.parentContact}`}
-                          className="text-brand-primary hover:underline flex items-center gap-1"
+                          className="inline-flex items-center gap-1 text-xs text-brand-primary font-mono hover:underline"
                         >
                           <Phone className="w-3 h-3 flex-shrink-0" />
                           <span>{student.parentContact}</span>
                         </a>
                       ) : (
-                        <span className="text-brand-text-secondary">NA</span>
+                        <span className="text-xs text-brand-text-secondary font-mono">No Phone</span>
                       )}
-                    </td>
+                    </div>
+                  </div>
 
-                    <td className="py-2.5 px-4 font-mono text-[11px]">
-                      {student.emergencyContact && student.emergencyContact !== 'NA' && student.emergencyContact !== 'N/A' ? (
-                        <span className="text-brand-text-primary">{student.emergencyContact}</span>
-                      ) : (
-                        <span className="text-brand-text-secondary">NA</span>
-                      )}
-                    </td>
+                  {/* Document Dossier & Action Buttons */}
+                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-brand-border/40">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDetailStudent(student);
+                        setDetailModalTab('documents');
+                      }}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                        docCount > 0
+                          ? hasFlags
+                            ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300'
+                            : 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300'
+                          : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400'
+                      }`}
+                    >
+                      <FolderOpen className="w-3.5 h-3.5" />
+                      <span>{docCount > 0 ? `${docCount} Docs` : 'Attach Doc'}</span>
+                      {hasFlags && <AlertTriangle className="w-3 h-3 text-amber-600 flex-shrink-0" />}
+                    </button>
 
-                    <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                      {getStatusBadge(student.status)}
-                    </td>
-
-                    <td className="py-2.5 px-4 font-mono text-[11px] text-brand-text-secondary truncate max-w-[140px]">
-                      {student.bFormNo || '—'}
-                    </td>
-
-                    <td className="py-2.5 px-4 font-mono text-[11px] text-brand-text-secondary truncate max-w-[140px]">
-                      {student.parentCnic || '—'}
-                    </td>
-
-                    <td className="py-2.5 px-4 text-brand-text-secondary text-[11px] truncate max-w-[220px]" title={student.address}>
-                      {student.address || '—'}
-                    </td>
-
-                    <td className="py-2.5 px-3 text-center font-mono text-[11px] text-brand-text-secondary">
-                      {student.classAdmitted || '—'}
-                    </td>
-
-                    <td className="py-2.5 px-3 text-center font-mono text-[11px] text-brand-text-secondary">
-                      {student.admissionDay && student.admissionMonth && student.admissionYear
-                        ? `${student.admissionDay}/${student.admissionMonth}/${student.admissionYear}`
-                        : '—'}
-                    </td>
-
-                    <td className="py-2.5 px-4 font-mono text-[11px] text-brand-text-secondary truncate max-w-[140px]">
-                      {student.partnerContact || '—'}
-                    </td>
-
-                    <td className="py-2.5 px-3 text-center text-brand-text-secondary">
-                      {student.shift || 'Morning'}
-                    </td>
-
-                    <td className="py-2.5 px-3 text-center text-brand-text-secondary">
-                      {student.medium || 'English'}
-                    </td>
-
-                    <td className="py-2.5 px-3 text-center font-semibold text-[10px] text-brand-text-secondary">
-                      {student.picture || 'YES'}
-                    </td>
-
-                    {/* Actions */}
-                    <td className="py-2.5 px-3 text-center sticky right-0 z-10 bg-white dark:bg-brand-surface group-hover:bg-brand-bg border-l border-brand-border">
-                      <div className="flex items-center justify-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setDetailStudent(student)}
-                          title="View Profile"
-                          className="p-1.5 rounded-lg text-brand-text-secondary hover:text-brand-primary hover:bg-brand-surface transition-colors"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdit(student)}
-                          title="Edit Student Record"
-                          className="p-1.5 rounded-lg text-brand-text-secondary hover:text-brand-primary hover:bg-brand-surface transition-colors"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDetailStudent(student);
+                          setDetailModalTab('details');
+                        }}
+                        className="py-1.5 px-3 rounded-xl text-xs font-semibold bg-brand-bg text-brand-text-primary border border-brand-border hover:bg-brand-border/60 transition-colors"
+                      >
+                        Profile
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEdit(student)}
+                        disabled={isSheetEditingLocked}
+                        className={`py-1.5 px-3 rounded-xl text-xs font-semibold flex items-center gap-1 border transition-colors ${
+                          isSheetEditingLocked
+                            ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                            : 'bg-brand-primary/10 text-brand-primary border-brand-primary/20 hover:bg-brand-primary/20'
+                        }`}
+                      >
+                        <Edit2 className="w-3 h-3" />
+                        <span>Edit</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -1234,6 +1931,7 @@ export const StudentRecordsView: React.FC = () => {
       <StudentDetailModal
         isOpen={!!detailStudent}
         student={detailStudent}
+        initialTab={detailModalTab}
         onClose={() => setDetailStudent(null)}
         onEdit={(student) => {
           setDetailStudent(null);
@@ -1266,6 +1964,72 @@ export const StudentRecordsView: React.FC = () => {
           setConfirmationState((prev) => ({ ...prev, isOpen: false, isSubmitting: false }))
         }
       />
+
+      {/* Student Photo Full-Resolution Lightbox Modal */}
+      {avatarPreviewUrl && (
+        <div
+          className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn"
+          onClick={() => setAvatarPreviewUrl(null)}
+        >
+          <div
+            className="bg-white dark:bg-brand-surface rounded-2xl max-w-sm w-full p-4 border border-brand-border space-y-3 shadow-2xl flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between w-full pb-2 border-b border-brand-border">
+              <div>
+                <h4 className="text-sm font-bold text-brand-text-primary">{avatarPreviewUrl.name}</h4>
+                <span className="text-xs font-mono font-bold text-brand-primary">
+                  GR# {avatarPreviewUrl.grNo}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAvatarPreviewUrl(null)}
+                className="p-1 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center hover:bg-brand-bg text-brand-text-secondary active:bg-brand-bg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="w-64 h-64 rounded-2xl overflow-hidden border border-brand-border bg-slate-900 flex items-center justify-center shadow-inner">
+              <img
+                src={avatarPreviewUrl.url}
+                alt={avatarPreviewUrl.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+
+            <div className="flex items-center justify-between w-full pt-1">
+              <a
+                href={avatarPreviewUrl.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-brand-primary hover:underline"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Open Full Image</span>
+              </a>
+              <button
+                type="button"
+                onClick={() => {
+                  const s = records.find(
+                    (r) => String(r.grNo).trim() === String(avatarPreviewUrl.grNo).trim()
+                  );
+                  if (s) {
+                    setDetailStudent(s);
+                    setDetailModalTab('documents');
+                  }
+                  setAvatarPreviewUrl(null);
+                }}
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-brand-primary text-white hover:bg-brand-primary/90 transition-colors flex items-center gap-1"
+              >
+                <FolderOpen className="w-3.5 h-3.5" />
+                <span>All Documents</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

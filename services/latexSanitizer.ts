@@ -185,16 +185,29 @@ const SIMPLE_CMDS: Record<string, string> = {
 
 const NAMED_FUNCS = new Set(['sin', 'cos', 'tan', 'log', 'ln', 'exp', 'lim', 'max', 'min']);
 
-/** Superscript for a short token (digits/signs -> unicode, else ^(...) ASCII). */
+/**
+ * Superscript for a token: characters the font has superscript glyphs for are
+ * mapped, the rest are passed through (so "2O" -> "²O" rather than "^(2O)").
+ * Only when nothing at all can be mapped do we fall back to ^(...) ASCII.
+ */
 function toSuperscript(token: string): string {
   if (!token) return '';
-  if (/^[0-9+\-()]+$/.test(token)) return [...token].map(ch => SUP_MAP[ch] || ch).join('');
-  return `^(${token})`;
+  const mapped = [...token].map(ch => SUP_MAP[ch] ?? ch).join('');
+  return mapped === token ? `^(${token})` : mapped;
 }
 
+/**
+ * Subscript for a token, same pass-through rule.
+ *
+ * The previous all-digits-only test produced 'H_(2O)' and 'H_(2SO)₄' because
+ * readToken() after an unbraced '_' greedily consumed the following letters.
+ * That text is what the PDF exporter renders, so every chemical formula in an
+ * exported lesson plan or paper came out unreadable. Now 'H_2O' -> 'H₂O'.
+ */
 function toSubscript(token: string): string {
-  if (/^[0-9]+$/.test(token)) return [...token].map(ch => SUB_MAP[ch] || ch).join('');
-  return `_(${token})`;
+  if (!token) return '';
+  const mapped = [...token].map(ch => SUB_MAP[ch] ?? ch).join('');
+  return mapped === token ? `_(${token})` : mapped;
 }
 
 interface Cursor {

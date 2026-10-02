@@ -11,7 +11,7 @@
  *   Phase 3: AI generation with PDF (~8s)
  */
 
-const BASE = 'http://localhost:3004';
+const BASE = process.env.TEST_BASE_URL || 'http://localhost:3000';
 
 // ─── Helpers ────────────────────────────────────────────────────
 const c = {
@@ -31,28 +31,37 @@ const elapsed = (t0) => ((Date.now() - t0) / 1000).toFixed(1);
 const blob2b64 = (blob) => blob.arrayBuffer().then(ab => Buffer.from(ab).toString('base64'));
 
 async function getKeys() {
+  const keys = [];
+  if (process.env.GEMINI_API_KEY) {
+    keys.push(process.env.GEMINI_API_KEY.trim());
+  }
+  if (process.env.VITE_API_KEY) {
+    keys.push(process.env.VITE_API_KEY.trim());
+  }
+  if (process.env.VITE_API_KEYS) {
+    keys.push(...process.env.VITE_API_KEYS.split(',').map(k => k.trim()));
+  }
+
   const fs = await import('fs');
   let env = '';
   try {
     env = fs.readFileSync('.env.local', 'utf-8');
   } catch (err) {
-    if (err.code === 'ENOENT') return [];
-    throw err;
+    // optional file
   }
-  const validPattern = /^AIzaSy[A-Za-z0-9_-]{33}$/;
-  // Try VITE_API_KEYS (plural) first
-  const keysMatch = env.match(/VITE_API_KEYS=(.+)/);
-  if (keysMatch) {
-    const keys = keysMatch[1].split(',').map(k => k.trim()).filter(k => validPattern.test(k));
-    if (keys.length > 0) return keys;
+  if (env) {
+    const keysMatch = env.match(/VITE_API_KEYS=(.+)/);
+    if (keysMatch) {
+      keys.push(...keysMatch[1].split(',').map(k => k.trim()));
+    }
+    const singleMatch = env.match(/VITE_API_KEY=(.+)/);
+    if (singleMatch) {
+      keys.push(singleMatch[1].trim());
+    }
   }
-  // Fallback to VITE_API_KEY (singular)
-  const singleMatch = env.match(/VITE_API_KEY=(.+)/);
-  if (singleMatch) {
-    const key = singleMatch[1].trim();
-    if (validPattern.test(key)) return [key];
-  }
-  return [];
+
+  const validKeys = Array.from(new Set(keys.filter(k => k && k.length >= 20)));
+  return validKeys;
 }
 
 // ─── PHASE 1: Infrastructure + Data ────────────────────────────
@@ -62,7 +71,7 @@ async function testAll() {
   // ── Server + Proxy (parallel) ──
   const [srv, proxy] = await Promise.allSettled([
     fetch(`${BASE}/`, { signal: AbortSignal.timeout(5000) }),
-    fetch(`${BASE}/pdf-proxy/abdulahadattar/STBB-BOOKS/main/README.md`, { signal: AbortSignal.timeout(8000) }),
+    fetch(`${BASE}/pdf-proxy?path=abdulahadattar/STBB-BOOKS/main/README.md`, { signal: AbortSignal.timeout(8000) }),
   ]);
   if (srv.status === 'fulfilled' && srv.value.ok) pass('Dev server');
   else fail('Dev server', 'not running');
@@ -114,8 +123,14 @@ async function testAll() {
   );
   const apiResults = await Promise.allSettled(apiJobs);
   const ok = apiResults.map(r => r.status === 'fulfilled' ? r.value : { ok: false }).filter(v => v.ok);
-  if (ok.length >= 2) pass('Key rotation', `${ok.length}/3`);
-  else fail('Key rotation', `${ok.length}/3`);
+  if (keys.length >= 2) {
+    if (ok.length >= 2) pass('Key rotation', `${ok.length}/${Math.min(keys.length, 3)} active`);
+    else fail('Key rotation', `${ok.length}/${Math.min(keys.length, 3)} active`);
+  } else if (ok.length === 1) {
+    pass('Key rotation', 'Single key verified active');
+  } else {
+    fail('Key rotation', 'Key verification call failed');
+  }
 
   // ── PDF Header Check (first 5 bytes only, fast!) ──
   hdr('PDF Validation');
@@ -130,7 +145,7 @@ async function testAll() {
       const chapter = data.chapters?.find(c => c.chapter_number === t.ch);
       if (!chapter?.pdf_url) { skip(t.name, 'no pdf_url'); return; }
       const gh = chapter.pdf_url.match(/raw\.githubusercontent\.com\/(.+)/);
-      const url = gh ? `${BASE}/pdf-proxy/${gh[1]}` : chapter.pdf_url;
+      const url = gh ? `${BASE}/pdf-proxy?path=${gh[1]}` : chapter.pdf_url;
       // Fetch only first 5KB to verify PDF header — no full download
       const r = await fetch(url, { signal: AbortSignal.timeout(15000), headers: { Range: 'bytes=0-5000' } });
       if (!r.ok && r.status !== 206) { fail(t.name, `HTTP ${r.status}`); return; }
@@ -159,7 +174,7 @@ async function testAll() {
       if (ch.pdf_url) {
         try {
           const gh = ch.pdf_url.match(/raw\.githubusercontent\.com\/(.+)/);
-          const r = await fetch(`${BASE}/pdf-proxy/${gh[1]}`, { signal: AbortSignal.timeout(25000) });
+          const r = await fetch(`${BASE}/pdf-proxy?path=${gh[1]}`, { signal: AbortSignal.timeout(25000) });
           if (r.ok) pdfPart = { inlineData: { mimeType: 'application/pdf', data: await blob2b64(await r.blob()) } };
         } catch {}
       }
@@ -204,7 +219,7 @@ async function testAll() {
       if (ch?.pdf_url) {
         try {
           const gh = ch.pdf_url.match(/raw\.githubusercontent\.com\/(.+)/);
-          const r = await fetch(`${BASE}/pdf-proxy/${gh[1]}`, { signal: AbortSignal.timeout(25000) });
+          const r = await fetch(`${BASE}/pdf-proxy?path=${gh[1]}`, { signal: AbortSignal.timeout(25000) });
           if (r.ok) pdfPart = { inlineData: { mimeType: 'application/pdf', data: await blob2b64(await r.blob()) } };
         } catch {}
       }
@@ -237,8 +252,14 @@ async function testAll() {
     } catch (e) { fail('Exam paper', e.message); }
   };
 
-  // Run both generations in parallel
-  await Promise.allSettled([genLessonPlan(), genExamPaper()]);
+  // Run generations (sequential if single key to prevent concurrent rate limits)
+  if (keys.length > 1) {
+    await Promise.allSettled([genLessonPlan(), genExamPaper()]);
+  } else {
+    await genLessonPlan();
+    await new Promise(r => setTimeout(r, 1000));
+    await genExamPaper();
+  }
 
   // ── Summary ──
   const total = ((Date.now() - T0) / 1000).toFixed(1);

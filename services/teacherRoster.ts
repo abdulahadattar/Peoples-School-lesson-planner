@@ -41,10 +41,19 @@ const SUBJECT_ALIASES: Record<string, string> = {
   chemistry: 'Chemistry',
   biology: 'Biology',
   ict: 'ICT',
+  computer: 'ICT',
+  'computer studies': 'ICT',
   pst: 'Pak Studies',
   'p.st': 'Pak Studies',
   'pak studies': 'Pak Studies',
   'pakistan studies': 'Pak Studies',
+  'asan urdu': 'Asan Urdu',
+  'general science': 'Science',
+  drawing: 'Art',
+  'early childhood care & education': 'ECCE',
+  ecce: 'ECCE',
+  phonics: 'English Phonics',
+  'basic mathematics': 'Mathematics',
 };
 
 /** Canonical subject label: alias + trim + lowercase + collapsed whitespace/underscores. */
@@ -59,9 +68,25 @@ export function isKnownSubject(raw: string): boolean {
   return key in SUBJECT_ALIASES;
 }
 
-/** Strict canonical equality (timetable cells ↔ roster subjects). */
+/**
+ * Strict canonical equality (timetable cells ↔ roster subjects).
+ *
+ * The comparison is case-insensitive on purpose. SUBJECT_ALIASES maps variants
+ * onto a canonical label, but it does not list every canonical label as a key
+ * of its own: 'urdu' and 'physics' are keys, so `normalizeSubject('URDU')`
+ * already yields 'Urdu', while 'mathematics' is only the *output* of
+ * 'maths'/'math', so `normalizeSubject('MATHEMATICS')` used to pass through
+ * unchanged. That made subject identity depend on capitalisation for exactly
+ * the subjects whose canonical form is missing from the map, and a timetable
+ * cell written as "MATHEMATICS" failed to match the roster's "Mathematics",
+ * leaving the Live Monitor slot unassigned.
+ *
+ * Comparing lowercased normalised values can only turn a previously-false
+ * comparison into a true one where the two differed solely by case, which is
+ * the intended meaning of "same subject".
+ */
 export function subjectsEqual(a: string, b: string): boolean {
-  return normalizeSubject(a) === normalizeSubject(b);
+  return normalizeSubject(a).toLowerCase() === normalizeSubject(b).toLowerCase();
 }
 
 /**
@@ -84,13 +109,17 @@ export function subjectMatches(teacherSubject: string, curriculumSubject: Curric
 /* ── Section label → class id ──────────────────────────────────── */
 
 const SECTION_TO_CLASS: Record<string, string> = {
-  'IV-A': 'class4', 'IV-B': 'class4',
+  ECCE: 'classECCE',
+  'I-A': 'class1', 'I-B': 'class1', IA: 'class1', IB: 'class1',
+  II: 'class2',
+  'III-A': 'class3', 'III-B': 'class3', IIIA: 'class3', IIIB: 'class3',
+  'IV-A': 'class4', 'IV-B': 'class4', IVA: 'class4', IVB: 'class4',
   V: 'class5',
-  'VI-A': 'class6', 'VI-B': 'class6',
+  'VI-A': 'class6', 'VI-B': 'class6', VIA: 'class6', VIB: 'class6',
   VII: 'class7',
   VIII: 'class8',
   IX: 'class9',
-  'X-A': 'class10', 'X-B': 'class10',
+  'X-A': 'class10', 'X-B': 'class10', XA: 'class10', XB: 'class10',
   XI: 'class11',
   XII: 'class12',
 };
@@ -183,7 +212,9 @@ export function resolveTeacher(subject: string, section: string, teachers: Teach
 }
 
 function nameKey(raw: string): string {
-  return raw.replace(/^(sir|miss|ma'am|mrs|mr)\s+/i, '').trim().toLowerCase();
+  const norm = raw.replace(/^(sir|miss|ma'am|mrs|mr)\s+/i, '').trim().toLowerCase();
+  if (norm === 'ftaima' || norm === 'fatima') return 'fatima qureshi';
+  return norm;
 }
 
 /** Canonical roster name for a timetable/roster name (e.g. "MISS Aneela" → "Miss Aneela"). */

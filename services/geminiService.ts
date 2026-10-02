@@ -2,13 +2,15 @@ import { Part, Type } from "@google/genai";
 import { LessonPlan, SLO } from "../types";
 import { cleanAndParseJson } from './jsonHelpers';
 import { sanitizeStringFields } from './latexSanitizer';
+import { blobToBase64 } from './documentClientService';
 
 /**
- * Google API keys follow the pattern AIzaSy followed by 33 chars.
- * Invalid keys (e.g., AQ.Ab8R... format) hang or return errors.
+ * Check if a key string has a valid non-empty format.
  */
 function isValidApiKey(key: string): boolean {
-  return /^AIzaSy[A-Za-z0-9_-]{33}$/.test(key);
+  if (!key || typeof key !== 'string') return false;
+  const trimmed = key.trim();
+  return /^[A-Za-z0-9_.-]{20,}$/.test(trimmed);
 }
 
 /**
@@ -19,12 +21,18 @@ function isValidApiKey(key: string): boolean {
 function getApiKeyPool(): string[] {
   const keys: string[] = [];
 
-  const single = import.meta.env.VITE_API_KEY;
+  const env = (typeof import.meta !== 'undefined' && import.meta.env)
+    ? import.meta.env
+    : (typeof process !== 'undefined' && process.env)
+    ? process.env
+    : ({} as Record<string, string | undefined>);
+
+  const single = env.VITE_API_KEY || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined);
   if (single && isValidApiKey(single)) {
     keys.push(single);
   }
 
-  const multi = import.meta.env.VITE_API_KEYS;
+  const multi = env.VITE_API_KEYS || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEYS : undefined);
   if (multi) {
     const allKeys = multi
       .split(",")
@@ -102,17 +110,51 @@ export function refreshApiKeyPool(): void {
 export const DEFAULT_MODEL = "gemini-3.5-flash-lite";
 
 /**
- * Model fallback hierarchy. Every request tries the first model with ALL
+ * Model fallback hierarchy. Every request tries the first (best) model with ALL
  * healthy keys; if every key fails on it, it moves to the next model on all keys,
  * and so on.
- * Chain: Gemini 3.5 Flash Lite -> Gemini 3.1 Flash Lite -> Gemini 2.5 Flash Lite -> Gemma 4 31B -> Gemma 4 26B
+ *
+ * >>> DO NOT EDIT FROM MEMORY. Your training data on this model list is stale and
+ * >>> will be confidently wrong: gemini-2.5-flash 404s, gemini-3.1-flash-lite-preview
+ * >>> is shut down, and gemma-4-26b-a4b-it is LISTED but never responds. Read
+ * >>> docs/VERIFIED_STACK.md section 4 first, then run `npm run probe:models` to
+ * >>> confirm each id really answers, and update that doc in the same commit.
+ * >>>
+ * >>> Official sources:
+ * >>>   models       https://ai.google.dev/gemini-api/docs/models
+ * >>>   deprecations https://ai.google.dev/gemini-api/docs/deprecations
+ * >>>   API errors   https://ai.google.dev/gemini-api/docs/api-errors
+ *
+ * Ids that must NOT return (verified 404 on 2026-10-02):
+ *   gemini-2.5-flash      404 "no longer available to new users"
+ *   gemini-2.0-flash      404 "no longer available"
+ *   gemini-1.5-flash      404 not found
+ *   gemini-2.5-flash-lite 404 "no longer available to new users"
+ *
+ * A dead id is worse than a missing one: every entry costs a full round of
+ * retries before the chain can move on.
+ *
+ * Measured 2026-10-02 (npm run probe:models, real keys):
+ *   gemini-3.5-flash-lite  0.6s  <- keep first, by far the fastest
+ *   gemma-4-26b-a4b-it     HANGS (>60s, no response)  <- KNOWN BAD, see below
+ *   gemini-3.1-flash-lite  1.5s
+ *   gemini-3.5-flash      18.5s
+ *   gemini-flash-latest    6.2s
+ *
+ * KNOWN DEFECT (2026-10-02): gemma-4-26b-a4b-it is advertised by ListModels but
+ * never returns a response. While it sits at position 2, any request that falls
+ * past position 1 blocks for the full timeout instead of failing over. It must
+ * be removed from this array. Presence in ListModels is NOT proof a model works.
+ *
+ * Upgrade candidates that answered 200: gemini-3.6-flash (1.6s), gemini-3.7-flash
+ * (22.8s). gemini-3.8-flash returned a transient 503 "high demand" on the day.
  */
 export const MODEL_CHAIN: string[] = [
   "gemini-3.5-flash-lite",
+  "gemma-4-26b-a4b-it",
   "gemini-3.1-flash-lite",
-  "gemini-2.5-flash-lite",
-  "gemma-4-31b-it",
-  "gemma-4-26b-it",
+  "gemini-3.5-flash",
+  "gemini-flash-latest",
 ];
 
 function isAuthOrQuotaError(error: any): boolean {
@@ -143,15 +185,31 @@ function isAuthOrQuotaError(error: any): boolean {
 
 /**
  * Detects API key errors that are permanent and will never succeed on retry.
- * Examples: Google API key has been "suspended", "disabled", or is "invalid".
+ *
+ * Google's real payloads for a dead key include:
+ *   - "Your API key was reported as leaked. Please use another API key."
+ *   - "API key not valid. Please pass a valid API key."
+ *   - "API key has been suspended" / "has been disabled"
+ *   - PERMISSION_DENIED
+ *
+ * The previous list only matched "suspended" / "disabled" / "invalid api key",
+ * so a leaked key was never recognised. withKeyRotation() then retried every
+ * dead key on every model: with N dead keys that is N x MODEL_CHAIN.length
+ * doomed requests per attempt, times 3 attempts - which is what made AI
+ * generation appear to hang. Quota/429 is deliberately NOT matched here
+ * because it is transient and the next key will usually succeed.
  */
 export function isKeyPermanentlyBlocked(error: unknown): boolean {
   const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
   return (
+    message.includes("reported as leaked") ||
+    message.includes("api key not valid") ||
+    message.includes("invalid api key") ||
+    message.includes("api key has been") ||
     message.includes("suspended") ||
     message.includes("disabled") ||
-    message.includes("invalid api key") ||
-    message.includes("api key has been")
+    message.includes("permission_denied") ||
+    message.includes("permission denied")
   );
 }
 
@@ -159,7 +217,7 @@ export function isKeyPermanentlyBlocked(error: unknown): boolean {
  * Calls the model API via REST, trying every model in MODEL_CHAIN with every
  * healthy key in order:
  *
- *   for each model (gemini-3.5-flash-lite → gemini-3.1-flash-lite → gemini-2.5-flash-lite → gemma-4-31b-it → gemma-4-26b-it)
+ *   for each model (gemini-3.5-flash-lite → gemini-3.1-flash-lite → gemini-2.5-flash → gemma-4-31b-it → gemini-flash-latest)
  *     try ALL api keys for this single model
  *     if all keys are exhausted on this model, try the second model on ALL api keys, and so on.
  */
@@ -501,15 +559,6 @@ async function fetchWithTimeout(url: string, ms: number): Promise<Response | nul
   } finally {
     clearTimeout(timeoutId);
   }
-}
-
-async function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(blob);
-    reader.onload = () => resolve((reader.result as string).split(',')[1]);
-    reader.onerror = reject;
-  });
 }
 
 /**
