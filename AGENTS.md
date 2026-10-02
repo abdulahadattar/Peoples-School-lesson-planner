@@ -1,5 +1,15 @@
 # Autonoma SDK Integration & Deployment - Maintenance Notes
 
+## CRITICAL: You are in the ALPHA worktree
+
+This folder (`D:\Peoples-School-lesson-planner-alpha`) is a linked git worktree
+checked out on branch `alpha`. All work here belongs to `alpha` only.
+
+- The sibling folder `D:\Peoples-School-lesson-planner` is the `testing`
+  branch. Do NOT edit files there for alpha work.
+- Verify before editing: `git -C D:\Peoples-School-lesson-planner-alpha rev-parse --abbrev-ref HEAD` → must print `alpha`.
+- Same repo, same remote: `origin` = `https://github.com/abdulahadattar/Peoples-School-lesson-planner`, branch `alpha`.
+
 ## Branch/URL Mapping
 | Branch | URL | Environment | Status |
 |--------|-----|-------------|--------|
