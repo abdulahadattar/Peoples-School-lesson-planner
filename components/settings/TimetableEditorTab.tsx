@@ -37,6 +37,7 @@ import {
   type TimetableSheetSnapshot,
 } from '../../services/timetableSheetService';
 import { googleSignIn } from '../../services/googleAuth';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 
 interface TimetableEditorTabProps {
   config: SchoolConfig;
@@ -384,6 +385,15 @@ export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
   }, [editingCell, isParallel, parallelTeacher, timetableMap, teachers]);
 
   // Helper for showing temporary notices
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant?: 'danger' | 'warning' | 'info';
+    confirmLabel?: string;
+    onConfirm: () => void;
+  } | null>(null);
+
   const showNotice = (msg: string) => {
     setExportNotice(msg);
     setTimeout(() => {
@@ -500,33 +510,38 @@ export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
 
   // Copy Day schedule to all other weekdays
   const handleCopyDayToWeekdays = (sourceDay: DayKey) => {
-    const confirmCopy = window.confirm(
-      `Copy ${DAY_LABELS[sourceDay]}'s schedule to Tuesday, Wednesday, and Thursday for Class ${selectedClassLabel}?`
-    );
-    if (!confirmCopy) return;
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Copy Day Schedule?',
+      message: `Copy ${DAY_LABELS[sourceDay]}'s schedule to Tuesday, Wednesday, and Thursday for Class ${selectedClassLabel}?`,
+      variant: 'info',
+      confirmLabel: 'Copy Schedule',
+      onConfirm: () => {
+        setConfirmDialog(null);
+        setTimetableMap(prev => {
+          const copy = { ...prev };
+          const entry = { ...copy[selectedClassLabel] };
+          entry.periods = entry.periods.map(p => ({
+            ...p,
+            tue: p[sourceDay],
+            wed: p[sourceDay],
+            thu: p[sourceDay],
+          }));
+          copy[selectedClassLabel] = entry;
+          return copy;
+        });
 
-    setTimetableMap(prev => {
-      const copy = { ...prev };
-      const entry = { ...copy[selectedClassLabel] };
-      entry.periods = entry.periods.map(p => ({
-        ...p,
-        tue: p[sourceDay],
-        wed: p[sourceDay],
-        thu: p[sourceDay],
-      }));
-      copy[selectedClassLabel] = entry;
-      return copy;
+        setHasUnsavedChanges(true);
+        showNotice(`Copied ${DAY_LABELS[sourceDay]}'s schedule across Tue–Thu for Class ${selectedClassLabel}`);
+      },
     });
-
-    setHasUnsavedChanges(true);
-    showNotice(`Copied ${DAY_LABELS[sourceDay]}'s schedule across Tue–Thu for Class ${selectedClassLabel}`);
   };
 
   // Auto-Fill Empty Slots from Class Curriculum without creating clashes
   const handleAutoFillEmptySlots = () => {
     const subjects = selectedClassInfo?.subjects || [];
     if (subjects.length === 0) {
-      alert('No curriculum subjects defined for this class.');
+      showNotice('No curriculum subjects defined for this class.');
       return;
     }
 
@@ -585,53 +600,58 @@ export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
 
   // Reset class back to institutional default
   const handleResetClass = () => {
-    const confirmReset = window.confirm(
-      `Reset timetable for Class ${selectedClassLabel} back to base institutional defaults?`
-    );
-    if (!confirmReset) return;
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Reset Timetable to Defaults?',
+      message: `Reset timetable for Class ${selectedClassLabel} back to base institutional defaults?`,
+      variant: 'warning',
+      confirmLabel: 'Reset to Defaults',
+      onConfirm: () => {
+        setConfirmDialog(null);
+        const defaultClasses = (rawTimetableData as { classes: TimetableClassEntry[] }).classes || [];
+        const found = defaultClasses.find(c => c.label === selectedClassLabel);
 
-    const defaultClasses = (rawTimetableData as { classes: TimetableClassEntry[] }).classes || [];
-    const found = defaultClasses.find(c => c.label === selectedClassLabel);
+        if (found) {
+          setTimetableMap(prev => ({
+            ...prev,
+            [selectedClassLabel]: JSON.parse(JSON.stringify(found)),
+          }));
+        } else {
+          const subjects = selectedClassInfo?.subjects || ['General Studies'];
+          const validTeacher = selectedClassInfo?.classTeacher && selectedClassInfo.classTeacher !== 'Unassigned'
+            ? selectedClassInfo.classTeacher
+            : '';
+          const synthPeriods: TimetablePeriod[] = DEFAULT_BASE_PERIODS.map((bp, pIdx) => {
+            const sub = subjects[pIdx % subjects.length] || 'General Studies';
+            return {
+              no: bp.no,
+              start: bp.start,
+              end: bp.end,
+              friStart: bp.friStart,
+              friEnd: bp.friEnd,
+              mon: sub,
+              tue: sub,
+              wed: sub,
+              thu: sub,
+              fri: pIdx < 5 ? sub : '—',
+              sat: '—',
+            };
+          });
 
-    if (found) {
-      setTimetableMap(prev => ({
-        ...prev,
-        [selectedClassLabel]: JSON.parse(JSON.stringify(found)),
-      }));
-    } else {
-      const subjects = selectedClassInfo?.subjects || ['General Studies'];
-      const validTeacher = selectedClassInfo?.classTeacher && selectedClassInfo.classTeacher !== 'Unassigned'
-        ? selectedClassInfo.classTeacher
-        : '';
-      const synthPeriods: TimetablePeriod[] = DEFAULT_BASE_PERIODS.map((bp, pIdx) => {
-        const sub = subjects[pIdx % subjects.length] || 'General Studies';
-        return {
-          no: bp.no,
-          start: bp.start,
-          end: bp.end,
-          friStart: bp.friStart,
-          friEnd: bp.friEnd,
-          mon: sub,
-          tue: sub,
-          wed: sub,
-          thu: sub,
-          fri: pIdx < 5 ? sub : '—',
-          sat: '—',
-        };
-      });
+          setTimetableMap(prev => ({
+            ...prev,
+            [selectedClassLabel]: {
+              label: selectedClassLabel,
+              classTeacher: validTeacher || 'Unassigned',
+              periods: synthPeriods,
+            },
+          }));
+        }
 
-      setTimetableMap(prev => ({
-        ...prev,
-        [selectedClassLabel]: {
-          label: selectedClassLabel,
-          classTeacher: validTeacher || 'Unassigned',
-          periods: synthPeriods,
-        },
-      }));
-    }
-
-    setHasUnsavedChanges(true);
-    showNotice(`Class ${selectedClassLabel} timetable reset to institutional defaults.`);
+        setHasUnsavedChanges(true);
+        showNotice(`Class ${selectedClassLabel} timetable reset to institutional defaults.`);
+      },
+    });
   };
 
   // Push custom timetable to parent / Cloud config
@@ -642,15 +662,7 @@ export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
     showNotice('All timetable changes synced to cloud database successfully!');
   };
 
-  // SHEET -> APP: read the sheet now, bypassing the cache, and merge it in.
-  const handleRefreshFromSheet = async () => {
-    if (hasUnsavedChanges) {
-      const goAhead = window.confirm(
-        'Refresh from the Google Sheet now? The sheet is the master copy of the timetable, so the unsaved edits on this page will be replaced by its values.'
-      );
-      if (!goAhead) return;
-    }
-
+  const executeRefreshFromSheet = async () => {
     setSyncing(true);
     const snapshot = await sheetSync.refreshNow().finally(() => setSyncing(false));
     if (!snapshot) {
@@ -668,6 +680,26 @@ export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
         ? `Refreshed from the Google Sheet. ${merged.degraded} tab${merged.degraded === 1 ? '' : 's'} could not be read, so those classes kept their saved values.`
         : 'Timetable refreshed from the Google Sheet.'
     );
+  };
+
+  // SHEET -> APP: read the sheet now, bypassing the cache, and merge it in.
+  const handleRefreshFromSheet = async () => {
+    if (hasUnsavedChanges) {
+      setConfirmDialog({
+        isOpen: true,
+        title: 'Refresh from Google Sheet?',
+        message: 'Refresh from the Google Sheet now? The sheet is the master copy of the timetable, so the unsaved edits on this page will be replaced by its values.',
+        variant: 'warning',
+        confirmLabel: 'Discard Edits & Refresh',
+        onConfirm: () => {
+          setConfirmDialog(null);
+          executeRefreshFromSheet();
+        },
+      });
+      return;
+    }
+
+    await executeRefreshFromSheet();
   };
 
   // APP -> SHEET, step 1: dry run only, then ask.
@@ -1848,6 +1880,18 @@ export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {confirmDialog && (
+        <ConfirmDialog
+          isOpen={confirmDialog.isOpen}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          variant={confirmDialog.variant || 'info'}
+          confirmLabel={confirmDialog.confirmLabel || 'Confirm'}
+          onConfirm={confirmDialog.onConfirm}
+          onClose={() => setConfirmDialog(null)}
+        />
       )}
     </div>
   );

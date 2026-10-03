@@ -5,7 +5,15 @@ import { sectionsByClass, subjectNames } from '../services/teacherRoster';
 import SelectField from './ui/SelectField';
 import Spinner from './ui/Spinner';
 import SegmentedControl, { EXPORT_FORMATS } from './ui/SegmentedControl';
-import { DocumentTextIcon, GraduationCapIcon, BookOpenIcon, ClipboardListIcon, SparklesIcon, UserIcon } from './icons/MiscIcons';
+import {
+  DocumentTextIcon,
+  GraduationCapIcon,
+  BookOpenIcon,
+  ClipboardListIcon,
+  SparklesIcon,
+  UserIcon,
+} from './icons/MiscIcons';
+import { motion } from 'motion/react';
 
 interface PaperPanelProps {
   onGeneratePaper: (config: PaperConfig) => void;
@@ -21,11 +29,6 @@ const clampNumber = (value: string, min: number, max: number): number => {
   return Math.max(min, Math.min(max, parsed));
 };
 
-const formatMark = (value: number): string => {
-  if (Number.isInteger(value)) return String(value);
-  return value.toFixed(1);
-};
-
 /** Styled number input with +/- stepper buttons for mobile and desktop. */
 const NumberField: React.FC<{
   label: string;
@@ -38,36 +41,36 @@ const NumberField: React.FC<{
 }> = ({ label, value, min, max, step = 1, hint, onChange }) => (
   <div className="space-y-1">
     <div className="flex items-center justify-between">
-      <label className="block text-[11px] text-brand-text-secondary font-medium">{label}</label>
-      <span className="text-[10px] font-mono text-brand-text-secondary/70">
+      <label className="block text-xs text-brand-text-secondary font-medium">{label}</label>
+      <span className="text-[10px] font-mono tabular-nums text-brand-text-tertiary">
         [{min}–{max}]
       </span>
     </div>
-    <div className="flex items-center rounded-xl border border-brand-border bg-brand-bg overflow-hidden focus-within:ring-2 focus-within:ring-brand-primary/20 focus-within:border-brand-primary transition-all">
+    <div className="flex items-center rounded-xl border border-black/[0.08] dark:border-white/[0.1] bg-slate-50 dark:bg-slate-900/40 overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
       <button
         type="button"
         onClick={() => onChange(Math.max(min, value - step))}
         disabled={value <= min}
-        className="w-9 sm:w-10 h-10 flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-surface disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-base font-bold flex-shrink-0 active:scale-90 select-none cursor-pointer"
+        className="w-10 h-10 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.04] disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-base font-bold shrink-0 active:scale-90 select-none cursor-pointer"
         aria-label={`Decrease ${label}`}
       >
         −
       </button>
       <input
         type="number"
-  inputMode="numeric"
-  autoComplete="off"
+        inputMode="numeric"
+        autoComplete="off"
         min={min}
         max={max}
         value={value}
         onChange={e => onChange(clampNumber(e.target.value, min, max))}
-        className="w-full h-10 px-1 bg-transparent text-center text-sm font-bold text-brand-text-primary placeholder:text-brand-text-secondary/60 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        className="w-full h-10 px-1 bg-transparent text-center text-sm font-semibold text-brand-text-primary placeholder:text-slate-400 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none font-mono tabular-nums"
       />
       <button
         type="button"
         onClick={() => onChange(Math.min(max, value + step))}
         disabled={value >= max}
-        className="w-9 sm:w-10 h-10 flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-surface disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-base font-bold flex-shrink-0 active:scale-90 select-none cursor-pointer"
+        className="w-10 h-10 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.04] disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-base font-bold shrink-0 active:scale-90 select-none cursor-pointer"
         aria-label={`Increase ${label}`}
       >
         +
@@ -78,6 +81,7 @@ const NumberField: React.FC<{
 );
 
 interface PaperPreset {
+  id: string;
   name: string;
   total: number;
   duration: number;
@@ -89,26 +93,12 @@ interface PaperPreset {
   longAttempt: number;
   longMarks: number;
   formulaLabel: string;
-  badge?: string;
 }
 
 const PRESETS: PaperPreset[] = [
   {
-    name: '30 MCQs Quiz',
-    total: 30,
-    duration: 35,
-    mcq: 30,
-    shortListed: 0,
-    shortAttempt: 0,
-    shortMarks: 2,
-    longListed: 0,
-    longAttempt: 0,
-    longMarks: 4,
-    formulaLabel: '30 MCQs (No Theory) = 30M',
-    badge: 'Whole Chapter',
-  },
-  {
-    name: 'Class Test',
+    id: 'class-test',
+    name: 'Class Test (25M)',
     total: 25,
     duration: 45,
     mcq: 5,
@@ -118,10 +108,25 @@ const PRESETS: PaperPreset[] = [
     longListed: 3,
     longAttempt: 2,
     longMarks: 4,
-    formulaLabel: '5(1M) + 6(2M) + 2(4M) = 25M',
+    formulaLabel: '5(1M) + 6(2M) + 2(4M)',
   },
   {
-    name: 'Unit Quiz',
+    id: 'mcq-quiz',
+    name: '30 MCQs Quiz (30M)',
+    total: 30,
+    duration: 35,
+    mcq: 30,
+    shortListed: 0,
+    shortAttempt: 0,
+    shortMarks: 2,
+    longListed: 0,
+    longAttempt: 0,
+    longMarks: 4,
+    formulaLabel: '30 MCQs only',
+  },
+  {
+    id: 'unit-quiz',
+    name: 'Unit Quiz (20M)',
     total: 20,
     duration: 30,
     mcq: 4,
@@ -131,10 +136,11 @@ const PRESETS: PaperPreset[] = [
     longListed: 3,
     longAttempt: 2,
     longMarks: 4,
-    formulaLabel: '4(1M) + 4(2M) + 2(4M) = 20M',
+    formulaLabel: '4(1M) + 4(2M) + 2(4M)',
   },
   {
-    name: 'Midterm Exam',
+    id: 'midterm',
+    name: 'Midterm Exam (50M)',
     total: 50,
     duration: 90,
     mcq: 10,
@@ -144,10 +150,11 @@ const PRESETS: PaperPreset[] = [
     longListed: 5,
     longAttempt: 4,
     longMarks: 4,
-    formulaLabel: '10(1M) + 8(3M) + 4(4M) = 50M',
+    formulaLabel: '10(1M) + 8(3M) + 4(4M)',
   },
   {
-    name: 'Board Model',
+    id: 'board-model',
+    name: 'Board Model (75M)',
     total: 75,
     duration: 120,
     mcq: 15,
@@ -157,10 +164,11 @@ const PRESETS: PaperPreset[] = [
     longListed: 4,
     longAttempt: 3,
     longMarks: 8,
-    formulaLabel: '15(1M) + 9(4M) + 3(8M) = 75M',
+    formulaLabel: '15(1M) + 9(4M) + 3(8M)',
   },
   {
-    name: 'Annual Exam',
+    id: 'annual',
+    name: 'Annual Exam (100M)',
     total: 100,
     duration: 180,
     mcq: 20,
@@ -170,53 +178,15 @@ const PRESETS: PaperPreset[] = [
     longListed: 6,
     longAttempt: 5,
     longMarks: 8,
-    formulaLabel: '20(1M) + 10(4M) + 5(8M) = 100M',
+    formulaLabel: '20(1M) + 10(4M) + 5(8M)',
   },
 ];
 
-/**
- * Calculates a balanced question distribution that mathematically totals `targetMarks` exactly.
- */
-const autoBalanceQuestions = (targetMarks: number, shortWeight: number = 2, longWeight: number = 4) => {
-  const t = Math.max(5, Math.round(targetMarks));
-  // Allocate ~20% of marks to MCQs (minimum 1)
-  let mcqs = Math.max(1, Math.floor(t * 0.2));
-  let rem = t - mcqs;
-  // Ensure remainder is divisible by shortWeight
-  if (rem % shortWeight !== 0) {
-    const adjustment = rem % shortWeight;
-    mcqs += adjustment;
-    rem -= adjustment;
-  }
-  // Allocate ~40% of remaining to long questions
-  let longs = Math.max(0, Math.floor((rem * 0.4) / longWeight));
-  let remAfterLong = rem - longs * longWeight;
-  let shorts = Math.floor(remAfterLong / shortWeight);
-
-  // If shorts is 0 and we have longs, convert 1 long into shorts if possible
-  if (shorts === 0 && longs > 0 && rem >= shortWeight * 2) {
-    longs -= 1;
-    shorts += Math.floor(longWeight / shortWeight);
-  }
-
-  // Final check
-  const currentTotal = mcqs * 1 + shorts * shortWeight + longs * longWeight;
-  if (currentTotal !== t) {
-    const diff = t - currentTotal;
-    mcqs += diff;
-  }
-
-  const shortListed = shorts > 0 ? shorts + Math.max(1, Math.ceil(shorts * 0.25)) : 0;
-  const longListed = longs > 0 ? longs + (longs > 1 ? 1 : 0) : 0;
-
-  return {
-    mcq: mcqs,
-    shortAttempt: shorts,
-    shortListed,
-    longAttempt: longs,
-    longListed,
-  };
-};
+const DIFFICULTY_OPTIONS = [
+  { value: 'easy', label: 'Easy (Recall)' },
+  { value: 'medium', label: 'Medium (Standard)' },
+  { value: 'hard', label: 'Hard (Conceptual)' },
+] as const;
 
 const PaperPanel: React.FC<PaperPanelProps> = ({
   onGeneratePaper,
@@ -236,16 +206,12 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
     availableClasses,
     availableSubjects,
     chapters,
-    selectedClass,
-    selectedSubject,
-    selectedChapter,
     handleClassChange,
     handleSubjectChange,
     handleChapterChange,
     handleTeacherChange,
   } = selection;
 
-  // Initialized to match the 25M Class Test preset: 5 + (6*2) + (2*4) = 25
   const [totalMarks, setTotalMarks] = useState<number>(25);
   const [mcqCount, setMcqCount] = useState<number>(5);
   const [shortQuestionCount, setShortQuestionCount] = useState<number>(8);
@@ -256,7 +222,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
   const [longMarksPerQuestion, setLongMarksPerQuestion] = useState<number>(4);
   const [durationMinutes, setDurationMinutes] = useState<number>(45);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
-  const [autoSyncTotal, setAutoSyncTotal] = useState<boolean>(true);
+  const [activePresetId, setActivePresetId] = useState<string>('class-test');
   const [balanceFeedback, setBalanceFeedback] = useState<string | null>(null);
 
   const markDistribution = useMemo(() => {
@@ -274,9 +240,6 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
       longMarks,
       shortAttempt: attemptShort,
       longAttempt: attemptLong,
-      mcqPerQuestion: mcqCount > 0 ? MCQ_WEIGHT : 0,
-      shortPerQuestion: shortMarksPerQuestion,
-      longPerQuestion: longMarksPerQuestion,
       totalQuestionMarks,
     };
   }, [
@@ -289,20 +252,19 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
     longMarksPerQuestion,
   ]);
 
-  const handleAutoBalance = (target = totalMarks) => {
-    const balanced = autoBalanceQuestions(target, shortMarksPerQuestion, longMarksPerQuestion);
-    setMcqCount(balanced.mcq);
-    setShortQuestionCount(balanced.shortListed);
-    setShortAttemptCount(balanced.shortAttempt);
-    setLongQuestionCount(balanced.longListed);
-    setLongAttemptCount(balanced.longAttempt);
-    const computedTotal =
-      balanced.mcq * 1 +
-      balanced.shortAttempt * shortMarksPerQuestion +
-      balanced.longAttempt * longMarksPerQuestion;
-    setTotalMarks(computedTotal);
-    setBalanceFeedback(`Balanced to ${computedTotal} Marks (${balanced.mcq} MCQs, ${balanced.shortAttempt} Short, ${balanced.longAttempt} Long)!`);
-    setTimeout(() => setBalanceFeedback(null), 3500);
+  const applyPreset = (preset: PaperPreset) => {
+    setActivePresetId(preset.id);
+    setTotalMarks(preset.total);
+    setDurationMinutes(preset.duration);
+    setMcqCount(preset.mcq);
+    setShortQuestionCount(preset.shortListed);
+    setShortAttemptCount(preset.shortAttempt);
+    setShortMarksPerQuestion(preset.shortMarks);
+    setLongQuestionCount(preset.longListed);
+    setLongAttemptCount(preset.longAttempt);
+    setLongMarksPerQuestion(preset.longMarks);
+    setBalanceFeedback(`Applied preset: ${preset.name}`);
+    setTimeout(() => setBalanceFeedback(null), 3000);
   };
 
   const handleGenerate = () => {
@@ -350,28 +312,67 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
   const longOptionalCount = Math.max(0, longQuestionCount - longAttemptCount);
 
   return (
-    <div className="w-full max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-8 animate-fadeInUp">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl brand-gradient flex items-center justify-center flex-shrink-0 text-white shadow-card-hover">
-          <DocumentTextIcon className="w-5 h-5" />
-        </div>
-        <div>
-          <h1 className="text-lg md:text-xl font-bold text-brand-text-primary tracking-tight">
-            Exam Paper Generator
-          </h1>
-          <p className="text-xs text-brand-text-secondary">
-            Configure marks, optional questions, and question types
-          </p>
-        </div>
-      </div>
+    <div className="w-full max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto space-y-6">
+      <div className="rounded-2xl bg-white dark:bg-brand-surface border border-black/[0.06] dark:border-white/[0.08] shadow-soft">
+        <div className="p-6 sm:p-8 space-y-6">
+          {/* Header */}
+          <div className="flex items-center justify-between pb-4 border-b border-black/[0.06] dark:border-white/[0.08]">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/15 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                <DocumentTextIcon className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-brand-text-primary tracking-tight">
+                  Exam Paper Generator
+                </h2>
+                <p className="text-xs text-brand-text-secondary mt-0.5">
+                  Configure question distribution, choice rules, and mark formulas
+                </p>
+              </div>
+            </div>
+            <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500">
+              <span className="font-semibold text-slate-700 dark:text-slate-300 font-mono tabular-nums">{markDistribution.totalQuestionMarks} Marks</span>
+              <span aria-hidden="true">·</span>
+              <span className="font-mono tabular-nums">{durationMinutes} mins</span>
+            </div>
+          </div>
 
-      <div className="glass-card rounded-2xl shadow-soft border border-brand-border/80">
-        <div className="p-5 sm:p-6 md:p-8 space-y-6">
-          {/* Selectors Section */}
-          <div className="space-y-3.5 bg-brand-bg/40 p-4 sm:p-5 rounded-xl border border-brand-border/60">
-            <h2 className="text-xs font-bold text-brand-text-secondary uppercase tracking-wider flex items-center gap-1.5">
-              <span>1. Curriculum Selection</span>
-            </h2>
+          {/* Quick Presets Bar */}
+          <div>
+            <label className="block text-[11px] font-semibold text-brand-text-secondary uppercase tracking-wide mb-2.5">
+              Quick Exam Presets
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+              {PRESETS.map(preset => {
+                const isActive = activePresetId === preset.id;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => applyPreset(preset)}
+                    className={`flex flex-col p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-blue-50/90 dark:bg-blue-950/40 border-blue-500/40 shadow-xs'
+                        : 'bg-slate-50/70 dark:bg-slate-800/50 border-black/[0.04] dark:border-white/[0.06] hover:border-black/[0.1] hover:bg-slate-100/70'
+                    }`}
+                  >
+                    <span className={`text-xs font-semibold truncate ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-brand-text-primary'}`}>
+                      {preset.name}
+                    </span>
+                    <span className="text-[10px] text-brand-text-secondary font-mono tabular-nums mt-0.5">
+                      {preset.duration}m · {preset.formulaLabel}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Curriculum Selectors Section */}
+          <div className="bg-slate-50/80 dark:bg-slate-900/40 p-4 sm:p-5 rounded-xl border border-black/[0.06] dark:border-white/[0.08] space-y-3.5">
+            <h3 className="text-xs font-bold text-brand-text-secondary uppercase tracking-wider">
+              1. Curriculum Alignment
+            </h3>
 
             <SelectField
               id="paper-teacher-select"
@@ -381,25 +382,13 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
               onChange={e => handleTeacherChange(e.target.value)}
               className="h-11"
             >
-              <option value="">-- Choose a teacher --</option>
+              <option value="">Choose a teacher...</option>
               {teacherChoices.map(t => (
                 <option key={t.id} value={t.id}>
                   {`${t.name} — ${subjectNames(t).join(', ')}`}
                 </option>
               ))}
             </SelectField>
-
-            {selectedTeacher && (
-              <div className="flex flex-wrap gap-1">
-                {Object.entries(sectionsByClass(selectedTeacher)).map(([cid, labels]) =>
-                  labels.map(label => (
-                    <span key={`${cid}-${label}`} className="text-[10px] font-medium text-brand-primary bg-brand-primary/10 px-1.5 py-0.5 rounded-md border border-brand-primary/15">
-                      {label}
-                    </span>
-                  )),
-                )}
-              </div>
-            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
               <SelectField
@@ -409,7 +398,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
                 value={selectedClassId}
                 onChange={e => handleClassChange(e.target.value)}
               >
-                <option value="">-- Choose a class --</option>
+                <option value="">Choose a class</option>
                 {(selectedTeacher ? availableClasses : classes).map(cls => (
                   <option key={cls.id} value={cls.id}>{cls.name}</option>
                 ))}
@@ -423,7 +412,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
                 onChange={e => handleSubjectChange(e.target.value)}
                 disabled={!selectedClassId}
               >
-                <option value="">-- Choose a subject --</option>
+                <option value="">Choose a subject</option>
                 {availableSubjects.map(subject => (
                   <option key={subject.id} value={subject.id}>{subject.name}</option>
                 ))}
@@ -439,7 +428,7 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
                   disabled={!selectedSubjectId}
                   dropdownWidth="xl"
                 >
-                  <option value="">-- Choose a chapter --</option>
+                  <option value="">Choose a chapter</option>
                   {chapters.map(chapter => (
                     <option key={chapter.id} value={chapter.id}>{chapter.name}</option>
                   ))}
@@ -448,67 +437,50 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
             </div>
           </div>
 
-
-
           {/* Rigor & Format Controls */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-[11px] text-brand-text-secondary font-semibold uppercase tracking-wide mb-1.5">
+              <label className="block text-[11px] text-brand-text-secondary font-semibold uppercase tracking-wide mb-2">
                 Rigor / Difficulty
               </label>
-              <div className="inline-flex w-full rounded-xl border border-brand-border bg-brand-bg p-1 gap-1">
-                {[
-                  { id: 'easy', label: 'Easy (Basic Recall)', activeClass: 'bg-emerald-600 text-white' },
-                  { id: 'medium', label: 'Medium (Standard)', activeClass: 'bg-blue-600 text-white' },
-                  { id: 'hard', label: 'Hard (Conceptual)', activeClass: 'bg-indigo-600 text-white' },
-                ].map(lvl => (
-                  <button
-                    key={lvl.id}
-                    type="button"
-                    onClick={() => setDifficulty(lvl.id as any)}
-                    className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all duration-200 active:scale-95 text-center ${
-                      difficulty === lvl.id
-                        ? `${lvl.activeClass} shadow-xs`
-                        : 'text-brand-text-secondary hover:text-brand-text-primary'
-                    }`}
-                  >
-                    {lvl.label}
-                  </button>
-                ))}
-              </div>
+              <SegmentedControl
+                value={difficulty}
+                options={DIFFICULTY_OPTIONS}
+                onChange={setDifficulty as any}
+              />
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-brand-text-secondary uppercase tracking-wide mb-1.5">
+              <label className="block text-[11px] font-semibold text-brand-text-secondary uppercase tracking-wide mb-2">
                 Export File Format
               </label>
               <SegmentedControl value={exportFormat} options={EXPORT_FORMATS} onChange={onExportFormatChange} />
             </div>
           </div>
 
-          {/* Section Question Architecture Cards */}
+          {/* Section Architecture Cards */}
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-brand-border/60 pb-2">
-              <h2 className="text-xs font-bold text-brand-text-secondary uppercase tracking-wider">
-                3. Section Architecture & Optional Choice Rules
-              </h2>
-              <span className="text-[11px] font-mono font-semibold text-brand-primary">
-                Calculated: {markDistribution.totalQuestionMarks} Marks Total
+            <div className="flex items-center justify-between pb-1 border-b border-black/[0.06] dark:border-white/[0.08]">
+              <h3 className="text-xs font-bold text-brand-text-secondary uppercase tracking-wider">
+                2. Section Blueprint & Optional Rules
+              </h3>
+              <span className="text-xs font-mono tabular-nums font-semibold text-blue-600 dark:text-blue-400">
+                Formula Total: {markDistribution.totalQuestionMarks} Marks
               </span>
             </div>
 
-            {/* SECTION A CARD */}
-            <div className="bg-brand-bg/80 border border-brand-border rounded-xl p-4 transition-all">
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-brand-border/40">
+            {/* SECTION A */}
+            <div className="bg-slate-50/70 dark:bg-slate-900/40 border border-black/[0.06] dark:border-white/[0.08] rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3 pb-2 border-b border-black/[0.04] dark:border-white/[0.06]">
                 <div className="flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold text-xs flex items-center justify-center">
+                  <span className="w-6 h-6 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold text-xs flex items-center justify-center font-mono">
                     A
                   </span>
-                  <h3 className="text-sm font-bold text-brand-text-primary">
+                  <span className="text-sm font-semibold text-brand-text-primary">
                     Section A: Multiple Choice Questions (MCQs)
-                  </h3>
+                  </span>
                 </div>
-                <span className="text-xs font-bold font-mono text-brand-primary">
+                <span className="text-xs font-mono tabular-nums font-bold text-blue-600 dark:text-blue-400">
                   {markDistribution.mcqMarks} Marks
                 </span>
               </div>
@@ -519,57 +491,45 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
                   value={mcqCount}
                   min={0}
                   max={50}
-                  onChange={v => {
-                    setMcqCount(v);
-                    if (autoSyncTotal) {
-                      const attemptShort = Math.min(shortAttemptCount, shortQuestionCount);
-                      const attemptLong = Math.min(longAttemptCount, longQuestionCount);
-                      setTotalMarks(v * 1 + attemptShort * shortMarksPerQuestion + attemptLong * longMarksPerQuestion);
-                    }
-                  }}
+                  onChange={setMcqCount}
                 />
-                <div className="text-xs text-brand-text-secondary bg-brand-surface/60 rounded-xl p-3 border border-brand-border/60">
-                  <p className="font-semibold text-brand-text-primary mb-0.5">MCQ Rules:</p>
+                <div className="text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800/60 rounded-xl p-3 border border-black/[0.04] dark:border-white/[0.06]">
+                  <p className="font-semibold text-slate-800 dark:text-slate-200 mb-0.5">MCQ Blueprint:</p>
                   <p className="text-[11px] leading-relaxed">
                     {mcqCount > 0
-                      ? `All ${mcqCount} MCQs are compulsory. Includes 4 options (A, B, C, D) per question.`
+                      ? `All ${mcqCount} MCQs are compulsory with 4 balanced distractors (A, B, C, D).`
                       : 'No MCQs included in this paper.'}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* SECTION B CARD */}
-            <div className="bg-brand-bg/80 border border-brand-border rounded-xl p-4 transition-all">
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-brand-border/40">
+            {/* SECTION B */}
+            <div className="bg-slate-50/70 dark:bg-slate-900/40 border border-black/[0.06] dark:border-white/[0.08] rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3 pb-2 border-b border-black/[0.04] dark:border-white/[0.06]">
                 <div className="flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-xs flex items-center justify-center">
+                  <span className="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-xs flex items-center justify-center font-mono">
                     B
                   </span>
-                  <h3 className="text-sm font-bold text-brand-text-primary">
+                  <span className="text-sm font-semibold text-brand-text-primary">
                     Section B: Short Answer Questions
-                  </h3>
+                  </span>
                 </div>
-                <span className="text-xs font-bold font-mono text-brand-primary">
+                <span className="text-xs font-mono tabular-nums font-bold text-emerald-600 dark:text-emerald-400">
                   {markDistribution.shortMarks} Marks ({markDistribution.shortAttempt} × {shortMarksPerQuestion}M)
                 </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
                 <NumberField
-                  label="Total Questions on Paper"
+                  label="Printed Questions"
                   value={shortQuestionCount}
                   min={0}
                   max={30}
-                  hint="How many are printed"
+                  hint="Questions printed on paper"
                   onChange={v => {
                     setShortQuestionCount(v);
-                    const newAttempt = Math.min(shortAttemptCount, v);
-                    setShortAttemptCount(newAttempt);
-                    if (autoSyncTotal) {
-                      const attemptLong = Math.min(longAttemptCount, longQuestionCount);
-                      setTotalMarks(mcqCount * 1 + newAttempt * shortMarksPerQuestion + attemptLong * longMarksPerQuestion);
-                    }
+                    setShortAttemptCount(Math.min(shortAttemptCount, v));
                   }}
                 />
 
@@ -578,14 +538,8 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
                   value={shortAttemptCount}
                   min={0}
                   max={Math.max(0, shortQuestionCount)}
-                  hint="How many student answers"
-                  onChange={v => {
-                    setShortAttemptCount(v);
-                    if (autoSyncTotal) {
-                      const attemptLong = Math.min(longAttemptCount, longQuestionCount);
-                      setTotalMarks(mcqCount * 1 + v * shortMarksPerQuestion + attemptLong * longMarksPerQuestion);
-                    }
-                  }}
+                  hint="Mandatory student answers"
+                  onChange={setShortAttemptCount}
                 />
 
                 <NumberField
@@ -593,72 +547,59 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
                   value={shortMarksPerQuestion}
                   min={1}
                   max={10}
-                  hint="2M test, 3M-4M exam"
-                  onChange={v => {
-                    setShortMarksPerQuestion(v);
-                    if (autoSyncTotal) {
-                      const attemptShort = Math.min(shortAttemptCount, shortQuestionCount);
-                      const attemptLong = Math.min(longAttemptCount, longQuestionCount);
-                      setTotalMarks(mcqCount * 1 + attemptShort * v + attemptLong * longMarksPerQuestion);
-                    }
-                  }}
+                  hint="Typically 2M–4M"
+                  onChange={setShortMarksPerQuestion}
                 />
               </div>
 
-              {/* Clear Optional Explanation Badge */}
-              <div className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-brand-surface/80 border border-brand-border/60 text-xs">
-                <span className="text-brand-text-secondary">
+              <div className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-white dark:bg-slate-800/60 border border-black/[0.04] dark:border-white/[0.06] text-xs">
+                <span className="text-slate-600 dark:text-slate-400">
                   {shortQuestionCount === 0 ? (
                     'No short questions included.'
                   ) : shortOptionalCount > 0 ? (
                     <span>
-                      Students attempt <strong className="text-brand-text-primary">{shortAttemptCount} of {shortQuestionCount}</strong> questions (<strong>{shortOptionalCount} optional choices</strong>).
+                      Attempt <strong className="text-slate-900 dark:text-white">{shortAttemptCount} of {shortQuestionCount}</strong> questions ({shortOptionalCount} optional choice{shortOptionalCount > 1 ? 's' : ''}).
                     </span>
                   ) : (
                     <span>
-                      All <strong className="text-brand-text-primary">{shortQuestionCount}</strong> questions are compulsory (0 optional choices).
+                      All <strong className="text-slate-900 dark:text-white">{shortQuestionCount}</strong> questions are compulsory.
                     </span>
                   )}
                 </span>
                 {shortAttemptCount > 0 && (
-                  <span className="font-mono text-[11px] text-brand-primary font-bold flex-shrink-0">
+                  <span className="font-mono tabular-nums text-[11px] text-emerald-600 dark:text-emerald-400 font-bold shrink-0">
                     {shortAttemptCount} × {shortMarksPerQuestion}M = {shortAttemptCount * shortMarksPerQuestion}M
                   </span>
                 )}
               </div>
             </div>
 
-            {/* SECTION C CARD */}
-            <div className="bg-brand-bg/80 border border-brand-border rounded-xl p-4 transition-all">
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-brand-border/40">
+            {/* SECTION C */}
+            <div className="bg-slate-50/70 dark:bg-slate-900/40 border border-black/[0.06] dark:border-white/[0.08] rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3 pb-2 border-b border-black/[0.04] dark:border-white/[0.06]">
                 <div className="flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold text-xs flex items-center justify-center">
+                  <span className="w-6 h-6 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold text-xs flex items-center justify-center font-mono">
                     C
                   </span>
-                  <h3 className="text-sm font-bold text-brand-text-primary">
-                    Section C: Long / Detailed Questions
-                  </h3>
+                  <span className="text-sm font-semibold text-brand-text-primary">
+                    Section C: Detailed / Long Questions
+                  </span>
                 </div>
-                <span className="text-xs font-bold font-mono text-brand-primary">
+                <span className="text-xs font-mono tabular-nums font-bold text-purple-600 dark:text-purple-400">
                   {markDistribution.longMarks} Marks ({markDistribution.longAttempt} × {longMarksPerQuestion}M)
                 </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
                 <NumberField
-                  label="Total Questions on Paper"
+                  label="Printed Questions"
                   value={longQuestionCount}
                   min={0}
                   max={20}
-                  hint="How many are printed"
+                  hint="Questions printed on paper"
                   onChange={v => {
                     setLongQuestionCount(v);
-                    const newAttempt = Math.min(longAttemptCount, v);
-                    setLongAttemptCount(newAttempt);
-                    if (autoSyncTotal) {
-                      const attemptShort = Math.min(shortAttemptCount, shortQuestionCount);
-                      setTotalMarks(mcqCount * 1 + attemptShort * shortMarksPerQuestion + newAttempt * longMarksPerQuestion);
-                    }
+                    setLongAttemptCount(Math.min(longAttemptCount, v));
                   }}
                 />
 
@@ -667,14 +608,8 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
                   value={longAttemptCount}
                   min={0}
                   max={Math.max(0, longQuestionCount)}
-                  hint="How many student answers"
-                  onChange={v => {
-                    setLongAttemptCount(v);
-                    if (autoSyncTotal) {
-                      const attemptShort = Math.min(shortAttemptCount, shortQuestionCount);
-                      setTotalMarks(mcqCount * 1 + attemptShort * shortMarksPerQuestion + v * longMarksPerQuestion);
-                    }
-                  }}
+                  hint="Mandatory student answers"
+                  onChange={setLongAttemptCount}
                 />
 
                 <NumberField
@@ -682,35 +617,27 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
                   value={longMarksPerQuestion}
                   min={2}
                   max={20}
-                  hint="4M test, 6M-8M exam"
-                  onChange={v => {
-                    setLongMarksPerQuestion(v);
-                    if (autoSyncTotal) {
-                      const attemptShort = Math.min(shortAttemptCount, shortQuestionCount);
-                      const attemptLong = Math.min(longAttemptCount, longQuestionCount);
-                      setTotalMarks(mcqCount * 1 + attemptShort * shortMarksPerQuestion + attemptLong * v);
-                    }
-                  }}
+                  hint="Typically 4M–8M"
+                  onChange={setLongMarksPerQuestion}
                 />
               </div>
 
-              {/* Clear Optional Explanation Badge */}
-              <div className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-brand-surface/80 border border-brand-border/60 text-xs">
-                <span className="text-brand-text-secondary">
+              <div className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-white dark:bg-slate-800/60 border border-black/[0.04] dark:border-white/[0.06] text-xs">
+                <span className="text-slate-600 dark:text-slate-400">
                   {longQuestionCount === 0 ? (
-                    'No long questions included.'
+                    'No detailed questions included.'
                   ) : longOptionalCount > 0 ? (
                     <span>
-                      Students attempt <strong className="text-brand-text-primary">{longAttemptCount} of {longQuestionCount}</strong> questions (<strong>{longOptionalCount} optional choices</strong>).
+                      Attempt <strong className="text-slate-900 dark:text-white">{longAttemptCount} of {longQuestionCount}</strong> questions ({longOptionalCount} optional choice{longOptionalCount > 1 ? 's' : ''}).
                     </span>
                   ) : (
                     <span>
-                      All <strong className="text-brand-text-primary">{longQuestionCount}</strong> questions are compulsory (0 optional choices).
+                      All <strong className="text-slate-900 dark:text-white">{longQuestionCount}</strong> questions are compulsory.
                     </span>
                   )}
                 </span>
                 {longAttemptCount > 0 && (
-                  <span className="font-mono text-[11px] text-brand-primary font-bold flex-shrink-0">
+                  <span className="font-mono tabular-nums text-[11px] text-purple-600 dark:text-purple-400 font-bold shrink-0">
                     {longAttemptCount} × {longMarksPerQuestion}M = {longAttemptCount * longMarksPerQuestion}M
                   </span>
                 )}
@@ -718,17 +645,15 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
             </div>
           </div>
 
-          {/* Target Total Marks & Duration Bar */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+          {/* Duration & Target Controls */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <NumberField
-              label="Target Total Marks (Paper Total)"
+              label="Target Marks"
               value={totalMarks}
               min={5}
               max={100}
               step={5}
-              onChange={val => {
-                setTotalMarks(val);
-              }}
+              onChange={setTotalMarks}
             />
 
             <NumberField
@@ -741,61 +666,33 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
             />
           </div>
 
-          {/* Auto-Balance Button */}
-          <div className="p-3.5 sm:p-4 rounded-xl bg-brand-primary/5 dark:bg-brand-primary/10 border border-brand-primary/20 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-xs">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-brand-primary/15 text-brand-primary flex items-center justify-center flex-shrink-0">
-                <SparklesIcon className="w-4 h-4 text-brand-primary" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-xs sm:text-sm font-bold text-brand-text-primary flex items-center gap-2">
-                  <span>Auto-Balance Question Marks</span>
-                </div>
-                <p className="text-[11px] text-brand-text-secondary leading-snug mt-0.5">
-                  Recalculates questions to match {totalMarks} marks automatically
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              id="auto-balance-questions-btn"
-              onClick={() => handleAutoBalance(totalMarks)}
-              className="w-full sm:w-auto px-4 py-2 rounded-xl brand-gradient text-white text-xs sm:text-sm font-bold transition-all shadow-xs hover:shadow-card-hover active:scale-95 flex items-center justify-center gap-2 min-h-[40px] cursor-pointer flex-shrink-0"
-            >
-              <SparklesIcon className="w-3.5 h-3.5 text-amber-200" />
-              <span>Auto-Balance ({totalMarks}M)</span>
-            </button>
-          </div>
-
           {balanceFeedback && (
-            <div className="px-3 py-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 rounded-xl text-xs font-semibold text-emerald-800 dark:text-emerald-200 flex items-center gap-2 animate-fadeIn">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="px-3 py-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-xl text-xs font-semibold text-emerald-800 dark:text-emerald-300 flex items-center gap-2"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
               <span>{balanceFeedback}</span>
-            </div>
+            </motion.div>
           )}
 
-          {/* Marks Formula Summary */}
-          <div className="bg-brand-bg rounded-xl border border-brand-border/60 p-4">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-[11px] font-semibold text-brand-text-secondary uppercase tracking-wider">
-                Live Marks Formula
-              </h3>
-              <span className="text-xs font-mono font-bold text-brand-primary">
-                Total: {markDistribution.totalQuestionMarks} Marks
-              </span>
+          {/* Formula summary */}
+          <div className="bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-black/[0.06] dark:border-white/[0.08] p-4 text-xs">
+            <div className="flex items-center justify-between mb-1 text-slate-500">
+              <span className="font-semibold uppercase tracking-wider text-[10px]">Live Formula Calculation</span>
+              <span className="font-mono tabular-nums font-bold text-slate-900 dark:text-white">{markDistribution.totalQuestionMarks} Marks</span>
             </div>
-            <p className="text-xs font-mono text-brand-text-primary mb-2">
+            <p className="font-mono tabular-nums text-slate-700 dark:text-slate-300">
               {markDistribution.mcqMarks}M (MCQ) + {markDistribution.shortMarks}M ({markDistribution.shortAttempt} Short @ {shortMarksPerQuestion}M) + {markDistribution.longMarks}M ({markDistribution.longAttempt} Long @ {longMarksPerQuestion}M) = <strong>{markDistribution.totalQuestionMarks} Marks</strong>
             </p>
             {!marksMatch && (
-              <div className="flex items-center justify-between gap-2 pt-2 border-t border-brand-border/50 text-xs">
-                <span className="text-amber-600 dark:text-amber-400 font-medium">
-                  Target total is set to {totalMarks}M.
-                </span>
+              <div className="flex items-center justify-between gap-2 pt-2 mt-2 border-t border-black/[0.04] dark:border-white/[0.06]">
+                <span className="text-amber-600 dark:text-amber-400">Target is set to {totalMarks}M.</span>
                 <button
                   type="button"
                   onClick={() => setTotalMarks(markDistribution.totalQuestionMarks)}
-                  className="font-bold text-brand-primary hover:underline"
+                  className="font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
                 >
                   Sync Target to {markDistribution.totalQuestionMarks}M
                 </button>
@@ -804,29 +701,28 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
           </div>
 
           {/* Generate Button */}
-          <button
+          <motion.button
+            whileTap={{ scale: 0.985 }}
             type="button"
             id="generate-exam-paper-btn"
             onClick={handleGenerate}
             disabled={isDisabled}
-            className="w-full flex items-center justify-center gap-2.5 brand-gradient text-white font-bold py-3.5 px-5 rounded-xl hover:shadow-glass hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none min-h-[50px] cursor-pointer"
+            className="w-full flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-sm hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all min-h-[48px] cursor-pointer"
           >
             {isGenerating ? (
               <>
                 <Spinner className="w-4 h-4" />
-                <span className="text-sm">Generating Exam Paper...</span>
+                <span>Generating Exam Paper...</span>
               </>
             ) : disabledReason ? (
-              <span className="text-sm">{disabledReason}</span>
+              <span>{disabledReason}</span>
             ) : (
               <>
-                <SparklesIcon className="w-4 h-4 text-amber-200" />
-                <span className="text-sm">
-                  Generate Exam Paper ({markDistribution.totalQuestionMarks} Marks)
-                </span>
+                <SparklesIcon className="w-4 h-4" />
+                <span>Generate Exam Paper ({markDistribution.totalQuestionMarks} Marks)</span>
               </>
             )}
-          </button>
+          </motion.button>
         </div>
       </div>
     </div>

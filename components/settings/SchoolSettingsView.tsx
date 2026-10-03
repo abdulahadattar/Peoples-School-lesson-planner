@@ -32,6 +32,8 @@ import { useSchoolConfig } from '../../hooks/useSchoolConfig';
 import { ClassEditorModal } from './ClassEditorModal';
 import { TeacherEditorModal } from './TeacherEditorModal';
 import { TimetableEditorTab } from './TimetableEditorTab';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { Toast, ToastMessage } from '../ui/Toast';
 import { googleSignIn } from '../../services/googleAuth';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -65,6 +67,23 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({ onOpenLo
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [isTeacherModalOpen, setIsTeacherModalOpen] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant?: 'danger' | 'warning' | 'primary';
+    confirmLabel?: string;
+    onConfirm: () => void;
+  } | null>(null);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'error') => {
+    setToast({ type, message });
+    setTimeout(() => {
+      setToast((c) => (c?.message === message ? null : c));
+    }, 4500);
+  };
 
   // Sync working copy when base config changes
   React.useEffect(() => {
@@ -131,11 +150,20 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({ onOpenLo
   };
 
   const handleDeleteClass = (classKey: string) => {
-    if (!window.confirm(`Are you sure you want to remove Class Section ${classKey}?`)) return;
-    setWorkingConfig((prev) => ({
-      ...prev,
-      classes: prev.classes.filter((c) => c.classKey !== classKey),
-    }));
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Remove Class Section',
+      message: `Are you sure you want to remove Class Section "${classKey}"?`,
+      variant: 'danger',
+      confirmLabel: 'Remove Section',
+      onConfirm: () => {
+        setWorkingConfig((prev) => ({
+          ...prev,
+          classes: prev.classes.filter((c) => c.classKey !== classKey),
+        }));
+        setConfirmDialog(null);
+      },
+    });
   };
 
   // Handlers for Teachers
@@ -153,11 +181,21 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({ onOpenLo
   };
 
   const handleDeleteTeacher = (teacherId: string) => {
-    if (!window.confirm('Are you sure you want to remove this faculty member?')) return;
-    setWorkingConfig((prev) => ({
-      ...prev,
-      teachers: prev.teachers.filter((t) => t.id !== teacherId),
-    }));
+    const teacher = workingConfig.teachers.find((t) => t.id === teacherId);
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Remove Faculty Member',
+      message: `Are you sure you want to remove "${teacher?.name || 'this faculty member'}" from the roster?`,
+      variant: 'danger',
+      confirmLabel: 'Remove Member',
+      onConfirm: () => {
+        setWorkingConfig((prev) => ({
+          ...prev,
+          teachers: prev.teachers.filter((t) => t.id !== teacherId),
+        }));
+        setConfirmDialog(null);
+      },
+    });
   };
 
   // Handlers for Period Timings
@@ -194,8 +232,9 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({ onOpenLo
   const handleSaveAll = async () => {
     try {
       await saveConfig(workingConfig);
+      showToast('School configuration saved successfully.', 'success');
     } catch (err: any) {
-      alert(err?.message || 'Failed to save configuration.');
+      showToast(err?.message || 'Failed to save configuration.', 'error');
     }
   };
 
@@ -203,45 +242,36 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({ onOpenLo
     setShowResetConfirm(false);
     try {
       await resetToDefaults();
+      showToast('Institutional defaults restored successfully.', 'success');
     } catch (err: any) {
-      alert(err?.message || 'Failed to reset.');
+      showToast(err?.message || 'Failed to reset.', 'error');
     }
   };
 
   return (
     <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-8 py-6 space-y-6">
       {/* Reset Confirmation Modal */}
-      {showResetConfirm && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white dark:bg-brand-surface rounded-2xl border border-brand-border p-6 max-w-md shadow-2xl space-y-4">
-            <div className="flex items-center gap-3 text-amber-500">
-              <AlertCircle className="w-6 h-6 flex-shrink-0" />
-              <h3 className="text-base font-bold text-brand-text-primary">
-                Reset to Institutional Defaults?
-              </h3>
-            </div>
-            <p className="text-xs text-brand-text-secondary leading-relaxed">
-              This will restore all 18 classes, class teachers, period timings, and baseline enrollments
-              (868 students) to the official handwritten school register. Custom modifications will be replaced.
-            </p>
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowResetConfirm(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-brand-text-secondary hover:bg-brand-bg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleExecuteReset}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 shadow-soft transition-colors"
-              >
-                Yes, Restore Defaults
-              </button>
-            </div>
-          </div>
-        </div>
+      <ConfirmDialog
+        isOpen={showResetConfirm}
+        title="Reset to Institutional Defaults?"
+        message="This will restore all 18 classes, class teachers, period timings, and baseline enrollments (868 students) to the official handwritten school register. Custom modifications will be replaced."
+        variant="warning"
+        confirmLabel="Yes, Restore Defaults"
+        onConfirm={handleExecuteReset}
+        onCancel={() => setShowResetConfirm(false)}
+      />
+
+      {/* Dynamic Action Confirm Modal */}
+      {confirmDialog && (
+        <ConfirmDialog
+          isOpen={confirmDialog.isOpen}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          variant={confirmDialog.variant || 'danger'}
+          confirmLabel={confirmDialog.confirmLabel || 'Confirm'}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+        />
       )}
 
       {/* Modals */}
@@ -487,7 +517,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({ onOpenLo
           {/* Classes Table */}
           <div className="rounded-2xl border border-brand-border bg-white dark:bg-brand-surface shadow-soft overflow-hidden">
             <div className="overflow-x-auto custom-scrollbar">
-              <table className="w-full text-left text-xs border-collapse">
+              <table className="w-full text-left text-xs border-collapse min-w-[720px]">
                 <thead>
                   <tr className="bg-slate-50/75 dark:bg-slate-900/40 border-b border-brand-border font-bold text-brand-text-secondary">
                     <th className="py-3 px-4">Class Code</th>
@@ -783,7 +813,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({ onOpenLo
           {/* Periods Table */}
           <div className="rounded-2xl border border-brand-border bg-white dark:bg-brand-surface shadow-soft overflow-hidden">
             <div className="overflow-x-auto custom-scrollbar">
-              <table className="w-full text-left text-xs border-collapse">
+              <table className="w-full text-left text-xs border-collapse min-w-[640px]">
                 <thead>
                   <tr className="bg-slate-50/75 dark:bg-slate-900/40 border-b border-brand-border font-bold text-brand-text-secondary">
                     <th className="py-3 px-4">Period Name</th>
@@ -946,6 +976,8 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({ onOpenLo
           />
         </div>
       )}
+
+      <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
   );
 };

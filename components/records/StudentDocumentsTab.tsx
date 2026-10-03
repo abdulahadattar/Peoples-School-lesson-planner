@@ -23,6 +23,7 @@ import {
 import { getAccessToken } from '../../services/googleAuth';
 import { StudentRecord } from '../../services/googleSheetsService';
 import { ProcessingTransparencyModal } from '../documents/ProcessingTransparencyModal';
+import { Toast, ToastMessage } from '../ui/Toast';
 import {
   RotateCw,
   Tag,
@@ -93,7 +94,12 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
   const [applyingFlagId, setApplyingFlagId] = useState<string | null>(null);
   const [isBatchApplying, setIsBatchApplying] = useState(false);
   const [applySuccessId, setApplySuccessId] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'error') => {
+    setToast({ message, type });
+  };
 
   const loadData = async (quiet = false) => {
     try {
@@ -170,7 +176,7 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
       setActionSuccessMsg(`Rotated scan ${angle}° clockwise.`);
       setTimeout(() => setActionSuccessMsg(null), 3000);
     } catch (err: any) {
-      alert(`Failed to rotate document: ${err.message}`);
+      showToast(`Failed to rotate document: ${err.message}`, 'error');
     } finally {
       setIsRotating(false);
     }
@@ -199,7 +205,7 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
       loadData(true);
       setTimeout(() => setActionSuccessMsg(null), 3000);
     } catch {
-      alert('Failed to update document tag');
+      showToast('Failed to update document tag', 'error');
     } finally {
       setIsChangingTag(false);
     }
@@ -292,7 +298,7 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
       setActionSuccessMsg(res.message || `Applied correction: ${flag.fieldName || flag.field} updated to "${finalValue}".`);
       setTimeout(() => setActionSuccessMsg(null), 4000);
     } catch (err: any) {
-      alert(`Failed to apply correction: ${err.message}`);
+      showToast(`Failed to apply correction: ${err.message}`, 'error');
     } finally {
       setApplyingFlagId(null);
     }
@@ -361,7 +367,7 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
       setActionSuccessMsg(`Batch applied ${res.appliedCount} corrections! Google Sheet updated.`);
       setTimeout(() => setActionSuccessMsg(null), 4500);
     } catch (err: any) {
-      alert(`Batch apply error: ${err.message}`);
+      showToast(`Batch apply error: ${err.message}`, 'error');
     } finally {
       setIsBatchApplying(false);
     }
@@ -379,7 +385,7 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
       await loadData(true);
       setTimeout(() => setActionSuccessMsg(null), 4000);
     } catch (err: any) {
-      alert(`Auto-link error: ${err.message}`);
+      showToast(`Auto-link error: ${err.message}`, 'error');
     } finally {
       setIsAutoLinking(false);
     }
@@ -395,7 +401,7 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
       await loadData(true);
       setTimeout(() => setActionSuccessMsg(null), 3500);
     } catch (err: any) {
-      alert(`Error selecting child: ${err.message}`);
+      showToast(`Error selecting child: ${err.message}`, 'error');
     } finally {
       setIsSelectingChild(false);
     }
@@ -410,7 +416,7 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
       await loadData(true);
       setTimeout(() => setActionSuccessMsg(null), 4000);
     } catch (err: any) {
-      alert(`Error reprocessing scan: ${err.message}`);
+      showToast(`Error reprocessing scan: ${err.message}`, 'error');
     } finally {
       setIsReprocessing(false);
     }
@@ -424,7 +430,7 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
       await loadData(true);
       setTimeout(() => setActionSuccessMsg(null), 4000);
     } catch (err: any) {
-      alert(`Error reprocessing student dossier: ${err.message}`);
+      showToast(`Error reprocessing student dossier: ${err.message}`, 'error');
     } finally {
       setIsReprocessing(false);
     }
@@ -1319,6 +1325,9 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
           onClose={() => setIsTransparencyModalOpen(false)}
         />
       )}
+
+      {/* Non-blocking feedback toast */}
+      <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
   );
 };

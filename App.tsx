@@ -17,6 +17,8 @@ import { PhssjLogo, ZiauddinLogo } from './components/Logo';
 import { BookOpenIcon, CloseIcon, DocumentTextIcon, HomeIcon, PulseIcon, ArchiveIcon, SpreadsheetIcon, UserGroupIcon, FolderArchiveIcon } from './components/icons/MiscIcons';
 import { Settings as SettingsIcon } from 'lucide-react';
 import { DocumentArchiveCenterView } from './components/DocumentArchiveCenterView';
+import { SegmentedControl } from './components/ui/SegmentedControl';
+import { Toast, ToastMessage } from './components/ui/Toast';
 import { useGeneralGeneration, GenerationMode } from './hooks/useGeneralGeneration';
 import { useSelection } from './hooks/useSelection';
 import versionConfig from './version.json';
@@ -34,16 +36,40 @@ interface NavItem {
   activeViews: View[];
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { view: 'home', label: 'Home', icon: HomeIcon, activeViews: ['home'] },
-  { view: 'records', label: 'Student Records', icon: SpreadsheetIcon, activeViews: ['records'] },
-  { view: 'archive', label: 'Document Archive', icon: FolderArchiveIcon, activeViews: ['archive'] },
-  { view: 'attendance', label: 'Daily Attendance', icon: UserGroupIcon, activeViews: ['attendance'] },
-  { view: 'lesson', label: 'Lesson Plans', icon: BookOpenIcon, activeViews: ['lesson', 'results'] },
-  { view: 'paper', label: 'Exam Papers', icon: DocumentTextIcon, activeViews: ['paper'] },
-  { view: 'live', label: 'Live Monitor', icon: PulseIcon, activeViews: ['live'] },
-  { view: 'history', label: 'History Archive', icon: ArchiveIcon, activeViews: ['history'] },
-  { view: 'settings', label: 'School Admin', icon: SettingsIcon, activeViews: ['settings'] },
+interface NavSection {
+  title?: string;
+  items: NavItem[];
+}
+
+const NAV_SECTIONS: NavSection[] = [
+  {
+    items: [
+      { view: 'home', label: 'Home', icon: HomeIcon, activeViews: ['home'] },
+    ],
+  },
+  {
+    title: 'Academics',
+    items: [
+      { view: 'lesson', label: 'Lesson Plans', icon: BookOpenIcon, activeViews: ['lesson', 'results'] },
+      { view: 'paper', label: 'Exam Papers', icon: DocumentTextIcon, activeViews: ['paper'] },
+      { view: 'history', label: 'History Archive', icon: ArchiveIcon, activeViews: ['history'] },
+    ],
+  },
+  {
+    title: 'Students & Records',
+    items: [
+      { view: 'attendance', label: 'Daily Attendance', icon: UserGroupIcon, activeViews: ['attendance'] },
+      { view: 'records', label: 'Student Records', icon: SpreadsheetIcon, activeViews: ['records'] },
+      { view: 'archive', label: 'Document Archive', icon: FolderArchiveIcon, activeViews: ['archive'] },
+    ],
+  },
+  {
+    title: 'Operations & Admin',
+    items: [
+      { view: 'live', label: 'Live Monitor', icon: PulseIcon, activeViews: ['live'] },
+      { view: 'settings', label: 'School Admin', icon: SettingsIcon, activeViews: ['settings'] },
+    ],
+  },
 ];
 
 const App: React.FC = () => {
@@ -61,6 +87,16 @@ const App: React.FC = () => {
 
   const [generationMode, setGenerationMode] = useState<GenerationMode>('topic');
   const [topicInput, setTopicInput] = useState('');
+  const [lessonSubView, setLessonSubView] = useState<'create' | 'saved'>('create');
+  const [paperSubView, setPaperSubView] = useState<'create' | 'saved'>('create');
+  const [toast, setToast] = useState<ToastMessage | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'error') => {
+    setToast({ type, message });
+    setTimeout(() => {
+      setToast((current) => (current?.message === message ? null : current));
+    }, 4500);
+  };
 
   // SLO and batch generation state
   const [selectedSloIds, setSelectedSloIds] = useState<string[]>([]);
@@ -235,7 +271,7 @@ const App: React.FC = () => {
     try {
       await exportPlan(plan, { name: selection.teacherName, schoolName: selection.schoolName }, exportFormat);
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to export. Please try again.');
+      showToast(error instanceof Error ? error.message : 'Failed to export. Please try again.', 'error');
     }
   };
 
@@ -273,76 +309,88 @@ const App: React.FC = () => {
         />
       )}
 
-      <aside className={`fixed md:relative z-50 md:z-10 top-0 left-0 h-[100dvh] md:h-full bg-brand-surface/95 dark:bg-brand-surface backdrop-blur-xl flex flex-col transition-transform duration-300 md:transition-none w-[280px] ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} border-r border-brand-border/60`}>
-        <div className="p-6 flex-grow flex flex-col h-full overflow-hidden">
-          <div className="flex items-center justify-between mb-8 md:hidden">
-            <span className="font-semibold text-base text-brand-text-primary">Menu</span>
+      <aside className={`fixed md:relative z-50 md:z-10 top-0 left-0 h-[100dvh] md:h-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl flex flex-col transition-transform duration-300 md:transition-none w-[270px] ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} border-r border-black/[0.06] dark:border-white/[0.08]`}>
+        <div className="p-5 flex-grow flex flex-col h-full overflow-hidden">
+          <div className="flex items-center justify-between mb-6 md:hidden">
+            <span className="font-semibold text-sm text-slate-900 dark:text-white">Navigation</span>
             <button
+              type="button"
               onClick={() => setIsSidebarOpen(false)}
-              className="p-2 text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg rounded-xl transition-colors active:scale-90"
+              className="p-1.5 text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors active:scale-95 cursor-pointer"
             >
-              <CloseIcon className="w-5 h-5" />
+              <CloseIcon className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-12 h-12 rounded-full bg-white dark:bg-slate-900 shadow-card border border-brand-border flex items-center justify-center flex-shrink-0 p-1 ring-1 ring-black/5 dark:ring-white/10">
-              <PhssjLogo className="w-full h-full rounded-full" />
+          <div className="flex items-center gap-3 mb-6 px-1">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 border border-black/[0.06] dark:border-white/[0.08] flex items-center justify-center shrink-0 p-1">
+              <PhssjLogo className="w-full h-full object-contain" />
             </div>
-            <div className="leading-tight">
-              <h3 className="text-sm font-bold text-brand-text-primary tracking-tight">PHSSJ</h3>
-              <p className="text-[11px] text-brand-text-secondary">{schoolConfig?.schoolName || 'Peoples Higher Secondary School Jamshoro'}</p>
+            <div className="leading-tight truncate">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">PHSSJ Portal</h3>
+              <p className="text-[11px] text-slate-500 truncate">{schoolConfig?.schoolName || 'Peoples Higher Secondary School'}</p>
             </div>
           </div>
 
-          <nav className="space-y-1.5">
-            {NAV_ITEMS.map(item => {
-              const isActive = item.activeViews.includes(view);
-              return (
-                <button
-                  key={item.view}
-                  id={`nav-${item.view}`}
-                  type="button"
-                  onClick={() => {
-                    if (item.view === 'home') handleBackToHome();
-                    else if (item.view === 'records') navigate('records');
-                    else if (item.view === 'attendance') navigate('attendance');
-                    else if (item.view === 'live') navigate('live');
-                    else if (item.view === 'history') navigate('history');
-                    else if (item.view === 'lesson') handleNavigate('lesson');
-                    else if (item.view === 'paper') handleNavigate('paper');
-                    else navigate(item.view);
-                    setIsSidebarOpen(false);
-                  }}
-                  className={`relative w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors duration-200 group select-none ${
-                    isActive
-                      ? 'text-white'
-                      : 'text-brand-text-secondary hover:bg-brand-bg hover:text-brand-text-primary'
-                  }`}
-                >
-                  {isActive && (
-                    <motion.span
-                      layoutId="activeNavPill"
-                      className="absolute inset-0 brand-gradient rounded-xl shadow-md"
-                      transition={{ type: 'spring', stiffness: 450, damping: 32 }}
-                    />
-                  )}
-                  <item.icon className="relative z-10 w-5 h-5 transition-transform duration-200 group-hover:scale-110" />
-                  <span className="relative z-10">{item.label}</span>
-                </button>
-              );
-            })}
+          <nav className="flex-1 overflow-y-auto space-y-4 pr-1 -mr-1 custom-scrollbar">
+            {NAV_SECTIONS.map((section, sIdx) => (
+              <div key={section.title || `section-${sIdx}`} className="space-y-1">
+                {section.title && (
+                  <div className="px-2.5 pt-1 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    {section.title}
+                  </div>
+                )}
+                <div className="space-y-0.5">
+                  {section.items.map(item => {
+                    const isActive = item.activeViews.includes(view);
+                    return (
+                      <button
+                        key={item.view}
+                        id={`nav-${item.view}`}
+                        type="button"
+                        onClick={() => {
+                          if (item.view === 'home') handleBackToHome();
+                          else if (item.view === 'records') navigate('records');
+                          else if (item.view === 'attendance') navigate('attendance');
+                          else if (item.view === 'live') navigate('live');
+                          else if (item.view === 'history') navigate('history');
+                          else if (item.view === 'lesson') handleNavigate('lesson');
+                          else if (item.view === 'paper') handleNavigate('paper');
+                          else navigate(item.view);
+                          setIsSidebarOpen(false);
+                        }}
+                        className={`relative w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-colors group select-none cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 ${
+                          isActive
+                            ? 'text-blue-600 dark:text-white font-semibold'
+                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-slate-100'
+                        }`}
+                      >
+                        {isActive && (
+                          <motion.span
+                            layoutId="activeNavPill"
+                            className="absolute inset-0 bg-blue-500/10 dark:bg-blue-500/20 rounded-xl border border-blue-500/20 dark:border-blue-500/30"
+                            transition={{ type: 'spring', stiffness: 500, damping: 38 }}
+                          />
+                        )}
+                        <item.icon className="relative z-10 w-4 h-4 transition-transform group-hover:scale-105 shrink-0" />
+                        <span className="relative z-10 truncate">{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </nav>
 
-          <div className="mt-auto pt-6">
-            <div className="flex items-center gap-2.5 px-3 py-3 rounded-xl bg-white dark:bg-brand-surface shadow-soft border border-brand-border">
-              <div className="flex-shrink-0 bg-white dark:bg-white rounded-lg p-1 border border-brand-border/60">
-                <ZiauddinLogo className="h-6 w-auto" />
+          <div className="mt-auto pt-4 border-t border-black/[0.04] dark:border-white/[0.06]">
+            <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-black/[0.04] dark:border-white/[0.06]">
+              <div className="shrink-0 bg-white rounded-md p-1 border border-slate-200/80 flex items-center justify-center">
+                <ZiauddinLogo className="h-5 w-auto" />
               </div>
-              <p className="text-[10px] leading-snug text-brand-text-secondary">
+              <p className="text-[10px] leading-snug text-slate-500 dark:text-slate-400">
                 Affiliated with
                 <br />
-                <span className="font-semibold text-brand-text-primary">Ziauddin University</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-200">Ziauddin University</span>
               </p>
             </div>
           </div>
@@ -402,33 +450,113 @@ const App: React.FC = () => {
             )}
 
             {view === 'lesson' && (
-              <div className="w-full max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-8">
-                <SubjectSelector
-                  selection={selection}
-                  generationMode={generationMode}
-                  onGenerationModeChange={setGenerationMode}
-                  topicInput={topicInput}
-                  onTopicInputChange={setTopicInput}
-                  selectedSloIds={selectedSloIds}
-                  onSelectedSloIdsChange={setSelectedSloIds}
-                  exportFormat={exportFormat}
-                  onExportFormatChange={setExportFormat}
-                  chapterSlos={chapterSlos}
-                  isLoadingSlos={isLoadingSlos}
-                  onGenerate={handleGenerateLesson}
-                  isGenerating={isLoading}
-                />
+              <div className="w-full max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-8 space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-brand-border/60">
+                  <div>
+                    <h1 className="text-xl sm:text-2xl font-bold text-brand-text-primary">
+                      Lesson Plans
+                    </h1>
+                    <p className="text-xs text-brand-text-secondary mt-0.5">
+                      Curriculum-aligned lesson planner and saved lesson archive.
+                    </p>
+                  </div>
+                  <div className="w-56 self-start sm:self-auto">
+                    <SegmentedControl
+                      size="sm"
+                      value={lessonSubView}
+                      options={[
+                        { value: 'create', label: 'New Plan' },
+                        { value: 'saved', label: 'Saved Archive' },
+                      ]}
+                      onChange={setLessonSubView}
+                    />
+                  </div>
+                </div>
+
+                {lessonSubView === 'create' ? (
+                  <SubjectSelector
+                    selection={selection}
+                    generationMode={generationMode}
+                    onGenerationModeChange={setGenerationMode}
+                    topicInput={topicInput}
+                    onTopicInputChange={setTopicInput}
+                    selectedSloIds={selectedSloIds}
+                    onSelectedSloIdsChange={setSelectedSloIds}
+                    exportFormat={exportFormat}
+                    onExportFormatChange={setExportFormat}
+                    chapterSlos={chapterSlos}
+                    isLoadingSlos={isLoadingSlos}
+                    onGenerate={handleGenerateLesson}
+                    isGenerating={isLoading}
+                  />
+                ) : (
+                  <HistoryView
+                    filterType="plans"
+                    hideHeader
+                    onOpenLessonPlan={(plan) => {
+                      setGeneratedPlans([plan]);
+                      setGeneratedPapers([]);
+                      setView('results');
+                    }}
+                    onOpenPaper={(paper) => {
+                      setGeneratedPapers([paper]);
+                      setGeneratedPlans([]);
+                      setView('results');
+                    }}
+                  />
+                )}
               </div>
             )}
 
             {view === 'paper' && (
-              <PaperPanel
-                onGeneratePaper={handleGeneratePaper}
-                isGenerating={isLoading}
-                selection={selection}
-                exportFormat={exportFormat}
-                onExportFormatChange={setExportFormat}
-              />
+              <div className="w-full max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-8 space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-brand-border/60">
+                  <div>
+                    <h1 className="text-xl sm:text-2xl font-bold text-brand-text-primary">
+                      Exam Papers
+                    </h1>
+                    <p className="text-xs text-brand-text-secondary mt-0.5">
+                      Board-standard paper generator and past exam archive.
+                    </p>
+                  </div>
+                  <div className="w-56 self-start sm:self-auto">
+                    <SegmentedControl
+                      size="sm"
+                      value={paperSubView}
+                      options={[
+                        { value: 'create', label: 'New Paper' },
+                        { value: 'saved', label: 'Saved Archive' },
+                      ]}
+                      onChange={setPaperSubView}
+                    />
+                  </div>
+                </div>
+
+                {paperSubView === 'create' ? (
+                  <PaperPanel
+                    onGeneratePaper={handleGeneratePaper}
+                    isGenerating={isLoading}
+                    selection={selection}
+                    exportFormat={exportFormat}
+                    onExportFormatChange={setExportFormat}
+                  />
+                ) : (
+                  <HistoryView
+                    filterType="papers"
+                    hideHeader
+                    onOpenPaper={(paper) => {
+                      setGeneratedPapers([paper]);
+                      setGeneratedPlans([]);
+                      setView('results');
+                    }}
+                    onOpenLessonPlan={(plan) => {
+                      setGeneratedPlans([plan]);
+                      setGeneratedPapers([]);
+                      setView('results');
+                    }}
+                  />
+                )}
+              </div>
             )}
 
             {view === 'records' && <StudentRecordsView />}
@@ -522,6 +650,8 @@ const App: React.FC = () => {
           <span>{versionConfig.deployUrl.replace('https://', '')}</span>
         </span>
       </div>
+
+      <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
   );
 };

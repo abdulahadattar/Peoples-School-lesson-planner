@@ -1,5 +1,14 @@
 import React from 'react';
-import { BookOpenIcon, DocumentTextIcon, UserGroupIcon, SpreadsheetIcon } from './icons/MiscIcons';
+import {
+  BookOpenIcon,
+  DocumentTextIcon,
+  UserGroupIcon,
+  SpreadsheetIcon,
+  FolderArchiveIcon,
+  PulseIcon,
+  ArchiveIcon,
+} from './icons/MiscIcons';
+import { Settings as SettingsIcon, ArrowRight } from 'lucide-react';
 import { PhssjLogo, ZiauddinLogo } from './Logo';
 import { View } from '../types';
 import { motion } from 'motion/react';
@@ -8,140 +17,198 @@ interface HomeViewProps {
   onNavigate?: (view: View) => void;
 }
 
-/** Feature cards data */
-const FEATURES = [
+interface FeatureSection {
+  title: string;
+  items: {
+    view: View;
+    title: string;
+    description: string;
+    icon: React.FC<React.SVGProps<SVGSVGElement>>;
+    accentColor: string;
+    tag?: string;
+  }[];
+}
+
+const FEATURE_SECTIONS: FeatureSection[] = [
   {
-    view: 'records' as View,
-    title: 'Student Records',
-    description: 'Google Sheets register, GR# profiles and search.',
-    icon: SpreadsheetIcon,
-    accent: 'text-emerald-600 bg-emerald-500/10 dark:bg-emerald-950/40 dark:text-emerald-300 group-hover:bg-emerald-600 group-hover:text-white',
+    title: 'Academics & Generation',
+    items: [
+      {
+        view: 'lesson' as View,
+        title: 'Lesson Plans',
+        description: 'SLO-aligned curriculum plans by topic, single SLO, or full chapter.',
+        icon: BookOpenIcon,
+        accentColor: 'text-blue-600 dark:text-blue-400 bg-blue-500/10 dark:bg-blue-500/15',
+      },
+      {
+        view: 'paper' as View,
+        title: 'Exam Papers',
+        description: 'Mark-balanced examination papers with MCQs, short, and long questions.',
+        icon: DocumentTextIcon,
+        accentColor: 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 dark:bg-emerald-500/15',
+      },
+      {
+        view: 'history' as View,
+        title: 'History Archive',
+        description: 'Instant local access to all saved lesson plans and examination papers.',
+        icon: ArchiveIcon,
+        accentColor: 'text-amber-600 dark:text-amber-400 bg-amber-500/10 dark:bg-amber-500/15',
+      },
+    ],
   },
   {
-    view: 'attendance' as View,
-    title: 'Daily Attendance',
-    description: 'Mark daily attendance and track absentees.',
-    icon: UserGroupIcon,
-    accent: 'text-blue-600 bg-blue-500/10 dark:bg-blue-950/40 dark:text-blue-300 group-hover:bg-blue-600 group-hover:text-white',
+    title: 'Students & Records',
+    items: [
+      {
+        view: 'attendance' as View,
+        title: 'Daily Attendance',
+        description: 'Mark class attendance, monitor absentees, and sync offline-first.',
+        icon: UserGroupIcon,
+        accentColor: 'text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 dark:bg-indigo-500/15',
+      },
+      {
+        view: 'records' as View,
+        title: 'Student Records',
+        description: 'Central register with GR profiles, phone lookup, and cohort analytics.',
+        icon: SpreadsheetIcon,
+        accentColor: 'text-teal-600 dark:text-teal-400 bg-teal-500/10 dark:bg-teal-500/15',
+      },
+      {
+        view: 'archive' as View,
+        title: 'Document Archive',
+        description: 'OCR verification, B-Form & CNIC audit, and discrepancy detection.',
+        icon: FolderArchiveIcon,
+        accentColor: 'text-purple-600 dark:text-purple-400 bg-purple-500/10 dark:bg-purple-500/15',
+      },
+    ],
   },
   {
-    view: 'lesson' as View,
-    title: 'Lesson Plans',
-    description: 'Lesson plans by topic, SLO or whole chapter.',
-    icon: BookOpenIcon,
-    accent: 'text-brand-primary bg-brand-primary/10 dark:bg-blue-950/40 group-hover:bg-brand-primary group-hover:text-white',
-  },
-  {
-    view: 'paper' as View,
-    title: 'Exam Papers',
-    description: 'Mark-balanced papers with MCQs, short and long questions.',
-    icon: DocumentTextIcon,
-    accent: 'text-brand-accent bg-brand-accent/10 dark:bg-emerald-950/40 group-hover:bg-brand-accent group-hover:text-white',
+    title: 'Operations & Administration',
+    items: [
+      {
+        view: 'live' as View,
+        title: 'Live Monitor',
+        description: 'Real-time class periods, break duty supervision, and teacher substitutions.',
+        icon: PulseIcon,
+        accentColor: 'text-rose-600 dark:text-rose-400 bg-rose-500/10 dark:bg-rose-500/15',
+      },
+      {
+        view: 'settings' as View,
+        title: 'School Admin',
+        description: 'Timetable matrix, teacher subject allocations, and bell schedule rules.',
+        icon: SettingsIcon as any,
+        accentColor: 'text-slate-700 dark:text-slate-300 bg-slate-500/10 dark:bg-slate-500/15',
+      },
+    ],
   },
 ];
 
 const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
   return (
-    <div className="relative min-h-full w-full flex">
-      {/* Decorative layer. Clipping is confined to this layer so the blurred orbs
-          never widen the page, while the content below stays fully reachable.
-          The orbs translate only - no `scale` - because a filter like blur-3xl
-          has to be re-rasterised whenever its effective footprint changes, which
-          kept low-end Android GPUs busy from the moment the app opened.
-          MotionConfig reducedMotion="user" pauses them for users who asked for
-          reduced motion. */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-        <div className="absolute inset-0 bg-brand-bg transition-colors duration-500" />
-        <motion.div
-          animate={{ x: [0, 25, -20, 0], y: [0, -35, 20, 0] }}
-          transition={{ duration: 26, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute -top-32 -left-24 w-[24rem] h-[24rem] rounded-full bg-brand-primary/12 dark:bg-brand-primary/8 blur-2xl will-change-transform"
-        />
-        <motion.div
-          animate={{ x: [0, -30, 25, 0], y: [0, 30, -25, 0] }}
-          transition={{ duration: 32, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
-          className="absolute -bottom-40 -right-24 w-[26rem] h-[26rem] rounded-full bg-brand-accent/12 dark:bg-brand-accent/8 blur-2xl will-change-transform"
-        />
+    <div className="relative min-h-full w-full flex flex-col justify-between py-6 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+      {/* Subtle Apple-style architectural grid backdrop */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-[0.03] dark:opacity-[0.05]" aria-hidden="true">
         <div
-          className="absolute inset-0 opacity-[0.025] dark:opacity-[0.04]"
+          className="w-full h-full"
           style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
-            backgroundSize: '32px 32px',
+            backgroundImage: `linear-gradient(to right, currentColor 1px, transparent 1px), linear-gradient(to bottom, currentColor 1px, transparent 1px)`,
+            backgroundSize: '48px 48px',
           }}
         />
       </div>
 
-      {/* Content column. `my-auto` centers it when the window is tall enough but,
-          unlike justify-center, never pushes content out of reach when it is not. */}
-      <div className="relative z-10 w-full flex flex-col items-center justify-center px-4 py-10 md:py-16 my-auto">
-      <div className="w-full max-w-3xl">
-        {/* Hero */}
+      <div className="relative z-10 w-full">
+        {/* Header Hero Section */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          className="text-center mb-10 md:mb-12"
+          transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          className="text-center pt-4 pb-8 sm:pb-10"
         >
-          <motion.div
-            animate={{ y: [0, -8, 0] }}
-            transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-            className="relative mx-auto mb-6 w-fit"
-          >
-            <div className="absolute inset-0 rounded-full bg-brand-primary/20 blur-2xl scale-125" />
-            <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-full bg-white dark:bg-slate-900 shadow-glass border-2 border-brand-border dark:border-blue-500/30 flex items-center justify-center p-1.5 ring-4 ring-brand-primary/10">
-              <PhssjLogo className="w-full h-full rounded-full drop-shadow-sm" />
+          <div className="relative mx-auto mb-4 w-fit">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white dark:bg-slate-900 shadow-md border-2 border-slate-200/80 dark:border-white/10 flex items-center justify-center p-1 ring-4 ring-blue-500/10">
+              <PhssjLogo className="w-full h-full rounded-full" />
             </div>
-          </motion.div>
+          </div>
 
-          <h1 className="text-3xl md:text-4xl font-extrabold text-brand-text-primary tracking-tight mb-2">
-            Academic Portal
+          <h1
+            className="text-2xl sm:text-3xl font-bold tracking-tight text-brand-text-primary text-balance"
+            style={{ textWrap: 'balance' }}
+          >
+            Peoples Higher Secondary School Jamshoro
           </h1>
-          <p className="text-sm text-brand-text-secondary font-normal max-w-md mx-auto leading-relaxed">
-            Select a section from the sidebar to begin.
+          <p className="text-xs sm:text-sm text-brand-text-secondary mt-1.5 max-w-xl mx-auto leading-relaxed">
+            Unified institutional workspace for curriculum generation, examination synthesis, and real-time school operations.
           </p>
         </motion.div>
 
-        {/* Feature cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
-          {FEATURES.map((feature, i) => (
-            <motion.button
-              key={feature.view}
-              onClick={() => onNavigate?.(feature.view)}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.05 * i, ease: [0.16, 1, 0.3, 1] }}
-              whileHover={{ y: -3, scale: 1.012 }}
-              whileTap={{ scale: 0.98 }}
-              className="group flex-1 relative overflow-hidden rounded-2xl glass-card p-5 text-left transition-shadow duration-200 hover:shadow-glass active:scale-[0.98] border border-brand-border/80 dark:border-brand-border cursor-pointer select-none"
-            >
-              <div className="absolute inset-x-0 top-0 h-1 brand-gradient opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-300" />
-              <div className="relative z-10">
-                <div className={`w-11 h-11 mb-4 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 shadow-xs ${feature.accent}`}>
-                  <feature.icon className="w-5 h-5" />
-                </div>
-                <h2 className="text-base font-bold text-brand-text-primary mb-1">{feature.title}</h2>
-                <p className="text-xs text-brand-text-secondary leading-relaxed">{feature.description}</p>
+        {/* Feature Grid by Categories */}
+        <div className="space-y-7">
+          {FEATURE_SECTIONS.map((section, sIdx) => (
+            <div key={section.title} className="space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[11px] font-semibold tracking-wider uppercase text-brand-text-tertiary">
+                  {section.title}
+                </span>
               </div>
-            </motion.button>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                {section.items.map((feature, i) => (
+                  <motion.button
+                    key={feature.view}
+                    type="button"
+                    onClick={() => onNavigate?.(feature.view)}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      duration: 0.3,
+                      delay: 0.03 * (sIdx * 3 + i),
+                      ease: [0.16, 1, 0.3, 1],
+                    }}
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.985 }}
+                    className="group relative flex flex-col justify-between p-5 rounded-2xl bg-white dark:bg-brand-surface border border-brand-border/80 dark:border-white/[0.08] shadow-soft hover:shadow-card-hover transition-all duration-200 text-left cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-3.5">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105 ${feature.accentColor}`}>
+                          <feature.icon className="w-5 h-5" />
+                        </div>
+                        <span className="w-7 h-7 rounded-full flex items-center justify-center text-slate-400 group-hover:text-brand-primary group-hover:bg-brand-primary/10 transition-colors">
+                          <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                        </span>
+                      </div>
+
+                      <h3 className="text-sm sm:text-base font-semibold text-brand-text-primary tracking-tight mb-1">
+                        {feature.title}
+                      </h3>
+                      <p className="text-xs text-brand-text-secondary leading-relaxed line-clamp-2">
+                        {feature.description}
+                      </p>
+                    </div>
+                  </motion.button>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
+      </div>
 
-        {/* Affiliation strip */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.35 }}
-          className="flex flex-col items-center gap-3 mt-8"
-        >
-          <div className="flex items-center gap-2.5 px-4 py-2 rounded-full bg-white dark:bg-brand-surface shadow-card border border-brand-border">
-            <span className="text-[10px] text-brand-text-secondary font-medium">Affiliated with</span>
-            <div className="bg-white rounded-md px-1.5 py-0.5 border border-slate-200 dark:border-brand-border/60 flex items-center">
-              <ZiauddinLogo className="h-5 w-auto" />
-            </div>
+      {/* Footer Affiliation Strip */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, delay: 0.3 }}
+        className="relative z-10 flex items-center justify-center gap-2 pt-8 pb-2 text-xs text-brand-text-secondary"
+      >
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white dark:bg-brand-surface border border-brand-border/80 dark:border-white/[0.08] shadow-xs">
+          <span className="text-[11px]">Affiliated with</span>
+          <div className="h-4 flex items-center">
+            <ZiauddinLogo className="h-4 w-auto" />
           </div>
-        </motion.div>
-      </div>
-      </div>
+          <span className="font-semibold text-brand-text-primary text-[11px]">Ziauddin University</span>
+        </div>
+      </motion.div>
     </div>
   );
 };

@@ -18,6 +18,7 @@ import {
 import { isUserAdmin, ADMIN_EMAILS } from '../../services/adminService';
 import { googleSignIn, getCurrentUser } from '../../services/googleAuth';
 import { User } from 'firebase/auth';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 
 interface EnrollmentEditorModalProps {
   isOpen: boolean;
@@ -41,6 +42,7 @@ export const EnrollmentEditorModal: React.FC<EnrollmentEditorModalProps> = ({
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   // Sync state when opened
   React.useEffect(() => {
@@ -91,10 +93,13 @@ export const EnrollmentEditorModal: React.FC<EnrollmentEditorModalProps> = ({
   };
 
   const handleResetToBaseline = () => {
-    if (window.confirm('Reset all class enrollments to the official handwritten baseline register (868 Total, 365 Boys, 263 Girls)?')) {
-      setEnrollments(JSON.parse(JSON.stringify(DEFAULT_GRADE_ENROLLMENTS)));
-      setSaveSuccess(false);
-    }
+    setShowResetConfirm(true);
+  };
+
+  const executeResetToBaseline = () => {
+    setEnrollments(JSON.parse(JSON.stringify(DEFAULT_GRADE_ENROLLMENTS)));
+    setSaveSuccess(false);
+    setShowResetConfirm(false);
   };
 
   const handleSignInAdmin = async () => {
@@ -346,6 +351,16 @@ export const EnrollmentEditorModal: React.FC<EnrollmentEditorModalProps> = ({
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={showResetConfirm}
+        title="Reset All Class Enrollments?"
+        message="Are you sure you want to reset all class enrollments to the official handwritten baseline register (868 Total, 365 Boys, 263 Girls)?"
+        variant="warning"
+        confirmLabel="Reset Enrollments"
+        onConfirm={executeResetToBaseline}
+        onClose={() => setShowResetConfirm(false)}
+      />
     </div>
   );
 };

@@ -7,7 +7,8 @@
    `inline` emits the referenced var directly into utilities so the
    `.dark` overrides below resolve correctly per element. */
 @theme inline {
-  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
   --color-brand-primary: var(--primary-color);
   --color-brand-primary-hover: var(--primary-hover);
@@ -21,43 +22,42 @@
   --color-brand-border: var(--border-color);
   --color-brand-accent: var(--accent-color);
 
-  --shadow-soft: 0 1px 2px 0 rgba(2, 6, 23, 0.05);
-  --shadow-card: 0 1px 3px 0 rgba(2, 6, 23, 0.1), 0 1px 2px -1px rgba(2, 6, 23, 0.1);
-  --shadow-card-hover: 0 4px 6px -1px rgba(2, 6, 23, 0.1), 0 2px 4px -2px rgba(2, 6, 23, 0.1);
-  --shadow-glass: 0 8px 32px rgba(2, 6, 23, 0.12);
+  --shadow-soft: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  --shadow-card-hover: 0 6px 16px -2px rgba(0, 0, 0, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.04);
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.08);
 }
 
 /* ── Brand palette ───────────────────────────────────────────────
-   Royal blue + emerald drawn from the PHSSJ / Ziauddin University
-   logos. Light & dark themes share the same token names. */
+   Apple-calibrated Royal Blue + Emerald + Porcelain Slate */
 :root {
-  --bg-color: #f4f7fb;
+  --bg-color: #f8fafc;
   --surface-color: #ffffff;
-  --panel-color: #eef2f7;
-  --text-primary: #0b1220;
-  --text-secondary: #45536b;
+  --panel-color: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
   --text-tertiary: #94a3b8;
-  --border-color: #e3e9f2;
-  --primary-color: #1d4ed8;      /* royal blue */
-  --primary-hover: #1e40af;
-  --primary-soft: #e8efff;
-  --accent-color: #059669;       /* emerald */
-  --accent-soft: #e7f7f0;
+  --border-color: #e2e8f0;
+  --primary-color: #2563eb;      /* Apple-vibrant royal blue */
+  --primary-hover: #1d4ed8;
+  --primary-soft: #eff6ff;
+  --accent-color: #10b981;       /* Refined emerald */
+  --accent-soft: #ecfdf5;
 }
 
 .dark {
-  --bg-color: #0b1220;
-  --surface-color: #131c30;
-  --panel-color: #182236;
-  --text-primary: #f2f6fc;
-  --text-secondary: #9fb0c7;
+  --bg-color: #0b1120;
+  --surface-color: #111a2e;
+  --panel-color: #17233d;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
   --text-tertiary: #64748b;
-  --border-color: #26334d;
-  --primary-color: #5b8cff;
-  --primary-hover: #7aa2ff;
-  --primary-soft: #16264d;
+  --border-color: #1e293b;
+  --primary-color: #3b82f6;
+  --primary-hover: #60a5fa;
+  --primary-soft: #172554;
   --accent-color: #34d399;
-  --accent-soft: #0d2f28;
+  --accent-soft: #064e3b;
 }
 
 /* ── Base ──────────────────────────────────────────────────────── */
@@ -66,34 +66,35 @@ html {
   -webkit-tap-highlight-color: transparent;
   text-size-adjust: 100%;
   -webkit-text-size-adjust: 100%;
+  letter-spacing: -0.011em;
 }
 
 body {
   background-color: var(--bg-color);
   color: var(--text-primary);
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overscroll-behavior-y: none;
 }
 
-/* iOS Fluid touch optimizations */
+/* iOS / macOS Fluid touch & click optimizations */
 button, a, input, select, textarea {
   touch-action: manipulation;
 }
 
-/* Prevent accidental text highlight on mobile tap.
-   Scoped to real controls only: applying this to .select-none also hit data cells
-   in the student register, which stopped Android users long-pressing a GR number
-   or phone number to copy it. */
+/* Tactile press micro-interaction */
+.tactile-press {
+  transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.12s ease;
+}
+.tactile-press:active {
+  transform: scale(0.975);
+}
+
 button, nav {
   -webkit-touch-callout: none;
 }
 
-/* Android Chrome zooms the whole page when an input's computed font-size is under
-   16px, and the user has to pinch back out. The dense data-entry forms use
-   text-xs (12px) throughout, so the floor is enforced globally on touch devices
-   where the keyboard would actually appear. */
 @media (pointer: coarse) {
   input:not([type="checkbox"]):not([type="radio"]),
   select,
@@ -102,8 +103,6 @@ button, nav {
   }
 }
 
-/* Respect the OS gesture bar / navigation bar on notched and edge-to-edge
-   Android devices. Requires viewport-fit=cover in index.html. */
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -111,11 +110,11 @@ button, nav {
   padding-top: env(safe-area-inset-top, 0px);
 }
 
-/* Keyboard focus ring, applied only for keyboard users. */
+/* Apple-style subtle focus rings */
 :focus-visible {
   outline: 2px solid var(--primary-color);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 ::selection {
@@ -123,28 +122,27 @@ button, nav {
   color: #fff;
 }
 
-/* Custom scrollbar (WebKit & iOS fluid momentum) */
+/* Custom scrollbar */
 .custom-scrollbar {
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   scrollbar-color: var(--border-color) transparent;
 }
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: var(--border-color);
-  border-radius: 20px;
+  border-radius: 9999px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--text-tertiary);
 }
 
-/* Remove native <details> markers for the animated chevrons */
 summary {
   list-style: none;
 }
@@ -152,18 +150,13 @@ summary::-webkit-details-marker {
   display: none;
 }
 
-/* ── Motion ──────────────────────────────────────────────────────
-   One scale for the whole app. Durations are short enough to feel
-   responsive but long enough to read; easing is consistent so
-   transitions feel like one system rather than a pile of effects. */
+/* ── Motion & Animation Curves ──────────────────────────────────── */
 :root {
-  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
-  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
-
-  --dur-fast: 140ms;
-  --dur-base: 220ms;
-  --dur-slow: 320ms;
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-smooth: cubic-bezier(0.25, 1, 0.5, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 300ms;
 }
 
 @keyframes fadeIn {
@@ -171,40 +164,49 @@ summary::-webkit-details-marker {
   to { opacity: 1; }
 }
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(30px); }
+  from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.96); }
+  from { opacity: 0; transform: scale(0.97); }
   to { opacity: 1; transform: scale(1); }
 }
 @keyframes shimmer {
-  0% { background-position: -450px 0; }
-  100% { background-position: 450px 0; }
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
 }
 @keyframes progressStripes {
   0% { background-position: 0 0; }
   100% { background-position: 24px 0; }
 }
 
-.animate-fadeIn { animation: fadeIn 0.5s var(--ease-out-quart) both; }
-.animate-fadeInUp { animation: fadeInUp 0.5s var(--ease-out-expo) both; }
-.animate-slideUp { animation: slideUp 0.4s var(--ease-out-expo) both; }
-.animate-scaleIn { animation: scaleIn 0.35s var(--ease-out-quart) both; }
+.animate-fadeIn { animation: fadeIn 0.3s var(--ease-spring) both; }
+.animate-fadeInUp { animation: fadeInUp 0.35s var(--ease-spring) both; }
+.animate-scaleIn { animation: scaleIn 0.25s var(--ease-spring) both; }
 
-/* ── Glass + gradient helpers ──────────────────────────────────── */
+/* ── Apple-Grade Glass Surfaces ─────────────────────────────────── */
 .glass-card {
   background: var(--surface-color);
   border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-card);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+}
+
+.apple-frosted {
+  background-color: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.dark .apple-frosted {
+  background-color: rgba(17, 26, 46, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .brand-gradient {
-  background-image: linear-gradient(135deg, #1d4ed8 0%, #2563eb 45%, #059669 120%);
+  background-image: linear-gradient(135deg, #1d4ed8 0%, #2563eb 50%, #059669 120%);
 }
 
 .brand-gradient-soft {
@@ -218,7 +220,7 @@ summary::-webkit-details-marker {
   color: transparent;
 }
 
-/* Skeleton shimmer blocks */
+/* Skeleton shimmer */
 .skeleton {
   position: relative;
   overflow: hidden;
@@ -232,32 +234,31 @@ summary::-webkit-details-marker {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.55) 50%,
+    rgba(255, 255, 255, 0.5) 50%,
     transparent 100%
   );
-  background-size: 450px 100%;
-  animation: shimmer 1.4s ease-in-out infinite;
+  background-size: 400px 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
 }
 .dark .skeleton::after {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.06) 50%,
     transparent 100%
   );
-  background-size: 450px 100%;
-  animation: shimmer 1.4s ease-in-out infinite;
+  background-size: 400px 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
 }
 
-/* Animated diagonal stripes for the in-progress progress bar */
 .progress-stripes {
   background-image: linear-gradient(
     45deg,
-    rgba(255, 255, 255, 0.25) 25%,
+    rgba(255, 255, 255, 0.2) 25%,
     transparent 25%,
     transparent 50%,
-    rgba(255, 255, 255, 0.25) 50%,
-    rgba(255, 255, 255, 0.25) 75%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0.2) 75%,
     transparent 75%,
     transparent
   );

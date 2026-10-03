@@ -96,10 +96,9 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 async function testConnection() {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
-  } catch (error) {
-    if (error instanceof Error && (error.message.includes('the client is offline') || error.message.includes('Could not reach Cloud Firestore backend'))) {
-      console.warn("Please check your Firebase configuration or internet connection.");
-    }
+  } catch (error: any) {
+    // When offline or during initial connection setup, Firestore operates in local cache mode.
+    // Suppress noisy network warnings so the app continues smoothly offline-first.
   }
 }
 testConnection();

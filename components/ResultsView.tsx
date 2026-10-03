@@ -10,6 +10,8 @@ import { PhssjLogo } from './Logo';
 import Spinner from './ui/Spinner';
 import { QuestionEditor } from './QuestionEditor';
 import { saveExamPaperToDb, updateSavedPaperInDb } from '../services/storageService';
+import { ConfirmDialog } from './ui/ConfirmDialog';
+import { Toast, ToastMessage } from './ui/Toast';
 
 interface ResultsViewProps {
   lessonPlans: LessonPlan[];
@@ -41,6 +43,22 @@ const ResultsView: React.FC<ResultsViewProps> = ({
   const [selectedPlanIndex, setSelectedPlanIndex] = useState(0);
   const [revisionPrompt, setRevisionPrompt] = useState('');
   const [showRevision, setShowRevision] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    variant?: 'danger' | 'warning' | 'primary';
+    onConfirm: () => void;
+  } | null>(null);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'error') => {
+    setToast({ type, message });
+    setTimeout(() => {
+      setToast((c) => (c?.message === message ? null : c));
+    }, 4500);
+  };
   const [mathScale, setMathScale] = useState<number>(() => {
     const saved = localStorage.getItem('phssj_math_scale');
     return saved ? Number(saved) || 85 : 85;
@@ -88,16 +106,26 @@ const ResultsView: React.FC<ResultsViewProps> = ({
 
   const handleDeleteQuestion = (sIdx: number, qIdx: number) => {
     if (!papers || papers.length === 0) return;
-    if (!confirm('Are you sure you want to remove this question?')) return;
-    const paper = papers[0];
-    const newPaper: GeneratedPaper = JSON.parse(JSON.stringify(paper));
-    newPaper.sections[sIdx].questions.splice(qIdx, 1);
-    const calculatedMarks = newPaper.sections.reduce((acc, sec) =>
-      acc + sec.questions.reduce((qAcc, q) => qAcc + (Number(q.marks) || 0), 0), 0
-    );
-    newPaper.totalMarks = calculatedMarks;
-    onUpdatePaper?.(newPaper);
-    persistPaperEdit(newPaper).catch(console.error);
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Remove Question',
+      message: 'Are you sure you want to remove this question from the examination paper?',
+      variant: 'danger',
+      confirmLabel: 'Remove Question',
+      onConfirm: () => {
+        const paper = papers[0];
+        const newPaper: GeneratedPaper = JSON.parse(JSON.stringify(paper));
+        newPaper.sections[sIdx].questions.splice(qIdx, 1);
+        const calculatedMarks = newPaper.sections.reduce((acc, sec) =>
+          acc + sec.questions.reduce((qAcc, q) => qAcc + (Number(q.marks) || 0), 0), 0
+        );
+        newPaper.totalMarks = calculatedMarks;
+        onUpdatePaper?.(newPaper);
+        persistPaperEdit(newPaper).catch(console.error);
+        setConfirmDialog(null);
+        showToast('Question removed and marks recalculated.', 'info');
+      },
+    });
   };
 
   const handleAddQuestion = (sIdx: number) => {
@@ -137,8 +165,9 @@ const ResultsView: React.FC<ResultsViewProps> = ({
         await new Promise(resolve => setTimeout(resolve, 250));
         await exportPaperAsPdf(paper, teacherInfo, mathScale);
       }
+      showToast('Exam paper exported successfully.', 'success');
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to export. Please try again.');
+      showToast(error instanceof Error ? error.message : 'Failed to export. Please try again.', 'error');
     }
   };
 
@@ -507,6 +536,20 @@ const ResultsView: React.FC<ResultsViewProps> = ({
             </div>
           </div>
         )}
+
+        {confirmDialog && (
+          <ConfirmDialog
+            isOpen={confirmDialog.isOpen}
+            title={confirmDialog.title}
+            message={confirmDialog.message}
+            variant={confirmDialog.variant || 'danger'}
+            confirmLabel={confirmDialog.confirmLabel || 'Confirm'}
+            onConfirm={confirmDialog.onConfirm}
+            onCancel={() => setConfirmDialog(null)}
+          />
+        )}
+
+        <Toast toast={toast} onClose={() => setToast(null)} />
       </div>
     );
   }

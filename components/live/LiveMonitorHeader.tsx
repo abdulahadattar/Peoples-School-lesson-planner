@@ -10,6 +10,9 @@ import {
 import { RefreshIcon } from '../icons/MiscIcons';
 import { ClassTier, TIER_CONFIG } from '../../services/tierHelpers';
 import { LiveDot } from './LiveCommon';
+import { SegmentedControl } from '../ui/SegmentedControl';
+import { motion } from 'motion/react';
+import { Search } from 'lucide-react';
 
 export interface LiveMonitorHeaderProps {
   monitorMode: 'classes' | 'duties' | 'substitutions';
@@ -34,6 +37,12 @@ export interface LiveMonitorHeaderProps {
   searchQuery: string;
   onSearchQueryChange: (q: string) => void;
 }
+
+const MONITOR_MODES = [
+  { value: 'classes' as const, label: 'Classes & Staff' },
+  { value: 'duties' as const, label: 'Ground Duties' },
+  { value: 'substitutions' as const, label: 'Substitutions' },
+];
 
 export const LiveMonitorHeader: React.FC<LiveMonitorHeaderProps> = ({
   monitorMode,
@@ -68,99 +77,81 @@ export const LiveMonitorHeader: React.FC<LiveMonitorHeaderProps> = ({
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
+    hour12: true,
   });
 
   return (
-    <div className="space-y-3.5">
+    <div className="space-y-4">
       {/* Top Bar: Mode switcher & Live sync status */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center bg-brand-bg dark:bg-brand-panel p-1 rounded-xl border border-brand-border">
-          <button
-            type="button"
-            onClick={() => onMonitorModeChange('classes')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-              monitorMode === 'classes'
-                ? 'bg-white dark:bg-brand-surface text-brand-primary shadow-xs'
-                : 'text-brand-text-secondary hover:text-brand-text-primary'
-            }`}
-          >
-            Live Classes &amp; Staff Room
-          </button>
-          <button
-            type="button"
-            onClick={() => onMonitorModeChange('duties')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-              monitorMode === 'duties'
-                ? 'bg-white dark:bg-brand-surface text-brand-primary shadow-xs'
-                : 'text-brand-text-secondary hover:text-brand-text-primary'
-            }`}
-          >
-            Ground Duties
-          </button>
-          <button
-            type="button"
-            onClick={() => onMonitorModeChange('substitutions')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-              monitorMode === 'substitutions'
-                ? 'bg-white dark:bg-brand-surface text-brand-primary shadow-xs'
-                : 'text-brand-text-secondary hover:text-brand-text-primary'
-            }`}
-          >
-            <span>Substitutions</span>
-            {absentCount > 0 && (
-              <span className="px-1.5 py-0.2 text-[10px] font-bold rounded-full bg-rose-500 text-white leading-none">
-                {absentCount}
-              </span>
-            )}
-          </button>
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="w-full sm:w-auto sm:min-w-[340px]">
+          <SegmentedControl
+            size="sm"
+            value={monitorMode}
+            options={MONITOR_MODES}
+            onChange={onMonitorModeChange}
+          />
         </div>
 
-        {/* Live sync / Return to Live button */}
-        <div>
+        {/* Live sync status pill */}
+        <div className="flex items-center gap-2 self-end sm:self-auto">
+          {absentCount > 0 && monitorMode !== 'substitutions' && (
+            <button
+              type="button"
+              onClick={() => onMonitorModeChange('substitutions')}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 cursor-pointer"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+              <span>{absentCount} Absent</span>
+            </button>
+          )}
+
           {isLive ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-300 dark:border-emerald-500/30 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
               <LiveDot />
-              <span>Live Sync</span>
+              <span>Live Clock</span>
             </span>
           ) : (
-            <button
+            <motion.button
+              whileTap={{ scale: 0.96 }}
+              type="button"
               onClick={onGoLive}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/30 text-xs font-bold text-amber-700 dark:text-amber-300 hover:bg-amber-100 transition-all shadow-xs"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-xs font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 transition-all cursor-pointer"
               title="Reset to current real-time clock"
             >
               <RefreshIcon className="w-3.5 h-3.5" />
-              <span>Return to Live Clock</span>
-            </button>
+              <span>Return to Live</span>
+            </motion.button>
           )}
         </div>
       </div>
 
       {/* Main Control Panel (Only in Classes Mode) */}
       {monitorMode === 'classes' && (
-        <div className="glass-card rounded-2xl p-4 md:p-5 shadow-soft border border-brand-border space-y-4">
-          {/* Top Info Line: Title, Real-time clock & Live school status banner */}
+        <div className="rounded-2xl bg-white dark:bg-brand-surface p-5 shadow-soft border border-black/[0.06] dark:border-white/[0.08] space-y-4">
+          {/* Top Info Line */}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <h2 className="text-lg font-bold text-brand-text-primary tracking-tight">
-                Live Classes Monitor
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-brand-text-primary tracking-tight">
+                Live Timetable Operations
               </h2>
-              <span className="text-xs text-brand-text-tertiary">·</span>
-              <span className="text-xs text-brand-text-secondary font-medium">
-                {formattedDate} · <strong className="font-mono text-brand-text-primary">{formattedTime}</strong>
+              <span className="text-brand-text-tertiary">·</span>
+              <span className="text-xs text-brand-text-secondary font-medium font-mono tabular-nums">
+                {formattedDate} {formattedTime}
               </span>
             </div>
 
             {/* School status indicator */}
             {schoolStatus && (
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-brand-bg dark:bg-brand-panel border border-brand-border text-xs font-medium">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-black/[0.04] dark:border-white/[0.06] text-xs">
                 {schoolStatus.state === 'in_period' && (
                   <>
                     <LiveDot />
                     <span className="font-bold text-emerald-600 dark:text-emerald-400">
                       Period {schoolStatus.periodNo} in session
                     </span>
-                    <span className="text-brand-text-tertiary font-mono text-[11px]">
-                      ({schoolStatus.remainingMinutes}m remaining)
+                    <span className="text-slate-400 font-mono tabular-nums text-[11px]">
+                      ({schoolStatus.remainingMinutes}m left)
                     </span>
                   </>
                 )}
@@ -170,7 +161,7 @@ export const LiveMonitorHeader: React.FC<LiveMonitorHeaderProps> = ({
                     <span className="font-bold text-amber-600 dark:text-amber-400">
                       Recess Break
                     </span>
-                    <span className="text-brand-text-tertiary font-mono text-[11px]">
+                    <span className="text-slate-400 font-mono tabular-nums text-[11px]">
                       ({schoolStatus.remainingMinutes}m left · Next: P{schoolStatus.nextPeriodNo})
                     </span>
                   </>
@@ -181,19 +172,19 @@ export const LiveMonitorHeader: React.FC<LiveMonitorHeaderProps> = ({
                     <span className="font-bold text-blue-600 dark:text-blue-400">
                       Pre-Assembly
                     </span>
-                    <span className="text-brand-text-secondary">
-                      · P1 starts at {formatMinutes(schoolStatus.firstPeriodStart)}
+                    <span className="text-slate-400 text-xs">
+                      · P1 at {formatMinutes(schoolStatus.firstPeriodStart)}
                     </span>
                   </>
                 )}
                 {schoolStatus.state === 'after_school' && (
                   <>
                     <span>🏁</span>
-                    <span className="font-bold text-brand-text-secondary">
+                    <span className="font-bold text-slate-500">
                       Classes Dismissed
                     </span>
-                    <span className="text-brand-text-tertiary">
-                      (ended at {formatMinutes(schoolStatus.lastPeriodEnd)})
+                    <span className="text-slate-400 text-[11px]">
+                      (ended {formatMinutes(schoolStatus.lastPeriodEnd)})
                     </span>
                   </>
                 )}
@@ -201,11 +192,11 @@ export const LiveMonitorHeader: React.FC<LiveMonitorHeaderProps> = ({
             )}
           </div>
 
-          {/* Unified Controls Row: Day Pills + Period Pills + Single Period Time Label */}
-          <div className="pt-3 border-t border-brand-border flex flex-col md:flex-row md:items-center justify-between gap-3">
+          {/* Unified Controls Row: Day Pills + Period Pills */}
+          <div className="pt-3 border-t border-black/[0.04] dark:border-white/[0.06] flex flex-col md:flex-row md:items-center justify-between gap-3">
             {/* Day Selector */}
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-brand-text-tertiary mr-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1">
                 Day:
               </span>
               {DAY_KEYS.map(d => {
@@ -216,24 +207,24 @@ export const LiveMonitorHeader: React.FC<LiveMonitorHeaderProps> = ({
                     key={d}
                     type="button"
                     onClick={() => onSelectDay(d)}
-                    className={`relative px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                    className={`relative px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-brand-primary text-white shadow-xs'
-                        : 'bg-white dark:bg-brand-panel border border-brand-border text-brand-text-secondary hover:text-brand-text-primary'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
                     <span>{DAY_LABELS[d].slice(0, 3)}</span>
                     {isToday && !isSelected && (
-                      <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-brand-panel" />
+                      <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500" />
                     )}
                   </button>
                 );
               })}
             </div>
 
-            {/* Period Selector with Single Timing Label */}
+            {/* Period Selector */}
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-brand-text-tertiary mr-0.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-0.5">
                 Period:
               </span>
               <div className="flex items-center gap-1">
@@ -245,12 +236,12 @@ export const LiveMonitorHeader: React.FC<LiveMonitorHeaderProps> = ({
                       key={p.no}
                       type="button"
                       onClick={() => onSelectPeriod(i)}
-                      className={`relative px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                      className={`relative px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer font-mono tabular-nums ${
                         isSelected
-                          ? 'bg-brand-primary text-white shadow-xs'
+                          ? 'bg-blue-600 text-white shadow-xs'
                           : isLiveInThisPeriod
-                            ? 'bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-500 text-emerald-800 dark:text-emerald-300 font-extrabold'
-                            : 'bg-white dark:bg-brand-panel border border-brand-border text-brand-text-secondary hover:text-brand-text-primary'
+                            ? 'bg-emerald-500/15 border border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-bold'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                       }`}
                       title={p.formattedRange || `${p.start} – ${p.end}`}
                     >
@@ -263,9 +254,8 @@ export const LiveMonitorHeader: React.FC<LiveMonitorHeaderProps> = ({
                 })}
               </div>
 
-              {/* Single timing label right here where needed */}
               {currentPeriodInfo && (
-                <span className="text-xs font-medium text-brand-text-secondary bg-brand-bg dark:bg-brand-panel px-2.5 py-1 rounded-lg border border-brand-border">
+                <span className="text-xs font-mono tabular-nums text-slate-500 bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1 rounded-lg border border-black/[0.04] dark:border-white/[0.06]">
                   {currentPeriodInfo.formattedRange || `${currentPeriodInfo.start} – ${currentPeriodInfo.end}`}
                 </span>
               )}
@@ -273,82 +263,47 @@ export const LiveMonitorHeader: React.FC<LiveMonitorHeaderProps> = ({
           </div>
 
           {/* Tiers & Search Filter */}
-          <div className="pt-3 border-t border-brand-border/60 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-1.5 w-full sm:w-auto flex-wrap">
-              <span className="text-[11px] font-bold text-brand-text-tertiary mr-1">Tiers:</span>
+          <div className="pt-3 border-t border-black/[0.04] dark:border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-1.5 w-full sm:w-auto flex-wrap text-xs">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1">Tiers:</span>
               
               <button
                 type="button"
                 onClick={() => onClassFilterChange('all')}
-                className={`px-2 py-0.5 rounded-md text-xs font-semibold transition-all ${
+                className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
                   classFilter === 'all'
-                    ? 'bg-brand-primary-soft text-brand-primary dark:bg-brand-primary/20 dark:text-blue-300 font-bold'
-                    : 'text-brand-text-secondary hover:text-brand-text-primary'
+                    ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                 }`}
               >
                 All ({totalClassesCount})
               </button>
 
-              <button
-                type="button"
-                onClick={() => onClassFilterChange('primary')}
-                className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-semibold transition-all border ${
-                  classFilter === 'primary'
-                    ? TIER_CONFIG.primary.badgeClass + ' font-bold'
-                    : 'border-transparent text-brand-text-secondary hover:text-brand-text-primary'
-                }`}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full ${TIER_CONFIG.primary.dotClass}`} />
-                <span>Primary</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onClassFilterChange('elementary')}
-                className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-semibold transition-all border ${
-                  classFilter === 'elementary'
-                    ? TIER_CONFIG.elementary.badgeClass + ' font-bold'
-                    : 'border-transparent text-brand-text-secondary hover:text-brand-text-primary'
-                }`}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full ${TIER_CONFIG.elementary.dotClass}`} />
-                <span>Elementary</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onClassFilterChange('middle')}
-                className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-semibold transition-all border ${
-                  classFilter === 'middle'
-                    ? TIER_CONFIG.middle.badgeClass + ' font-bold'
-                    : 'border-transparent text-brand-text-secondary hover:text-brand-text-primary'
-                }`}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full ${TIER_CONFIG.middle.dotClass}`} />
-                <span>Middle</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onClassFilterChange('secondary')}
-                className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-semibold transition-all border ${
-                  classFilter === 'secondary'
-                    ? TIER_CONFIG.secondary.badgeClass + ' font-bold'
-                    : 'border-transparent text-brand-text-secondary hover:text-brand-text-primary'
-                }`}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full ${TIER_CONFIG.secondary.dotClass}`} />
-                <span>Secondary</span>
-              </button>
+              {(['primary', 'elementary', 'middle', 'secondary'] as ClassTier[]).map(tier => (
+                <button
+                  key={tier}
+                  type="button"
+                  onClick={() => onClassFilterChange(tier)}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer capitalize ${
+                    classFilter === tier
+                      ? TIER_CONFIG[tier].badgeClass + ' font-bold'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${TIER_CONFIG[tier].dotClass}`} />
+                  <span>{tier}</span>
+                </button>
+              ))}
             </div>
 
-            <div className="w-full sm:w-60">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
               <input
                 type="text"
                 placeholder="Search class, teacher, subject..."
                 value={searchQuery}
                 onChange={e => onSearchQueryChange(e.target.value)}
-                className="w-full px-3 py-1 rounded-xl text-xs bg-brand-bg dark:bg-brand-panel border border-brand-border focus:border-brand-primary outline-none text-brand-text-primary transition-all placeholder:text-brand-text-tertiary"
+                className="w-full pl-8 pr-3 py-1.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900/60 border border-black/[0.08] dark:border-white/[0.08] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none text-slate-900 dark:text-white transition-all placeholder:text-slate-400"
               />
             </div>
           </div>

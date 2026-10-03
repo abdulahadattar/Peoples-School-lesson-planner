@@ -6,13 +6,13 @@ interface LogoProps {
 }
 
 /** Peoples Higher Secondary School Jamshoro (PHSSJ) circular emblem with graceful fallback. */
-export const PhssjLogo: React.FC<LogoProps> = ({ className = 'h-10 w-10', alt = 'PHSSJ' }) => {
+export const PhssjLogo: React.FC<LogoProps> = ({ className = 'w-10 h-10', alt = 'PHSSJ' }) => {
   const [hasError, setHasError] = useState(false);
 
   if (hasError) {
     return (
       <div
-        className={`${className} aspect-square flex items-center justify-center rounded-full bg-gradient-to-tr from-blue-700 via-blue-600 to-emerald-600 text-white font-bold text-xs select-none shadow-soft`}
+        className={`${className} aspect-square flex items-center justify-center rounded-full brand-gradient text-white font-bold text-xs select-none shadow-sm`}
         title="Peoples Higher Secondary School Jamshoro"
       >
         <span>PHSSJ</span>
@@ -25,7 +25,7 @@ export const PhssjLogo: React.FC<LogoProps> = ({ className = 'h-10 w-10', alt = 
       src="/logos/phssj.png"
       alt={alt}
       onError={() => setHasError(true)}
-      className={`${className} aspect-square object-contain rounded-full select-none transition-transform duration-300 hover:scale-105`}
+      className={`${className} aspect-square object-contain rounded-full select-none shrink-0`}
       draggable={false}
     />
   );
@@ -33,7 +33,7 @@ export const PhssjLogo: React.FC<LogoProps> = ({ className = 'h-10 w-10', alt = 
 
 /** Ziauddin University emblem + wordmark with graceful fallback. */
 export const ZiauddinLogo: React.FC<LogoProps> = ({
-  className = 'h-8 w-auto',
+  className = 'h-7 w-auto',
   alt = 'Ziauddin University',
 }) => {
   const [hasError, setHasError] = useState(false);
@@ -54,7 +54,7 @@ export const ZiauddinLogo: React.FC<LogoProps> = ({
       src="/logos/ziauddin-university.png"
       alt={alt}
       onError={() => setHasError(true)}
-      className={`${className} object-contain select-none transition-transform duration-300 hover:scale-105`}
+      className={`${className} object-contain select-none shrink-0`}
       draggable={false}
     />
   );
@@ -66,12 +66,12 @@ export const SchoolBrandBadge: React.FC<{
   showAffiliation?: boolean;
 }> = ({ compact = false, showAffiliation = true }) => (
   <div className="flex items-center gap-3">
-    <div className={`${compact ? 'w-9 h-9' : 'w-11 h-11'} rounded-full bg-white dark:bg-slate-900 shadow-card border border-brand-border flex items-center justify-center flex-shrink-0 p-0.5 ring-1 ring-black/5 dark:ring-white/10`}>
+    <div className={`${compact ? 'w-9 h-9' : 'w-11 h-11'} rounded-full bg-white dark:bg-slate-900 shadow-sm border border-brand-border flex items-center justify-center shrink-0 p-0.5 ring-1 ring-black/5 dark:ring-white/10`}>
       <PhssjLogo className="w-full h-full rounded-full" />
     </div>
     <div className="leading-tight min-w-0">
       <h3 className={`${compact ? 'text-xs sm:text-sm' : 'text-sm sm:text-base'} font-bold text-brand-text-primary tracking-tight truncate`}>
-        PHSSJ Lesson Planner
+        PHSSJ Portal
       </h3>
       {showAffiliation && (
         <p className="text-[10px] text-brand-text-secondary truncate">

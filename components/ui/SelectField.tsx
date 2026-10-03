@@ -43,12 +43,15 @@ function getTextFromReactChildren(children: React.ReactNode): string {
 
 /**
  * Parses raw text from <option> into structured label, sublabel, and badges.
- * E.g. "Sir Ahmed — Physics, Chemistry" -> { label: "Sir Ahmed", sublabel: "Physics, Chemistry" }
- * E.g. "Chapter 1: Physical Quantities" -> { label: "Physical Quantities", badge: "Ch 1" }
  */
 function parseOptionText(raw: string): { label: string; sublabel?: string; badge?: string } {
   const trimmed = raw.trim();
-  if (!trimmed || trimmed.startsWith('--') || trimmed.toLowerCase().startsWith('choose') || trimmed.toLowerCase().startsWith('select')) {
+  if (
+    !trimmed ||
+    trimmed.startsWith('--') ||
+    trimmed.toLowerCase().startsWith('choose') ||
+    trimmed.toLowerCase().startsWith('select')
+  ) {
     return { label: trimmed.replace(/^--\s*|\s*--$/g, '') };
   }
 
@@ -74,7 +77,7 @@ function parseOptionText(raw: string): { label: string; sublabel?: string; badge
     const sublabel = rest.join(' – ').trim().replace(/^,+/, '').trim();
     return { label, sublabel };
   }
-  if (trimmed.includes(' - ') && !trimmed.toLowerCase().includes('class')) {
+  if (trimmed.includes(' - ') && !trimmed.toLowerCase().includes('class') && !trimmed.toLowerCase().includes('grade')) {
     const [main, ...rest] = trimmed.split(' - ');
     const label = main.trim().replace(/,+$/, '').trim();
     const sublabel = rest.join(' - ').trim().replace(/^,+/, '').trim();
@@ -91,36 +94,52 @@ function parseOptionText(raw: string): { label: string; sublabel?: string; badge
 }
 
 /**
- * Extracts options from children if passed as standard <option> tags.
+ * Recursively extracts options from children, handling arrays, fragments, and native option elements.
  */
 function extractOptionsFromChildren(children: React.ReactNode): SelectOptionItem[] {
   const items: SelectOptionItem[] = [];
-  React.Children.forEach(children, child => {
-    if (!React.isValidElement(child)) return;
-    if (child.type === 'option') {
-      const { value = '', disabled = false, children: textContent } = child.props as any;
-      const rawText = getTextFromReactChildren(textContent) || String(value ?? '');
-      const parsed = parseOptionText(rawText);
-      items.push({
-        value: String(value),
-        label: parsed.label,
-        sublabel: parsed.sublabel,
-        badge: parsed.badge,
-        disabled: Boolean(disabled),
-      });
+
+  const processChild = (child: React.ReactNode) => {
+    if (child === null || child === undefined || typeof child === 'boolean') {
+      return;
     }
-  });
+    if (Array.isArray(child)) {
+      child.forEach(processChild);
+      return;
+    }
+    if (React.isValidElement(child)) {
+      if (child.type === React.Fragment) {
+        React.Children.forEach((child.props as any)?.children, processChild);
+        return;
+      }
+      if (
+        child.type === 'option' ||
+        (typeof child.type === 'string' && child.type.toLowerCase() === 'option')
+      ) {
+        const { value = '', disabled = false, children: textContent } = child.props as any;
+        const rawText = getTextFromReactChildren(textContent) || String(value ?? '');
+        const parsed = parseOptionText(rawText);
+        items.push({
+          value: String(value),
+          label: parsed.label,
+          sublabel: parsed.sublabel,
+          badge: parsed.badge,
+          disabled: Boolean(disabled),
+        });
+      }
+    }
+  };
+
+  React.Children.forEach(children, processChild);
   return items;
 }
 
 /**
- * Modern Aesthetic Dropdown Menu:
- * - Displays complete, untruncated names for chapters, subjects, and teachers
- * - Expanded minimum dropdown panel widths with generous padding and line-wrapping
- * - Auto-search filter for lists with >= 5 items
- * - Sublabel and badge support for chapter numbers, classes, and subjects
- * - Keyboard navigation (Arrow keys, Enter, Escape)
- * - Accessible and fully backwards-compatible with native <select> event contracts
+ * Apple-grade Accessible and Robust Dropdown Menu:
+ * - Immediate responsive interaction on desktop, touch, and tablets
+ * - Search filter for long lists
+ * - Keyboard navigation (Arrow keys, Enter, Space, Escape)
+ * - Safe outside click detection that never drops clicks or closes prematurely
  */
 export const SelectField: React.FC<SelectFieldProps> = ({
   label,
@@ -183,7 +202,7 @@ export const SelectField: React.FC<SelectFieldProps> = ({
   }, [allOptions, value]);
 
   // Search filtering
-  const isSearchEnabled = searchable ?? selectableOptions.length >= 5;
+  const isSearchEnabled = searchable ?? selectableOptions.length >= 6;
 
   const filteredOptions = useMemo(() => {
     if (!searchQuery.trim()) return selectableOptions;
@@ -196,30 +215,22 @@ export const SelectField: React.FC<SelectFieldProps> = ({
     );
   }, [selectableOptions, searchQuery]);
 
-  // Handle clicking outside or scrolling container to close cleanly
+  // Handle clicking outside safely
   useEffect(() => {
     if (!isOpen) return;
-    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+
+    const handlePointerDown = (e: MouseEvent | TouchEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
         setSearchQuery('');
       }
     };
-    const handleScrollOutside = (e: Event) => {
-      if (listRef.current && listRef.current.contains(e.target as Node)) {
-        return;
-      }
-      setIsOpen(false);
-      setSearchQuery('');
-    };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('touchstart', handleClickOutside);
-    window.addEventListener('scroll', handleScrollOutside, { capture: true, passive: true });
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchend', handlePointerDown);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
-      window.removeEventListener('scroll', handleScrollOutside, { capture: true });
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchend', handlePointerDown);
     };
   }, [isOpen]);
 
@@ -230,9 +241,10 @@ export const SelectField: React.FC<SelectFieldProps> = ({
         selectedOption ? filteredOptions.findIndex(o => o.value === selectedOption.value) : 0,
       );
       if (isSearchEnabled) {
-        setTimeout(() => {
+        const timer = setTimeout(() => {
           searchInputRef.current?.focus();
-        }, 30);
+        }, 50);
+        return () => clearTimeout(timer);
       }
     } else {
       setSearchQuery('');
@@ -268,6 +280,7 @@ export const SelectField: React.FC<SelectFieldProps> = ({
           name: name || selectId,
           id: selectId,
         },
+        persist: () => {},
       } as unknown as React.ChangeEvent<HTMLSelectElement>;
       onChange(syntheticEvent);
     }
@@ -316,7 +329,6 @@ export const SelectField: React.FC<SelectFieldProps> = ({
 
   const [alignment, setAlignment] = useState<'left' | 'right' | 'center'>('left');
 
-  // Dynamically compute optimal alignment (left, right, or center) so dropdown never overflows viewport or shifts page
   useEffect(() => {
     if (!isOpen) return;
 
@@ -328,8 +340,7 @@ export const SelectField: React.FC<SelectFieldProps> = ({
       const spaceOnRight = viewportWidth - rect.left;
       const spaceOnLeft = rect.right;
 
-      // Desired width for expanded dropdown
-      const targetMenuWidth = 440;
+      const targetMenuWidth = 380;
 
       if (spaceOnRight < targetMenuWidth && spaceOnLeft >= targetMenuWidth - 100) {
         setAlignment('right');
@@ -349,16 +360,15 @@ export const SelectField: React.FC<SelectFieldProps> = ({
     return () => window.removeEventListener('resize', checkPlacement);
   }, [isOpen, dropdownWidth]);
 
-  // Determine dropdown popup width and alignment positioning classes
   const dropdownWidthClass = useMemo(() => {
     if (dropdownWidth === 'match') return 'w-full min-w-full left-0 right-0';
 
     const baseWidth =
       dropdownWidth === 'xl'
-        ? 'w-full min-w-full sm:w-[460px] sm:min-w-[400px] sm:max-w-[540px]'
+        ? 'w-full min-w-full sm:w-[460px] sm:min-w-[380px] sm:max-w-[540px]'
         : dropdownWidth === 'wide'
-        ? 'w-full min-w-full sm:w-[400px] sm:min-w-[340px] sm:max-w-[480px]'
-        : 'w-full min-w-full sm:w-[420px] sm:max-w-[500px]';
+        ? 'w-full min-w-full sm:w-[380px] sm:min-w-[320px] sm:max-w-[460px]'
+        : 'w-full min-w-full sm:w-[360px] sm:max-w-[440px]';
 
     if (alignment === 'right') {
       return `${baseWidth} right-0 left-auto`;
@@ -370,16 +380,16 @@ export const SelectField: React.FC<SelectFieldProps> = ({
   }, [dropdownWidth, alignment]);
 
   return (
-    <div className="space-y-1.5 w-full" ref={containerRef} onKeyDown={handleKeyDown}>
+    <div className={`space-y-1.5 w-full relative ${isOpen ? 'z-50' : 'z-auto'}`} ref={containerRef} onKeyDown={handleKeyDown}>
       {/* Label and Hint Header */}
       {label && (
         <div className="flex items-center justify-between">
           <label
             htmlFor={selectId}
-            className="flex items-center gap-1.5 text-[11px] font-bold text-brand-text-secondary uppercase tracking-wider select-none cursor-pointer"
+            className="flex items-center gap-1.5 text-xs font-semibold text-brand-text-secondary select-none cursor-pointer"
             onClick={() => !disabled && setIsOpen(prev => !prev)}
           >
-            {icon && <span className="text-brand-primary">{icon}</span>}
+            {icon && <span className="text-blue-600 dark:text-blue-400">{icon}</span>}
             <span>{label}</span>
             {required && <span className="text-rose-500 text-xs">*</span>}
           </label>
@@ -398,49 +408,43 @@ export const SelectField: React.FC<SelectFieldProps> = ({
           onClick={() => !disabled && setIsOpen(prev => !prev)}
           aria-haspopup="listbox"
           aria-expanded={isOpen}
-          className={`w-full min-h-12 px-3.5 py-2.5 flex items-center justify-between gap-3 rounded-xl border text-left transition-all duration-200 select-none ${
+          className={`w-full min-h-11 px-3.5 py-2 flex items-center justify-between gap-2.5 rounded-xl border text-left transition-all select-none cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 ${
             disabled
-              ? 'opacity-40 cursor-not-allowed bg-brand-bg/50 border-brand-border'
+              ? 'opacity-40 cursor-not-allowed bg-slate-100/60 dark:bg-slate-800/40 border-black/[0.04] dark:border-white/[0.06]'
               : isOpen
-              ? 'bg-brand-surface border-brand-primary ring-2 ring-brand-primary/20 shadow-md'
-              : 'bg-brand-surface dark:bg-brand-surface/90 border-brand-border hover:border-brand-primary/40 hover:bg-brand-surface shadow-soft'
+              ? 'bg-white dark:bg-slate-800 border-blue-500 ring-2 ring-blue-500/20 shadow-sm'
+              : 'bg-white dark:bg-brand-surface border-black/[0.08] dark:border-white/[0.1] hover:border-black/[0.15] dark:hover:border-white/[0.2] shadow-soft'
           } ${className}`}
         >
-          {/* Selected Item Content: Clean full text representation */}
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          {/* Selected Item Content */}
+          <div className="flex items-center gap-2 min-w-0 flex-1">
             {selectedOption ? (
-              <div className="flex items-start sm:items-center gap-2 min-w-0 flex-1">
+              <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
                 {selectedOption.badge && (
-                  <span className="shrink-0 px-2 py-0.5 text-[10px] font-bold rounded-md bg-brand-primary/10 text-brand-primary border border-brand-primary/20 mt-0.5 sm:mt-0">
+                  <span className="shrink-0 px-2 py-0.5 text-[10px] font-bold rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
                     {selectedOption.badge}
                   </span>
                 )}
-                <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2">
-                  <span
-                    className="text-sm font-semibold text-brand-text-primary leading-snug break-words whitespace-normal text-left"
-                    title={selectedOption.label}
-                  >
+                <div className="min-w-0 flex-1 truncate">
+                  <span className="text-xs sm:text-sm font-semibold text-brand-text-primary truncate" title={selectedOption.label}>
                     {selectedOption.label}
                   </span>
                   {selectedOption.sublabel && (
-                    <span
-                      className="text-xs text-brand-text-secondary leading-normal break-words whitespace-normal text-left"
-                      title={selectedOption.sublabel}
-                    >
-                      {selectedOption.sublabel}
+                    <span className="text-xs text-brand-text-secondary ml-1.5 truncate" title={selectedOption.sublabel}>
+                      ({selectedOption.sublabel})
                     </span>
                   )}
                 </div>
               </div>
             ) : (
-              <span className="text-sm text-brand-text-tertiary font-normal">
+              <span className="text-xs sm:text-sm text-slate-400 font-normal truncate">
                 {defaultPlaceholderText}
               </span>
             )}
           </div>
 
           {/* Action Icons: Clear & Chevron */}
-          <div className="flex items-center gap-1.5 shrink-0 text-brand-text-secondary/70 ml-1">
+          <div className="flex items-center gap-1 shrink-0 text-slate-400 ml-1">
             {clearable && selectedOption && !disabled && (
               <span
                 role="button"
@@ -449,15 +453,15 @@ export const SelectField: React.FC<SelectFieldProps> = ({
                   e.stopPropagation();
                   selectValue('');
                 }}
-                className="p-1 rounded min-w-[36px] min-h-[36px] flex items-center justify-center-md hover:bg-slate-200 dark:hover:bg-slate-700 text-brand-text-tertiary hover:text-brand-text-primary transition-colors cursor-pointer active:bg-slate-200"
+                className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
                 title="Clear selection"
               >
                 <X className="w-3.5 h-3.5" />
               </span>
             )}
             <ChevronDown
-              className={`w-4 h-4 text-brand-text-secondary transition-transform duration-300 ${
-                isOpen ? 'rotate-180 text-brand-primary' : 'group-hover:text-brand-text-primary'
+              className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
+                isOpen ? 'rotate-180 text-blue-600 dark:text-blue-400' : ''
               }`}
             />
           </div>
@@ -466,27 +470,27 @@ export const SelectField: React.FC<SelectFieldProps> = ({
         {/* Floating Dropdown Menu */}
         {isOpen && !disabled && (
           <div
-            className={`absolute top-full mt-1.5 z-[120] rounded-2xl bg-brand-surface dark:bg-[#131c30] border border-brand-border/90 shadow-2xl shadow-slate-900/25 dark:shadow-black/80 backdrop-blur-md overflow-hidden max-w-[calc(100vw-2rem)] animate-scaleIn ${dropdownWidthClass}`}
-            style={{ maxHeight: '28rem' }}
+            className={`absolute top-full mt-1.5 z-[999] rounded-2xl bg-white/95 dark:bg-slate-900/95 border border-black/[0.08] dark:border-white/[0.1] shadow-2xl shadow-slate-900/20 dark:shadow-black/70 backdrop-blur-2xl overflow-hidden max-w-[calc(100vw-2rem)] animate-scaleIn ${dropdownWidthClass}`}
+            style={{ maxHeight: '26rem' }}
           >
             {/* Search Box Header */}
             {isSearchEnabled && (
-              <div className="p-2.5 border-b border-brand-border/60 bg-brand-bg/60 dark:bg-white/[0.03]">
+              <div className="p-2 border-b border-black/[0.06] dark:border-white/[0.08] bg-slate-50/80 dark:bg-slate-800/60">
                 <div className="relative flex items-center">
-                  <Search className="absolute left-3 w-4 h-4 text-brand-text-tertiary pointer-events-none" />
+                  <Search className="absolute left-3 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
                   <input
                     ref={searchInputRef}
                     type="text"
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
-                    placeholder="Search or filter options..."
-                    className="w-full h-9 pl-9 pr-8 text-xs font-medium bg-brand-surface dark:bg-brand-panel border border-brand-border rounded-xl text-brand-text-primary placeholder:text-brand-text-tertiary focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/30 transition-all"
+                    placeholder="Search options..."
+                    className="w-full h-8 pl-8 pr-7 text-xs font-medium bg-white dark:bg-slate-900 border border-black/[0.08] dark:border-white/[0.1] rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all"
                   />
                   {searchQuery && (
                     <button
                       type="button"
                       onClick={() => setSearchQuery('')}
-                      className="absolute right-2.5 p-0.5 rounded text-brand-text-tertiary hover:text-brand-text-primary"
+                      className="absolute right-2 p-0.5 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                       title="Clear search"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -501,7 +505,7 @@ export const SelectField: React.FC<SelectFieldProps> = ({
               ref={listRef}
               role="listbox"
               aria-label={label || 'Select options'}
-              className="max-h-72 overflow-y-auto overscroll-contain p-2 space-y-1.5 custom-scrollbar"
+              className="max-h-64 overflow-y-auto overscroll-contain p-1.5 space-y-0.5 custom-scrollbar"
             >
               {/* Optional Placeholder / Unselect Option */}
               {placeholderOption && !searchQuery && (
@@ -509,21 +513,21 @@ export const SelectField: React.FC<SelectFieldProps> = ({
                   type="button"
                   data-dropdown-item
                   onClick={() => selectValue('')}
-                  className={`w-full px-3.5 py-2.5 flex items-center justify-between rounded-xl text-xs font-medium text-left transition-colors ${
+                  className={`w-full px-3 py-2 flex items-center justify-between rounded-xl text-xs font-medium text-left transition-colors cursor-pointer ${
                     !value
-                      ? 'bg-brand-primary/10 text-brand-primary font-bold'
-                      : 'text-brand-text-tertiary hover:bg-slate-100 dark:hover:bg-white/5 hover:text-brand-text-secondary'
+                      ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold'
+                      : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-300'
                   }`}
                 >
                   <span className="leading-snug break-words">{placeholderOption.label || defaultPlaceholderText}</span>
-                  {!value && <Check className="w-4 h-4 text-brand-primary shrink-0 ml-2" />}
+                  {!value && <Check className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0 ml-2" />}
                 </button>
               )}
 
               {filteredOptions.length === 0 ? (
-                <div className="py-8 px-4 text-center">
-                  <p className="text-xs font-semibold text-brand-text-secondary">No matching options</p>
-                  <p className="text-[11px] text-brand-text-tertiary mt-0.5">
+                <div className="py-6 px-4 text-center">
+                  <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">No matching options</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
                     {searchQuery ? `Nothing matches "${searchQuery}"` : 'No items available'}
                   </p>
                 </div>
@@ -540,66 +544,49 @@ export const SelectField: React.FC<SelectFieldProps> = ({
                       disabled={opt.disabled}
                       onClick={() => !opt.disabled && selectValue(opt.value)}
                       onMouseEnter={() => setHighlightedIndex(index)}
-                      className={`w-full px-3.5 py-2.5 rounded-xl flex items-start sm:items-center justify-between gap-3 text-left transition-all duration-150 ${
+                      className={`w-full px-3 py-2 rounded-xl flex items-start sm:items-center justify-between gap-2.5 text-left transition-all cursor-pointer ${
                         opt.disabled
                           ? 'opacity-40 cursor-not-allowed'
                           : isSelected
-                          ? 'bg-brand-primary/10 text-brand-primary dark:bg-brand-primary/20 shadow-xs ring-1 ring-brand-primary/30'
+                          ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 dark:bg-blue-500/20 font-bold'
                           : isHighlighted
-                          ? 'bg-slate-100 dark:bg-white/5 text-brand-text-primary'
-                          : 'text-brand-text-primary hover:bg-slate-100 dark:hover:bg-white/5'
+                          ? 'bg-slate-100 dark:bg-slate-800/80 text-slate-900 dark:text-white'
+                          : 'text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80'
                       }`}
                     >
-                      <div className="min-w-0 flex-1 flex items-start sm:items-center gap-2.5">
-                        {/* Option Leading Badge (e.g. Ch 1, Grade 9) */}
+                      <div className="min-w-0 flex-1 flex items-center gap-2">
                         {opt.badge && (
                           <span
-                            className={`shrink-0 px-2 py-0.5 text-[10px] font-bold rounded-md uppercase tracking-wider mt-0.5 sm:mt-0 ${
+                            className={`shrink-0 px-2 py-0.5 text-[10px] font-bold rounded-md uppercase tracking-wider ${
                               isSelected
-                                ? 'bg-brand-primary text-white'
-                                : 'bg-brand-bg dark:bg-brand-panel text-brand-text-secondary border border-brand-border'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-black/[0.04] dark:border-white/[0.06]'
                             }`}
                           >
                             {opt.badge}
                           </span>
                         )}
 
-                        {/* Title and Sublabel with complete wrapping */}
                         <div className="min-w-0 flex-1">
-                          <div
-                            className={`text-xs sm:text-sm leading-snug break-words whitespace-normal text-left ${
-                              isSelected ? 'font-bold text-brand-primary' : 'font-semibold text-brand-text-primary'
-                            }`}
-                          >
+                          <span className={`text-xs sm:text-sm leading-snug break-words ${isSelected ? 'font-bold text-blue-600 dark:text-blue-400' : 'font-medium'}`}>
                             {opt.label}
-                          </div>
+                          </span>
                           {opt.sublabel && (
-                            <div className="text-[11px] text-brand-text-secondary leading-normal mt-0.5 break-words whitespace-normal text-left">
-                              {opt.sublabel}
-                            </div>
+                            <span className="text-xs text-slate-500 dark:text-slate-400 ml-1.5">
+                              ({opt.sublabel})
+                            </span>
                           )}
                         </div>
                       </div>
 
-                      {/* Selected Indicator */}
                       {isSelected && (
-                        <div className="shrink-0 w-5 h-5 rounded-full bg-brand-primary text-white flex items-center justify-center ml-2 mt-0.5 sm:mt-0">
-                          <Check className="w-3 h-3 stroke-[3]" />
-                        </div>
+                        <Check className="shrink-0 w-3.5 h-3.5 text-blue-600 dark:text-blue-400 ml-2" />
                       )}
                     </button>
                   );
                 })
               )}
             </div>
-
-            {/* Footer Summary / Item Count */}
-            {selectableOptions.length > 5 && (
-              <div className="px-3.5 py-2 bg-brand-bg/60 dark:bg-white/[0.02] border-t border-brand-border/60 flex items-center justify-between text-[10px] text-brand-text-tertiary">
-                <span>{filteredOptions.length} of {selectableOptions.length} options</span>
-                <span className="hidden sm:inline">Use ↑↓ keys to navigate</span>
-              </div>
-            )}
           </div>
         )}
 

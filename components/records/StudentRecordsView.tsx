@@ -67,6 +67,11 @@ import { StudentDetailModal } from './StudentDetailModal';
 import { StudentEditModal } from './StudentEditModal';
 import { ConfirmationModal, DiffItem } from './ConfirmationModal';
 import { ClassAnalyticsCharts, CLASS_ORDER } from './ClassAnalyticsCharts';
+import { StudentAvatar, resolveAvatarUrl } from './StudentAvatar';
+import { RecordsStatsStrip } from './RecordsStatsStrip';
+import { RecordsFilterToolbar } from './RecordsFilterToolbar';
+import { RecordsTableRow } from './RecordsTableRow';
+import { normalizeGrKey } from '../../services/identityNormalization';
 import { User } from 'firebase/auth';
 
 export type SortField =
@@ -84,132 +89,6 @@ export type SortField =
   | 'address';
 
 export type SortDirection = 'asc' | 'desc';
-
-/**
- * Collapses a GR number to a single comparable key so a roster cell and a scanned
- * dossier still join when their formatting differs. The sheet may hold "56", " 56 ",
- * "056" or "56.0", while the archive keys folders by the number parsed out of the
- * scan filename. Without this, a real photo silently failed to attach to its student.
- */
-const normalizeGrKey = (raw: string): string => {
-  const digits = raw.replace(/[^0-9]/g, '');
-  if (!digits) return raw.trim().toUpperCase();
-  return String(parseInt(digits, 10));
-};
-
-/**
- * Resolves the best available photo for a student. The dossier-level avatarUrl is
- * preferred, but if it is missing or its file 404s we fall back to any successfully
- * classified STUDENT_PHOTO document in the same dossier.
- */
-const resolveAvatarUrl = (dossier?: StudentDossier): string | undefined => {
-  if (!dossier) return undefined;
-  if (dossier.avatarUrl) return dossier.avatarUrl;
-  const photo = dossier.documents?.find(
-    (d) => d.classification === 'STUDENT_PHOTO' && d.status !== 'duplicate' && d.url
-  );
-  return photo?.url;
-};
-
-interface StudentAvatarProps {
-  name: string;
-  grNo?: string;
-  avatarUrl?: string;
-  /** Tried in order if avatarUrl 404s, e.g. a STUDENT_PHOTO found in the dossier. */
-  fallbackUrls?: string[];
-  size?: 'sm' | 'md' | 'lg';
-  onClick?: () => void;
-}
-
-const StudentAvatar: React.FC<StudentAvatarProps> = ({
-  name,
-  grNo = '',
-  avatarUrl,
-  fallbackUrls,
-  size = 'md',
-  onClick,
-}) => {
-  const candidates = useMemo(
-    () => [avatarUrl, ...(fallbackUrls || [])].filter((u): u is string => Boolean(u)),
-    [avatarUrl, fallbackUrls]
-  );
-  const [candidateIndex, setCandidateIndex] = useState(0);
-
-  // Reset the candidate cursor whenever the set of candidate photos changes.
-  useEffect(() => {
-    setCandidateIndex(0);
-  }, [candidates]);
-
-  const activeUrl = candidates[candidateIndex];
-
-  const sizeClasses = {
-    sm: 'w-7 h-7 text-[10px]',
-    md: 'w-8 h-8 text-xs',
-    lg: 'w-11 h-11 text-sm',
-  }[size];
-
-  const initials = useMemo(() => {
-    if (!name) return 'S';
-    const parts = name.trim().split(/\s+/);
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  }, [name]);
-
-  const colorIndex = useMemo(() => {
-    let hash = 0;
-    const str = grNo || name || 'S';
-    for (let i = 0; i < str.length; i++) {
-      hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return Math.abs(hash) % 6;
-  }, [grNo, name]);
-
-  const bgGradients = [
-    'from-indigo-600 to-blue-600 text-white',
-    'from-emerald-600 to-teal-700 text-white',
-    'from-violet-600 to-purple-700 text-white',
-    'from-amber-600 to-orange-700 text-white',
-    'from-rose-600 to-pink-700 text-white',
-    'from-sky-600 to-cyan-700 text-white',
-  ];
-
-  if (activeUrl) {
-    return (
-      <div
-        onClick={onClick}
-        className={`${sizeClasses} rounded-full border border-brand-border/80 overflow-hidden flex-shrink-0 shadow-xs relative group/avatar ${
-          onClick ? 'cursor-pointer hover:ring-2 hover:ring-brand-primary transition-all' : ''
-        }`}
-        title={`${name} (Click to inspect photo)`}
-      >
-        <img
-          src={activeUrl}
-          alt={name}
-          className="w-full h-full object-cover"
-          onError={() => setCandidateIndex((i) => i + 1)}
-          loading="lazy"
-        />
-        {onClick && (
-          <div className="absolute inset-0 bg-black/35 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center">
-            <ZoomIn className="w-3 h-3 text-white" />
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div
-      onClick={onClick}
-      className={`${sizeClasses} rounded-full bg-gradient-to-br ${bgGradients[colorIndex]} font-bold flex items-center justify-center flex-shrink-0 shadow-xs select-none border border-white/25 ${
-        onClick ? 'cursor-pointer hover:opacity-90 transition-opacity' : ''
-      }`}
-      title={name}
-    >
-      {initials}
-    </div>
-  );
-};
 
 export const StudentRecordsView: React.FC = () => {
   const { config: schoolConfig, isAdmin, saveConfig } = useSchoolConfig();
@@ -996,56 +875,7 @@ export const StudentRecordsView: React.FC = () => {
       )}
 
       {/* Statistics Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div className="p-3.5 rounded-xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft">
-          <span className="text-[10px] uppercase tracking-wider font-bold text-brand-text-secondary block">
-            Total Students
-          </span>
-          <span className="text-xl font-extrabold text-brand-text-primary font-mono mt-0.5 block">
-            {stats.total.toLocaleString()}
-          </span>
-        </div>
-        <div className="p-3.5 rounded-xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft">
-          <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-600 dark:text-emerald-400 block">
-            Promoted / Active
-          </span>
-          <span className="text-xl font-extrabold text-emerald-700 dark:text-emerald-300 font-mono mt-0.5 block">
-            {stats.promoted.toLocaleString()}
-          </span>
-        </div>
-        <div className="p-3.5 rounded-xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft">
-          <span className="text-[10px] uppercase tracking-wider font-bold text-sky-600 dark:text-sky-400 block">
-            New Enrollment
-          </span>
-          <span className="text-xl font-extrabold text-sky-700 dark:text-sky-300 font-mono mt-0.5 block">
-            {stats.newEnrollment.toLocaleString()}
-          </span>
-        </div>
-        <div className="p-3.5 rounded-xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft">
-          <span className="text-[10px] uppercase tracking-wider font-bold text-rose-600 dark:text-rose-400 block">
-            Drop Outs
-          </span>
-          <span className="text-xl font-extrabold text-rose-700 dark:text-rose-300 font-mono mt-0.5 block">
-            {stats.dropOut.toLocaleString()}
-          </span>
-        </div>
-        <div className="p-3.5 rounded-xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft">
-          <span className="text-[10px] uppercase tracking-wider font-bold text-brand-text-secondary block">
-            Male Students
-          </span>
-          <span className="text-xl font-extrabold text-brand-text-primary font-mono mt-0.5 block">
-            {stats.male.toLocaleString()}
-          </span>
-        </div>
-        <div className="p-3.5 rounded-xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft">
-          <span className="text-[10px] uppercase tracking-wider font-bold text-brand-text-secondary block">
-            Female Students
-          </span>
-          <span className="text-xl font-extrabold text-brand-text-primary font-mono mt-0.5 block">
-            {stats.female.toLocaleString()}
-          </span>
-        </div>
-      </div>
+      <RecordsStatsStrip stats={stats} />
 
       {/* Class Analytics & Visualizations Section */}
       <ClassAnalyticsCharts
@@ -1055,187 +885,34 @@ export const StudentRecordsView: React.FC = () => {
       />
 
       {/* Search and Filters Toolbar */}
-      <div className="p-4 rounded-2xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft space-y-3">
-        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
-          {/* Main Search Input */}
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-text-secondary" />
-            <input
-              type="search"
-              inputMode="search"
-              enterKeyHint="search"
-              autoComplete="off"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Find student name, father name, contact number, GR#, B.Form, CNIC..."
-              className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-brand-bg border border-brand-border focus:outline-hidden focus:ring-1 focus:ring-brand-primary text-xs text-brand-text-primary placeholder:text-brand-text-secondary [&::-webkit-search-cancel-button]:hidden"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                aria-label="Clear search"
-                className="absolute right-2 top-1/2 -translate-y-1/2 min-w-[32px] min-h-[32px] flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary active:bg-brand-bg rounded-md transition-colors"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-
-          {/* Filter Dropdowns */}
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            {/* Class Filter */}
-            <div className="flex items-center gap-1 bg-brand-bg border border-brand-border rounded-xl px-2.5 py-1.5">
-              <span className="text-brand-text-secondary font-medium">Class:</span>
-              <select
-                value={selectedClass}
-                onChange={(e) => setSelectedClass(e.target.value)}
-                className="bg-transparent border-0 font-semibold text-brand-text-primary focus:outline-hidden cursor-pointer min-h-[40px] py-1"
-              >
-                <option value="all">All</option>
-                {classOptions.map((c) => (
-                  <option key={c} value={c}>
-                    Class {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Section Filter */}
-            <div className="flex items-center gap-1 bg-brand-bg border border-brand-border rounded-xl px-2.5 py-1.5">
-              <span className="text-brand-text-secondary font-medium">Sec:</span>
-              <select
-                value={selectedSection}
-                onChange={(e) => setSelectedSection(e.target.value)}
-                className="bg-transparent border-0 font-semibold text-brand-text-primary focus:outline-hidden cursor-pointer min-h-[40px] py-1"
-              >
-                <option value="all">All</option>
-                {sectionOptions.map((s) => (
-                  <option key={s} value={s}>
-                    Sec {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Status Filter */}
-            <div className="flex items-center gap-1 bg-brand-bg border border-brand-border rounded-xl px-2.5 py-1.5">
-              <span className="text-brand-text-secondary font-medium">Status:</span>
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="bg-transparent border-0 font-semibold text-brand-text-primary focus:outline-hidden cursor-pointer min-h-[40px] py-1"
-              >
-                <option value="all">All</option>
-                {statusOptions.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Gender Filter */}
-            <div className="flex items-center gap-1 bg-brand-bg border border-brand-border rounded-xl px-2.5 py-1.5">
-              <span className="text-brand-text-secondary font-medium">Gender:</span>
-              <select
-                value={selectedGender}
-                onChange={(e) => setSelectedGender(e.target.value)}
-                className="bg-transparent border-0 font-semibold text-brand-text-primary focus:outline-hidden cursor-pointer min-h-[40px] py-1"
-              >
-                <option value="all">All</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-              </select>
-            </div>
-
-            {(selectedClass !== 'all' ||
-              selectedSection !== 'all' ||
-              selectedStatus !== 'all' ||
-              selectedGender !== 'all' ||
-              searchQuery) && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchQuery('');
-                  setSelectedClass('all');
-                  setSelectedSection('all');
-                  setSelectedStatus('all');
-                  setSelectedGender('all');
-                }}
-                className="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
-              >
-                Clear Filters
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Results summary bar */}
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-brand-text-secondary pt-1 border-t border-brand-border/60">
-          <span>
-            Showing <strong className="text-brand-text-primary">{filteredRecords.length}</strong> of{' '}
-            <strong className="text-brand-text-primary">{records.length}</strong> school records
-          </span>
-          <div className="flex items-center gap-3">
-            {/* View Mode Toggle */}
-            <div className="flex items-center bg-brand-bg rounded-lg p-0.5 border border-brand-border">
-              <button
-                type="button"
-                onClick={() => setViewMode('auto')}
-                className={`px-2.5 py-1.5 min-h-[36px] rounded text-xs font-semibold transition-colors flex items-center justify-center gap-1 active:scale-[0.97] ${
-                  viewMode === 'auto'
-                    ? 'bg-white dark:bg-brand-surface text-brand-primary shadow-2xs'
-                    : 'text-brand-text-secondary hover:text-brand-text-primary'
-                }`}
-                title="Auto Layout (Cards on mobile, Table on desktop)"
-              >
-                Auto
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('table')}
-                className={`px-2.5 py-1.5 min-h-[36px] rounded text-xs font-semibold transition-colors flex items-center justify-center gap-1 active:scale-[0.97] ${
-                  viewMode === 'table'
-                    ? 'bg-white dark:bg-brand-surface text-brand-primary shadow-2xs'
-                    : 'text-brand-text-secondary hover:text-brand-text-primary'
-                }`}
-                title="Force Table View"
-              >
-                <List className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Table</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('cards')}
-                className={`px-2.5 py-1.5 min-h-[36px] rounded text-xs font-semibold transition-colors flex items-center justify-center gap-1 active:scale-[0.97] ${
-                  viewMode === 'cards'
-                    ? 'bg-white dark:bg-brand-surface text-brand-primary shadow-2xs'
-                    : 'text-brand-text-secondary hover:text-brand-text-primary'
-                }`}
-                title="Card View (Mobile Optimized)"
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Cards</span>
-              </button>
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <span>Rows:</span>
-              <select
-                value={pageSize}
-                onChange={(e) => setPageSize(Number(e.target.value))}
-                className="bg-brand-bg border border-brand-border rounded-lg px-2 min-h-[36px] py-1 text-xs text-brand-text-primary focus:outline-hidden cursor-pointer"
-              >
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-                <option value={200}>200</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
+      <RecordsFilterToolbar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        selectedClass={selectedClass}
+        onClassChange={setSelectedClass}
+        classOptions={classOptions}
+        selectedSection={selectedSection}
+        onSectionChange={setSelectedSection}
+        sectionOptions={sectionOptions}
+        selectedStatus={selectedStatus}
+        onStatusChange={setSelectedStatus}
+        statusOptions={statusOptions}
+        selectedGender={selectedGender}
+        onGenderChange={setSelectedGender}
+        filteredCount={filteredRecords.length}
+        totalCount={records.length}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        pageSize={pageSize}
+        onPageSizeChange={setPageSize}
+        onClearFilters={() => {
+          setSearchQuery('');
+          setSelectedClass('all');
+          setSelectedSection('all');
+          setSelectedStatus('all');
+          setSelectedGender('all');
+        }}
+      />
 
       {/* Main Records Table Container */}
       <div className="rounded-2xl bg-white dark:bg-brand-surface border border-brand-border shadow-card overflow-hidden">
@@ -1283,7 +960,7 @@ export const StudentRecordsView: React.FC = () => {
           </div>
         ) : (
           <div className={`${viewMode === 'cards' ? 'hidden' : 'overflow-x-auto custom-scrollbar'}`}>
-            <table className="w-full text-left border-collapse text-xs">
+            <table className="w-full text-left border-collapse text-xs min-w-[900px]">
               <thead>
                 <tr className="border-b border-brand-border bg-slate-50/80 dark:bg-slate-900/60 font-semibold text-brand-text-secondary uppercase tracking-wider text-[10px]">
                   {/* Sticky GR# column only - with clean separator */}

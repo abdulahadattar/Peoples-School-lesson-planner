@@ -42,6 +42,10 @@ import { queueSheetSync } from '../../services/sheetSyncQueue';
 import { getAccessToken, getCurrentUser, initAuth } from '../../services/googleAuth';
 import { isUserAdmin } from '../../services/adminService';
 import { EnrollmentEditorModal } from './EnrollmentEditorModal';
+import { AttendanceSummaryCards } from './AttendanceSummaryCards';
+import { AttendanceTableRow } from './AttendanceTableRow';
+import { AttendanceHistoryDrawer } from './AttendanceHistoryDrawer';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { useSchoolConfig } from '../../hooks/useSchoolConfig';
 import { User } from 'firebase/auth';
 import { PhssjLogo } from '../Logo';
@@ -83,6 +87,14 @@ export const DailyAttendanceView: React.FC = () => {
   const [historyList, setHistoryList] = useState<{ date: string; totalPresent: number; percentage: number }[]>([]);
   const [showHistoryDrawer, setShowHistoryDrawer] = useState<boolean>(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'info' | 'error'; message: string } | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: React.ReactNode;
+    confirmLabel?: string;
+    variant?: 'danger' | 'warning' | 'primary';
+    onConfirm: () => void;
+  } | null>(null);
 
   const isAdmin = useMemo(() => isUserAdmin(currentUser?.email), [currentUser]);
 
@@ -272,32 +284,42 @@ export const DailyAttendanceView: React.FC = () => {
 
   // Quick helper: Clear current day's form
   const handleClearForm = () => {
-    if (window.confirm('Are you sure you want to clear all attendance inputs for this day?')) {
-      setInputs({});
-      setHasUnsavedChanges(true);
-      showToast('Form cleared.', 'info');
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Clear Attendance Inputs',
+      message: 'Are you sure you want to clear all attendance inputs for this day?',
+      variant: 'danger',
+      confirmLabel: 'Clear Form',
+      onConfirm: () => {
+        setInputs({});
+        setHasUnsavedChanges(true);
+        setConfirmDialog(null);
+        showToast('Form cleared.', 'info');
+      },
+    });
   };
 
   // Save Attendance to Server & Local DB
   const handleSave = async () => {
-    // Saving is intentionally allowed even when the previous record could not be
-    // read. saveAttendanceRecord does an unconditional setDoc, so this overwrites
-    // the date when a record already exists and creates one when it does not -
-    // which is what a teacher recording today's register needs. Blocking the save
-    // outright would leave them unable to record attendance at all whenever
-    // Firestore is briefly unreachable, so the risk is surfaced as a confirmation
-    // instead of a hard block.
     if (loadError && !saveConfirmedOverBlank) {
-      const proceed = window.confirm(
-        `${loadError}\n\nThe register below is blank because of this, not because nothing was recorded. ` +
-        `Saving now will overwrite any existing record for ${selectedDate} with the figures entered here.\n\n` +
-        `Save anyway?`
-      );
-      if (!proceed) return;
-      setSaveConfirmedOverBlank(true);
+      setConfirmDialog({
+        isOpen: true,
+        title: 'Save Over Incomplete Data Warning',
+        message: `${loadError}\n\nThe register is blank because of this, not because nothing was recorded. Saving now will overwrite any existing record for ${selectedDate} with the figures entered here.`,
+        variant: 'warning',
+        confirmLabel: 'Save Anyway',
+        onConfirm: () => {
+          setSaveConfirmedOverBlank(true);
+          setConfirmDialog(null);
+          executeSave();
+        },
+      });
+      return;
     }
+    await executeSave();
+  };
 
+  const executeSave = async () => {
     setIsSaving(true);
     try {
       const classesData: Record<string, { presentBoys: number; presentGirls: number; classTeacher?: string }> = {};
@@ -677,181 +699,16 @@ export const DailyAttendanceView: React.FC = () => {
       </div>
 
       {/* Whole School KPI & Overall Attendance Bar */}
-      <div className="glass-card rounded-2xl p-5 border border-brand-border shadow-soft space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-brand-border/60 pb-3">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-            <h3 className="text-sm font-bold uppercase tracking-wider text-brand-text-primary">
-              Total Attendance Overview
-            </h3>
-            <span className="text-xs text-brand-text-secondary">
-              ({new Date(selectedDate).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })})
-            </span>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-brand-text-secondary">
-            <span>
-              Active Roster: <strong className="text-brand-text-primary">{schoolSummary.totalEnrolled}</strong>
-            </span>
-
-            {/* Admin Enrollment Source Mode Toggle */}
-            <div className="inline-flex items-center rounded-xl bg-slate-100 dark:bg-slate-800 p-0.5 border border-brand-border shadow-xs">
-              <button
-                type="button"
-                onClick={async () => {
-                  if (schoolConfig.enrollmentMode !== 'manual') {
-                    if (isAdmin) {
-                      await saveConfig({ ...schoolConfig, enrollmentMode: 'manual' });
-                      showToast('Switched enrollment source to Manual School Register');
-                    } else {
-                      showToast('Admin privilege required to switch global enrollment mode', 'info');
-                    }
-                  }
-                }}
-                className={`px-2 py-1 min-h-[32px] rounded-lg text-[10px] font-bold transition-all active:scale-[0.97] ${
-                  schoolConfig.enrollmentMode === 'manual'
-                    ? 'bg-white dark:bg-brand-surface text-brand-primary shadow-xs'
-                    : 'text-brand-text-secondary hover:text-brand-text-primary'
-                }`}
-                title="Use configured manual enrollment register"
-              >
-                Manual
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  if (schoolConfig.enrollmentMode !== 'google_sheet') {
-                    if (isAdmin) {
-                      await saveConfig({ ...schoolConfig, enrollmentMode: 'google_sheet' });
-                      showToast('Switched enrollment source to Google Sheet Live Extract');
-                    } else {
-                      showToast('Admin privilege required to switch global enrollment mode', 'info');
-                    }
-                  }
-                }}
-                className={`px-2 py-1 min-h-[32px] rounded-lg text-[10px] font-bold transition-all active:scale-[0.97] ${
-                  schoolConfig.enrollmentMode === 'google_sheet'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-brand-text-secondary hover:text-brand-text-primary'
-                }`}
-                title="Extract live class counts from Google Sheet records"
-              >
-                Sheet Sync
-              </button>
-            </div>
-
-            <button
-              type="button"
-              id="header-edit-enrollments-btn"
-              onClick={() => setShowEnrollmentModal(true)}
-              className="inline-flex items-center justify-center gap-1 min-h-[32px] text-[11px] font-semibold text-blue-600 hover:text-blue-700 active:bg-blue-200/80 bg-blue-50/80 hover:bg-blue-100/80 px-2 py-1 rounded-md border border-blue-200 transition-colors"
-              title="Official school enrollment configuration"
-            >
-              <ShieldCheck className="w-3 h-3 text-blue-600" />
-              <span>Enrollments</span>
-            </button>
-            {isSyncingEnrollment && (
-              <span className="inline-flex items-center gap-1 text-[10px] text-brand-primary">
-                <RefreshCw className="w-3 h-3 animate-spin" /> Syncing
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Big Proportional Whole School Progress Bar */}
-        <div className="space-y-2">
-          <div className="flex items-baseline justify-between">
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl sm:text-4xl font-black text-brand-text-primary tracking-tight">
-                {schoolSummary.overallPercentage}%
-              </span>
-              <span className="text-xs sm:text-sm font-semibold text-brand-text-secondary">
-                Total Attendance
-              </span>
-            </div>
-
-            <div className="text-right">
-              <span className="text-base sm:text-lg font-bold text-brand-text-primary">
-                {schoolSummary.totalPresent}{' '}
-                <span className="text-xs font-normal text-brand-text-secondary">/ {schoolSummary.totalEnrolled} Present</span>
-              </span>
-            </div>
-          </div>
-
-          {/* Proportional Bar */}
-          <div className="w-full h-4 sm:h-5 bg-brand-bg rounded-full overflow-hidden p-0.5 border border-brand-border">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${getProgressColor(schoolSummary.overallPercentage)}`}
-              style={{ width: `${Math.min(100, schoolSummary.overallPercentage)}%` }}
-            />
-          </div>
-        </div>
-
-        {/* 4 Key Metric Tiles */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-1">
-          {/* Total Present */}
-          <div className="bg-brand-surface/80 rounded-xl p-3 border border-brand-border">
-            <div className="flex items-center justify-between text-xs text-brand-text-secondary mb-1">
-              <span>Total Present</span>
-              <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-            </div>
-            <div className="text-lg font-bold text-brand-text-primary">
-              {schoolSummary.totalPresent}
-            </div>
-            <div className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium mt-0.5">
-              {schoolSummary.overallPercentage}% of school
-            </div>
-          </div>
-
-          {/* Boys Present */}
-          <div className="bg-brand-surface/80 rounded-xl p-3 border border-brand-border">
-            <div className="flex items-center justify-between text-xs text-brand-text-secondary mb-1">
-              <span>Boys Present</span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300">
-                Boys
-              </span>
-            </div>
-            <div className="text-lg font-bold text-brand-text-primary">
-              {schoolSummary.presentBoys}{' '}
-              <span className="text-xs text-brand-text-secondary font-normal">/ {schoolSummary.enrolledBoys}</span>
-            </div>
-            <div className="text-[11px] text-blue-700 dark:text-blue-400 font-medium mt-0.5">
-              {schoolSummary.boysPercentage}% boys attendance
-            </div>
-          </div>
-
-          {/* Girls Present */}
-          <div className="bg-brand-surface/80 rounded-xl p-3 border border-brand-border">
-            <div className="flex items-center justify-between text-xs text-brand-text-secondary mb-1">
-              <span>Girls Present</span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-pink-100 dark:bg-pink-950/60 text-pink-700 dark:text-pink-300">
-                Girls
-              </span>
-            </div>
-            <div className="text-lg font-bold text-brand-text-primary">
-              {schoolSummary.presentGirls}{' '}
-              <span className="text-xs text-brand-text-secondary font-normal">/ {schoolSummary.enrolledGirls}</span>
-            </div>
-            <div className="text-[11px] text-pink-700 dark:text-pink-400 font-medium mt-0.5">
-              {schoolSummary.girlsPercentage}% girls attendance
-            </div>
-          </div>
-
-          {/* Total Absent */}
-          <div className="bg-brand-surface/80 rounded-xl p-3 border border-brand-border">
-            <div className="flex items-center justify-between text-xs text-brand-text-secondary mb-1">
-              <span>Total Absent</span>
-              <UserX className="w-3.5 h-3.5 text-rose-600" />
-            </div>
-            <div className="text-lg font-bold text-rose-600">
-              {schoolSummary.totalAbsent}
-            </div>
-            <div className="text-[11px] text-brand-text-secondary mt-0.5">
-              B: {schoolSummary.absentBoys} | G: {schoolSummary.absentGirls}
-            </div>
-          </div>
-        </div>
-      </div>
+      <AttendanceSummaryCards
+        schoolSummary={schoolSummary}
+        selectedDate={selectedDate}
+        schoolConfig={schoolConfig}
+        isAdmin={isAdmin}
+        isSyncingEnrollment={isSyncingEnrollment}
+        onOpenEnrollments={() => setShowEnrollmentModal(true)}
+        onSaveConfig={saveConfig}
+        showToast={showToast}
+      />
 
       {/* Action Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-brand-surface p-3.5 rounded-2xl border border-brand-border shadow-xs">
@@ -941,25 +798,39 @@ export const DailyAttendanceView: React.FC = () => {
       {loadError && (
         <div
           role="alert"
-          className="flex items-start gap-3 p-4 rounded-2xl border border-amber-300/70 bg-amber-50 text-amber-900 shadow-soft"
+          className="flex items-start gap-3.5 p-4 sm:p-5 rounded-2xl border border-amber-300/80 dark:border-amber-500/30 bg-amber-50/90 dark:bg-amber-950/30 text-amber-950 dark:text-amber-100 shadow-soft backdrop-blur-xs transition-all"
         >
-          <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-amber-600" />
+          <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/50 border border-amber-300/60 dark:border-amber-700/50 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 mt-0.5 shadow-xs">
+            <AlertTriangle className="w-5 h-5" />
+          </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold">Working offline — {selectedDate} was not loaded from the server</p>
-            <p className="text-xs mt-1 leading-relaxed">{loadError}</p>
-            <p className="text-xs mt-2 leading-relaxed">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/60 uppercase tracking-wider">
+                Offline Mode
+              </span>
+              <p className="text-sm font-bold text-amber-950 dark:text-amber-100">
+                Working offline — {selectedDate} was not loaded from the server
+              </p>
+            </div>
+            <p className="text-xs mt-2 leading-relaxed text-amber-900/90 dark:text-amber-200/90 font-medium">
+              {loadError}
+            </p>
+            <p className="text-xs mt-2 leading-relaxed text-amber-900/80 dark:text-amber-200/80">
               The register below is blank because of this, not because nothing was recorded. You can
               still save: this will overwrite {selectedDate} if a record already exists, or create it if
               it does not. Figures are stored on this device and sync to the server when it is reachable.
             </p>
-            <button
-              type="button"
-              onClick={() => loadDateAttendance(selectedDate)}
-              className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors active:scale-95"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Retry loading {selectedDate}</span>
-            </button>
+            <div className="mt-3.5 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => loadDateAttendance(selectedDate)}
+                disabled={isLoading}
+                className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl bg-amber-600 hover:bg-amber-700 text-white transition-all shadow-xs active:scale-95 disabled:opacity-50 cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+                <span>{isLoading ? 'Retrying...' : `Retry loading ${selectedDate}`}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -992,8 +863,8 @@ export const DailyAttendanceView: React.FC = () => {
         </div>
 
         {/* Responsive Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="w-full text-left text-xs border-collapse min-w-[840px]">
             <thead>
               <tr className="bg-brand-bg/80 border-b border-brand-border text-brand-text-secondary font-bold uppercase tracking-wider text-[10px]">
                 <th className="py-3 px-4 min-w-[140px]">Grade / Class</th>
@@ -1011,155 +882,14 @@ export const DailyAttendanceView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-brand-border/60">
-              {attendanceRows.map((row, index) => {
-                const isGrade9 = row.classKey === 'IX';
-
-                return (
-                  <tr
-                    key={row.classKey}
-                    className={`hover:bg-brand-surface/70 transition-colors ${
-                      isGrade9 ? 'bg-brand-primary/5' : index % 2 === 1 ? 'bg-brand-bg/30' : ''
-                    }`}
-                  >
-                    {/* Grade Name */}
-                    <td className="py-3 px-4 font-semibold text-brand-text-primary">
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-lg bg-brand-primary/10 text-brand-primary flex items-center justify-center text-[10px] font-bold shrink-0">
-                            {row.romanName}
-                          </span>
-                          <div>
-                            <div className="font-bold text-xs">{row.displayName}</div>
-                            {row.classTeacher && (
-                              <div className="text-[10px] text-brand-text-secondary mt-0.5">
-                                Teacher: {row.classTeacher}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Enrolled */}
-                    <td className="py-3 px-3 text-center">
-                      <div className="font-bold text-sm text-brand-text-primary">
-                        {row.totalEnrolled}
-                      </div>
-                      <div className="text-[10px] text-brand-text-secondary">
-                        B: {row.enrolledBoys} | G: {row.enrolledGirls}
-                      </div>
-                    </td>
-
-                    {/* Present Boys Input */}
-                    <td className="py-2.5 px-3 text-center bg-blue-50/20 dark:bg-blue-950/10">
-                      <div className="flex items-center justify-center">
-                        <div className="relative w-20">
-                          <input
-                            type="number"
-  inputMode="numeric"
-  autoComplete="off"
-                            min="0"
-                            max={row.enrolledBoys}
-                            placeholder="0"
-                            value={row.presentBoys}
-                            onChange={e =>
-                              handleInputChange(row.classKey, 'presentBoys', e.target.value, row.enrolledBoys)
-                            }
-                            className={`w-full h-9 text-center font-bold text-sm rounded-xl border bg-brand-bg text-brand-text-primary focus:outline-none focus:ring-2 transition-all ${
-                              typeof row.presentBoys === 'number' && row.presentBoys > row.enrolledBoys
-                                ? 'border-rose-500 focus:ring-rose-200'
-                                : 'border-brand-border focus:border-blue-500 focus:ring-blue-100 dark:focus:ring-blue-950'
-                            }`}
-                          />
-                          <span className="absolute right-2 top-2.5 text-[10px] text-brand-text-secondary/60 pointer-events-none">
-                            /{row.enrolledBoys}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Present Girls Input */}
-                    <td className="py-2.5 px-3 text-center bg-pink-50/20 dark:bg-pink-950/10">
-                      <div className="flex items-center justify-center">
-                        <div className="relative w-20">
-                          <input
-                            type="number"
-  inputMode="numeric"
-  autoComplete="off"
-                            min="0"
-                            max={row.enrolledGirls}
-                            placeholder="0"
-                            value={row.presentGirls}
-                            onChange={e =>
-                              handleInputChange(row.classKey, 'presentGirls', e.target.value, row.enrolledGirls)
-                            }
-                            className={`w-full h-9 text-center font-bold text-sm rounded-xl border bg-brand-bg text-brand-text-primary focus:outline-none focus:ring-2 transition-all ${
-                              typeof row.presentGirls === 'number' && row.presentGirls > row.enrolledGirls
-                                ? 'border-rose-500 focus:ring-rose-200'
-                                : 'border-brand-border focus:border-pink-500 focus:ring-pink-100 dark:focus:ring-pink-950'
-                            }`}
-                          />
-                          <span className="absolute right-2 top-2.5 text-[10px] text-brand-text-secondary/60 pointer-events-none">
-                            /{row.enrolledGirls}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Total Present (Formula Sum) */}
-                    <td className="py-3 px-3 text-center font-bold">
-                      <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-bold text-xs border border-emerald-200 dark:border-emerald-800">
-                        {row.totalPresent}
-                      </span>
-                    </td>
-
-                    {/* Absent Count */}
-                    <td className="py-3 px-3 text-center">
-                      <span
-                        className={`font-semibold ${
-                          row.absentTotal > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600'
-                        }`}
-                      >
-                        {row.absentTotal}
-                      </span>
-                      {row.absentTotal > 0 && (
-                        <div className="text-[10px] text-brand-text-secondary">
-                          B:{row.absentBoys} G:{row.absentGirls}
-                        </div>
-                      )}
-                    </td>
-
-                    {/* Percentage */}
-                    <td className="py-3 px-3 text-center">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-md font-bold text-xs border ${getBadgeBg(
-                          row.percentage
-                        )} ${getTextColor(row.percentage)}`}
-                      >
-                        {row.percentage}%
-                      </span>
-                    </td>
-
-                    {/* Proportional Percentage Bar */}
-                    <td className="py-3 px-4">
-                      <div className="space-y-1">
-                        <div className="w-full h-3 bg-brand-bg rounded-full overflow-hidden p-0.5 border border-brand-border">
-                          <div
-                            className={`h-full rounded-full transition-all duration-300 ${getProgressColor(
-                              row.percentage
-                            )}`}
-                            style={{ width: `${row.percentage}%` }}
-                          />
-                        </div>
-                        <div className="flex justify-between text-[10px] text-brand-text-secondary font-medium">
-                          <span>B: {row.boysPercentage}%</span>
-                          <span>G: {row.girlsPercentage}%</span>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+              {attendanceRows.map((row, index) => (
+                <AttendanceTableRow
+                  key={row.classKey}
+                  row={row}
+                  index={index}
+                  onInputChange={handleInputChange}
+                />
+              ))}
             </tbody>
 
             {/* Total Attendance Row */}
@@ -1242,89 +972,14 @@ export const DailyAttendanceView: React.FC = () => {
       </div>
 
       {/* History / Archive Drawer Modal */}
-      {showHistoryDrawer && (
-        <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-brand-surface rounded-2xl border border-brand-border shadow-2xl max-w-lg w-full overflow-hidden animate-scaleUp">
-            <div className="p-5 border-b border-brand-border flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <History className="w-5 h-5 text-brand-primary" />
-                <h3 className="text-base font-bold text-brand-text-primary">
-                  Attendance Records Archive
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowHistoryDrawer(false)}
-                className="w-8 h-8 rounded-lg hover:bg-brand-bg flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="p-5 max-h-96 overflow-y-auto space-y-2">
-              {historyList.length === 0 ? (
-                <div className="text-center py-8 text-xs text-brand-text-secondary">
-                  No previous dates recorded yet. Click &quot;Save Attendance&quot; to archive today&apos;s records.
-                </div>
-              ) : (
-                historyList.map(item => (
-                  <button
-                    type="button"
-                    key={item.date}
-                    onClick={() => {
-                      setSelectedDate(item.date);
-                      setShowHistoryDrawer(false);
-                    }}
-                    className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between active:scale-[0.99] ${
-                      item.date === selectedDate
-                        ? 'bg-brand-primary/10 border-brand-primary text-brand-primary font-bold'
-                        : 'bg-brand-bg hover:bg-brand-border/40 active:bg-brand-border/60 border-brand-border text-brand-text-primary'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Calendar className="w-4 h-4 text-brand-text-secondary" />
-                      <div>
-                        <div className="text-xs font-bold">{item.date}</div>
-                        <div className="text-[10px] text-brand-text-secondary">
-                          {new Date(item.date).toLocaleDateString('en-GB', {
-                            weekday: 'short',
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-semibold">
-                        {item.totalPresent} / {schoolSummary.totalEnrolled}
-                      </span>
-                      <span
-                        className={`text-xs font-bold px-2 py-0.5 rounded ${getBadgeBg(
-                          item.percentage
-                        )} ${getTextColor(item.percentage)}`}
-                      >
-                        {item.percentage}%
-                      </span>
-                    </div>
-                  </button>
-                ))
-              )}
-            </div>
-
-            <div className="p-4 bg-brand-bg border-t border-brand-border flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowHistoryDrawer(false)}
-                className="px-4 py-2 text-xs font-semibold rounded-xl bg-brand-surface border border-brand-border text-brand-text-primary hover:bg-brand-bg"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AttendanceHistoryDrawer
+        isOpen={showHistoryDrawer}
+        onClose={() => setShowHistoryDrawer(false)}
+        historyList={historyList}
+        selectedDate={selectedDate}
+        totalEnrolled={schoolSummary.totalEnrolled}
+        onSelectDate={setSelectedDate}
+      />
 
       {/* Admin Enrollment Editor Modal */}
       <EnrollmentEditorModal
@@ -1337,6 +992,19 @@ export const DailyAttendanceView: React.FC = () => {
         }}
         currentUser={currentUser}
       />
+
+      {/* Dynamic Action Confirm Modal */}
+      {confirmDialog && (
+        <ConfirmDialog
+          isOpen={confirmDialog.isOpen}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          variant={confirmDialog.variant || 'danger'}
+          confirmLabel={confirmDialog.confirmLabel || 'Confirm'}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+        />
+      )}
     </div>
   );
 };

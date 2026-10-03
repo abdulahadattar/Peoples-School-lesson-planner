@@ -2,42 +2,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   UploadCloud,
   FileArchive,
-  CheckCircle2,
-  AlertTriangle,
-  AlertCircle,
   RotateCw,
   Download,
-  Filter,
   Search,
   RefreshCw,
-  FileText,
-  Clock,
-  Layers,
-  ScanLine,
-  ListChecks,
-  Eye,
-  Check,
-  X,
-  ExternalLink,
-  ChevronDown,
-  Activity,
   FolderOpen,
   FileSearch,
   ShieldAlert,
-  ZoomIn,
-  UserCheck,
-  Building,
+  Activity,
   Link as LinkIcon,
-  UserPlus,
-  Trash2,
-  Database,
-  CheckSquare,
-  Square,
-  MinusSquare,
-  Wand2,
-  ArrowRight,
-  Tag,
-  ShieldCheck,
+  X,
+  ScanLine,
 } from 'lucide-react';
 import {
   uploadZipArchive,
@@ -64,73 +39,21 @@ import {
   StudentDossier,
   BatchProcessingJob,
   StudentDocumentRecord,
-  DocumentClassificationType,
   DocumentDiscrepancy,
   CandidateStudentMatch,
+  DOCUMENT_LABELS,
+  CLASS_OPTIONS,
 } from '../types/documentArchive';
 import { getAccessToken } from '../services/googleAuth';
 import { StudentRecord, fetchSheetData } from '../services/googleSheetsService';
 import { StudentDetailModal } from './records/StudentDetailModal';
 import { ProcessingTransparencyModal } from './documents/ProcessingTransparencyModal';
-
-const DOCUMENT_LABELS: Record<DocumentClassificationType, string> = {
-  STUDENT_PHOTO: 'Student Passport Photo',
-  B_FORM: 'NADRA B-Form / CRC',
-  FATHER_CNIC_FRONT: 'Father CNIC (Front)',
-  FATHER_CNIC_BACK: 'Father CNIC (Back)',
-  STUDENT_PROFILE_FORM: 'Student Profile Form',
-  MARKS_CERTIFICATE: 'Marks Certificate / Marksheet',
-  BIRTH_CERTIFICATE: 'Birth Certificate',
-  SCHOOL_LEAVING_CERTIFICATE: 'School Leaving Certificate (SLC)',
-  ADMISSION_FORM: 'School Admission Form',
-  OTHER_UNCLASSIFIED: 'Supporting / Other Document',
-  IGNORED_NOISE: 'Ignored Noise / Blank Page',
-};
-
-const CLASS_OPTIONS = [
-  'ALL',
-  'Class IX (Morning)',
-  'Class IX (Afternoon)',
-  'Class X (Morning)',
-  'Class X (Afternoon)',
-  'Class XI (General)',
-  'Class XI (Pre-Medical)',
-  'Class XI (Pre-Engineering)',
-  'Class XII (General)',
-  'Class XII (Pre-Medical)',
-  'Class XII (Pre-Engineering)',
-];
-
-const DocThumbnail: React.FC<{ url?: string; filename?: string; classification?: string; className?: string }> = ({
-  url,
-  filename = '',
-  classification = '',
-  className = 'w-full h-full object-cover',
-}) => {
-  const [hasError, setHasError] = useState(false);
-  const isPdf = filename.toLowerCase().endsWith('.pdf');
-
-  if (!url || hasError || isPdf) {
-    return (
-      <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center p-1 text-center select-none overflow-hidden">
-        <FileText className="w-5 h-5 text-brand-primary/80 mb-0.5 flex-shrink-0" />
-        <span className="text-[9px] font-mono font-bold text-slate-500 uppercase truncate max-w-full px-0.5">
-          {isPdf ? 'PDF' : classification ? classification.slice(0, 6) : 'DOC'}
-        </span>
-      </div>
-    );
-  }
-
-  return (
-    <img
-      src={url}
-      alt={filename}
-      className={className}
-      onError={() => setHasError(true)}
-      loading="lazy"
-    />
-  );
-};
+import { DocThumbnail } from './documents/DocThumbnail';
+import { DossierCard } from './documents/DossierCard';
+import { DiscrepancyAuditTable, DiscrepancyAuditItem } from './documents/DiscrepancyAuditTable';
+import { DocumentScansGrid } from './documents/DocumentScansGrid';
+import { ConfirmDialog } from './ui/ConfirmDialog';
+import { Toast, ToastMessage } from './ui/Toast';
 
 export const DocumentArchiveCenterView: React.FC = () => {
   const [activeMainTab, setActiveMainTab] = useState<'dossiers' | 'extracted' | 'audit'>('dossiers');
@@ -152,16 +75,31 @@ export const DocumentArchiveCenterView: React.FC = () => {
   const [selectedPreviewDoc, setSelectedPreviewDoc] = useState<StudentDocumentRecord | null>(null);
   const [isAutoLinking, setIsAutoLinking] = useState(false);
   const [assigningDoc, setAssigningDoc] = useState<StudentDocumentRecord | null>(null);
-  const [deletingDoc, setDeletingDoc] = useState<StudentDocumentRecord | null>(null);
   const [targetAssignGr, setTargetAssignGr] = useState('');
-  const [successToastMsg, setSuccessToastMsg] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
   const [isOperatingDoc, setIsOperatingDoc] = useState(false);
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
-  const [isConfirmingBatchDelete, setIsConfirmingBatchDelete] = useState(false);
   const [applyingFlagId, setApplyingFlagId] = useState<string | null>(null);
   const [isBatchApplying, setIsBatchApplying] = useState(false);
+  const [isRescanningAll, setIsRescanningAll] = useState(false);
   const [docCandidateMatches, setDocCandidateMatches] = useState<Record<string, CandidateStudentMatch[]>>({});
   const [loadingCandidatesDocId, setLoadingCandidatesDocId] = useState<string | null>(null);
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant?: 'danger' | 'warning' | 'info';
+    confirmLabel?: string;
+    onConfirm: () => void;
+  } | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderZipInputRef = useRef<HTMLInputElement>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
+    setToast({ message, type });
+  };
 
   const handleToggleSelectDoc = (docId: string) => {
     setSelectedDocIds((prev) =>
@@ -185,99 +123,110 @@ export const DocumentArchiveCenterView: React.FC = () => {
     try {
       setIsOperatingDoc(true);
       const res = await deleteDocumentsBatch(selectedDocIds);
-      if (res && res.documents) {
-        setDocuments(res.documents);
-      }
-      if (res && res.dossiers) {
-        setDossiers(res.dossiers);
-      }
+      if (res?.documents) setDocuments(res.documents);
+      if (res?.dossiers) setDossiers(res.dossiers);
       if (selectedPreviewDoc && selectedDocIds.includes(selectedPreviewDoc.id)) {
         setSelectedPreviewDoc(null);
       }
-      setSuccessToastMsg(`Successfully deleted ${res.deletedCount || selectedDocIds.length} document scans`);
+      showToast(`Successfully deleted ${res?.deletedCount || selectedDocIds.length} document scans`, 'success');
       setSelectedDocIds([]);
       await refreshData();
     } catch (err: any) {
-      alert(`Batch delete error: ${err.message || 'Failed to delete selected documents'}`);
+      showToast(`Batch delete error: ${err.message || 'Failed to delete selected documents'}`, 'error');
     } finally {
       setIsOperatingDoc(false);
-      setIsConfirmingBatchDelete(false);
+      setConfirmDialog(null);
     }
+  };
+
+  const promptBatchDelete = () => {
+    setConfirmDialog({
+      isOpen: true,
+      title: `Delete ${selectedDocIds.length} Document Scans?`,
+      message: `Are you sure you want to permanently delete ${selectedDocIds.length} selected document scans from disk and detach them from all student dossiers? This bulk action is irreversible.`,
+      variant: 'danger',
+      confirmLabel: `Delete ${selectedDocIds.length} Scans`,
+      onConfirm: handleBatchDeleteDocs,
+    });
   };
 
   const handleDeleteDoc = async (docId: string) => {
     try {
       setIsOperatingDoc(true);
       const res = await deleteDocument(docId);
-      if (res && res.documents) {
-        setDocuments(res.documents);
-      }
-      if (res && res.dossiers) {
-        setDossiers(res.dossiers);
-      }
+      if (res?.documents) setDocuments(res.documents);
+      if (res?.dossiers) setDossiers(res.dossiers);
       if (selectedPreviewDoc?.id === docId) {
         setSelectedPreviewDoc(null);
       }
-      setSuccessToastMsg('Document scan permanently deleted');
+      showToast('Document scan permanently deleted', 'success');
       await refreshData();
     } catch (err: any) {
-      alert(`Delete error: ${err.message || 'Failed to delete document'}`);
+      showToast(`Delete error: ${err.message || 'Failed to delete document'}`, 'error');
     } finally {
       setIsOperatingDoc(false);
-      setDeletingDoc(null);
+      setConfirmDialog(null);
     }
+  };
+
+  const promptDeleteDoc = (doc: StudentDocumentRecord) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Document Scan?',
+      message: `Are you sure you want to permanently delete "${doc.originalFilename || doc.filename}" (GR #${doc.grNo})? This will remove the physical scan file from disk and detach it from the student dossier.`,
+      variant: 'danger',
+      confirmLabel: 'Delete Scan',
+      onConfirm: () => handleDeleteDoc(doc.id),
+    });
   };
 
   const handleRescanDoc = async (docId: string) => {
     try {
       setIsOperatingDoc(true);
       const res = await rescanDocument(docId);
-      if (res.document) {
+      if (res?.document) {
         setSelectedPreviewDoc(res.document);
       }
-      setSuccessToastMsg('Document re-analyzed');
+      showToast('Document re-analyzed successfully', 'success');
       await refreshData();
     } catch (err: any) {
-      alert(`Rescan error: ${err.message}`);
+      showToast(`Rescan error: ${err.message}`, 'error');
     } finally {
       setIsOperatingDoc(false);
     }
   };
 
-  const [isRescanningAll, setIsRescanningAll] = useState(false);
-
-  const handleRescanAllDocs = async () => {
+  const handleRescanAllDocs = () => {
     if (documents.length === 0) {
-      alert('No documents currently found in archive to re-scan.');
+      showToast('No documents currently found in archive to re-scan.', 'warning');
       return;
     }
-    const confirmed = window.confirm(
-      `Trigger AI batch re-scan of all ${documents.length} document scans across the system?\n\nThis will re-analyze each scan with the AI vision service, update OCR field extractions, and refresh student dossiers.`
-    );
-    if (!confirmed) return;
-
-    try {
-      setIsRescanningAll(true);
-      const res = await rescanAllDocuments();
-      if (res && res.documents) {
-        setDocuments(res.documents);
-      }
-      if (res && res.dossiers) {
-        setDossiers(res.dossiers);
-      }
-      setSuccessToastMsg(
-        `Batch re-scan complete: ${res.rescanned ?? documents.length} of ${res.total ?? documents.length} documents re-analyzed with AI.`
-      );
-      await refreshData();
-    } catch (err: any) {
-      alert(`Batch re-scan failed: ${err?.message || 'Error occurred while re-processing documents'}`);
-    } finally {
-      setIsRescanningAll(false);
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Trigger AI Batch Re-scan?',
+      message: `Trigger AI batch re-scan of all ${documents.length} document scans across the system?\n\nThis will re-analyze each scan with the AI vision service, update OCR field extractions, and refresh student dossiers.`,
+      variant: 'warning',
+      confirmLabel: 'Start Batch Re-scan',
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          setIsRescanningAll(true);
+          const res = await rescanAllDocuments();
+          if (res?.documents) setDocuments(res.documents);
+          if (res?.dossiers) setDossiers(res.dossiers);
+          showToast(
+            `Batch re-scan complete: ${res.rescanned ?? documents.length} of ${res.total ?? documents.length} documents re-analyzed with AI.`,
+            'success'
+          );
+          await refreshData();
+        } catch (err: any) {
+          showToast(`Batch re-scan failed: ${err?.message || 'Error occurred while re-processing documents'}`, 'error');
+        } finally {
+          setIsRescanningAll(false);
+        }
+      },
+    });
   };
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const folderZipInputRef = useRef<HTMLInputElement>(null);
 
   // Load dossiers, extracted documents & latest background job
   const refreshData = async () => {
@@ -296,9 +245,8 @@ export const DocumentArchiveCenterView: React.FC = () => {
       setActiveJob(latestJob);
 
       if (records.length > 0 && dossierList.length > 0) {
-        // Run cross-audit across all dossiers
         const auditRes = await auditAllDossiers(records).catch(() => null);
-        if (auditRes && auditRes.dossiers) {
+        if (auditRes?.dossiers) {
           setDossiers(auditRes.dossiers);
         } else {
           setDossiers(dossierList);
@@ -318,13 +266,14 @@ export const DocumentArchiveCenterView: React.FC = () => {
       setIsAutoLinking(true);
       setUploadError(null);
       const res = await autoLinkDocuments(sheetRecords);
-      setSuccessToastMsg(
-        `Auto-Link complete: Identified & linked ${res.totalMatched} documents (${res.reassignedDocs} relocated to student folders)!`
+      showToast(
+        `Auto-Link complete: Identified & linked ${res.totalMatched} documents (${res.reassignedDocs} relocated to student folders)!`,
+        'success'
       );
       await refreshData();
-      setTimeout(() => setSuccessToastMsg(null), 5000);
     } catch (err: any) {
       setUploadError(`Auto-link failed: ${err.message}`);
+      showToast(`Auto-link failed: ${err.message}`, 'error');
     } finally {
       setIsAutoLinking(false);
     }
@@ -335,35 +284,22 @@ export const DocumentArchiveCenterView: React.FC = () => {
     try {
       const studentRec = sheetRecords.find((s) => String(s.grNo).trim() === String(grNo).trim());
       await assignDocumentToStudent(docId, grNo.trim(), studentRec);
-      setSuccessToastMsg(`Document successfully assigned to Student GR #${grNo}!`);
+      showToast(`Document successfully assigned to Student GR #${grNo}!`, 'success');
       setAssigningDoc(null);
       setTargetAssignGr('');
       await refreshData();
-      setTimeout(() => setSuccessToastMsg(null), 4000);
     } catch (err: any) {
-      alert(`Assignment failed: ${err.message}`);
+      showToast(`Assignment failed: ${err.message}`, 'error');
     }
   };
 
   const handleDismissFlag = async (flagId: string) => {
     try {
       await dismissDiscrepancyFlag(flagId);
-      setSuccessToastMsg('Discrepancy marked as False Flag (Dismissed).');
+      showToast('Discrepancy marked as False Flag (Dismissed).', 'info');
       await refreshData();
-      setTimeout(() => setSuccessToastMsg(null), 3000);
     } catch (err: any) {
-      alert(`Could not dismiss flag: ${err.message}`);
-    }
-  };
-
-  const handleUndismissFlag = async (flagId: string) => {
-    try {
-      await undismissDiscrepancyFlag(flagId);
-      setSuccessToastMsg('Discrepancy flag restored.');
-      await refreshData();
-      setTimeout(() => setSuccessToastMsg(null), 3000);
-    } catch (err: any) {
-      alert(`Could not restore flag: ${err.message}`);
+      showToast(`Could not dismiss flag: ${err.message}`, 'error');
     }
   };
 
@@ -378,17 +314,16 @@ export const DocumentArchiveCenterView: React.FC = () => {
         flag.suggestedCorrection,
         token || undefined
       );
-      setSuccessToastMsg(res.message || 'Correction applied and synchronized successfully!');
+      showToast(res.message || 'Correction applied and synchronized successfully!', 'success');
       await refreshData();
-      setTimeout(() => setSuccessToastMsg(null), 4500);
     } catch (err: any) {
-      alert(`Failed to apply correction: ${err.message}`);
+      showToast(`Failed to apply correction: ${err.message}`, 'error');
     } finally {
       setApplyingFlagId(null);
     }
   };
 
-  const handleBatchApplyCorrections = async (targetFlags: Array<{ grNo: string; flag: DocumentDiscrepancy }>) => {
+  const handleBatchApplyCorrections = async (targetFlags: DiscrepancyAuditItem[]) => {
     const valid = targetFlags.filter((d) => d.flag.suggestedCorrection && !d.flag.isDismissed);
     if (valid.length === 0) return;
 
@@ -404,13 +339,13 @@ export const DocumentArchiveCenterView: React.FC = () => {
       }));
 
       const res = await batchApplyDiscrepancyCorrectionsClient(corrections, token || undefined);
-      setSuccessToastMsg(
-        `Applied ${res.appliedCount} corrections to student records & Google Sheets!`
+      showToast(
+        `Applied ${res.appliedCount} corrections to student records & Google Sheets!`,
+        'success'
       );
       await refreshData();
-      setTimeout(() => setSuccessToastMsg(null), 5000);
     } catch (err: any) {
-      alert(`Batch apply error: ${err.message}`);
+      showToast(`Batch apply error: ${err.message}`, 'error');
     } finally {
       setIsBatchApplying(false);
     }
@@ -427,20 +362,19 @@ export const DocumentArchiveCenterView: React.FC = () => {
       if (flagId) {
         await dismissDiscrepancyFlag(flagId).catch(() => {});
       }
-      setSuccessToastMsg(
-        `Document successfully linked to Student GR #${candidate.grNo} (${candidate.studentName}) with ${candidate.score}% match confidence!`
+      showToast(
+        `Document successfully linked to Student GR #${candidate.grNo} (${candidate.studentName}) with ${candidate.score}% match confidence!`,
+        'success'
       );
       setAssigningDoc(null);
       await refreshData();
-      setTimeout(() => setSuccessToastMsg(null), 4500);
     } catch (err: any) {
-      alert(`Could not resolve match: ${err.message}`);
+      showToast(`Could not resolve match: ${err.message}`, 'error');
     }
   };
 
-  // Pre-fetch candidate matches when assigning modal opens
   useEffect(() => {
-    if (assigningDoc && assigningDoc.extractedData) {
+    if (assigningDoc?.extractedData) {
       const docId = assigningDoc.id;
       if (!docCandidateMatches[docId]) {
         setLoadingCandidatesDocId(docId);
@@ -468,7 +402,6 @@ export const DocumentArchiveCenterView: React.FC = () => {
       try {
         const updated = await fetchJobStatus(activeJob.id);
         setActiveJob(updated);
-        // Live refresh documents & dossiers as each file gets extracted
         const [latestDossiers, latestDocs] = await Promise.all([
           fetchAllDossiers().catch(() => []),
           fetchAllDocuments().catch(() => []),
@@ -505,6 +438,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
       await refreshData();
     } catch (err: any) {
       setUploadError(err.message || 'Failed to upload archive');
+      showToast(err.message || 'Failed to upload archive', 'error');
     } finally {
       setIsUploading(false);
       setUploadProgress(null);
@@ -529,6 +463,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
       await refreshData();
     } catch (err: any) {
       setUploadError(err.message || 'Failed to upload files');
+      showToast(err.message || 'Failed to upload files', 'error');
     } finally {
       setIsUploading(false);
       setUploadProgress(null);
@@ -606,12 +541,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
 
   // Gather all genuine Google Sheet column discrepancies across all dossiers
   const VALID_SHEET_FIELDS = new Set(['studentName', 'fatherName', 'bFormNo', 'parentCnic', 'dob']);
-  const allDiscrepancies: Array<{
-    grNo: string;
-    studentName: string;
-    currentClass: string;
-    flag: DocumentDiscrepancy;
-  }> = [];
+  const allDiscrepancies: DiscrepancyAuditItem[] = [];
 
   dossiers.forEach((d) => {
     d.allFlags.forEach((flag) => {
@@ -685,7 +615,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
             id="btn-rescan-all"
             onClick={handleRescanAllDocs}
             disabled={isRescanningAll || isUploading || isAutoLinking || isOperatingDoc}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-brand-text-primary bg-white dark:bg-brand-surface hover:bg-brand-bg border border-brand-border shadow-soft active:scale-95 transition-all disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-brand-text-primary bg-white dark:bg-brand-surface hover:bg-brand-bg border border-brand-border shadow-soft active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
             title="Trigger batch re-processing of all documents in the system using the AI service"
           >
             <RefreshCw className={`w-4 h-4 text-purple-600 dark:text-purple-400 ${isRescanningAll ? 'animate-spin' : ''}`} />
@@ -696,7 +626,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
             type="button"
             onClick={handleAutoLinkAll}
             disabled={isAutoLinking || isUploading}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-brand-text-primary bg-white dark:bg-brand-surface hover:bg-brand-bg border border-brand-border shadow-soft active:scale-95 transition-all disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-brand-text-primary bg-white dark:bg-brand-surface hover:bg-brand-bg border border-brand-border shadow-soft active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
             title="Automatically match unassigned and misclassified documents against student names/CNICs in the Google Sheet"
           >
             <LinkIcon className={`w-4 h-4 text-brand-primary ${isAutoLinking ? 'animate-spin' : ''}`} />
@@ -707,7 +637,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
             type="button"
             onClick={() => folderZipInputRef.current?.click()}
             disabled={isUploading || isAutoLinking}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-all disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
           >
             {isUploading && folderZipInputRef.current?.value ? (
               <RefreshCw className="w-4 h-4 animate-spin" />
@@ -720,7 +650,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading || isAutoLinking}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-brand-text-primary bg-white dark:bg-brand-surface hover:bg-brand-bg border border-brand-border shadow-soft active:scale-95 transition-all disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-brand-text-primary bg-white dark:bg-brand-surface hover:bg-brand-bg border border-brand-border shadow-soft active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
           >
             {isUploading && fileInputRef.current?.value ? (
               <RefreshCw className="w-4 h-4 text-brand-primary animate-spin" />
@@ -733,7 +663,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
           <button
             type="button"
             onClick={() => setIsTransparencyModalOpen(true)}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-brand-text-primary bg-white dark:bg-brand-surface hover:bg-brand-bg border border-brand-border shadow-soft active:scale-95 transition-all"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-brand-text-primary bg-white dark:bg-brand-surface hover:bg-brand-bg border border-brand-border shadow-soft active:scale-95 transition-all cursor-pointer"
             title="Inspect background processing, per-file status, and debug logs"
           >
             <Activity className="w-4 h-4 text-amber-500" />
@@ -750,23 +680,6 @@ export const DocumentArchiveCenterView: React.FC = () => {
           </a>
         </div>
       </div>
-
-      {/* Success Toast */}
-      {successToastMsg && (
-        <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 p-3.5 text-xs text-emerald-800 dark:text-emerald-200 font-semibold flex items-center justify-between shadow-xs animate-fadeIn">
-          <div className="flex items-center gap-2.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-            <span>{successToastMsg}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setSuccessToastMsg(null)}
-            className="p-1 hover:text-emerald-950 dark:hover:text-white"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
 
       {/* Active AI Batch Re-scanning Banner */}
       {isRescanningAll && (
@@ -804,7 +717,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
                 <h4 className="text-xs font-bold text-brand-text-primary uppercase tracking-wider truncate">
                   Streaming Documents to Server
                 </h4>
-                <span className="text-[10px] px-2 py-0.2 rounded-md bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-semibold flex-shrink-0">
+                <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-semibold flex-shrink-0">
                   Multi-file / Multi-PDF
                 </span>
               </div>
@@ -829,7 +742,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
         </div>
       )}
 
-      {/* Background Processing Banner (Resilient Offline Notice) */}
+      {/* Background Processing Banner */}
       {activeJob && activeJob.status === 'processing' && (
         <div className="rounded-2xl bg-gradient-to-r from-brand-primary/10 via-brand-primary/5 to-transparent border border-brand-primary/30 p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
@@ -841,7 +754,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
                 <h4 className="text-xs font-bold text-brand-text-primary uppercase tracking-wider truncate">
                   Background Queue Active on Server
                 </h4>
-                <span className="text-[10px] px-2 py-0.2 rounded-md bg-brand-primary/20 text-brand-primary font-semibold flex-shrink-0">
+                <span className="text-[10px] px-2 py-0.5 rounded-md bg-brand-primary/20 text-brand-primary font-semibold flex-shrink-0">
                   Safe to close browser
                 </span>
               </div>
@@ -866,7 +779,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsTransparencyModalOpen(true)}
-              className="px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-xs flex items-center gap-1.5 flex-shrink-0"
+              className="px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-xs flex items-center gap-1.5 flex-shrink-0 cursor-pointer"
             >
               <Activity className="w-3.5 h-3.5" />
               <span>Inspect Queue</span>
@@ -878,19 +791,18 @@ export const DocumentArchiveCenterView: React.FC = () => {
       {uploadError && (
         <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-700 dark:text-rose-300 flex items-center justify-between">
           <span>Upload Error: {uploadError}</span>
-          <button onClick={() => setUploadError(null)} className="text-rose-500 hover:text-rose-700">
+          <button onClick={() => setUploadError(null)} className="text-rose-500 hover:text-rose-700 cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
-      {/* Metrics Row */}
       {/* Primary Navigation Tabs */}
-      <div className="flex flex-row md:items-center gap-2 border-b border-brand-border pb-2 overflow-x-auto custom-scrollbar min-h-[50px] items-start w-full">
+      <div className="flex flex-row items-center gap-2 border-b border-brand-border pb-2 overflow-x-auto custom-scrollbar min-h-[50px] w-full">
         <button
           type="button"
           onClick={() => setActiveMainTab('dossiers')}
-          className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 flex-shrink-0 ${
+          className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
             activeMainTab === 'dossiers'
               ? 'bg-brand-primary text-white shadow-soft'
               : 'bg-white dark:bg-brand-surface text-brand-text-secondary hover:text-brand-text-primary border border-brand-border'
@@ -903,7 +815,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveMainTab('extracted')}
-          className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 flex-shrink-0 ${
+          className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
             activeMainTab === 'extracted'
               ? 'bg-brand-primary text-white shadow-soft'
               : 'bg-white dark:bg-brand-surface text-brand-text-secondary hover:text-brand-text-primary border border-brand-border'
@@ -916,7 +828,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveMainTab('audit')}
-          className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 flex-shrink-0 ${
+          className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer ${
             activeMainTab === 'audit'
               ? 'bg-rose-600 text-white shadow-soft'
               : 'bg-white dark:bg-brand-surface text-brand-text-secondary hover:text-brand-text-primary border border-brand-border'
@@ -997,15 +909,16 @@ export const DocumentArchiveCenterView: React.FC = () => {
             >
               <option value="ALL">All Severities</option>
               <option value="critical">Critical Only</option>
-              <option value="warning">Warnings Only</option>
-              <option value="info">Info Notices</option>
+              <option value="high">High Priority</option>
+              <option value="medium">Medium Priority</option>
+              <option value="low">Low Priority</option>
             </select>
           )}
 
           <button
             type="button"
             onClick={refreshData}
-            className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg transition-colors active:bg-brand-bg"
+            className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg transition-colors active:bg-brand-bg cursor-pointer"
             title="Refresh Data & Run Audit"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -1026,798 +939,53 @@ export const DocumentArchiveCenterView: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredDossiers.map((dossier) => {
-                const hasPhoto = dossier.documents.some((d) => d.classification === 'STUDENT_PHOTO');
-                const hasBForm = dossier.documents.some((d) => d.classification === 'B_FORM');
-                const hasCnic = dossier.documents.some((d) => d.classification.includes('CNIC'));
-
-                return (
-                  <div
-                    key={dossier.grNo}
-                    className="rounded-xl bg-white dark:bg-brand-surface border border-brand-border hover:border-brand-primary/40 transition-all p-4 shadow-soft flex flex-col justify-between space-y-4 group"
-                  >
-                    <div>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-xl bg-brand-bg border border-brand-border/80 overflow-hidden flex-shrink-0 flex items-center justify-center">
-                            {dossier.avatarUrl ? (
-                              <img
-                                src={dossier.avatarUrl}
-                                alt={dossier.studentName}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="text-xs font-bold text-brand-primary">
-                                {dossier.studentName ? dossier.studentName[0] : 'S'}
-                              </div>
-                            )}
-                          </div>
-
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="px-2 py-0.2 rounded-md bg-brand-primary/10 text-brand-primary font-mono text-[11px] font-bold">
-                                GR# {dossier.grNo}
-                              </span>
-                              {dossier.currentClass && (
-                                <span className="text-[10px] text-brand-text-secondary font-medium">
-                                  {dossier.currentClass}
-                                </span>
-                              )}
-                            </div>
-                            <h4 className="font-bold text-brand-text-primary text-sm tracking-tight mt-0.5 truncate max-w-[180px]">
-                              {dossier.studentName || `Student GR ${dossier.grNo}`}
-                            </h4>
-                            <p className="text-[11px] text-brand-text-secondary truncate">
-                              S/O {dossier.fatherName || 'Guardian'}
-                            </p>
-                          </div>
-                        </div>
-
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                            dossier.allFlags.length > 0
-                              ? 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
-                              : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                          }`}
-                        >
-                          {dossier.allFlags.length > 0 ? `${dossier.allFlags.length} Flags` : 'Verified'}
-                        </span>
-                      </div>
-
-                      {/* Document Verification Chips */}
-                      <div className="flex flex-wrap gap-1.5 mt-3">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-medium flex items-center gap-1 ${
-                            hasPhoto
-                              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
-                              : 'bg-slate-100 text-slate-400 dark:bg-slate-800'
-                          }`}
-                        >
-                          {hasPhoto && <Check className="w-3 h-3" />} Photo
-                        </span>
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-medium flex items-center gap-1 ${
-                            hasBForm
-                              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
-                              : 'bg-slate-100 text-slate-400 dark:bg-slate-800'
-                          }`}
-                        >
-                          {hasBForm && <Check className="w-3 h-3" />} B-Form
-                        </span>
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-medium flex items-center gap-1 ${
-                            hasCnic
-                              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
-                              : 'bg-slate-100 text-slate-400 dark:bg-slate-800'
-                          }`}
-                        >
-                          {hasCnic && <Check className="w-3 h-3" />} Father CNIC
-                        </span>
-                      </div>
-
-                      {/* Consolidated Extracted Data Summary */}
-                      <div className="mt-3 pt-2.5 border-t border-brand-border/60 text-[11px] space-y-1 text-brand-text-secondary">
-                        <div className="flex justify-between">
-                          <span>NADRA B-Form:</span>
-                          <span className="font-mono font-medium text-brand-text-primary">
-                            {dossier.bFormNo || 'Not captured'}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Father CNIC:</span>
-                          <span className="font-mono font-medium text-brand-text-primary">
-                            {dossier.parentCnic || 'Not captured'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Footer Action */}
-                    <div className="pt-2 border-t border-brand-border/60 flex items-center justify-between">
-                      <span className="text-[10px] text-slate-400">
-                        {dossier.documents.length} file(s) on server
-                      </span>
-
-                      <button
-                        type="button"
-                        onClick={() => openStudentModal(dossier.grNo)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-brand-primary bg-brand-primary/10 hover:bg-brand-primary/20 transition-colors"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>View Dossier & Scans</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+              {filteredDossiers.map((dossier) => (
+                <DossierCard
+                  key={dossier.grNo}
+                  dossier={dossier}
+                  onOpenModal={openStudentModal}
+                />
+              ))}
             </div>
           )}
         </>
       )}
 
-      {/* VIEW 2: ALL EXTRACTED DOCUMENTS & IDENTIFIED DATA */}
+      {/* VIEW 2: ALL EXTRACTED DOCUMENTS */}
       {activeMainTab === 'extracted' && (
-        <div className="space-y-4">
-          <div className="bg-white dark:bg-brand-surface rounded-xl border border-brand-border shadow-soft overflow-hidden">
-            <div className="p-4 border-b border-brand-border flex items-center justify-between flex-wrap gap-3">
-              <div>
-                <h3 className="text-sm font-bold text-brand-text-primary">
-                  All Processed Document Scans
-                </h3>
-                <p className="text-xs text-brand-text-secondary">
-                  Showing all {filteredDocuments.length} document scans.
-                </p>
-              </div>
-
-              {/* Quick Batch Selection Helpers */}
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleToggleSelectAll(filteredDocuments)}
-                  className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-brand-bg border border-brand-border text-brand-text-secondary hover:text-brand-text-primary transition-colors flex items-center gap-1.5"
-                >
-                  <CheckSquare className="w-3.5 h-3.5 text-brand-primary" />
-                  <span>
-                    {filteredDocuments.length > 0 && filteredDocuments.every((d) => selectedDocIds.includes(d.id))
-                      ? 'Deselect All'
-                      : 'Select All Visible'}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    const unassignedDocs = filteredDocuments.filter((d) => d.grNo === 'UNASSIGNED');
-                    handleToggleSelectAll(unassignedDocs);
-                  }}
-                  className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 hover:bg-amber-100 transition-colors"
-                >
-                  Select Unassigned ({filteredDocuments.filter((d) => d.grNo === 'UNASSIGNED').length})
-                </button>
-              </div>
-            </div>
-
-            {/* Sticky Floating Batch Selection Banner */}
-            {selectedDocIds.length > 0 && (
-              <div className="bg-rose-50 dark:bg-rose-950/90 border-b border-rose-200 dark:border-rose-800 p-3 px-4 flex items-center justify-between flex-wrap gap-3 animate-fadeIn">
-                <div className="flex items-center gap-3">
-                  <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-rose-600 text-white font-bold text-xs shadow-xs">
-                    {selectedDocIds.length}
-                  </span>
-                  <div>
-                    <h4 className="text-xs font-bold text-rose-900 dark:text-rose-100">
-                      {selectedDocIds.length} Document Scan{selectedDocIds.length > 1 ? 's' : ''} Selected
-                    </h4>
-                    <p className="text-[11px] text-rose-700 dark:text-rose-300">
-                      Delete all selected document scans in a single bulk action.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDocIds([])}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-colors"
-                  >
-                    Clear Selection
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsConfirmingBatchDelete(true)}
-                    disabled={isOperatingDoc}
-                    className="px-4 py-1.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-sm transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    <span>Delete Selected ({selectedDocIds.length})</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {filteredDocuments.length === 0 ? (
-              <div className="p-12 text-center text-xs text-brand-text-secondary">
-                No extracted documents found matching your filter.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-brand-bg text-brand-text-secondary uppercase text-[10px] tracking-wider border-b border-brand-border">
-                    <tr>
-                      <th className="py-3 px-3 w-10 text-center">
-                        <input
-                          type="checkbox"
-                          checked={
-                            filteredDocuments.length > 0 &&
-                            filteredDocuments.every((d) => selectedDocIds.includes(d.id))
-                          }
-                          onChange={() => handleToggleSelectAll(filteredDocuments)}
-                          className="w-4 h-4 rounded border-brand-border text-brand-primary focus:ring-brand-primary accent-brand-primary cursor-pointer"
-                          title="Select / Deselect all visible documents"
-                        />
-                      </th>
-                      <th className="py-3 px-4">Scan Preview</th>
-                      <th className="py-3 px-4">GR # & Filename</th>
-                      <th className="py-3 px-4">Identified Type</th>
-                      <th className="py-3 px-4">Extracted Info (NADRA)</th>
-                      <th className="py-3 px-4">Orientation</th>
-                      <th className="py-3 px-4">Confidence</th>
-                      <th className="py-3 px-4 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-brand-border">
-                    {filteredDocuments.map((doc) => {
-                      const ext = doc.extractedData;
-                      const isDocSelected = selectedDocIds.includes(doc.id);
-                      return (
-                        <tr
-                          key={doc.id}
-                          className={`transition-colors ${
-                            isDocSelected
-                              ? 'bg-rose-50/60 dark:bg-rose-950/40'
-                              : 'hover:bg-brand-bg/50'
-                          }`}
-                        >
-                          <td className="py-3 px-3 w-10 text-center">
-                            <input
-                              type="checkbox"
-                              checked={isDocSelected}
-                              onChange={() => handleToggleSelectDoc(doc.id)}
-                              className="w-4 h-4 rounded border-brand-border text-brand-primary focus:ring-brand-primary accent-brand-primary cursor-pointer"
-                            />
-                          </td>
-                          <td className="py-3 px-4">
-                            <div
-                              onClick={() => setSelectedPreviewDoc(doc)}
-                              className="w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-800 border border-brand-border overflow-hidden cursor-pointer flex items-center justify-center group relative"
-                            >
-                              <DocThumbnail
-                                url={doc.url}
-                                filename={doc.filename}
-                                classification={doc.classification}
-                                className="w-full h-full object-cover group-hover:scale-110 transition-transform"
-                              />
-                              <div className="absolute inset-0 bg-black/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
-                                <ZoomIn className="w-4 h-4" />
-                              </div>
-                            </div>
-                          </td>
-
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-1.5">
-                              {doc.grNo === 'UNASSIGNED' ? (
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 animate-pulse border border-amber-300 dark:border-amber-800">
-                                  UNASSIGNED
-                                </span>
-                              ) : (
-                                <span className="font-mono font-bold text-brand-primary text-xs block">
-                                  GR #{doc.grNo}
-                                </span>
-                              )}
-                            </div>
-                            <span className="text-[11px] text-brand-text-secondary truncate max-w-[150px] block font-mono mt-0.5">
-                              {doc.originalFilename}
-                            </span>
-                            <span className="text-[10px] text-slate-400 block">
-                              {(doc.fileSizeBytes / 1024).toFixed(0)} KB • {doc.isBlackAndWhite ? 'B&W' : 'Color'}
-                            </span>
-                          </td>
-
-                          <td className="py-3 px-4">
-                            <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-900 inline-block">
-                              {DOCUMENT_LABELS[doc.classification] || doc.classification}
-                            </span>
-                          </td>
-
-                          <td className="py-3 px-4">
-                            {ext && (ext.studentName || ext.fatherName || ext.bFormNo || ext.fatherCnic) ? (
-                              <div className="space-y-0.5 text-[11px]">
-                                {ext.studentName && (
-                                  <div>
-                                    <span className="text-slate-400">Student: </span>
-                                    <span className="font-semibold text-brand-text-primary">{ext.studentName}</span>
-                                  </div>
-                                )}
-                                {ext.fatherName && (
-                                  <div>
-                                    <span className="text-slate-400">Father: </span>
-                                    <span className="font-medium text-brand-text-primary">{ext.fatherName}</span>
-                                  </div>
-                                )}
-                                {ext.bFormNo && (
-                                  <div>
-                                    <span className="text-slate-400">B-Form: </span>
-                                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                                      {ext.bFormNo}
-                                    </span>
-                                  </div>
-                                )}
-                                {ext.fatherCnic && (
-                                  <div>
-                                    <span className="text-slate-400">CNIC: </span>
-                                    <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                                      {ext.fatherCnic}
-                                    </span>
-                                  </div>
-                                )}
-                                {ext.dob && (
-                                  <div>
-                                    <span className="text-slate-400">DOB: </span>
-                                    <span className="text-brand-text-secondary">{ext.dob}</span>
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-slate-400 italic text-[11px]">
-                                No NADRA text detected
-                              </span>
-                            )}
-                          </td>
-
-                          <td className="py-3 px-4">
-                            <span className="font-medium text-brand-text-primary text-xs">
-                              {doc.rotationApplied || 0}° CW
-                            </span>
-                          </td>
-
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-1.5">
-                              <div className="w-12 bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
-                                <div
-                                  className="bg-emerald-500 h-full"
-                                  style={{
-                                    width: `${Math.round((doc.classificationConfidence || 0.8) * 100)}%`,
-                                  }}
-                                />
-                              </div>
-                              <span className="font-mono text-[11px] font-semibold text-brand-text-primary">
-                                {Math.round((doc.classificationConfidence || 0.8) * 100)}%
-                              </span>
-                            </div>
-                          </td>
-
-                          <td className="py-3 px-4 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => handleRescanDoc(doc.id)}
-                                disabled={isOperatingDoc}
-                                className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 transition-colors active:bg-indigo-50"
-                                title="Rescan document"
-                              >
-                                <RefreshCw className="w-3.5 h-3.5" />
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => setDeletingDoc(doc)}
-                                disabled={isOperatingDoc}
-                                className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors active:bg-rose-50"
-                                title="Delete document scan"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-
-                              {doc.grNo === 'UNASSIGNED' ? (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setAssigningDoc(doc);
-                                    setTargetAssignGr('');
-                                  }}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 shadow-xs transition-colors"
-                                >
-                                  <UserPlus className="w-3.5 h-3.5" />
-                                  <span>Assign to GR</span>
-                                </button>
-                              ) : (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setAssigningDoc(doc);
-                                      setTargetAssignGr(doc.grNo);
-                                    }}
-                                    className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-slate-400 hover:text-brand-text-primary hover:bg-brand-bg transition-colors active:bg-brand-bg"
-                                    title="Reassign to another GR"
-                                  >
-                                    <UserPlus className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => openStudentModal(doc.grNo)}
-                                    className="px-2.5 py-1 rounded-lg text-xs font-semibold text-brand-primary bg-brand-primary/10 hover:bg-brand-primary/20 transition-colors"
-                                  >
-                                    View Dossier
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
+        <DocumentScansGrid
+          filteredDocuments={filteredDocuments}
+          selectedDocIds={selectedDocIds}
+          isOperatingDoc={isOperatingDoc}
+          onToggleSelectDoc={handleToggleSelectDoc}
+          onToggleSelectAll={handleToggleSelectAll}
+          onClearSelection={() => setSelectedDocIds([])}
+          onBatchDeletePrompt={promptBatchDelete}
+          onPreviewDoc={(doc) => setSelectedPreviewDoc(doc)}
+          onRescanDoc={handleRescanDoc}
+          onDeleteDocPrompt={promptDeleteDoc}
+          onAssignDocPrompt={(doc) => {
+            setAssigningDoc(doc);
+            setTargetAssignGr(doc.grNo === 'UNASSIGNED' ? '' : doc.grNo);
+          }}
+          onOpenStudentModal={openStudentModal}
+        />
       )}
 
       {/* VIEW 3: DISCREPANCY AUDIT CENTER */}
       {activeMainTab === 'audit' && (
-        <div className="space-y-4">
-          <div className="bg-white dark:bg-brand-surface rounded-xl border border-brand-border shadow-soft overflow-hidden">
-            <div className="p-4 border-b border-brand-border flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <ShieldAlert className="w-4 h-4 text-rose-600" />
-                  <h3 className="text-sm font-bold text-brand-text-primary">
-                    Cross-Check Discrepancies & Flagged Records
-                  </h3>
-                </div>
-                <p className="text-xs text-brand-text-secondary mt-0.5">
-                  Comparison between data extracted from uploaded documents and data registered in Google Sheet.
-                </p>
-              </div>
-
-              <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
-                {filteredDiscrepancies.length} Flagged Issue(s)
-              </span>
-            </div>
-
-            {/* Batch Apply Synchronization Banner */}
-            {(() => {
-              const flagsWithCorrection = filteredDiscrepancies.filter(
-                (d) => d.flag.suggestedCorrection && !d.flag.isDismissed
-              );
-              if (flagsWithCorrection.length === 0) return null;
-              return (
-                <div className="bg-emerald-50 dark:bg-emerald-950/40 border-b border-emerald-200 dark:border-emerald-800 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-xl bg-emerald-600 text-white shadow-xs">
-                      <CheckCircle2 className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-emerald-900 dark:text-emerald-100 flex items-center gap-2">
-                        <span>{flagsWithCorrection.length} Correction(s) Ready to Apply</span>
-                      </h4>
-                      <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5">
-                        Review each correction before applying.
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={isBatchApplying}
-                    onClick={() => handleBatchApplyCorrections(flagsWithCorrection)}
-                    className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-60 whitespace-nowrap"
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>{isBatchApplying ? 'Applying...' : `Apply All ${flagsWithCorrection.length} to Sheet`}</span>
-                  </button>
-                </div>
-              );
-            })()}
-
-            {filteredDiscrepancies.length === 0 ? (
-              <div className="p-12 text-center">
-                <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-2" />
-                <h4 className="text-sm font-bold text-brand-text-primary">No discrepancies</h4>
-                <p className="text-xs text-brand-text-secondary mt-1">
-                  Every document matches its student record.
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-6 p-4">
-                {filteredDiscrepancies.map((item, idx) => {
-                  const docImgUrl = item.flag.documentUrl;
-                  const matchedDoc = documents.find((d) => d.id === item.flag.documentId);
-                  const imageUrl = docImgUrl || matchedDoc?.url;
-
-                  return (
-                    <div
-                      key={idx}
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all space-y-4"
-                    >
-                      {/* Top Header Row */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <span
-                            className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider ${
-                              item.flag.severity === 'critical'
-                                ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300'
-                                : item.flag.severity === 'high'
-                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300'
-                                : item.flag.severity === 'medium'
-                                ? 'bg-sky-100 text-sky-700 dark:bg-sky-950/80 dark:text-sky-300'
-                                : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                            }`}
-                          >
-                            {item.flag.severity} Priority
-                          </span>
-                          <span className="px-3 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-mono text-xs font-bold">
-                            GR #{item.grNo}
-                          </span>
-                          <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                            {item.studentName || 'Student'}
-                          </h4>
-                          <span className="text-xs text-slate-500">
-                            ({item.currentClass || 'General'})
-                          </span>
-                          {item.flag.incompleteOcr && (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                              Partial OCR (&lt;13 Digits) • Sheet Authoritative
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 font-mono text-slate-700 dark:text-slate-300">
-                            Field: {item.flag.fieldName || item.flag.field}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Main Split Body: Large Document Preview + Comparison Boxes */}
-                      <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
-                        {/* Large Document Preview Card (4 cols) */}
-                        <div className="md:col-span-4 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/80 rounded-xl p-3">
-                          <div
-                            onClick={() => {
-                              if (matchedDoc) setSelectedPreviewDoc(matchedDoc);
-                            }}
-                            className="w-full h-48 rounded-lg bg-slate-900 border border-slate-200 dark:border-slate-700 overflow-hidden cursor-pointer flex items-center justify-center group relative shadow-inner"
-                            title="Click to zoom in on document scan"
-                          >
-                            {imageUrl ? (
-                              <img
-                                src={`${imageUrl}?t=${Date.now()}`}
-                                alt="Document Scan"
-                                className="w-full h-full object-contain group-hover:scale-105 transition-transform"
-                              />
-                            ) : (
-                              <div className="flex flex-col items-center justify-center text-slate-400 gap-2">
-                                <FileText className="w-8 h-8" />
-                                <span className="text-xs font-medium">No Image Preview</span>
-                              </div>
-                            )}
-                            <div className="absolute inset-0 bg-black/50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity text-white gap-1.5 p-2 text-center">
-                              <ZoomIn className="w-6 h-6" />
-                              <span className="text-xs font-bold">Click to Inspect & Zoom Scan</span>
-                            </div>
-                          </div>
-                          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-2">
-                            Source Document Scan (Click to Expand)
-                          </span>
-                        </div>
-
-                        {/* Side-by-Side Comparison Boxes (8 cols) */}
-                        <div className="md:col-span-8 space-y-4">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {/* Extracted Box */}
-                            <div className="p-4 rounded-xl bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/50 space-y-1.5">
-                              <div className="text-[11px] font-extrabold text-rose-600 dark:text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
-                                <ScanLine className="w-3.5 h-3.5" />
-                                Extracted Value (From Scan)
-                              </div>
-                              <div className="text-base font-bold font-mono text-rose-900 dark:text-rose-200 bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-rose-100 dark:border-rose-900 shadow-xs">
-                                {item.flag.extractedValue || '(Missing / Blank)'}
-                              </div>
-                              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                                Read directly from the uploaded scan.
-                              </p>
-                            </div>
-
-                            {/* Google Sheet Record Box */}
-                            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1.5">
-                              <div className="text-[11px] font-extrabold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                                <Database className="w-3.5 h-3.5" />
-                                Google Sheet Record
-                              </div>
-                              <div className="text-base font-bold font-mono text-slate-900 dark:text-white bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs">
-                                {item.flag.sheetValue || '(Not in Sheet)'}
-                              </div>
-                              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                                Current value stored in student roster.
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Audit Diagnosis Message */}
-                          <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 flex items-start gap-2 text-xs text-amber-900 dark:text-amber-200">
-                            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-                            <div>
-                              <span className="font-bold">Audit Analysis: </span>
-                              {item.flag.message}
-                            </div>
-                          </div>
-
-                          {/* Single-Click Suggested Correction Card */}
-                          {item.flag.suggestedCorrection && (
-                            <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 space-y-2.5 animate-fadeIn">
-                              <div className="flex items-center justify-between flex-wrap gap-2">
-                                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-900 dark:text-emerald-100">
-                                  <Wand2 className="w-4 h-4 text-emerald-600" />
-                                  <span>Recommended Resolution:</span>
-                                </div>
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
-                                  item.flag.suggestedAction === 'enrich_full_name' || item.flag.suggestedAction === 'merge_caste'
-                                    ? 'bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-200 border border-teal-300 dark:border-teal-700'
-                                    : 'bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200'
-                                }`}>
-                                  {item.flag.suggestedAction === 'enrich_full_name'
-                                    ? 'Full Name & Caste Enrichment'
-                                    : item.flag.suggestedAction === 'merge_caste'
-                                    ? 'Incorporate Caste'
-                                    : item.flag.suggestedAction || 'Suggested fix'}
-                                </span>
-                              </div>
-
-                              <div className="flex items-center gap-2 text-xs">
-                                <span className="text-slate-500 font-mono line-through truncate max-w-[140px]">
-                                  {item.flag.sheetValue || '(blank)'}
-                                </span>
-                                <ArrowRight className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                                <span className="font-mono font-bold text-emerald-800 dark:text-emerald-200 bg-white dark:bg-slate-900 px-2 py-1 rounded border border-emerald-300 dark:border-emerald-700 shadow-xs">
-                                  {item.flag.suggestedCorrection.newValue}
-                                </span>
-                              </div>
-
-                              <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
-                                {item.flag.suggestedCorrection.reason}
-                              </p>
-
-                              <div className="flex items-center justify-end pt-1">
-                                <button
-                                  type="button"
-                                  disabled={applyingFlagId === item.flag.id}
-                                  onClick={() => handleApplyCorrection(item.grNo, item.flag)}
-                                  className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
-                                >
-                                  <Check className="w-3.5 h-3.5" />
-                                  <span>{applyingFlagId === item.flag.id ? 'Applying...' : 'Apply Correction to Google Sheet'}</span>
-                                </button>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Ranked Candidate Matches Section */}
-                          {item.flag.rankedMatches && item.flag.rankedMatches.length > 0 && (
-                            <div className="p-3.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/60 space-y-2.5 animate-fadeIn">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-900 dark:text-indigo-100">
-                                  <ListChecks className="w-4 h-4 text-indigo-600" />
-                                  <span>Candidate Matches ({item.flag.rankedMatches.length})</span>
-                                </div>
-                                <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium">
-                                  Ranked by match score
-                                </span>
-                              </div>
-
-                              <div className="space-y-2">
-                                {item.flag.rankedMatches.map((cand, cIdx) => {
-                                  const isHighConf = cand.score >= 80;
-                                  const isMedConf = cand.score >= 50 && cand.score < 80;
-
-                                  return (
-                                    <div
-                                      key={cIdx}
-                                      className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-xs"
-                                    >
-                                      <div className="space-y-1">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                          <span
-                                            className={`px-2 py-0.5 rounded text-[10px] font-extrabold ${
-                                              isHighConf
-                                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                                                : isMedConf
-                                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                                                : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                                            }`}
-                                          >
-                                            {cand.score}% Match
-                                          </span>
-                                          <span className="font-mono font-bold text-xs text-indigo-700 dark:text-indigo-300">
-                                            GR #{cand.grNo}
-                                          </span>
-                                          <span className="font-bold text-xs text-slate-900 dark:text-white">
-                                            {cand.studentName}
-                                          </span>
-                                          {cand.fatherName && (
-                                            <span className="text-xs text-slate-500">
-                                              s/o {cand.fatherName}
-                                            </span>
-                                          )}
-                                          <span className="text-[10px] text-slate-400">
-                                            ({cand.currentClass})
-                                          </span>
-                                        </div>
-
-                                        {/* Evidence Chips */}
-                                        <div className="flex flex-wrap gap-1 items-center">
-                                          {cand.evidence.map((ev, evIdx) => (
-                                            <span
-                                              key={evIdx}
-                                              className="px-1.5 py-0.2 rounded text-[9px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-                                            >
-                                              {ev}
-                                            </span>
-                                          ))}
-                                          <span className="text-[10px] text-slate-400 italic">
-                                            {cand.reasons}
-                                          </span>
-                                        </div>
-                                      </div>
-
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          handleResolveWithCandidate(
-                                            item.flag.documentId || matchedDoc?.id || '',
-                                            cand,
-                                            item.flag.id
-                                          )
-                                        }
-                                        className="px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-xs transition-all flex items-center justify-center gap-1 whitespace-nowrap self-end sm:self-center cursor-pointer active:scale-95"
-                                      >
-                                        <LinkIcon className="w-3.5 h-3.5" />
-                                        <span>Resolve & Link to GR #{cand.grNo}</span>
-                                      </button>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Actions Bar */}
-                          <div className="flex flex-wrap items-center justify-end gap-2.5 pt-2">
-                            <button
-                              type="button"
-                              onClick={() => handleDismissFlag(item.flag.id)}
-                              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 shadow-xs transition-all"
-                            >
-                              Dismiss as False Flag
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openStudentModal(item.grNo)}
-                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-sm transition-all"
-                            >
-                              <Eye className="w-4 h-4" />
-                              <span>Review Full Dossier</span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
+        <DiscrepancyAuditTable
+          filteredDiscrepancies={filteredDiscrepancies}
+          documents={documents}
+          applyingFlagId={applyingFlagId}
+          isBatchApplying={isBatchApplying}
+          onPreviewDoc={(doc) => setSelectedPreviewDoc(doc)}
+          onApplyCorrection={handleApplyCorrection}
+          onBatchApplyCorrections={handleBatchApplyCorrections}
+          onResolveWithCandidate={handleResolveWithCandidate}
+          onDismissFlag={handleDismissFlag}
+          onOpenStudentModal={openStudentModal}
+        />
       )}
 
       {/* Full Document Image Preview Modal */}
@@ -1836,7 +1004,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setSelectedPreviewDoc(null)}
-                className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg transition-colors active:bg-brand-bg"
+                className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg transition-colors active:bg-brand-bg cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1900,7 +1068,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
                   type="button"
                   onClick={() => handleRescanDoc(selectedPreviewDoc.id)}
                   disabled={isOperatingDoc}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 border border-indigo-200 dark:border-indigo-800 transition-colors flex items-center gap-1.5"
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 border border-indigo-200 dark:border-indigo-800 transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isOperatingDoc ? 'animate-spin' : ''}`} />
                   <span>Rescan</span>
@@ -1908,11 +1076,11 @@ export const DocumentArchiveCenterView: React.FC = () => {
 
                 <button
                   type="button"
-                  onClick={() => setDeletingDoc(selectedPreviewDoc)}
+                  onClick={() => promptDeleteDoc(selectedPreviewDoc)}
                   disabled={isOperatingDoc}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 border border-rose-200 dark:border-rose-900 transition-colors flex items-center gap-1.5"
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 border border-rose-200 dark:border-rose-900 transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <X className="w-3.5 h-3.5" />
                   <span>Delete Scan</span>
                 </button>
               </div>
@@ -1933,7 +1101,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
                     setSelectedPreviewDoc(null);
                     openStudentModal(gr);
                   }}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 transition-colors"
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 transition-colors cursor-pointer"
                 >
                   Open Student Dossier
                 </button>
@@ -1949,7 +1117,6 @@ export const DocumentArchiveCenterView: React.FC = () => {
           <div className="bg-white dark:bg-brand-surface rounded-2xl max-w-md w-full p-5 border border-brand-border space-y-4 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-brand-border">
               <div className="flex items-center gap-2">
-                <UserPlus className="w-5 h-5 text-brand-primary" />
                 <h4 className="text-sm font-bold text-brand-text-primary">
                   Assign Document to Student GR
                 </h4>
@@ -1957,7 +1124,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setAssigningDoc(null)}
-                className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg active:bg-brand-bg"
+                className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg active:bg-brand-bg cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1972,7 +1139,11 @@ export const DocumentArchiveCenterView: React.FC = () => {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <FileText className="w-5 h-5 text-slate-400" />
+                  <DocThumbnail
+                    url={assigningDoc.url}
+                    filename={assigningDoc.filename}
+                    classification={assigningDoc.classification}
+                  />
                 )}
               </div>
               <div className="min-w-0">
@@ -1982,7 +1153,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
                 <span className="text-brand-text-secondary text-[11px] block">
                   Detected Type: {DOCUMENT_LABELS[assigningDoc.classification] || assigningDoc.classification}
                 </span>
-                {assigningDoc.extractedData.studentName && (
+                {assigningDoc.extractedData?.studentName && (
                   <span className="text-emerald-600 dark:text-emerald-400 text-[10px] block font-semibold">
                     Extracted Name: {assigningDoc.extractedData.studentName}
                   </span>
@@ -1990,7 +1161,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
               </div>
             </div>
 
-            {/* Candidate Student Matches (ranked by match score) */}
+            {/* Candidate Student Matches */}
             {loadingCandidatesDocId === assigningDoc.id && (
               <div className="p-3 bg-indigo-50/50 dark:bg-indigo-950/30 rounded-xl border border-indigo-200 dark:border-indigo-800 flex items-center gap-2 text-xs text-indigo-700 dark:text-indigo-300 animate-pulse">
                 <RefreshCw className="w-4 h-4 animate-spin text-indigo-600" />
@@ -2000,12 +1171,9 @@ export const DocumentArchiveCenterView: React.FC = () => {
 
             {docCandidateMatches[assigningDoc.id] && docCandidateMatches[assigningDoc.id].length > 0 && (
               <div className="space-y-2 p-3 bg-indigo-50/60 dark:bg-indigo-950/30 rounded-xl border border-indigo-200 dark:border-indigo-800">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
-                    <ListChecks className="w-3.5 h-3.5 text-indigo-600" />
-                    Candidate Matches:
-                  </span>
-                </div>
+                <span className="text-xs font-bold text-indigo-900 dark:text-indigo-200 block">
+                  Candidate Matches:
+                </span>
                 <div className="space-y-1.5 max-h-44 overflow-y-auto custom-scrollbar">
                   {docCandidateMatches[assigningDoc.id].map((cand) => (
                     <div
@@ -2037,9 +1205,6 @@ export const DocumentArchiveCenterView: React.FC = () => {
                           )}
                           <span className="text-[10px] opacity-75">({cand.currentClass})</span>
                         </div>
-                        <div className="text-[10px] opacity-80 mt-0.5 truncate max-w-[280px]">
-                          {cand.reasons}
-                        </div>
                       </div>
                       <button
                         type="button"
@@ -2047,7 +1212,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
                           e.stopPropagation();
                           handleResolveWithCandidate(assigningDoc.id, cand);
                         }}
-                        className={`px-2 py-1 rounded text-[11px] font-bold transition-all whitespace-nowrap ${
+                        className={`px-2 py-1 rounded text-[11px] font-bold transition-all whitespace-nowrap cursor-pointer ${
                           targetAssignGr === cand.grNo
                             ? 'bg-white text-indigo-600 hover:bg-indigo-50'
                             : 'bg-indigo-600 text-white hover:bg-indigo-700'
@@ -2084,7 +1249,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
                         key={s.grNo}
                         type="button"
                         onClick={() => setTargetAssignGr(s.grNo)}
-                        className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-brand-bg transition-colors ${
+                        className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-brand-bg transition-colors cursor-pointer ${
                           targetAssignGr === s.grNo ? 'bg-brand-primary/10 font-bold' : ''
                         }`}
                       >
@@ -2104,7 +1269,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setAssigningDoc(null)}
-                className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-brand-bg"
+                className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-brand-bg cursor-pointer"
               >
                 Cancel
               </button>
@@ -2112,7 +1277,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
                 type="button"
                 disabled={!targetAssignGr.trim()}
                 onClick={() => handleAssignDoc(assigningDoc.id, targetAssignGr)}
-                className="px-4 py-1.5 rounded-xl text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-all disabled:opacity-50"
+                className="px-4 py-1.5 rounded-xl text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
               >
                 Confirm Assignment & Move
               </button>
@@ -2130,80 +1295,6 @@ export const DocumentArchiveCenterView: React.FC = () => {
         />
       )}
 
-      {/* Delete Confirmation Modal */}
-      {deletingDoc && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-brand-surface rounded-2xl border border-brand-border p-6 max-w-md w-full shadow-2xl space-y-4 animate-scaleUp">
-            <div className="flex items-center gap-3 text-rose-500">
-              <Trash2 className="w-6 h-6 flex-shrink-0" />
-              <h3 className="text-lg font-bold text-brand-text-primary">Delete Document Scan?</h3>
-            </div>
-            <p className="text-xs text-brand-text-secondary leading-relaxed">
-              Are you sure you want to permanently delete <strong className="text-brand-text-primary">{deletingDoc.originalFilename || deletingDoc.filename}</strong> (GR #{deletingDoc.grNo})?
-              This will remove the physical scan file from disk and detach it from the student dossier.
-            </p>
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-brand-border">
-              <button
-                type="button"
-                onClick={() => setDeletingDoc(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-brand-text-secondary hover:bg-brand-bg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDeleteDoc(deletingDoc.id)}
-                disabled={isOperatingDoc}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 shadow-xs transition-colors flex items-center gap-1.5"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>{isOperatingDoc ? 'Deleting...' : 'Delete Scan'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Batch Delete Confirmation Modal */}
-      {isConfirmingBatchDelete && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-brand-surface rounded-2xl border border-brand-border p-6 max-w-md w-full shadow-2xl space-y-4 animate-scaleUp">
-            <div className="flex items-center gap-3 text-rose-500">
-              <Trash2 className="w-7 h-7 flex-shrink-0" />
-              <div>
-                <h3 className="text-lg font-bold text-brand-text-primary">
-                  Delete {selectedDocIds.length} Document Scans?
-                </h3>
-                <p className="text-xs text-rose-600 dark:text-rose-400 font-medium">
-                  This bulk action is irreversible.
-                </p>
-              </div>
-            </div>
-            <p className="text-xs text-brand-text-secondary leading-relaxed">
-              Are you sure you want to permanently delete <strong>{selectedDocIds.length}</strong> selected document scans from disk and detach them from all student dossiers?
-            </p>
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-brand-border">
-              <button
-                type="button"
-                onClick={() => setIsConfirmingBatchDelete(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-brand-text-secondary hover:bg-brand-bg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleBatchDeleteDocs}
-                disabled={isOperatingDoc}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>{isOperatingDoc ? 'Deleting Scans...' : `Delete ${selectedDocIds.length} Scans`}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Live Background Processing Pipeline & Diagnostics Modal */}
       {activeJob && (
         <ProcessingTransparencyModal
@@ -2213,6 +1304,22 @@ export const DocumentArchiveCenterView: React.FC = () => {
           onJobUpdated={(j) => setActiveJob(j)}
         />
       )}
+
+      {/* Accessible Reusable Confirmation Dialog */}
+      {confirmDialog && (
+        <ConfirmDialog
+          isOpen={confirmDialog.isOpen}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          variant={confirmDialog.variant || 'danger'}
+          confirmLabel={confirmDialog.confirmLabel || 'Confirm'}
+          onConfirm={confirmDialog.onConfirm}
+          onClose={() => setConfirmDialog(null)}
+        />
+      )}
+
+      {/* Non-blocking Toast feedback */}
+      <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
   );
 };

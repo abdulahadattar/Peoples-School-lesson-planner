@@ -15,6 +15,34 @@ export type DocumentClassificationType =
   | 'IGNORED_NOISE'
   | 'OTHER_UNCLASSIFIED';
 
+export const DOCUMENT_LABELS: Record<DocumentClassificationType, string> = {
+  STUDENT_PHOTO: 'Student Passport Photo',
+  B_FORM: 'NADRA B-Form / CRC',
+  FATHER_CNIC_FRONT: 'Father CNIC (Front)',
+  FATHER_CNIC_BACK: 'Father CNIC (Back)',
+  STUDENT_PROFILE_FORM: 'Student Profile Form',
+  MARKS_CERTIFICATE: 'Marks Certificate / Marksheet',
+  BIRTH_CERTIFICATE: 'Birth Certificate',
+  SCHOOL_LEAVING_CERTIFICATE: 'School Leaving Certificate (SLC)',
+  ADMISSION_FORM: 'School Admission Form',
+  OTHER_UNCLASSIFIED: 'Supporting / Other Document',
+  IGNORED_NOISE: 'Ignored Noise / Blank Page',
+};
+
+export const CLASS_OPTIONS = [
+  'ALL',
+  'Class IX (Morning)',
+  'Class IX (Afternoon)',
+  'Class X (Morning)',
+  'Class X (Afternoon)',
+  'Class XI (General)',
+  'Class XI (Pre-Medical)',
+  'Class XI (Pre-Engineering)',
+  'Class XII (General)',
+  'Class XII (Pre-Medical)',
+  'Class XII (Pre-Engineering)',
+];
+
 export interface ExtractedChildRecord {
   entryNo?: number;
   childNameEnglish?: string;
