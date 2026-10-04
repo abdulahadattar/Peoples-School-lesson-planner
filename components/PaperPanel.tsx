@@ -1,10 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { PaperConfig } from '../types';
 import { SelectionApi } from '../hooks/useSelection';
-import { sectionsByClass, subjectNames } from '../services/teacherRoster';
+import { subjectNames } from '../services/teacherRoster';
 import SelectField from './ui/SelectField';
 import Spinner from './ui/Spinner';
 import SegmentedControl, { EXPORT_FORMATS } from './ui/SegmentedControl';
+import { NumberField } from './ui/NumberField';
+import { PaperPresetSelector, PaperPreset, PAPER_PRESETS } from './paper/PaperPresetSelector';
 import {
   DocumentTextIcon,
   GraduationCapIcon,
@@ -23,172 +25,13 @@ interface PaperPanelProps {
   onExportFormatChange: (format: 'docx' | 'pdf' | 'both') => void;
 }
 
-const clampNumber = (value: string, min: number, max: number): number => {
-  const parsed = parseInt(value, 10);
-  if (Number.isNaN(parsed)) return min;
-  return Math.max(min, Math.min(max, parsed));
-};
-
-/** Styled number input with +/- stepper buttons for mobile and desktop. */
-const NumberField: React.FC<{
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step?: number;
-  hint?: string;
-  onChange: (value: number) => void;
-}> = ({ label, value, min, max, step = 1, hint, onChange }) => (
-  <div className="space-y-1">
-    <div className="flex items-center justify-between">
-      <label className="block text-xs text-brand-text-secondary font-medium">{label}</label>
-      <span className="text-[10px] font-mono tabular-nums text-brand-text-tertiary">
-        [{min}–{max}]
-      </span>
-    </div>
-    <div className="flex items-center rounded-xl border border-black/[0.08] dark:border-white/[0.1] bg-slate-50 dark:bg-slate-900/40 overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
-      <button
-        type="button"
-        onClick={() => onChange(Math.max(min, value - step))}
-        disabled={value <= min}
-        className="w-10 h-10 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.04] disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-base font-bold shrink-0 active:scale-90 select-none cursor-pointer"
-        aria-label={`Decrease ${label}`}
-      >
-        −
-      </button>
-      <input
-        type="number"
-        inputMode="numeric"
-        autoComplete="off"
-        min={min}
-        max={max}
-        value={value}
-        onChange={e => onChange(clampNumber(e.target.value, min, max))}
-        className="w-full h-10 px-1 bg-transparent text-center text-sm font-semibold text-brand-text-primary placeholder:text-slate-400 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none font-mono tabular-nums"
-      />
-      <button
-        type="button"
-        onClick={() => onChange(Math.min(max, value + step))}
-        disabled={value >= max}
-        className="w-10 h-10 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.04] disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-base font-bold shrink-0 active:scale-90 select-none cursor-pointer"
-        aria-label={`Increase ${label}`}
-      >
-        +
-      </button>
-    </div>
-    {hint && <p className="text-[10px] text-brand-text-tertiary leading-tight">{hint}</p>}
-  </div>
-);
-
-interface PaperPreset {
-  id: string;
-  name: string;
-  total: number;
-  duration: number;
-  mcq: number;
-  shortListed: number;
-  shortAttempt: number;
-  shortMarks: number;
-  longListed: number;
-  longAttempt: number;
-  longMarks: number;
-  formulaLabel: string;
-}
-
-const PRESETS: PaperPreset[] = [
-  {
-    id: 'class-test',
-    name: 'Class Test (25M)',
-    total: 25,
-    duration: 45,
-    mcq: 5,
-    shortListed: 8,
-    shortAttempt: 6,
-    shortMarks: 2,
-    longListed: 3,
-    longAttempt: 2,
-    longMarks: 4,
-    formulaLabel: '5(1M) + 6(2M) + 2(4M)',
-  },
-  {
-    id: 'mcq-quiz',
-    name: '30 MCQs Quiz (30M)',
-    total: 30,
-    duration: 35,
-    mcq: 30,
-    shortListed: 0,
-    shortAttempt: 0,
-    shortMarks: 2,
-    longListed: 0,
-    longAttempt: 0,
-    longMarks: 4,
-    formulaLabel: '30 MCQs only',
-  },
-  {
-    id: 'unit-quiz',
-    name: 'Unit Quiz (20M)',
-    total: 20,
-    duration: 30,
-    mcq: 4,
-    shortListed: 6,
-    shortAttempt: 4,
-    shortMarks: 2,
-    longListed: 3,
-    longAttempt: 2,
-    longMarks: 4,
-    formulaLabel: '4(1M) + 4(2M) + 2(4M)',
-  },
-  {
-    id: 'midterm',
-    name: 'Midterm Exam (50M)',
-    total: 50,
-    duration: 90,
-    mcq: 10,
-    shortListed: 12,
-    shortAttempt: 8,
-    shortMarks: 3,
-    longListed: 5,
-    longAttempt: 4,
-    longMarks: 4,
-    formulaLabel: '10(1M) + 8(3M) + 4(4M)',
-  },
-  {
-    id: 'board-model',
-    name: 'Board Model (75M)',
-    total: 75,
-    duration: 120,
-    mcq: 15,
-    shortListed: 12,
-    shortAttempt: 9,
-    shortMarks: 4,
-    longListed: 4,
-    longAttempt: 3,
-    longMarks: 8,
-    formulaLabel: '15(1M) + 9(4M) + 3(8M)',
-  },
-  {
-    id: 'annual',
-    name: 'Annual Exam (100M)',
-    total: 100,
-    duration: 180,
-    mcq: 20,
-    shortListed: 14,
-    shortAttempt: 10,
-    shortMarks: 4,
-    longListed: 6,
-    longAttempt: 5,
-    longMarks: 8,
-    formulaLabel: '20(1M) + 10(4M) + 5(8M)',
-  },
-];
-
 const DIFFICULTY_OPTIONS = [
   { value: 'easy', label: 'Easy (Recall)' },
   { value: 'medium', label: 'Medium (Standard)' },
   { value: 'hard', label: 'Hard (Conceptual)' },
 ] as const;
 
-const PaperPanel: React.FC<PaperPanelProps> = ({
+export const PaperPanel: React.FC<PaperPanelProps> = ({
   onGeneratePaper,
   isGenerating,
   selection,
@@ -338,35 +181,10 @@ const PaperPanel: React.FC<PaperPanelProps> = ({
           </div>
 
           {/* Quick Presets Bar */}
-          <div>
-            <label className="block text-[11px] font-semibold text-brand-text-secondary uppercase tracking-wide mb-2.5">
-              Quick Exam Presets
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-              {PRESETS.map(preset => {
-                const isActive = activePresetId === preset.id;
-                return (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => applyPreset(preset)}
-                    className={`flex flex-col p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                      isActive
-                        ? 'bg-blue-50/90 dark:bg-blue-950/40 border-blue-500/40 shadow-xs'
-                        : 'bg-slate-50/70 dark:bg-slate-800/50 border-black/[0.04] dark:border-white/[0.06] hover:border-black/[0.1] hover:bg-slate-100/70'
-                    }`}
-                  >
-                    <span className={`text-xs font-semibold truncate ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-brand-text-primary'}`}>
-                      {preset.name}
-                    </span>
-                    <span className="text-[10px] text-brand-text-secondary font-mono tabular-nums mt-0.5">
-                      {preset.duration}m · {preset.formulaLabel}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <PaperPresetSelector
+            activePresetId={activePresetId}
+            onSelectPreset={applyPreset}
+          />
 
           {/* Curriculum Selectors Section */}
           <div className="bg-slate-50/80 dark:bg-slate-900/40 p-4 sm:p-5 rounded-xl border border-black/[0.06] dark:border-white/[0.08] space-y-3.5">

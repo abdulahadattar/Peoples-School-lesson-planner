@@ -4,6 +4,7 @@ import {
   StudentDocumentRecord,
   DocumentClassificationType,
   DocumentDiscrepancy,
+  DOCUMENT_LABELS,
 } from '../../types/documentArchive';
 import {
   fetchDossierByGr,
@@ -55,20 +56,6 @@ interface StudentDocumentsTabProps {
   student: StudentRecord;
   onEditStudent?: (updated: StudentRecord) => void;
 }
-
-const DOCUMENT_LABELS: Record<DocumentClassificationType, string> = {
-  STUDENT_PHOTO: 'Student Photo (Color)',
-  B_FORM: 'NADRA B-Form / CRC',
-  FATHER_CNIC_FRONT: 'Father CNIC (Front)',
-  FATHER_CNIC_BACK: 'Father CNIC (Back)',
-  STUDENT_PROFILE_FORM: 'Student Profile Form',
-  MARKS_CERTIFICATE: 'Marks Certificate / Marksheet',
-  BIRTH_CERTIFICATE: 'Birth Certificate',
-  SCHOOL_LEAVING_CERTIFICATE: 'School Leaving Certificate',
-  ADMISSION_FORM: 'Admission Form',
-  OTHER_UNCLASSIFIED: 'Unclassified Document',
-  IGNORED_NOISE: 'Ignored Noise / Blank Page',
-};
 
 export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
   student,

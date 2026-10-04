@@ -91,6 +91,19 @@ Hard rules that follow:
 
 ---
 
+## 3. Modular Architecture & File Size Limit (200–350 LOC)
+
+**Hard Constraint: Every file must maintain a single, well-defined concern.**
+- **Target Size**: 200–350 lines of code maximum per file.
+- **Trigger**: When any component, hook, or service approaches or exceeds ~300-350 lines of code, you MUST automatically decompose and split it into dedicated sub-components, custom hooks, or utility modules.
+- **Organization**:
+  - Split large views into domain sub-folders (e.g. `components/attendance/`, `components/records/`, `components/settings/`, `components/documents/`, `components/substitution/`, `components/paper/`).
+  - Extract reusable design system primitives to `components/ui/`.
+  - Extract pure calculations to `services/` or `utils/`.
+  - Never allow bloated monolithic files to accumulate.
+
+---
+
 # Autonoma SDK Integration & Deployment - Maintenance Notes
 
 ## CRITICAL: You are in the ALPHA worktree

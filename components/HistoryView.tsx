@@ -9,11 +9,12 @@ import {
 } from '../services/storageService';
 import { LessonPlan, GeneratedPaper } from '../types';
 import Spinner from './ui/Spinner';
-import { ArchiveIcon } from './icons/MiscIcons';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { useToast } from '../hooks/useToast';
 import { SearchInput } from './ui/SearchInput';
 import { EmptyState } from './ui/EmptyState';
+import { SavedPaperCard } from './history/SavedPaperCard';
+import { SavedPlanCard } from './history/SavedPlanCard';
 
 interface HistoryViewProps {
   onOpenLessonPlan: (plan: LessonPlan) => void;
@@ -193,7 +194,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab('all')}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer ${
                   activeTab === 'all'
                     ? 'bg-brand-surface text-brand-text-primary shadow-sm'
                     : 'text-brand-text-secondary hover:text-brand-text-primary'
@@ -204,7 +205,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab('papers')}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer ${
                   activeTab === 'papers'
                     ? 'bg-brand-surface text-brand-text-primary shadow-sm'
                     : 'text-brand-text-secondary hover:text-brand-text-primary'
@@ -215,7 +216,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab('plans')}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer ${
                   activeTab === 'plans'
                     ? 'bg-brand-surface text-brand-text-primary shadow-sm'
                     : 'text-brand-text-secondary hover:text-brand-text-primary'
@@ -272,79 +273,15 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {filteredPapers.map(item => (
-                  <div
+                  <SavedPaperCard
                     key={item.id}
-                    className="group bg-brand-surface p-4 rounded-xl border border-brand-border hover:border-brand-primary/40 hover:shadow-card-hover transition-all flex flex-col justify-between"
-                  >
-                    {/* The open trigger. Kept as a real button so the card is
-                        keyboard reachable and announces itself, while the nested
-                        Delete/DOCX/PDF actions stay valid sibling buttons. */}
-                    <button
-                      type="button"
-                      onClick={() => onOpenPaper({ ...item.paper, savedPaperId: item.id })}
-                      aria-label={`Open paper: ${item.paper.title}`}
-                      className="text-left w-full rounded-lg active:opacity-70 transition-opacity"
-                    >
-                    <div>
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="px-2 py-0.5 text-[11px] font-semibold rounded bg-brand-primary/10 text-brand-primary">
-                          {item.paper.subject} • {item.paper.gradeLevel}
-                        </span>
-                        <span className="text-[11px] text-brand-text-secondary">
-                          {new Date(item.createdAt).toLocaleDateString()}
-                        </span>
-                      </div>
-
-                      <h3 className="text-base font-bold text-brand-text-primary mt-2 group-hover:text-brand-primary transition-colors line-clamp-1">
-                        {item.paper.title}
-                      </h3>
-
-                      <p className="text-xs text-brand-text-secondary mt-1">
-                        Chapter: {item.paper.chapterName || 'General Syllabus'}
-                      </p>
-
-                      <div className="flex items-center gap-3 mt-3 text-xs text-brand-text-secondary">
-                        <span>{item.paper.totalMarks} Marks</span>
-                        <span>•</span>
-                        <span>{item.paper.durationMinutes} Mins</span>
-                        <span>•</span>
-                        <span>{item.paper.sections.length} Sections</span>
-                      </div>
-                    </div>
-                    </button>
-
-                    <div className="mt-4 pt-3 border-t border-brand-border flex items-center justify-between">
-                      <button
-                        type="button"
-                        onClick={(e) => handleDeletePaper(item.id, e)}
-                        className="text-xs text-red-500 hover:text-red-700 hover:underline"
-                      >
-                        Delete
-                      </button>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          disabled={exportingId === item.id}
-                          onClick={(e) => handleExportPaperDocx(item, e)}
-                          className="px-2.5 py-1 text-xs font-medium rounded bg-brand-bg hover:bg-brand-border text-brand-text-primary border border-brand-border"
-                        >
-                          DOCX
-                        </button>
-                        <button
-                          type="button"
-                          disabled={exportingId === item.id}
-                          onClick={(e) => handleExportPaperPdf(item, e)}
-                          className="px-2.5 py-1 text-xs font-medium rounded bg-brand-bg hover:bg-brand-border text-brand-text-primary border border-brand-border"
-                        >
-                          PDF
-                        </button>
-                        <span className="text-xs font-medium text-brand-primary group-hover:underline pl-1">
-                          Open →
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                    item={item}
+                    exportingId={exportingId}
+                    onOpenPaper={onOpenPaper}
+                    onDeletePaper={handleDeletePaper}
+                    onExportDocx={handleExportPaperDocx}
+                    onExportPdf={handleExportPaperPdf}
+                  />
                 ))}
               </div>
             </div>
@@ -358,60 +295,14 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {filteredPlans.map(item => (
-                  <div
+                  <SavedPlanCard
                     key={item.id}
-                    onClick={() => onOpenLessonPlan(item.plan)}
-                    className="group bg-brand-surface p-4 rounded-xl border border-brand-border hover:border-emerald-500/40 hover:shadow-card-hover transition-all cursor-pointer flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="px-2 py-0.5 text-[11px] font-semibold rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                          {item.plan.subject} • {item.plan.gradeLevel}
-                        </span>
-                        <span className="text-[11px] text-brand-text-secondary">
-                          {new Date(item.createdAt).toLocaleDateString()}
-                        </span>
-                      </div>
-
-                      <h3 className="text-base font-bold text-brand-text-primary mt-2 group-hover:text-emerald-600 transition-colors line-clamp-1">
-                        {item.plan.title}
-                      </h3>
-
-                      {item.sloId && (
-                        <p className="text-xs font-mono text-brand-text-secondary mt-1">
-                          SLO ID: {item.sloId}
-                        </p>
-                      )}
-
-                      <p className="text-xs text-brand-text-secondary mt-2 line-clamp-2">
-                        {item.plan.learningObjectives?.join(', ') || 'No objectives listed'}
-                      </p>
-                    </div>
-
-                    <div className="mt-4 pt-3 border-t border-brand-border flex items-center justify-between">
-                      <button
-                        type="button"
-                        onClick={(e) => handleDeletePlan(item.id, e)}
-                        className="text-xs text-red-500 hover:text-red-700 hover:underline"
-                      >
-                        Delete
-                      </button>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          disabled={exportingId === item.id}
-                          onClick={(e) => handleExportPlanDocx(item, e)}
-                          className="px-2.5 py-1 text-xs font-medium rounded bg-brand-bg hover:bg-brand-border text-brand-text-primary border border-brand-border"
-                        >
-                          DOCX
-                        </button>
-                        <span className="text-xs font-medium text-emerald-600 group-hover:underline pl-1">
-                          Open →
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                    item={item}
+                    exportingId={exportingId}
+                    onOpenLessonPlan={onOpenLessonPlan}
+                    onDeletePlan={handleDeletePlan}
+                    onExportDocx={handleExportPlanDocx}
+                  />
                 ))}
               </div>
             </div>
@@ -435,3 +326,5 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
     </div>
   );
 };
+
+export default HistoryView;

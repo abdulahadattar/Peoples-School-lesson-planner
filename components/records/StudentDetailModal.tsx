@@ -3,25 +3,16 @@ import {
   X,
   Edit2,
   Phone,
-  Copy,
-  Check,
-  Calendar,
   User,
-  GraduationCap,
-  MapPin,
-  Shield,
-  Clock,
-  AlertTriangle,
   FileText,
-  Image as ImageIcon,
-  ZoomIn,
+  AlertTriangle,
 } from 'lucide-react';
 import { StudentRecord } from '../../services/googleSheetsService';
 import { PhssjLogo } from '../Logo';
 import { StudentDocumentsTab } from './StudentDocumentsTab';
+import { StudentDetailsTab } from './StudentDetailsTab';
 import { fetchDossierByGr, auditDossier } from '../../services/documentClientService';
 import { StudentDossier, DocumentDiscrepancy } from '../../types/documentArchive';
-import { useClipboardCopy } from '../../hooks/useClipboardCopy';
 import { StatusBadge } from '../ui/StatusBadge';
 
 interface StudentDetailModalProps {
@@ -40,7 +31,6 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   onEdit,
 }) => {
   const [activeTab, setActiveTab] = useState<'details' | 'documents'>(initialTab);
-  const { copy: copyToClipboard, copiedKey } = useClipboardCopy(2000);
   const [dossier, setDossier] = useState<StudentDossier | null>(null);
   const [discrepancies, setDiscrepancies] = useState<DocumentDiscrepancy[]>([]);
   const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
@@ -119,7 +109,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg rounded-xl transition-colors"
+            className="p-2 text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg rounded-xl transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -130,7 +120,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('details')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'details'
                 ? 'bg-brand-primary text-white shadow-xs'
                 : 'text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg'
@@ -142,7 +132,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('documents')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'documents'
                 ? 'bg-brand-primary text-white shadow-xs'
                 : 'text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg'
@@ -162,248 +152,56 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
             <StudentDocumentsTab
               student={student}
               onEditStudent={(updated) => {
-                onEdit(updated);
+                onEdit?.(updated);
               }}
             />
           ) : (
-            <>
-              {/* Discrepancy Callout if exists */}
-              {activeFlags.length > 0 && (
-                <div
-                  onClick={() => setActiveTab('documents')}
-                  className="rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 p-3.5 flex items-center justify-between cursor-pointer hover:bg-rose-100/60 dark:hover:bg-rose-900/40 transition-colors shadow-xs"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-rose-600 text-white flex items-center justify-center flex-shrink-0">
-                      <AlertTriangle className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-rose-900 dark:text-rose-200 text-xs">
-                        {activeFlags.length} Document Discrepanc{activeFlags.length > 1 ? 'ies' : 'y'} Flagged
-                      </h4>
-                      <p className="text-[11px] text-rose-700 dark:text-rose-300">
-                        Differences found between uploaded scans and this register record. Click to review side-by-side.
-                      </p>
-                    </div>
-                  </div>
-                  <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-600 text-white flex-shrink-0">
-                    Review Scans
-                  </span>
-                </div>
-              )}
-
-              {/* Academic Profile */}
-              <div className="rounded-xl bg-brand-bg p-4 border border-brand-border">
-                <div className="flex items-center gap-2 mb-3 text-brand-primary font-bold text-xs uppercase tracking-wider">
-                  <GraduationCap className="w-4 h-4" />
-                  <span>Academic Enrollment Details</span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div>
-                    <span className="text-brand-text-secondary block mb-0.5">Current Class</span>
-                    <span className="font-bold text-brand-text-primary text-sm">
-                      {student.currentClass || 'N/A'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-brand-text-secondary block mb-0.5">Section</span>
-                    <span className="font-bold text-brand-text-primary text-sm">
-                      {student.section || 'A'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-brand-text-secondary block mb-0.5">Class Admitted</span>
-                    <span className="font-semibold text-brand-text-primary">
-                      {student.classAdmitted || 'N/A'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-brand-text-secondary block mb-0.5">Shift & Medium</span>
-                    <span className="font-semibold text-brand-text-primary">
-                      {student.shift || 'Morning'} / {student.medium || 'English'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Personal Information */}
-              <div>
-                <div className="flex items-center gap-2 mb-2.5 text-brand-primary font-bold text-xs uppercase tracking-wider">
-                  <User className="w-4 h-4" />
-                  <span>Student Personal Details</span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 bg-white dark:bg-brand-surface p-3.5 rounded-xl border border-brand-border">
-                  <div>
-                    <span className="text-brand-text-secondary block">Gender</span>
-                    <span className="font-semibold text-brand-text-primary">{student.gender || 'N/A'}</span>
-                  </div>
-                  <div>
-                    <span className="text-brand-text-secondary block">Date of Birth</span>
-                    <span className="font-semibold text-brand-text-primary">
-                      {student.dobDay && student.dobMonth && student.dobYear
-                        ? `${student.dobDay}/${student.dobMonth}/${student.dobYear}`
-                        : 'N/A'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-brand-text-secondary block">Religion</span>
-                    <span className="font-semibold text-brand-text-primary">{student.religion || 'Islam'}</span>
-                  </div>
-                  <div>
-                    <span className="text-brand-text-secondary block">B.Form Number</span>
-                    <span className="font-mono font-medium text-brand-text-primary">{student.bFormNo || 'N/A'}</span>
-                  </div>
-                  <div>
-                    <span className="text-brand-text-secondary block">Parent CNIC</span>
-                    <span className="font-mono font-medium text-brand-text-primary">{student.parentCnic || 'N/A'}</span>
-                  </div>
-                  <div>
-                    <span className="text-brand-text-secondary block">Admission Date</span>
-                    <span className="font-semibold text-brand-text-primary">
-                      {student.admissionDay && student.admissionMonth && student.admissionYear
-                        ? `${student.admissionDay}/${student.admissionMonth}/${student.admissionYear}`
-                        : 'N/A'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Contact Numbers & Location */}
-              <div>
-                <div className="flex items-center gap-2 mb-2.5 text-brand-primary font-bold text-xs uppercase tracking-wider">
-                  <Phone className="w-4 h-4" />
-                  <span>Contact & Residential Address</span>
-                </div>
-                <div className="space-y-2.5 bg-white dark:bg-brand-surface p-3.5 rounded-xl border border-brand-border">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="flex items-center justify-between p-2.5 rounded-lg bg-brand-bg border border-brand-border/70">
-                      <div>
-                        <span className="text-[10px] text-brand-text-secondary block">Parent / Guardian Contact</span>
-                        <span className="font-mono font-semibold text-brand-text-primary text-xs">
-                          {student.parentContact || 'N/A'}
-                        </span>
-                      </div>
-                      {student.parentContact && student.parentContact !== 'NA' && student.parentContact !== 'N/A' && (
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(student.parentContact, 'parentContact')}
-                          className="p-1.5 rounded min-w-[36px] min-h-[36px] flex items-center justify-center-md hover:bg-brand-surface text-brand-text-secondary hover:text-brand-primary transition-colors active:bg-brand-surface"
-                          title="Copy phone number"
-                        >
-                          {copiedKey === 'parentContact' ? (
-                            <Check className="w-3.5 h-3.5 text-emerald-500" />
-                          ) : (
-                            <Copy className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between p-2.5 rounded-lg bg-brand-bg border border-brand-border/70">
-                      <div>
-                        <span className="text-[10px] text-brand-text-secondary block">Emergency Contact</span>
-                        <span className="font-mono font-semibold text-brand-text-primary text-xs">
-                          {student.emergencyContact || 'N/A'}
-                        </span>
-                      </div>
-                      {student.emergencyContact && student.emergencyContact !== 'NA' && student.emergencyContact !== 'N/A' && (
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(student.emergencyContact, 'emergencyContact')}
-                          className="p-1.5 rounded min-w-[36px] min-h-[36px] flex items-center justify-center-md hover:bg-brand-surface text-brand-text-secondary hover:text-brand-primary transition-colors active:bg-brand-surface"
-                          title="Copy phone number"
-                        >
-                          {copiedKey === 'emergencyContact' ? (
-                            <Check className="w-3.5 h-3.5 text-emerald-500" />
-                          ) : (
-                            <Copy className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="p-2.5 rounded-lg bg-brand-bg border border-brand-border/70 flex items-start gap-2">
-                    <MapPin className="w-4 h-4 text-brand-text-secondary flex-shrink-0 mt-0.5" />
-                    <div>
-                      <span className="text-[10px] text-brand-text-secondary block">Residential Address</span>
-                      <span className="font-medium text-brand-text-primary text-xs leading-relaxed">
-                        {student.address || 'Address not recorded in register'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Spreadsheet Meta */}
-              <div className="text-[11px] text-brand-text-secondary flex items-center justify-between px-1">
-                <span>
-                  Google Spreadsheet Row: <span className="font-mono font-semibold text-brand-text-primary">#{student.rowNumber}</span>
-                </span>
-                <span>Sheet: Jamshoro South Final SPD (2)</span>
-              </div>
-            </>
+            <StudentDetailsTab
+              student={student}
+              activeFlags={activeFlags}
+              onSwitchToDocumentsTab={() => setActiveTab('documents')}
+            />
           )}
         </div>
 
         {/* Footer */}
         <div className="flex items-center justify-between pt-4 border-t border-brand-border">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg border border-brand-border transition-colors"
-          >
-            Close
-          </button>
-          {/* Only rendered when a real edit handler is supplied. Previously this
-              button was always shown but the Document Archive view passed an
-              empty onEdit={() => {}}, so it silently closed the modal and did
-              nothing. A control that cannot act should not be offered. */}
-          {onEdit && (
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                onEdit(student);
-              }}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-all"
-            >
-              <Edit2 className="w-3.5 h-3.5" />
-              <span>Edit Student Record</span>
-            </button>
-          )}
-        </div>
-      </div>
+          <div className="flex items-center gap-2">
+            {student.parentContact && student.parentContact !== 'NA' && student.parentContact !== 'N/A' && (
+              <a
+                href={`tel:${student.parentContact}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-brand-bg hover:bg-brand-border text-brand-primary border border-brand-border transition-colors cursor-pointer"
+              >
+                <Phone className="w-3.5 h-3.5" />
+                <span>Call Guardian</span>
+              </a>
+            )}
+          </div>
 
-      {/* Photo Fullscreen Zoom Modal */}
-      {previewPhotoUrl && (
-        <div
-          onClick={() => setPreviewPhotoUrl(null)}
-          className="fixed inset-0 z-[110] bg-black/85 flex items-center justify-center p-4 animate-fadeIn"
-        >
-          <div className="relative bg-white dark:bg-brand-surface rounded-2xl max-w-lg w-full p-4 border border-brand-border shadow-2xl space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-brand-border">
-              <span className="font-bold text-xs text-brand-text-primary">
-                Student Passport Photo - GR #{student.grNo}
-              </span>
+          <div className="flex items-center gap-2">
+            {onEdit && (
               <button
                 type="button"
-                onClick={() => setPreviewPhotoUrl(null)}
-                className="p-1 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary active:bg-brand-bg"
+                onClick={() => {
+                  onClose();
+                  onEdit(student);
+                }}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-brand-primary text-white hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-all cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <Edit2 className="w-3.5 h-3.5" />
+                <span>Edit Record</span>
               </button>
-            </div>
-            <div className="bg-slate-950 rounded-xl p-2 flex items-center justify-center min-h-[300px]">
-              <img
-                src={previewPhotoUrl}
-                alt={student.studentName}
-                className="max-h-[60vh] w-auto object-contain rounded-lg"
-              />
-            </div>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl text-xs font-semibold bg-brand-bg hover:bg-brand-border text-brand-text-secondary hover:text-brand-text-primary border border-brand-border transition-colors cursor-pointer"
+            >
+              Close
+            </button>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };

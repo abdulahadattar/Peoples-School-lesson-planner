@@ -54,20 +54,11 @@ import {
   getAttendanceTextColor as getTextColor,
   getAttendanceBadgeBg as getBadgeBg,
 } from './attendanceUtils';
-import { formatSchoolDate } from '../../utils/dateHelpers';
+import { formatSchoolDate, getTodayDateString } from '../../utils/dateHelpers';
 
 export const DailyAttendanceView: React.FC = () => {
-  // Today's date in local YYYY-MM-DD
-  const getTodayStr = () => {
-    const d = new Date();
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
   const { config: schoolConfig, saveConfig } = useSchoolConfig();
-  const [selectedDate, setSelectedDate] = useState<string>(getTodayStr());
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
   const [enrollments, setEnrollments] = useState<ClassEnrollment[]>(DEFAULT_GRADE_ENROLLMENTS);
   const [currentUser, setCurrentUser] = useState<User | null>(getCurrentUser());
   const [showEnrollmentModal, setShowEnrollmentModal] = useState<boolean>(false);
@@ -660,9 +651,9 @@ export const DailyAttendanceView: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => setSelectedDate(getTodayStr())}
+            onClick={() => setSelectedDate(getTodayDateString())}
             className={`px-3 py-2 text-xs font-semibold rounded-xl border transition-all ${
-              selectedDate === getTodayStr()
+              selectedDate === getTodayDateString()
                 ? 'bg-brand-primary text-white border-brand-primary shadow-xs'
                 : 'bg-brand-surface text-brand-text-secondary border-brand-border hover:text-brand-text-primary hover:bg-brand-bg'
             }`}

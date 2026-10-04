@@ -15,3 +15,4 @@ export * from './SegmentedControl';
 export * from './SelectField';
 export * from './PendingSyncBanner';
 export * from './Touch';
+export * from './NumberField';

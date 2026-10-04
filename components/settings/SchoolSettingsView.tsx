@@ -1,24 +1,17 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Settings,
   ShieldCheck,
   ShieldAlert,
   Save,
   RotateCcw,
-  Plus,
-  Edit2,
-  Trash2,
   Users,
   GraduationCap,
   Clock,
   FileSpreadsheet,
-  Lock,
-  Unlock,
   CheckCircle2,
   AlertCircle,
   LogIn,
-  Search,
-  BookOpen,
   Calendar,
   Building2,
 } from 'lucide-react';
@@ -32,10 +25,14 @@ import { useSchoolConfig } from '../../hooks/useSchoolConfig';
 import { ClassEditorModal } from './ClassEditorModal';
 import { TeacherEditorModal } from './TeacherEditorModal';
 import { TimetableEditorTab } from './TimetableEditorTab';
+import { ClassesSettingsTab } from './ClassesSettingsTab';
+import { TeachersSettingsTab } from './TeachersSettingsTab';
+import { SafeguardsSettingsTab } from './SafeguardsSettingsTab';
+import { PeriodsSettingsTab } from './PeriodsSettingsTab';
+import { IdentitySettingsTab } from './IdentitySettingsTab';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { useToast } from '../../hooks/useToast';
 import { googleSignIn } from '../../services/googleAuth';
-import { motion, AnimatePresence } from 'motion/react';
 
 type SettingsTab = 'classes' | 'teachers' | 'timetable' | 'safeguards' | 'periods' | 'identity';
 
@@ -48,7 +45,6 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({ onOpenLo
     config,
     isAdmin,
     currentUser,
-    isLoading,
     isSaving,
     saveSuccess,
     error,
@@ -79,7 +75,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({ onOpenLo
   const { showToast, ToastComponent } = useToast(4500);
 
   // Sync working copy when base config changes
-  React.useEffect(() => {
+  useEffect(() => {
     setWorkingConfig(config);
   }, [config]);
 
@@ -132,7 +128,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({ onOpenLo
   const handleSaveClass = (updatedClass: ClassTeacherConfig) => {
     setWorkingConfig((prev) => {
       const idx = prev.classes.findIndex((c) => c.classKey === updatedClass.classKey);
-      let updatedClasses = [...prev.classes];
+      const updatedClasses = [...prev.classes];
       if (idx >= 0) {
         updatedClasses[idx] = updatedClass;
       } else {
@@ -163,7 +159,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({ onOpenLo
   const handleSaveTeacher = (updatedTeacher: Teacher) => {
     setWorkingConfig((prev) => {
       const idx = prev.teachers.findIndex((t) => t.id === updatedTeacher.id);
-      let updatedTeachers = [...prev.teachers];
+      const updatedTeachers = [...prev.teachers];
       if (idx >= 0) {
         updatedTeachers[idx] = updatedTeacher;
       } else {
@@ -337,7 +333,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({ onOpenLo
                 if (onOpenLoginGate) onOpenLoginGate();
                 else googleSignIn();
               }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-soft active:scale-95 transition-all"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-soft active:scale-95 transition-all cursor-pointer"
             >
               <LogIn className="w-3.5 h-3.5" />
               <span>Sign In as Admin</span>
@@ -348,7 +344,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({ onOpenLo
             type="button"
             onClick={() => setShowResetConfirm(true)}
             disabled={!isAdmin || isSaving}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-brand-surface border border-brand-border text-brand-text-secondary hover:text-rose-600 hover:border-rose-200 shadow-soft active:scale-95 transition-all disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-brand-surface border border-brand-border text-brand-text-secondary hover:text-rose-600 hover:border-rose-200 shadow-soft active:scale-95 transition-all disabled:opacity-40 cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Reset Baseline</span>
@@ -358,7 +354,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({ onOpenLo
             type="button"
             onClick={handleSaveAll}
             disabled={!isAdmin || isSaving}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-all disabled:opacity-40"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-all disabled:opacity-40 cursor-pointer"
           >
             <Save className="w-3.5 h-3.5" />
             <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
@@ -389,7 +385,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({ onOpenLo
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`relative px-4 py-2.5 rounded-t-xl text-xs font-semibold whitespace-nowrap flex items-center gap-2 transition-all ${
+              className={`relative px-4 py-2.5 rounded-t-xl text-xs font-semibold whitespace-nowrap flex items-center gap-2 transition-all cursor-pointer ${
                 isActive
                   ? 'text-brand-primary bg-white dark:bg-brand-surface border-t-2 border-brand-primary shadow-xs'
                   : 'text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg/50'
@@ -415,540 +411,67 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({ onOpenLo
 
       {/* TAB 1: CLASSES & ENROLLMENTS */}
       {activeTab === 'classes' && (
-        <div className="space-y-5 animate-fadeIn">
-          {/* Quick Metrics */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-4 rounded-xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft">
-              <span className="text-[10px] uppercase font-bold text-brand-text-secondary">Class Sections</span>
-              <span className="text-xl font-extrabold text-brand-text-primary font-mono block mt-0.5">
-                {classTotals.classesCount}
-              </span>
-            </div>
-            <div className="p-4 rounded-xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft">
-              <span className="text-[10px] uppercase font-bold text-blue-600 dark:text-blue-400">Total Enrolled Boys</span>
-              <span className="text-xl font-extrabold text-blue-700 dark:text-blue-300 font-mono block mt-0.5">
-                {classTotals.boys.toLocaleString()}
-              </span>
-            </div>
-            <div className="p-4 rounded-xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft">
-              <span className="text-[10px] uppercase font-bold text-rose-600 dark:text-rose-400">Total Enrolled Girls</span>
-              <span className="text-xl font-extrabold text-rose-700 dark:text-rose-300 font-mono block mt-0.5">
-                {classTotals.girls.toLocaleString()}
-              </span>
-            </div>
-            <div className="p-4 rounded-xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft">
-              <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400">Total School Strength</span>
-              <span className="text-xl font-extrabold text-emerald-700 dark:text-emerald-300 font-mono block mt-0.5">
-                {classTotals.total.toLocaleString()}
-              </span>
-            </div>
-          </div>
-
-          {/* Enrollment Source Setting Card */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <span className="text-xs font-bold text-brand-text-primary">
-                Daily Attendance Enrollment Source
-              </span>
-              <p className="text-xs text-brand-text-secondary leading-relaxed max-w-2xl">
-                Where the attendance register gets its student counts from.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => setWorkingConfig((prev) => ({ ...prev, enrollmentMode: 'manual' }))}
-                className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
-                  workingConfig.enrollmentMode === 'manual'
-                    ? 'bg-brand-primary text-white shadow-soft'
-                    : 'bg-slate-100 dark:bg-slate-800 text-brand-text-secondary hover:text-brand-text-primary'
-                }`}
-              >
-                Manual Values
-              </button>
-              <button
-                type="button"
-                onClick={() => setWorkingConfig((prev) => ({ ...prev, enrollmentMode: 'google_sheet' }))}
-                className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
-                  workingConfig.enrollmentMode === 'google_sheet'
-                    ? 'bg-brand-primary text-white shadow-soft'
-                    : 'bg-slate-100 dark:bg-slate-800 text-brand-text-secondary hover:text-brand-text-primary'
-                }`}
-              >
-                Google Sheet Sync
-              </button>
-            </div>
-          </div>
-
-          {/* Search and Add Class Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-brand-text-secondary" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search class by code or teacher..."
-                className="w-full pl-9 pr-3 py-2 rounded-xl text-xs font-medium bg-white dark:bg-brand-surface border border-brand-border text-brand-text-primary focus:outline-none focus:border-brand-primary"
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                setEditingClass(null);
-                setIsClassModalOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-all self-start sm:self-auto"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add New Class Section</span>
-            </button>
-          </div>
-
-          {/* Classes Table */}
-          <div className="rounded-2xl border border-brand-border bg-white dark:bg-brand-surface shadow-soft overflow-hidden">
-            <div className="overflow-x-auto custom-scrollbar">
-              <table className="w-full text-left text-xs border-collapse min-w-[720px]">
-                <thead>
-                  <tr className="bg-slate-50/75 dark:bg-slate-900/40 border-b border-brand-border font-bold text-brand-text-secondary">
-                    <th className="py-3 px-4">Class Code</th>
-                    <th className="py-3 px-4">Display Name</th>
-                    <th className="py-3 px-4">Class Teacher In-Charge</th>
-                    <th className="py-3 px-3 text-center">Boys</th>
-                    <th className="py-3 px-3 text-center">Girls</th>
-                    <th className="py-3 px-3 text-center">Total Enrolled</th>
-                    <th className="py-3 px-4">Subjects</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-brand-border/60">
-                  {filteredClasses.map((cls) => (
-                    <tr
-                      key={cls.classKey}
-                      className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
-                    >
-                      <td className="py-3 px-4 font-mono font-bold text-brand-text-primary">
-                        {cls.romanName}
-                      </td>
-                      <td className="py-3 px-4 font-semibold text-brand-text-primary">
-                        {cls.displayName}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-brand-text-primary font-medium">
-                          {cls.classTeacher || '—'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-center font-mono font-semibold text-blue-600 dark:text-blue-400">
-                        {cls.enrolledBoys}
-                      </td>
-                      <td className="py-3 px-3 text-center font-mono font-semibold text-rose-600 dark:text-rose-400">
-                        {cls.enrolledGirls}
-                      </td>
-                      <td className="py-3 px-3 text-center font-mono font-extrabold text-brand-primary">
-                        {cls.enrolledBoys + cls.enrolledGirls}
-                      </td>
-                      <td className="py-3 px-4 text-brand-text-secondary text-[11px] max-w-xs truncate">
-                        {cls.subjects?.join(', ') || 'Standard Curriculum'}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingClass(cls);
-                              setIsClassModalOpen(true);
-                            }}
-                            className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-primary hover:bg-brand-bg transition-colors active:bg-brand-bg"
-                            title="Edit class"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteClass(cls.classKey)}
-                            className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors active:bg-rose-50"
-                            title="Delete class"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredClasses.length === 0 && (
-                    <tr>
-                      <td colSpan={8} className="py-8 text-center text-xs text-brand-text-secondary">
-                        No matching class sections found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <ClassesSettingsTab
+          workingConfig={workingConfig}
+          setWorkingConfig={setWorkingConfig}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          filteredClasses={filteredClasses}
+          classTotals={classTotals}
+          onAddClass={() => {
+            setEditingClass(null);
+            setIsClassModalOpen(true);
+          }}
+          onEditClass={(cls) => {
+            setEditingClass(cls);
+            setIsClassModalOpen(true);
+          }}
+          onDeleteClass={handleDeleteClass}
+        />
       )}
 
       {/* TAB 2: FACULTY & SUBJECT IN-CHARGE */}
       {activeTab === 'teachers' && (
-        <div className="space-y-5 animate-fadeIn">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-brand-text-secondary" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search faculty by name or subject..."
-                className="w-full pl-9 pr-3 py-2 rounded-xl text-xs font-medium bg-white dark:bg-brand-surface border border-brand-border text-brand-text-primary focus:outline-none focus:border-brand-primary"
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                setEditingTeacher(null);
-                setIsTeacherModalOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-all self-start sm:self-auto"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add Faculty Member</span>
-            </button>
-          </div>
-
-          {/* Teachers Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredTeachers.map((teacher) => (
-              <div
-                key={teacher.id}
-                className="p-4 rounded-2xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft flex flex-col justify-between space-y-3 hover:border-brand-primary/40 transition-colors"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h3 className="text-sm font-bold text-brand-text-primary">{teacher.name}</h3>
-                      <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-semibold bg-brand-primary/10 text-brand-primary mt-0.5">
-                        {teacher.designation || 'Subject Specialist'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingTeacher(teacher);
-                          setIsTeacherModalOpen(true);
-                        }}
-                        className="p-1 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-primary hover:bg-brand-bg transition-colors active:bg-brand-bg"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteTeacher(teacher.id)}
-                        className="p-1 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors active:bg-rose-50"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Subjects */}
-                  <div className="mt-3 space-y-2">
-                    <span className="text-[10px] uppercase font-bold text-brand-text-secondary tracking-wider block">
-                      Subjects & Sections:
-                    </span>
-                    <div className="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar pr-1">
-                      {teacher.subjects.map((sub, idx) => (
-                        <div
-                          key={idx}
-                          className="p-2 rounded-lg bg-slate-50 dark:bg-slate-900/40 border border-brand-border/60 text-xs"
-                        >
-                          <span className="font-bold text-brand-text-primary block">{sub.name}</span>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {sub.sections.map((sec) => (
-                              <span
-                                key={sec}
-                                className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-white dark:bg-brand-surface border border-brand-border text-brand-text-secondary"
-                              >
-                                {sec}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-brand-border/60 text-[11px] text-brand-text-secondary">
-                  School: Peoples Higher Secondary School Jamshoro
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <TeachersSettingsTab
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          filteredTeachers={filteredTeachers}
+          onAddTeacher={() => {
+            setEditingTeacher(null);
+            setIsTeacherModalOpen(true);
+          }}
+          onEditTeacher={(teacher) => {
+            setEditingTeacher(teacher);
+            setIsTeacherModalOpen(true);
+          }}
+          onDeleteTeacher={handleDeleteTeacher}
+        />
       )}
 
       {/* TAB 3: SHEET & ATTENDANCE SAFEGUARDS */}
       {activeTab === 'safeguards' && (
-        <div className="space-y-5 animate-fadeIn">
-          {/* Master Google Sheet Editing Permission Toggle */}
-          <div className="p-6 rounded-2xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft space-y-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1 max-w-2xl">
-                <div className="flex items-center gap-2">
-                  {workingConfig.sheetEditingEnabled ? (
-                    <span className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300">
-                      <Unlock className="w-5 h-5" />
-                    </span>
-                  ) : (
-                    <span className="p-2 rounded-xl bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300">
-                      <Lock className="w-5 h-5" />
-                    </span>
-                  )}
-                  <div>
-                    <h3 className="text-sm font-bold text-brand-text-primary">
-                      Google Sheet Student Records Edit Permission
-                    </h3>
-                    <p className="text-xs text-brand-text-secondary">
-                      Toggle whether faculty members and visitors can add or edit student records in the Google Sheet.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Master Switch */}
-              <button
-                type="button"
-                onClick={() =>
-                  setWorkingConfig((prev) => ({
-                    ...prev,
-                    sheetEditingEnabled: !prev.sheetEditingEnabled,
-                  }))
-                }
-                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  workingConfig.sheetEditingEnabled ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-700'
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    workingConfig.sheetEditingEnabled ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-brand-border/80 space-y-2">
-              <label className="block text-xs font-semibold text-brand-text-primary">
-                Lockout Banner Message (displayed when editing is locked):
-              </label>
-              <textarea
-                rows={2}
-                value={workingConfig.sheetEditingLockedMessage || ''}
-                onChange={(e) =>
-                  setWorkingConfig((prev) => ({
-                    ...prev,
-                    sheetEditingLockedMessage: e.target.value,
-                  }))
-                }
-                placeholder="Message shown to teachers and visitors when sheet editing is disabled..."
-                className="w-full px-3 py-2 rounded-xl text-xs bg-white dark:bg-brand-surface border border-brand-border text-brand-text-primary focus:outline-none focus:border-brand-primary resize-none"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-brand-text-secondary pt-2">
-              <div className="p-3 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-900/40">
-                <span className="font-bold text-blue-700 dark:text-blue-300 block mb-0.5">
-                  When Enabled (Open Editing):
-                </span>
-                Faculty members can click "Add Student", edit contact numbers, addresses, and status with immediate cloud synchronization.
-              </div>
-              <div className="p-3 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40">
-                <span className="font-bold text-amber-700 dark:text-amber-300 block mb-0.5">
-                  When Disabled (View-Only Safeguard):
-                </span>
-                The spreadsheet is locked into safe read-only mode for non-admin users. Only verified school administrators can submit mutations.
-              </div>
-            </div>
-          </div>
-        </div>
+        <SafeguardsSettingsTab
+          workingConfig={workingConfig}
+          setWorkingConfig={setWorkingConfig}
+        />
       )}
 
       {/* TAB 4: BELL SCHEDULE & PERIOD TIMINGS */}
       {activeTab === 'periods' && (
-        <div className="space-y-5 animate-fadeIn">
-          <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <h3 className="text-sm font-bold text-brand-text-primary flex items-center gap-2">
-                <Clock className="w-4 h-4 text-brand-primary" />
-                <span>School Bell Timetable & Period Duration</span>
-              </h3>
-              <p className="text-xs text-brand-text-secondary">
-                Adjust morning assembly, class period start/end timings, and Friday timings.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleAddPeriod}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-all"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Add Period</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Periods Table */}
-          <div className="rounded-2xl border border-brand-border bg-white dark:bg-brand-surface shadow-soft overflow-hidden">
-            <div className="overflow-x-auto custom-scrollbar">
-              <table className="w-full text-left text-xs border-collapse min-w-[640px]">
-                <thead>
-                  <tr className="bg-slate-50/75 dark:bg-slate-900/40 border-b border-brand-border font-bold text-brand-text-secondary">
-                    <th className="py-3 px-4">Period Name</th>
-                    <th className="py-3 px-4">Mon–Thu Start</th>
-                    <th className="py-3 px-4">Mon–Thu End</th>
-                    <th className="py-3 px-4">Friday Start</th>
-                    <th className="py-3 px-4">Friday End</th>
-                    <th className="py-3 px-3 text-center">Duration</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-brand-border/60">
-                  {workingConfig.periods.map((period, idx) => (
-                    <tr
-                      key={idx}
-                      className={
-                        period.isBreak
-                          ? 'bg-amber-50/40 dark:bg-amber-950/20 font-semibold'
-                          : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/30'
-                      }
-                    >
-                      <td className="py-3 px-4">
-                        <input
-                          type="text"
-                          value={period.name}
-                          onChange={(e) => handlePeriodChange(idx, 'name', e.target.value)}
-                          className="w-full max-w-[180px] px-2 py-1 rounded-lg text-xs font-bold bg-white dark:bg-brand-panel border border-brand-border text-brand-text-primary focus:outline-none focus:border-brand-primary"
-                        />
-                      </td>
-                      <td className="py-3 px-4">
-                        <input
-                          type="text"
-                          value={period.start}
-                          onChange={(e) => handlePeriodChange(idx, 'start', e.target.value)}
-                          className="w-24 px-2 py-1 rounded-lg text-xs font-mono bg-white dark:bg-brand-panel border border-brand-border text-brand-text-primary focus:outline-none focus:border-brand-primary"
-                        />
-                      </td>
-                      <td className="py-3 px-4">
-                        <input
-                          type="text"
-                          value={period.end}
-                          onChange={(e) => handlePeriodChange(idx, 'end', e.target.value)}
-                          className="w-24 px-2 py-1 rounded-lg text-xs font-mono bg-white dark:bg-brand-panel border border-brand-border text-brand-text-primary focus:outline-none focus:border-brand-primary"
-                        />
-                      </td>
-                      <td className="py-3 px-4">
-                        <input
-                          type="text"
-                          value={period.friStart || ''}
-                          onChange={(e) => handlePeriodChange(idx, 'friStart', e.target.value)}
-                          placeholder="e.g. 8:15 AM"
-                          className="w-24 px-2 py-1 rounded-lg text-xs font-mono bg-white dark:bg-brand-panel border border-brand-border text-brand-text-primary focus:outline-none focus:border-brand-primary"
-                        />
-                      </td>
-                      <td className="py-3 px-4">
-                        <input
-                          type="text"
-                          value={period.friEnd || ''}
-                          onChange={(e) => handlePeriodChange(idx, 'friEnd', e.target.value)}
-                          placeholder="e.g. 8:50 AM"
-                          className="w-24 px-2 py-1 rounded-lg text-xs font-mono bg-white dark:bg-brand-panel border border-brand-border text-brand-text-primary focus:outline-none focus:border-brand-primary"
-                        />
-                      </td>
-                      <td className="py-3 px-3 text-center font-mono font-bold text-brand-primary">
-                        {period.durationMinutes || 40}m
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleRemovePeriod(idx)}
-                          className="p-1 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors active:bg-rose-50"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <PeriodsSettingsTab
+          workingConfig={workingConfig}
+          onAddPeriod={handleAddPeriod}
+          onPeriodChange={handlePeriodChange}
+          onRemovePeriod={handleRemovePeriod}
+        />
       )}
 
       {/* TAB 5: SCHOOL IDENTITY */}
       {activeTab === 'identity' && (
-        <div className="p-6 rounded-2xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft space-y-4 max-w-3xl animate-fadeIn">
-          <h3 className="text-sm font-bold text-brand-text-primary flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-brand-primary" />
-            <span>School Institutional Details</span>
-          </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-brand-text-secondary mb-1">
-                Official School Name
-              </label>
-              <input
-                type="text"
-                value={workingConfig.schoolName}
-                onChange={(e) => setWorkingConfig((prev) => ({ ...prev, schoolName: e.target.value }))}
-                className="w-full px-3 py-2 rounded-xl text-xs font-medium bg-white dark:bg-brand-panel border border-brand-border text-brand-text-primary focus:outline-none focus:border-brand-primary"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-brand-text-secondary mb-1">
-                Academic Session
-              </label>
-              <input
-                type="text"
-                value={workingConfig.academicSession}
-                onChange={(e) => setWorkingConfig((prev) => ({ ...prev, academicSession: e.target.value }))}
-                className="w-full px-3 py-2 rounded-xl text-xs font-medium bg-white dark:bg-brand-panel border border-brand-border text-brand-text-primary focus:outline-none focus:border-brand-primary"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-brand-text-secondary mb-1">
-                Examination Board Affiliation
-              </label>
-              <input
-                type="text"
-                value={workingConfig.affiliation}
-                onChange={(e) => setWorkingConfig((prev) => ({ ...prev, affiliation: e.target.value }))}
-                className="w-full px-3 py-2 rounded-xl text-xs font-medium bg-white dark:bg-brand-panel border border-brand-border text-brand-text-primary focus:outline-none focus:border-brand-primary"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-brand-text-secondary mb-1">
-                Principal / Head Name
-              </label>
-              <input
-                type="text"
-                value={workingConfig.principalName}
-                onChange={(e) => setWorkingConfig((prev) => ({ ...prev, principalName: e.target.value }))}
-                className="w-full px-3 py-2 rounded-xl text-xs font-medium bg-white dark:bg-brand-panel border border-brand-border text-brand-text-primary focus:outline-none focus:border-brand-primary"
-              />
-            </div>
-          </div>
-        </div>
+        <IdentitySettingsTab
+          workingConfig={workingConfig}
+          setWorkingConfig={setWorkingConfig}
+        />
       )}
 
       {/* TAB 6: TIMETABLE & PERIOD SCHEDULES */}
@@ -974,3 +497,5 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({ onOpenLo
     </div>
   );
 };
+
+export default SchoolSettingsView;

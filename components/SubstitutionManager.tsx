@@ -17,11 +17,11 @@ import {
   DailySubstitutionRecord,
   TeacherProxyStats,
 } from '../services/substitutionService';
-import SelectField from './ui/SelectField';
-import { UserIcon } from './icons/MiscIcons';
 import { printHtml } from '../utils/printHelper';
 import { copyToClipboard } from '../utils/clipboard';
-import { BaseModal } from './ui/BaseModal';
+import { SubstitutionTodayBoard, AffectedSlot } from './substitution/SubstitutionTodayBoard';
+import { SubstitutionLedgerTable } from './substitution/SubstitutionLedgerTable';
+import { TeacherProxyStatsModal } from './substitution/TeacherProxyStatsModal';
 
 interface SubstitutionManagerProps {
   timetable: TimetableData;
@@ -79,7 +79,6 @@ export const SubstitutionManager: React.FC<SubstitutionManagerProps> = ({
 
   // Compute live teacher proxy workload statistics
   const combinedHistory = useMemo(() => {
-    // Merge today's uncommitted in-memory assignments with history
     const existingOtherDates = historyRecords.filter(r => r.dateKey !== todayKey);
     const todayRecord: DailySubstitutionRecord = {
       dateKey: todayKey,
@@ -126,20 +125,9 @@ export const SubstitutionManager: React.FC<SubstitutionManagerProps> = ({
   };
 
   // Find all affected slots today for the absent teachers
-  const affectedSlots = useMemo(() => {
+  const affectedSlots: AffectedSlot[] = useMemo(() => {
     if (absentTeacherIds.length === 0) return [];
-    const results: {
-      periodNo: number;
-      periodIndex: number;
-      classLabel: string;
-      subjectName: string;
-      absentTeacher: Teacher;
-      freeTeachers: (Teacher & {
-        thisWeekCount: number;
-        teachesSameSubject: boolean;
-        loadLevel: 'low' | 'moderate' | 'heavy';
-      })[];
-    }[] = [];
+    const results: AffectedSlot[] = [];
 
     const absentSet = new Set(absentTeacherIds);
     const maxPeriods =
@@ -195,12 +183,7 @@ export const SubstitutionManager: React.FC<SubstitutionManagerProps> = ({
   }, [absentTeacherIds, timetable, teachers, day, statsMap]);
 
   const handleAssignProxy = (
-    slot: {
-      periodNo: number;
-      classLabel: string;
-      subjectName: string;
-      absentTeacher: Teacher;
-    },
+    slot: AffectedSlot,
     proxyTeacherId: string
   ) => {
     const proxyTeacher = teachers.find(t => t.id === proxyTeacherId);
@@ -341,10 +324,6 @@ export const SubstitutionManager: React.FC<SubstitutionManagerProps> = ({
     printHtml(html);
   };
 
-  const absentTeachersList = absentTeacherIds
-    .map(id => teachers.find(t => t.id === id))
-    .filter((t): t is Teacher => !!t);
-
   const coveredCount = affectedSlots.filter(s =>
     assignments.some(
       a =>
@@ -414,7 +393,7 @@ export const SubstitutionManager: React.FC<SubstitutionManagerProps> = ({
             <button
               type="button"
               onClick={handleCopyWhatsAppNotice}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl transition-all shadow-sm ${
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl transition-all shadow-sm cursor-pointer ${
                 whatsappCopied
                   ? 'bg-emerald-600 text-white shadow-emerald-500/20'
                   : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
@@ -430,7 +409,7 @@ export const SubstitutionManager: React.FC<SubstitutionManagerProps> = ({
               type="button"
               onClick={handlePrintSlip}
               disabled={affectedSlots.length === 0}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-brand-bg hover:bg-brand-border text-brand-text-primary border border-brand-border disabled:opacity-40 transition-colors shadow-sm"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-brand-bg hover:bg-brand-border text-brand-text-primary border border-brand-border disabled:opacity-40 transition-colors shadow-sm cursor-pointer"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -445,7 +424,7 @@ export const SubstitutionManager: React.FC<SubstitutionManagerProps> = ({
           <button
             type="button"
             onClick={() => setActiveSubTab('today')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeSubTab === 'today'
                 ? 'bg-brand-primary text-white shadow-xs'
                 : 'text-brand-text-secondary hover:text-brand-text-primary bg-brand-bg/50'
@@ -456,7 +435,7 @@ export const SubstitutionManager: React.FC<SubstitutionManagerProps> = ({
           <button
             type="button"
             onClick={() => setActiveSubTab('ledger')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
               activeSubTab === 'ledger'
                 ? 'bg-brand-primary text-white shadow-xs'
                 : 'text-brand-text-secondary hover:text-brand-text-primary bg-brand-bg/50'
@@ -472,421 +451,41 @@ export const SubstitutionManager: React.FC<SubstitutionManagerProps> = ({
 
       {/* TAB 1: TODAY'S ALLOCATIONS */}
       {activeSubTab === 'today' && (
-        <div className="space-y-5 animate-fadeIn">
-          {/* Mark Teacher Absent Input */}
-          <div className="glass-card rounded-2xl p-4 border border-brand-border flex flex-col sm:flex-row sm:items-end gap-3">
-            <div className="flex-1 min-w-[240px]">
-              <SelectField
-                id="absent-teacher-select"
-                label="Mark Teacher Absent Today:"
-                value={selectedTeacherToAdd}
-                onChange={e => setSelectedTeacherToAdd(e.target.value)}
-                placeholder="Select teacher..."
-              >
-                <option value="">Select teacher...</option>
-                {teachers
-                  .filter(t => !absentTeacherIds.includes(t.id))
-                  .sort((a, b) => a.name.localeCompare(b.name))
-                  .map(t => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} ({t.designation || 'Teacher'})
-                    </option>
-                  ))}
-              </SelectField>
-            </div>
-            <button
-              type="button"
-              onClick={handleMarkAbsent}
-              disabled={!selectedTeacherToAdd}
-              className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-700 disabled:opacity-40 text-white transition-colors shadow-sm"
-            >
-              + Mark Absent
-            </button>
-          </div>
-
-          {/* Absent Teachers Chips */}
-          {absentTeachersList.length > 0 && (
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-brand-text-secondary uppercase tracking-wider">
-                Marked Absent Today ({absentTeachersList.length}):
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {absentTeachersList.map(teacher => (
-                  <span
-                    key={teacher.id}
-                    className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-xl text-xs font-semibold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 shadow-xs"
-                  >
-                    <UserIcon className="w-3.5 h-3.5" />
-                    <span>{teacher.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveAbsent(teacher.id)}
-                      className="w-4 h-4 rounded-full flex items-center justify-center hover:bg-rose-200 dark:hover:bg-rose-800 text-rose-600 dark:text-rose-400 transition-colors ml-0.5"
-                      title="Remove absence"
-                    >
-                      ✕
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Quick Metrics Bar */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-brand-surface p-3.5 rounded-xl border border-brand-border">
-              <span className="text-[10px] uppercase font-bold text-brand-text-secondary block">
-                Absent Faculty
-              </span>
-              <span className="text-lg font-extrabold text-rose-600 font-mono">
-                {absentTeacherIds.length}
-              </span>
-            </div>
-            <div className="bg-brand-surface p-3.5 rounded-xl border border-brand-border">
-              <span className="text-[10px] uppercase font-bold text-brand-text-secondary block">
-                Affected Slots
-              </span>
-              <span className="text-lg font-extrabold text-amber-600 font-mono">
-                {affectedSlots.length}
-              </span>
-            </div>
-            <div className="bg-brand-surface p-3.5 rounded-xl border border-brand-border">
-              <span className="text-[10px] uppercase font-bold text-brand-text-secondary block">
-                Proxies Assigned
-              </span>
-              <span className="text-lg font-extrabold text-emerald-600 font-mono">
-                {coveredCount} / {affectedSlots.length}
-              </span>
-            </div>
-          </div>
-
-          {/* Vacant Slots Table */}
-          {affectedSlots.length === 0 ? (
-            <div className="text-center py-10 bg-brand-surface/40 rounded-2xl border border-dashed border-brand-border p-6">
-              <h4 className="text-sm font-semibold text-brand-text-primary">
-                {absentTeacherIds.length === 0
-                  ? 'No Teachers Marked Absent Today'
-                  : 'All Periods Covered or No Scheduled Classes'}
-              </h4>
-              <p className="text-xs text-brand-text-secondary mt-1">
-                {absentTeacherIds.length === 0
-                  ? 'Select an absent teacher above to detect vacant periods and assign balanced proxy coverage.'
-                  : 'The marked teachers have no classes scheduled on this timetable day.'}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-brand-text-secondary">
-                  Vacant Periods Requiring Proxy Coverage ({affectedSlots.length})
-                </h4>
-                <span className="text-[11px] text-brand-text-secondary">
-                  💡 Recommendation engine prioritizes subject specialists and least-loaded teachers this week
-                </span>
-              </div>
-
-              <div className="space-y-2.5">
-                {affectedSlots.map(slot => {
-                  const currentAssignment = assignments.find(
-                    a =>
-                      a.periodNo === slot.periodNo &&
-                      a.classLabel === slot.classLabel &&
-                      a.absentTeacherName === slot.absentTeacher.name
-                  );
-
-                  return (
-                    <div
-                      key={`${slot.periodNo}_${slot.classLabel}_${slot.absentTeacher.id}`}
-                      className="bg-brand-surface p-4 rounded-xl border border-brand-border hover:border-brand-primary/30 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs"
-                    >
-                      {/* Class & Slot Details */}
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 text-[11px] font-bold rounded bg-brand-primary/10 text-brand-primary">
-                            Period {slot.periodNo}
-                          </span>
-                          <span className="text-sm font-bold text-brand-text-primary">
-                            Class {slot.classLabel}
-                          </span>
-                          <span className="text-xs text-brand-text-secondary font-medium">
-                            • {slot.subjectName}
-                          </span>
-                        </div>
-
-                        <p className="text-xs text-brand-text-secondary">
-                          Absent Teacher: <strong className="text-rose-600 font-medium">{slot.absentTeacher.name}</strong>
-                        </p>
-                      </div>
-
-                      {/* Substitution Selection with Equity Hint */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        {currentAssignment ? (
-                          <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 px-3 py-1.5 rounded-xl">
-                            <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">
-                              Proxy: {currentAssignment.proxyTeacherName}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveAssignment(currentAssignment.id)}
-                              className="text-xs text-emerald-700 hover:text-red-600 font-bold ml-1"
-                              title="Change or remove proxy"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 min-w-[320px]">
-                            <div className="flex-1">
-                              <SelectField
-                                id={`proxy-select-${slot.periodNo}-${slot.classLabel}`}
-                                value=""
-                                onChange={e => {
-                                  if (e.target.value) {
-                                    handleAssignProxy(slot, e.target.value);
-                                  }
-                                }}
-                                className="min-h-9 h-9 text-xs py-1"
-                                placeholder={`Assign Free Teacher (${slot.freeTeachers.length} available)...`}
-                              >
-                                <option value="">
-                                  Assign Free Teacher ({slot.freeTeachers.length} available)...
-                                </option>
-                                {slot.freeTeachers.map(ft => {
-                                  let burdenTag = `${ft.thisWeekCount} this wk`;
-                                  if (ft.thisWeekCount === 0) burdenTag = '0 proxies this wk ⭐';
-                                  else if (ft.thisWeekCount >= 3) burdenTag = `⚠️ ${ft.thisWeekCount} proxies this wk`;
-
-                                  const subjectTag = ft.teachesSameSubject ? '• Subject Match' : '';
-
-                                  return (
-                                    <option key={ft.id} value={ft.id}>
-                                      {ft.name} ({burdenTag} {subjectTag})
-                                    </option>
-                                  );
-                                })}
-                              </SelectField>
-                            </div>
-                            <span className="shrink-0 px-2 py-1 text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-100/60 dark:bg-amber-900/30 rounded-lg uppercase tracking-wide">
-                              Unassigned
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
+        <SubstitutionTodayBoard
+          teachers={teachers}
+          absentTeacherIds={absentTeacherIds}
+          selectedTeacherToAdd={selectedTeacherToAdd}
+          setSelectedTeacherToAdd={setSelectedTeacherToAdd}
+          onMarkAbsent={handleMarkAbsent}
+          onRemoveAbsent={handleRemoveAbsent}
+          affectedSlots={affectedSlots}
+          assignments={assignments}
+          onAssignProxy={handleAssignProxy}
+          onRemoveAssignment={handleRemoveAssignment}
+          coveredCount={coveredCount}
+        />
       )}
 
       {/* TAB 2: FACULTY PROXY LOAD & EQUITY LEDGER */}
       {activeSubTab === 'ledger' && (
-        <div className="space-y-5 animate-fadeIn">
-          {/* Equity Metric Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-4 rounded-xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft">
-              <span className="text-[10px] uppercase font-bold text-brand-text-secondary">
-                Proxies This Week
-              </span>
-              <span className="text-xl font-extrabold text-brand-primary font-mono block mt-0.5">
-                {equitySummary.totalWeekProxies}
-              </span>
-            </div>
-
-            <div className="p-4 rounded-xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft">
-              <span className="text-[10px] uppercase font-bold text-brand-text-secondary">
-                Avg Weekly Load / Staff
-              </span>
-              <span className="text-xl font-extrabold text-brand-text-primary font-mono block mt-0.5">
-                {equitySummary.avgLoad} periods
-              </span>
-            </div>
-
-            <div className="p-4 rounded-xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft">
-              <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400">
-                Optimal Load Staff
-              </span>
-              <span className="text-xl font-extrabold text-emerald-700 dark:text-emerald-300 font-mono block mt-0.5">
-                {equitySummary.optimalCount}
-              </span>
-            </div>
-
-            <div className="p-4 rounded-xl bg-white dark:bg-brand-surface border border-brand-border shadow-soft">
-              <span className="text-[10px] uppercase font-bold text-rose-600 dark:text-rose-400">
-                High Burden Staff (≥3)
-              </span>
-              <span className="text-xl font-extrabold text-rose-700 dark:text-rose-300 font-mono block mt-0.5">
-                {equitySummary.heavyCount}
-              </span>
-            </div>
-          </div>
-
-          {/* Search & Filter */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-brand-text-secondary">
-                Staff Workload Distribution & Assignment History
-              </h4>
-              <p className="text-[11px] text-brand-text-secondary">
-                Monitors proxy fairness over the current week and month to prevent faculty burnout.
-              </p>
-            </div>
-            <div className="w-full sm:w-64">
-              <input
-                type="text"
-                value={searchLedger}
-                onChange={e => setSearchLedger(e.target.value)}
-                placeholder="Search teacher by name..."
-                className="w-full px-3 py-1.5 text-xs rounded-xl bg-brand-surface border border-brand-border text-brand-text-primary outline-hidden focus:border-brand-primary"
-              />
-            </div>
-          </div>
-
-          {/* Faculty Ledger Table */}
-          <div className="bg-brand-surface rounded-2xl border border-brand-border overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-brand-bg/80 border-b border-brand-border text-brand-text-secondary font-semibold">
-                    <th className="py-3 px-4">Faculty Member</th>
-                    <th className="py-3 px-3 text-center">Today</th>
-                    <th className="py-3 px-3 text-center">This Week</th>
-                    <th className="py-3 px-3 text-center">This Month</th>
-                    <th className="py-3 px-3 text-center">Total Lifetime</th>
-                    <th className="py-3 px-3 text-center">Equity Status</th>
-                    <th className="py-3 px-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-brand-border">
-                  {filteredLedger.map(stats => {
-                    return (
-                      <tr key={stats.teacherId} className="hover:bg-brand-bg/30 transition-colors">
-                        <td className="py-3 px-4">
-                          <div className="font-bold text-brand-text-primary text-xs">
-                            {stats.teacherName}
-                          </div>
-                          <div className="text-[11px] text-brand-text-secondary">
-                            {stats.designation || 'Faculty Member'}
-                          </div>
-                        </td>
-
-                        <td className="py-3 px-3 text-center font-mono font-bold text-brand-text-primary">
-                          {stats.todayCount > 0 ? (
-                            <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300">
-                              {stats.todayCount}
-                            </span>
-                          ) : (
-                            <span className="text-brand-text-secondary/40">0</span>
-                          )}
-                        </td>
-
-                        <td className="py-3 px-3 text-center font-mono font-bold">
-                          <span
-                            className={`px-2.5 py-0.5 rounded-full ${
-                              stats.thisWeekCount === 0
-                                ? 'bg-slate-100 dark:bg-slate-800 text-brand-text-secondary'
-                                : stats.thisWeekCount < 3
-                                ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300'
-                                : 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300'
-                            }`}
-                          >
-                            {stats.thisWeekCount}
-                          </span>
-                        </td>
-
-                        <td className="py-3 px-3 text-center font-mono text-brand-text-primary font-semibold">
-                          {stats.thisMonthCount}
-                        </td>
-
-                        <td className="py-3 px-3 text-center font-mono text-brand-text-secondary font-medium">
-                          {stats.totalCount}
-                        </td>
-
-                        <td className="py-3 px-3 text-center">
-                          {stats.loadLevel === 'heavy' ? (
-                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/40">
-                              Heavy (≥3)
-                            </span>
-                          ) : stats.loadLevel === 'moderate' ? (
-                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-900/40">
-                              Moderate (2)
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/40">
-                              Optimal (0-1)
-                            </span>
-                          )}
-                        </td>
-
-                        <td className="py-3 px-3 text-right">
-                          <button
-                            type="button"
-                            onClick={() => setInspectTeacherStats(stats)}
-                            className="px-2.5 py-1 text-xs rounded-lg bg-brand-bg hover:bg-brand-border text-brand-text-secondary hover:text-brand-text-primary border border-brand-border transition-colors"
-                          >
-                            View Log ({stats.recentAssignments.length})
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <SubstitutionLedgerTable
+          filteredLedger={filteredLedger}
+          searchLedger={searchLedger}
+          setSearchLedger={setSearchLedger}
+          equitySummary={equitySummary}
+          onInspectTeacher={stats => setInspectTeacherStats(stats)}
+        />
       )}
 
       {/* Teacher Assignment History Modal */}
       {inspectTeacherStats && (
-        <BaseModal
-          isOpen={!!inspectTeacherStats}
+        <TeacherProxyStatsModal
+          inspectTeacherStats={inspectTeacherStats}
           onClose={() => setInspectTeacherStats(null)}
-          maxWidth="lg"
-          title={`Proxy History: ${inspectTeacherStats.teacherName}`}
-          subtitle={`${inspectTeacherStats.designation} • Total Proxies: ${inspectTeacherStats.totalCount}`}
-          footer={
-            <button
-              type="button"
-              onClick={() => setInspectTeacherStats(null)}
-              className="px-4 py-1.5 text-xs font-semibold rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors cursor-pointer"
-            >
-              Close
-            </button>
-          }
-        >
-          {inspectTeacherStats.recentAssignments.length === 0 ? (
-            <div className="py-8 text-center text-xs text-slate-500 dark:text-slate-400">
-              No proxy periods recorded for this teacher yet.
-            </div>
-          ) : (
-            <div className="max-h-72 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-              {inspectTeacherStats.recentAssignments.map((a, idx) => (
-                <div
-                  key={a.id || idx}
-                  className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3 text-xs"
-                >
-                  <div>
-                    <div className="font-bold text-slate-900 dark:text-white">
-                      Period {a.periodNo} • Class {a.classLabel}
-                    </div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      Subject: {a.subjectName} • Relieving: {a.absentTeacherName}
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="font-mono text-[11px] font-semibold text-primary block">
-                      {a.dateKey}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </BaseModal>
+        />
       )}
     </div>
   );
 };
+
+export default SubstitutionManager;
