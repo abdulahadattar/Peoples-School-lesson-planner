@@ -53,7 +53,8 @@ import { DossierCard } from './documents/DossierCard';
 import { DiscrepancyAuditTable, DiscrepancyAuditItem } from './documents/DiscrepancyAuditTable';
 import { DocumentScansGrid } from './documents/DocumentScansGrid';
 import { ConfirmDialog } from './ui/ConfirmDialog';
-import { Toast, ToastMessage } from './ui/Toast';
+import { useToast } from '../hooks/useToast';
+import { BaseModal } from './ui/BaseModal';
 
 export const DocumentArchiveCenterView: React.FC = () => {
   const [activeMainTab, setActiveMainTab] = useState<'dossiers' | 'extracted' | 'audit'>('dossiers');
@@ -76,7 +77,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
   const [isAutoLinking, setIsAutoLinking] = useState(false);
   const [assigningDoc, setAssigningDoc] = useState<StudentDocumentRecord | null>(null);
   const [targetAssignGr, setTargetAssignGr] = useState('');
-  const [toast, setToast] = useState<ToastMessage | null>(null);
+  const { showToast, ToastComponent } = useToast(4000);
   const [isOperatingDoc, setIsOperatingDoc] = useState(false);
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
   const [applyingFlagId, setApplyingFlagId] = useState<string | null>(null);
@@ -96,10 +97,6 @@ export const DocumentArchiveCenterView: React.FC = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderZipInputRef = useRef<HTMLInputElement>(null);
-
-  const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
-    setToast({ message, type });
-  };
 
   const handleToggleSelectDoc = (docId: string) => {
     setSelectedDocIds((prev) =>
@@ -990,79 +987,14 @@ export const DocumentArchiveCenterView: React.FC = () => {
 
       {/* Full Document Image Preview Modal */}
       {selectedPreviewDoc && (
-        <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-brand-surface rounded-2xl max-w-3xl w-full p-4 border border-brand-border space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-brand-border">
-              <div>
-                <span className="text-xs font-mono font-bold text-brand-primary">
-                  GR #{selectedPreviewDoc.grNo} • {DOCUMENT_LABELS[selectedPreviewDoc.classification] || selectedPreviewDoc.classification}
-                </span>
-                <h4 className="text-sm font-bold text-brand-text-primary">
-                  {selectedPreviewDoc.originalFilename}
-                </h4>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedPreviewDoc(null)}
-                className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg transition-colors active:bg-brand-bg cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="bg-slate-950 rounded-xl p-2 flex items-center justify-center min-h-[300px] max-h-[500px] overflow-hidden">
-              {selectedPreviewDoc.filename.toLowerCase().endsWith('.pdf') ? (
-                <iframe
-                  src={selectedPreviewDoc.url}
-                  className="w-full h-[480px] rounded border-0"
-                  title={selectedPreviewDoc.originalFilename}
-                />
-              ) : (
-                <DocThumbnail
-                  url={selectedPreviewDoc.url}
-                  filename={selectedPreviewDoc.filename}
-                  classification={selectedPreviewDoc.classification}
-                  className="max-h-[480px] w-auto object-contain rounded"
-                />
-              )}
-            </div>
-
-            {selectedPreviewDoc.extractedData && (
-              <div className="bg-brand-bg p-3 rounded-xl border border-brand-border text-xs">
-                <div className="font-bold text-brand-primary uppercase text-[11px] mb-2 flex items-center gap-1.5">
-                  <ScanLine className="w-3.5 h-3.5 text-amber-500" />
-                  Extracted Record
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <div>
-                    <span className="text-[10px] text-slate-400 block">Student Name</span>
-                    <span className="font-semibold text-brand-text-primary">
-                      {selectedPreviewDoc.extractedData.studentName || 'N/A'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 block">Father Name</span>
-                    <span className="font-semibold text-brand-text-primary">
-                      {selectedPreviewDoc.extractedData.fatherName || 'N/A'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 block">B-Form / CRC</span>
-                    <span className="font-mono font-bold text-brand-text-primary">
-                      {selectedPreviewDoc.extractedData.bFormNo || 'N/A'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 block">Father CNIC</span>
-                    <span className="font-mono font-bold text-brand-text-primary">
-                      {selectedPreviewDoc.extractedData.fatherCnic || 'N/A'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-brand-border">
+        <BaseModal
+          isOpen={!!selectedPreviewDoc}
+          onClose={() => setSelectedPreviewDoc(null)}
+          maxWidth="3xl"
+          title={selectedPreviewDoc.originalFilename}
+          subtitle={`GR #${selectedPreviewDoc.grNo} • ${DOCUMENT_LABELS[selectedPreviewDoc.classification] || selectedPreviewDoc.classification}`}
+          footer={
+            <div className="w-full flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -1090,7 +1022,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
                   href={selectedPreviewDoc.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-brand-text-primary bg-brand-bg border border-brand-border hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                 >
                   Open Full Scan ↗
                 </a>
@@ -1101,36 +1033,100 @@ export const DocumentArchiveCenterView: React.FC = () => {
                     setSelectedPreviewDoc(null);
                     openStudentModal(gr);
                   }}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 transition-colors cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-primary hover:bg-primary/90 transition-colors cursor-pointer"
                 >
                   Open Student Dossier
                 </button>
               </div>
             </div>
+          }
+        >
+          <div className="space-y-4">
+            <div className="bg-slate-950 rounded-xl p-2 flex items-center justify-center min-h-[300px] max-h-[500px] overflow-hidden">
+              {selectedPreviewDoc.filename.toLowerCase().endsWith('.pdf') ? (
+                <iframe
+                  src={selectedPreviewDoc.url}
+                  className="w-full h-[480px] rounded border-0"
+                  title={selectedPreviewDoc.originalFilename}
+                />
+              ) : (
+                <DocThumbnail
+                  url={selectedPreviewDoc.url}
+                  filename={selectedPreviewDoc.filename}
+                  classification={selectedPreviewDoc.classification}
+                  className="max-h-[480px] w-auto object-contain rounded"
+                />
+              )}
+            </div>
+
+            {selectedPreviewDoc.extractedData && (
+              <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
+                <div className="font-bold text-primary uppercase text-[11px] mb-2 flex items-center gap-1.5">
+                  <ScanLine className="w-3.5 h-3.5 text-amber-500" />
+                  Extracted Record
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block">Student Name</span>
+                    <span className="font-semibold text-slate-900 dark:text-white">
+                      {selectedPreviewDoc.extractedData.studentName || 'N/A'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block">Father Name</span>
+                    <span className="font-semibold text-slate-900 dark:text-white">
+                      {selectedPreviewDoc.extractedData.fatherName || 'N/A'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block">B-Form / CRC</span>
+                    <span className="font-mono font-bold text-slate-900 dark:text-white">
+                      {selectedPreviewDoc.extractedData.bFormNo || 'N/A'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block">Father CNIC</span>
+                    <span className="font-mono font-bold text-slate-900 dark:text-white">
+                      {selectedPreviewDoc.extractedData.fatherCnic || 'N/A'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
+        </BaseModal>
       )}
 
       {/* Assign / Reassign Document Modal */}
       {assigningDoc && (
-        <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white dark:bg-brand-surface rounded-2xl max-w-md w-full p-5 border border-brand-border space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-brand-border">
-              <div className="flex items-center gap-2">
-                <h4 className="text-sm font-bold text-brand-text-primary">
-                  Assign Document to Student GR
-                </h4>
-              </div>
+        <BaseModal
+          isOpen={!!assigningDoc}
+          onClose={() => setAssigningDoc(null)}
+          maxWidth="md"
+          title="Assign Document to Student GR"
+          subtitle="Match or enter target G.R. number for this document"
+          footer={
+            <div className="flex items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setAssigningDoc(null)}
-                className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg active:bg-brand-bg cursor-pointer"
+                className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!targetAssignGr.trim()}
+                onClick={() => handleAssignDoc(assigningDoc.id, targetAssignGr)}
+                className="px-4 py-1.5 rounded-xl text-xs font-semibold text-white bg-primary hover:bg-primary/90 shadow-soft active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+              >
+                Confirm Assignment & Move
               </button>
             </div>
-
-            <div className="flex items-center gap-3 p-3 bg-brand-bg rounded-xl border border-brand-border text-xs">
+          }
+        >
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
               <div className="w-12 h-12 rounded-lg bg-slate-900 overflow-hidden flex-shrink-0 flex items-center justify-center">
                 {assigningDoc.url ? (
                   <img
@@ -1147,10 +1143,10 @@ export const DocumentArchiveCenterView: React.FC = () => {
                 )}
               </div>
               <div className="min-w-0">
-                <span className="font-semibold text-brand-text-primary block truncate">
+                <span className="font-semibold text-slate-900 dark:text-white block truncate">
                   {assigningDoc.originalFilename}
                 </span>
-                <span className="text-brand-text-secondary text-[11px] block">
+                <span className="text-slate-500 dark:text-slate-400 text-[11px] block">
                   Detected Type: {DOCUMENT_LABELS[assigningDoc.classification] || assigningDoc.classification}
                 </span>
                 {assigningDoc.extractedData?.studentName && (
@@ -1227,7 +1223,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
             )}
 
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-brand-text-primary block">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
                 Target Student G.R. Number:
               </label>
               <input
@@ -1235,26 +1231,26 @@ export const DocumentArchiveCenterView: React.FC = () => {
                 value={targetAssignGr}
                 onChange={(e) => setTargetAssignGr(e.target.value)}
                 placeholder="e.g. 5042 or select below"
-                className="w-full px-3 py-2 text-xs rounded-xl bg-brand-bg border border-brand-border text-brand-text-primary font-mono focus:outline-hidden focus:ring-2 focus:ring-brand-primary/40"
+                className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono focus:outline-hidden focus:ring-2 focus:ring-primary/40"
               />
 
               {sheetRecords.length > 0 && (
                 <div className="space-y-1">
-                  <span className="text-[10px] text-brand-text-secondary block">
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 block">
                     Quick Select from Sheet Records:
                   </span>
-                  <div className="max-h-36 overflow-y-auto custom-scrollbar border border-brand-border rounded-xl divide-y divide-brand-border">
+                  <div className="max-h-36 overflow-y-auto custom-scrollbar border border-slate-200 dark:border-slate-700 rounded-xl divide-y divide-slate-200 dark:divide-slate-800">
                     {sheetRecords.slice(0, 50).map((s) => (
                       <button
                         key={s.grNo}
                         type="button"
                         onClick={() => setTargetAssignGr(s.grNo)}
-                        className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-brand-bg transition-colors cursor-pointer ${
-                          targetAssignGr === s.grNo ? 'bg-brand-primary/10 font-bold' : ''
+                        className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer ${
+                          targetAssignGr === s.grNo ? 'bg-primary/10 font-bold' : ''
                         }`}
                       >
-                        <span className="font-mono text-brand-primary font-bold">GR #{s.grNo}</span>
-                        <span className="text-brand-text-primary truncate max-w-[160px]">
+                        <span className="font-mono text-primary font-bold">GR #{s.grNo}</span>
+                        <span className="text-slate-900 dark:text-white truncate max-w-[160px]">
                           {s.studentName}
                         </span>
                         <span className="text-[10px] text-slate-400">{s.currentClass}</span>
@@ -1264,26 +1260,8 @@ export const DocumentArchiveCenterView: React.FC = () => {
                 </div>
               )}
             </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-brand-border">
-              <button
-                type="button"
-                onClick={() => setAssigningDoc(null)}
-                className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-brand-bg cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={!targetAssignGr.trim()}
-                onClick={() => handleAssignDoc(assigningDoc.id, targetAssignGr)}
-                className="px-4 py-1.5 rounded-xl text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
-              >
-                Confirm Assignment & Move
-              </button>
-            </div>
           </div>
-        </div>
+        </BaseModal>
       )}
 
       {/* Student Detail Modal with integrated Documents Tab */}
@@ -1319,7 +1297,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
       )}
 
       {/* Non-blocking Toast feedback */}
-      <Toast toast={toast} onClose={() => setToast(null)} />
+      {ToastComponent}
     </div>
   );
 };

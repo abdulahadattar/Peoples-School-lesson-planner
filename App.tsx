@@ -18,7 +18,7 @@ import { BookOpenIcon, CloseIcon, DocumentTextIcon, HomeIcon, PulseIcon, Archive
 import { Settings as SettingsIcon } from 'lucide-react';
 import { DocumentArchiveCenterView } from './components/DocumentArchiveCenterView';
 import { SegmentedControl } from './components/ui/SegmentedControl';
-import { Toast, ToastMessage } from './components/ui/Toast';
+import { useToast } from './hooks/useToast';
 import { useGeneralGeneration, GenerationMode } from './hooks/useGeneralGeneration';
 import { useSelection } from './hooks/useSelection';
 import versionConfig from './version.json';
@@ -89,14 +89,7 @@ const App: React.FC = () => {
   const [topicInput, setTopicInput] = useState('');
   const [lessonSubView, setLessonSubView] = useState<'create' | 'saved'>('create');
   const [paperSubView, setPaperSubView] = useState<'create' | 'saved'>('create');
-  const [toast, setToast] = useState<ToastMessage | null>(null);
-
-  const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'error') => {
-    setToast({ type, message });
-    setTimeout(() => {
-      setToast((current) => (current?.message === message ? null : current));
-    }, 4500);
-  };
+  const { showToast, ToastComponent } = useToast(4500);
 
   // SLO and batch generation state
   const [selectedSloIds, setSelectedSloIds] = useState<string[]>([]);
@@ -651,7 +644,7 @@ const App: React.FC = () => {
         </span>
       </div>
 
-      <Toast toast={toast} onClose={() => setToast(null)} />
+      {ToastComponent}
     </div>
   );
 };

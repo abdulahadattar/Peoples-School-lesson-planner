@@ -2,6 +2,7 @@ import { StudentRecord } from './googleSheetsService';
 import { db, handleFirestoreError, OperationType } from './firebase';
 import { collection, doc, setDoc, getDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import timetableData from '../data/timetable.json';
+import { triggerFileDownload } from '../utils/download';
 
 export interface ClassEnrollment {
   classKey: string;
@@ -525,12 +526,5 @@ export function exportAttendanceCSV(date: string, rows: ClassAttendanceRow[], su
   ]);
 
   const csvContent = [headers.join(','), ...data.map(d => d.join(','))].join('\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.setAttribute('href', url);
-  link.setAttribute('download', `Attendance_${date}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  triggerFileDownload(csvContent, `Attendance_${date}.csv`, 'text/csv;charset=utf-8;');
 }

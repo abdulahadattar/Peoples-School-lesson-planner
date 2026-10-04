@@ -7,10 +7,13 @@ export interface BaseModalProps {
   title?: React.ReactNode;
   subtitle?: React.ReactNode;
   icon?: React.ReactNode;
+  headerActions?: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
-  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl';
+  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | '7xl' | 'full';
   className?: string;
+  contentClassName?: string;
+  showCloseButton?: boolean;
 }
 
 const MAX_WIDTH_MAP = {
@@ -22,6 +25,9 @@ const MAX_WIDTH_MAP = {
   '3xl': 'max-w-3xl',
   '4xl': 'max-w-4xl',
   '5xl': 'max-w-5xl',
+  '6xl': 'max-w-6xl',
+  '7xl': 'max-w-7xl',
+  full: 'max-w-[96vw]',
 };
 
 export const BaseModal: React.FC<BaseModalProps> = ({
@@ -30,10 +36,13 @@ export const BaseModal: React.FC<BaseModalProps> = ({
   title,
   subtitle,
   icon,
+  headerActions,
   children,
   footer,
   maxWidth = 'lg',
   className = '',
+  contentClassName = 'p-5',
+  showCloseButton = true,
 }) => {
   useEffect(() => {
     if (!isOpen) return;
@@ -58,11 +67,11 @@ export const BaseModal: React.FC<BaseModalProps> = ({
         aria-hidden="true"
       />
       <div
-        className={`relative w-full ${MAX_WIDTH_MAP[maxWidth]} rounded-2xl bg-white dark:bg-slate-900 border border-black/[0.08] dark:border-white/[0.1] shadow-2xl flex flex-col max-h-[92dvh] overflow-hidden z-10 transition-all ${className}`}
+        className={`relative w-full ${MAX_WIDTH_MAP[maxWidth] || 'max-w-lg'} rounded-2xl bg-white dark:bg-slate-900 border border-black/[0.08] dark:border-white/[0.1] shadow-2xl flex flex-col max-h-[92dvh] overflow-hidden z-10 transition-all ${className}`}
         onClick={(e) => e.stopPropagation()}
       >
-        {(title || icon) && (
-          <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-black/[0.06] dark:border-white/[0.08] bg-slate-50/70 dark:bg-slate-800/40">
+        {(title || icon || headerActions || showCloseButton) && (
+          <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-black/[0.06] dark:border-white/[0.08] bg-slate-50/70 dark:bg-slate-800/40 shrink-0">
             <div className="flex items-center gap-3 min-w-0">
               {icon && <div className="shrink-0">{icon}</div>}
               <div className="min-w-0">
@@ -78,23 +87,28 @@ export const BaseModal: React.FC<BaseModalProps> = ({
                 )}
               </div>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1.5 -mr-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
-              aria-label="Close dialog"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              {headerActions}
+              {showCloseButton && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="p-1.5 -mr-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+                  aria-label="Close dialog"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-5">
+        <div className={`flex-1 overflow-y-auto custom-scrollbar ${contentClassName}`}>
           {children}
         </div>
 
         {footer && (
-          <div className="px-5 py-3.5 border-t border-black/[0.06] dark:border-white/[0.08] bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-end gap-2.5">
+          <div className="px-5 py-3.5 border-t border-black/[0.06] dark:border-white/[0.08] bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-end gap-2.5 shrink-0">
             {footer}
           </div>
         )}

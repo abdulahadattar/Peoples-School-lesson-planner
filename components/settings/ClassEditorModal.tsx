@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, Check, BookOpen, User, Users } from 'lucide-react';
+import { Check, BookOpen, User, Users } from 'lucide-react';
 import { ClassTeacherConfig } from '../../services/schoolConfigService';
 import { Teacher } from '../../types';
+import { BaseModal } from '../ui/BaseModal';
 
 interface ClassEditorModalProps {
   isOpen: boolean;
@@ -44,8 +45,6 @@ export const ClassEditorModal: React.FC<ClassEditorModalProps> = ({
     }
   }, [isOpen, initialData, teachers]);
 
-  if (!isOpen) return null;
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!classKey.trim()) {
@@ -76,183 +75,168 @@ export const ClassEditorModal: React.FC<ClassEditorModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white dark:bg-brand-surface rounded-2xl border border-brand-border shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90dvh]">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-brand-border flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/30">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-brand-primary/10 text-brand-primary">
-              <BookOpen className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-brand-text-primary">
-                {initialData ? `Edit Class ${initialData.romanName}` : 'Add New Class Section'}
-              </h3>
-              <p className="text-xs text-brand-text-secondary">
-                Configure grade name, in-charge teacher, and baseline enrollment
-              </p>
-            </div>
-          </div>
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={initialData ? `Edit Class ${initialData.romanName}` : 'Add New Class Section'}
+      subtitle="Configure grade name, in-charge teacher, and baseline enrollment"
+      icon={
+        <div className="p-2 rounded-xl bg-primary/10 text-primary">
+          <BookOpen className="w-5 h-5" />
+        </div>
+      }
+      maxWidth="lg"
+      footer={
+        <>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg transition-colors active:bg-brand-bg"
+            className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            Cancel
           </button>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1">
-          {error && (
-            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs">
-              {error}
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-brand-text-secondary mb-1">
-                Class Key (ID) *
-              </label>
-              <input
-                type="text"
-                value={classKey}
-                onChange={(e) => {
-                  setClassKey(e.target.value);
-                  if (!romanName) setRomanName(e.target.value);
-                  if (!displayName) setDisplayName(`Class ${e.target.value}`);
-                }}
-                placeholder="e.g. IX-Sci, VIA, ECCE"
-                required
-                className="w-full px-3 py-2 rounded-xl text-xs font-mono bg-white dark:bg-brand-panel border border-brand-border text-brand-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-brand-text-secondary mb-1">
-                Roman / Short Name *
-              </label>
-              <input
-                type="text"
-                value={romanName}
-                onChange={(e) => setRomanName(e.target.value)}
-                placeholder="e.g. IX-Sci, IV-A"
-                required
-                className="w-full px-3 py-2 rounded-xl text-xs font-medium bg-white dark:bg-brand-panel border border-brand-border text-brand-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary"
-              />
-            </div>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-primary hover:bg-primary/90 shadow-soft active:scale-95 transition-all cursor-pointer"
+          >
+            <Check className="w-3.5 h-3.5" />
+            <span>{initialData ? 'Update Class' : 'Save Class'}</span>
+          </button>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs">
+            {error}
           </div>
+        )}
 
+        <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-brand-text-secondary mb-1">
-              Display Name
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+              Class Key (ID) *
             </label>
             <input
               type="text"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="e.g. Class IX Science"
-              className="w-full px-3 py-2 rounded-xl text-xs font-medium bg-white dark:bg-brand-panel border border-brand-border text-brand-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary"
+              value={classKey}
+              onChange={(e) => {
+                setClassKey(e.target.value);
+                if (!romanName) setRomanName(e.target.value);
+                if (!displayName) setDisplayName(`Class ${e.target.value}`);
+              }}
+              placeholder="e.g. IX-Sci, VIA, ECCE"
+              required
+              className="w-full px-3 py-2 rounded-xl text-xs font-mono bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
-
           <div>
-            <label className="block text-xs font-semibold text-brand-text-secondary mb-1 flex items-center justify-between">
-              <span>Class Teacher In-Charge</span>
-              <User className="w-3.5 h-3.5 text-brand-text-secondary" />
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+              Roman / Short Name *
             </label>
-            <div className="relative">
+            <input
+              type="text"
+              value={romanName}
+              onChange={(e) => setRomanName(e.target.value)}
+              placeholder="e.g. IX-Sci, IV-A"
+              required
+              className="w-full px-3 py-2 rounded-xl text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+            Display Name
+          </label>
+          <input
+            type="text"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            placeholder="e.g. Class IX Science"
+            className="w-full px-3 py-2 rounded-xl text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1 flex items-center justify-between">
+            <span>Class Teacher In-Charge</span>
+            <User className="w-3.5 h-3.5 text-slate-400" />
+          </label>
+          <div className="relative">
+            <input
+              list="teachers-list"
+              type="text"
+              value={classTeacher}
+              onChange={(e) => setClassTeacher(e.target.value)}
+              placeholder="Select or enter teacher name..."
+              className="w-full px-3 py-2 rounded-xl text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            />
+            <datalist id="teachers-list">
+              {teachers.map((t) => (
+                <option key={t.id} value={t.name} />
+              ))}
+            </datalist>
+          </div>
+        </div>
+
+        {/* Enrollments */}
+        <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5 text-primary" />
+              <span>Enrolled Students</span>
+            </span>
+            <span className="text-xs font-mono font-extrabold text-primary">
+              Total: {enrolledBoys + enrolledGirls}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-blue-600 dark:text-blue-400 mb-1">
+                Enrolled Boys
+              </label>
               <input
-                list="teachers-list"
-                type="text"
-                value={classTeacher}
-                onChange={(e) => setClassTeacher(e.target.value)}
-                placeholder="Select or enter teacher name..."
-                className="w-full px-3 py-2 rounded-xl text-xs font-medium bg-white dark:bg-brand-panel border border-brand-border text-brand-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary"
+                type="number"
+                inputMode="numeric"
+                autoComplete="off"
+                min="0"
+                value={enrolledBoys}
+                onChange={(e) => setEnrolledBoys(parseInt(e.target.value, 10) || 0)}
+                className="w-full px-3 py-1.5 rounded-lg text-xs font-mono bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-hidden focus:border-blue-500"
               />
-              <datalist id="teachers-list">
-                {teachers.map((t) => (
-                  <option key={t.id} value={t.name} />
-                ))}
-              </datalist>
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-rose-600 dark:text-rose-400 mb-1">
+                Enrolled Girls
+              </label>
+              <input
+                type="number"
+                inputMode="numeric"
+                autoComplete="off"
+                min="0"
+                value={enrolledGirls}
+                onChange={(e) => setEnrolledGirls(parseInt(e.target.value, 10) || 0)}
+                className="w-full px-3 py-1.5 rounded-lg text-xs font-mono bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-hidden focus:border-rose-500"
+              />
             </div>
           </div>
+        </div>
 
-          {/* Enrollments */}
-          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-brand-border/60 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-brand-text-primary flex items-center gap-1.5">
-                <Users className="w-3.5 h-3.5 text-brand-primary" />
-                <span>Enrolled Students</span>
-              </span>
-              <span className="text-xs font-mono font-extrabold text-brand-primary">
-                Total: {enrolledBoys + enrolledGirls}
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] font-semibold text-blue-600 dark:text-blue-400 mb-1">
-                  Enrolled Boys
-                </label>
-                <input
-                  type="number"
-  inputMode="numeric"
-  autoComplete="off"
-                  min="0"
-                  value={enrolledBoys}
-                  onChange={(e) => setEnrolledBoys(parseInt(e.target.value, 10) || 0)}
-                  className="w-full px-3 py-1.5 rounded-lg text-xs font-mono bg-white dark:bg-brand-surface border border-brand-border text-brand-text-primary focus:outline-none focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-rose-600 dark:text-rose-400 mb-1">
-                  Enrolled Girls
-                </label>
-                <input
-                  type="number"
-  inputMode="numeric"
-  autoComplete="off"
-                  min="0"
-                  value={enrolledGirls}
-                  onChange={(e) => setEnrolledGirls(parseInt(e.target.value, 10) || 0)}
-                  className="w-full px-3 py-1.5 rounded-lg text-xs font-mono bg-white dark:bg-brand-surface border border-brand-border text-brand-text-primary focus:outline-none focus:border-rose-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-brand-text-secondary mb-1">
-              Curriculum Subjects (comma separated)
-            </label>
-            <textarea
-              rows={2}
-              value={subjectsStr}
-              onChange={(e) => setSubjectsStr(e.target.value)}
-              placeholder="Maths, Science, English, Urdu, Sindhi..."
-              className="w-full px-3 py-2 rounded-xl text-xs font-medium bg-white dark:bg-brand-panel border border-brand-border text-brand-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary resize-none"
-            />
-          </div>
-
-          {/* Actions */}
-          <div className="pt-3 flex items-center justify-end gap-2 border-t border-brand-border">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-brand-text-secondary hover:bg-brand-bg transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-all"
-            >
-              <Check className="w-3.5 h-3.5" />
-              <span>{initialData ? 'Update Class' : 'Save Class'}</span>
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+            Curriculum Subjects (comma separated)
+          </label>
+          <textarea
+            rows={2}
+            value={subjectsStr}
+            onChange={(e) => setSubjectsStr(e.target.value)}
+            placeholder="Maths, Science, English, Urdu, Sindhi..."
+            className="w-full px-3 py-2 rounded-xl text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
+          />
+        </div>
+      </form>
+    </BaseModal>
   );
 };

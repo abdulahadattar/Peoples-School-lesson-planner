@@ -8,6 +8,7 @@ import {
   fetchJobStatus,
   retryFailedJob,
 } from '../../services/documentClientService';
+import { copyToClipboard } from '../../utils/clipboard';
 import {
   Activity,
   AlertCircle,
@@ -118,7 +119,7 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
     }
   };
 
-  const handleCopyLogs = () => {
+  const handleCopyLogs = async () => {
     const rawText = logs
       .map(
         (l) =>
@@ -127,7 +128,7 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
           }`
       )
       .join('\n');
-    navigator.clipboard.writeText(rawText);
+    await copyToClipboard(rawText);
     setCopiedLogs(true);
     setTimeout(() => setCopiedLogs(false), 2500);
   };

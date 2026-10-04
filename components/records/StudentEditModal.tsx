@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, AlertCircle } from 'lucide-react';
+import { Save, AlertCircle } from 'lucide-react';
 import { StudentRecord, VISIBLE_COLUMNS } from '../../services/googleSheetsService';
 import { DiffItem } from './ConfirmationModal';
+import { BaseModal } from '../ui/BaseModal';
 
 interface StudentEditModalProps {
   isOpen: boolean;
@@ -135,30 +136,44 @@ export const StudentEditModal: React.FC<StudentEditModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto p-4 bg-slate-900/50 backdrop-blur-xs animate-fadeIn overflow-y-auto">
-      <div className="w-full max-w-3xl rounded-2xl bg-white dark:bg-brand-surface border border-brand-border shadow-card p-6 flex flex-col max-h-[92vh] my-auto">
-        <div className="flex items-center justify-between pb-4 border-b border-brand-border">
-          <div>
-            <h2 className="text-lg font-bold text-brand-text-primary tracking-tight">
-              {isAddMode ? 'Add New Student to Google Sheet' : `Edit Student Record: ${formData.studentName || 'Student'}`}
-            </h2>
-            <p className="text-xs text-brand-text-secondary mt-0.5">
-              {isAddMode
-                ? 'Fill the visible school record details to append a new entry to the spreadsheet.'
-                : `Updating row #${formData.rowNumber} in sheet "Jamshoro South Final SPD (2)".`}
-            </p>
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      maxWidth="3xl"
+      title={isAddMode ? 'Add New Student to Google Sheet' : `Edit Student Record: ${formData.studentName || 'Student'}`}
+      subtitle={
+        isAddMode
+          ? 'Fill the visible school record details to append a new entry to the spreadsheet.'
+          : `Updating row #${formData.rowNumber} in sheet "Jamshoro South Final SPD (2)".`
+      }
+      footer={
+        <div className="w-full flex items-center justify-between">
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5 text-primary" />
+            <span>You will be prompted to confirm all changes before pushing to Google Sheet.</span>
+          </p>
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-primary hover:bg-primary/90 shadow-soft active:scale-95 transition-all cursor-pointer"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>Review & Save</span>
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg rounded-xl transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
         </div>
-
-        <form onSubmit={handleSave} className="flex-1 overflow-y-auto custom-scrollbar py-4 space-y-6">
-          {/* Section 1: Basic Identity */}
+      }
+    >
+      <form onSubmit={handleSave} className="space-y-6 py-1">
+        {/* Section 1: Basic Identity */}
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-brand-primary mb-3">
               1. Student Identity & Admission
@@ -502,31 +517,6 @@ export const StudentEditModal: React.FC<StudentEditModalProps> = ({
             </div>
           </div>
         </form>
-
-        <div className="flex items-center justify-between pt-4 border-t border-brand-border mt-auto">
-          <p className="text-[11px] text-brand-text-secondary flex items-center gap-1.5">
-            <AlertCircle className="w-3.5 h-3.5 text-brand-primary" />
-            <span>You will be prompted to confirm all changes before pushing to Google Sheet.</span>
-          </p>
-          <div className="flex items-center gap-2.5">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg border border-brand-border transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-all"
-            >
-              <Save className="w-3.5 h-3.5" />
-              <span>Review & Save</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    </BaseModal>
   );
 };

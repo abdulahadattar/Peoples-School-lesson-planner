@@ -21,6 +21,8 @@ import { PhssjLogo } from '../Logo';
 import { StudentDocumentsTab } from './StudentDocumentsTab';
 import { fetchDossierByGr, auditDossier } from '../../services/documentClientService';
 import { StudentDossier, DocumentDiscrepancy } from '../../types/documentArchive';
+import { useClipboardCopy } from '../../hooks/useClipboardCopy';
+import { StatusBadge } from '../ui/StatusBadge';
 
 interface StudentDetailModalProps {
   isOpen: boolean;
@@ -38,7 +40,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   onEdit,
 }) => {
   const [activeTab, setActiveTab] = useState<'details' | 'documents'>(initialTab);
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const { copy: copyToClipboard, copiedKey } = useClipboardCopy(2000);
   const [dossier, setDossier] = useState<StudentDossier | null>(null);
   const [discrepancies, setDiscrepancies] = useState<DocumentDiscrepancy[]>([]);
   const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
@@ -57,27 +59,6 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   }, [student, isOpen]);
 
   if (!isOpen || !student) return null;
-
-  const copyToClipboard = (text: string, key: string) => {
-    if (!text || text === 'NA' || text === 'N/A') return;
-    navigator.clipboard.writeText(text);
-    setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 2000);
-  };
-
-  const getStatusBadgeClass = (status: string) => {
-    const s = (status || '').toLowerCase();
-    if (s.includes('promot') || s.includes('active')) {
-      return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
-    }
-    if (s.includes('new') || s.includes('enroll')) {
-      return 'bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 border-sky-200 dark:border-sky-800';
-    }
-    if (s.includes('drop') || s.includes('struck') || s.includes('left')) {
-      return 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border-rose-200 dark:border-rose-800';
-    }
-    return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700';
-  };
 
   const activeFlags = discrepancies.filter((f) => !f.isDismissed);
   const docCount = dossier?.documents.length || 0;
@@ -114,13 +95,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 <span className="px-2 py-0.5 rounded-md bg-brand-primary/10 text-brand-primary font-mono text-xs font-bold border border-brand-primary/20">
                   GR# {student.grNo || 'N/A'}
                 </span>
-                <span
-                  className={`px-2 py-0.5 rounded-md text-[11px] font-semibold border ${getStatusBadgeClass(
-                    student.status
-                  )}`}
-                >
-                  {student.status || 'Active'}
-                </span>
+                <StatusBadge label={student.status || 'Active'} size="sm" />
                 {docCount > 0 && (
                   <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                     {docCount} Scanned Doc(s)

@@ -49,6 +49,12 @@ import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { useSchoolConfig } from '../../hooks/useSchoolConfig';
 import { User } from 'firebase/auth';
 import { PhssjLogo } from '../Logo';
+import {
+  getAttendanceProgressColor as getProgressColor,
+  getAttendanceTextColor as getTextColor,
+  getAttendanceBadgeBg as getBadgeBg,
+} from './attendanceUtils';
+import { formatSchoolDate } from '../../utils/dateHelpers';
 
 export const DailyAttendanceView: React.FC = () => {
   // Today's date in local YYYY-MM-DD
@@ -560,28 +566,6 @@ export const DailyAttendanceView: React.FC = () => {
     `;
 
     printHtml(html);
-  };
-
-  // Color helper for attendance percentage
-  const getProgressColor = (pct: number) => {
-    if (pct >= 90) return 'bg-emerald-500';
-    if (pct >= 80) return 'bg-blue-500';
-    if (pct >= 70) return 'bg-amber-500';
-    return 'bg-rose-500';
-  };
-
-  const getTextColor = (pct: number) => {
-    if (pct >= 90) return 'text-emerald-700 dark:text-emerald-400';
-    if (pct >= 80) return 'text-blue-700 dark:text-blue-400';
-    if (pct >= 70) return 'text-amber-700 dark:text-amber-400';
-    return 'text-rose-700 dark:text-rose-400';
-  };
-
-  const getBadgeBg = (pct: number) => {
-    if (pct >= 90) return 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800';
-    if (pct >= 80) return 'bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800';
-    if (pct >= 70) return 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800';
-    return 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800';
   };
 
   return (

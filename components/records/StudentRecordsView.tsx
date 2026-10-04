@@ -71,6 +71,9 @@ import { StudentAvatar, resolveAvatarUrl } from './StudentAvatar';
 import { RecordsStatsStrip } from './RecordsStatsStrip';
 import { RecordsFilterToolbar } from './RecordsFilterToolbar';
 import { RecordsTableRow } from './RecordsTableRow';
+import { SortableTableHeader } from '../ui/SortableTableHeader';
+import { Pagination } from '../ui/Pagination';
+import { getStudentStatusBadgeClass } from '../attendance/attendanceUtils';
 import { normalizeGrKey } from '../../services/identityNormalization';
 import { User } from 'firebase/auth';
 
@@ -686,35 +689,15 @@ export const StudentRecordsView: React.FC = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const s = (status || '').toLowerCase();
-    if (s.includes('promot') || s.includes('active')) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-          {status}
-        </span>
-      );
-    }
-    if (s.includes('new') || s.includes('enroll')) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
-          {status}
-        </span>
-      );
-    }
-    if (s.includes('drop') || s.includes('struck') || s.includes('left')) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-          {status}
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-        {status || 'Active'}
-      </span>
-    );
-  };
+  const getStatusBadge = (status?: string) => (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getStudentStatusBadgeClass(
+        status
+      )}`}
+    >
+      {status || 'Active'}
+    </span>
+  );
 
   return (
     <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-8 py-6 space-y-6">
@@ -963,197 +946,107 @@ export const StudentRecordsView: React.FC = () => {
             <table className="w-full text-left border-collapse text-xs min-w-[900px]">
               <thead>
                 <tr className="border-b border-brand-border bg-slate-50/80 dark:bg-slate-900/60 font-semibold text-brand-text-secondary uppercase tracking-wider text-[10px]">
-                  {/* Sticky GR# column only - with clean separator */}
-                  <th
-                    tabIndex={0}
-                    role="columnheader"
-                    aria-sort={sortField === 'grNo' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('grNo'); } }}
-                    onClick={() => handleSort('grNo')}
-                    className="py-3 px-3.5 md:sticky md:left-0 z-20 bg-slate-50 dark:bg-slate-900 border-r border-brand-border md:shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] w-20 min-w-[72px] cursor-pointer hover:bg-slate-100 active:bg-slate-200 dark:hover:bg-slate-800 dark:active:bg-slate-700 transition-colors select-none group/th"
-                    title="Click to sort by GR#"
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                      <span>GR#</span>
-                      {renderSortIndicator('grNo')}
-                    </div>
-                  </th>
-
-                  {/* Name of Student - Non-sticky so adjacent columns never slide under it */}
-                  <th
-                    tabIndex={0}
-                    role="columnheader"
-                    aria-sort={sortField === 'studentName' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('studentName'); } }}
-                    onClick={() => handleSort('studentName')}
-                    className="py-3 px-4 min-w-[200px] border-r border-brand-border/40 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
-                    title="Click to sort by Name of Student"
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                      <span>Name of Student</span>
-                      {renderSortIndicator('studentName')}
-                    </div>
-                  </th>
-
-                  {/* Father / Guardian Name - Clean, unobstructed */}
-                  <th
-                    tabIndex={0}
-                    role="columnheader"
-                    aria-sort={sortField === 'fatherName' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('fatherName'); } }}
-                    onClick={() => handleSort('fatherName')}
-                    className="py-3 px-4 min-w-[210px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
-                    title="Click to sort by Father / Guardian Name"
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                      <span>Father / Guardian Name</span>
-                      {renderSortIndicator('fatherName')}
-                    </div>
-                  </th>
-
-                  {/* Class & Sec */}
-                  <th
-                    tabIndex={0}
-                    role="columnheader"
-                    aria-sort={sortField === 'currentClass' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('currentClass'); } }}
-                    onClick={() => handleSort('currentClass')}
-                    className="py-3 px-3 text-center min-w-[105px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
-                    title="Click to sort by Class & Section"
-                  >
-                    <div className="flex items-center justify-center gap-1">
-                      <span>Class & Sec</span>
-                      {renderSortIndicator('currentClass')}
-                    </div>
-                  </th>
-
-                  {/* Gender */}
-                  <th
-                    tabIndex={0}
-                    role="columnheader"
-                    aria-sort={sortField === 'gender' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('gender'); } }}
-                    onClick={() => handleSort('gender')}
-                    className="py-3 px-3 text-center min-w-[80px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
-                    title="Click to sort by Gender"
-                  >
-                    <div className="flex items-center justify-center gap-1">
-                      <span>Gender</span>
-                      {renderSortIndicator('gender')}
-                    </div>
-                  </th>
-
-                  {/* DOB */}
-                  <th
-                    tabIndex={0}
-                    role="columnheader"
-                    aria-sort={sortField === 'dob' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('dob'); } }}
-                    onClick={() => handleSort('dob')}
-                    className="py-3 px-3 text-center min-w-[105px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
-                    title="Click to sort by Date of Birth"
-                  >
-                    <div className="flex items-center justify-center gap-1">
-                      <span>DOB (D/M/Y)</span>
-                      {renderSortIndicator('dob')}
-                    </div>
-                  </th>
-
-                  {/* Parent Contact */}
-                  <th
-                    tabIndex={0}
-                    role="columnheader"
-                    aria-sort={sortField === 'parentContact' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('parentContact'); } }}
-                    onClick={() => handleSort('parentContact')}
-                    className="py-3 px-4 min-w-[150px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
-                    title="Click to sort by Parent Contact"
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                      <span>Parent Contact</span>
-                      {renderSortIndicator('parentContact')}
-                    </div>
-                  </th>
-
-                  {/* Emergency Contact */}
-                  <th
-                    tabIndex={0}
-                    role="columnheader"
-                    aria-sort={sortField === 'emergencyContact' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('emergencyContact'); } }}
-                    onClick={() => handleSort('emergencyContact')}
-                    className="py-3 px-4 min-w-[150px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
-                    title="Click to sort by Emergency Contact"
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                      <span>Emergency Contact</span>
-                      {renderSortIndicator('emergencyContact')}
-                    </div>
-                  </th>
-
-                  {/* Status */}
-                  <th
-                    tabIndex={0}
-                    role="columnheader"
-                    aria-sort={sortField === 'status' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('status'); } }}
-                    onClick={() => handleSort('status')}
-                    className="py-3 px-3 text-center min-w-[120px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
-                    title="Click to sort by Status"
-                  >
-                    <div className="flex items-center justify-center gap-1">
-                      <span>Status</span>
-                      {renderSortIndicator('status')}
-                    </div>
-                  </th>
-
-                  {/* B.Form No. */}
-                  <th
-                    tabIndex={0}
-                    role="columnheader"
-                    aria-sort={sortField === 'bFormNo' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('bFormNo'); } }}
-                    onClick={() => handleSort('bFormNo')}
-                    className="py-3 px-4 min-w-[140px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
-                    title="Click to sort by B.Form No."
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                      <span>B.Form No.</span>
-                      {renderSortIndicator('bFormNo')}
-                    </div>
-                  </th>
-
-                  {/* Parent CNIC */}
-                  <th
-                    tabIndex={0}
-                    role="columnheader"
-                    aria-sort={sortField === 'parentCnic' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('parentCnic'); } }}
-                    onClick={() => handleSort('parentCnic')}
-                    className="py-3 px-4 min-w-[140px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
-                    title="Click to sort by Parent CNIC"
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                      <span>Parent CNIC</span>
-                      {renderSortIndicator('parentCnic')}
-                    </div>
-                  </th>
-
-                  {/* Address */}
-                  <th
-                    tabIndex={0}
-                    role="columnheader"
-                    aria-sort={sortField === 'address' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('address'); } }}
-                    onClick={() => handleSort('address')}
-                    className="py-3 px-4 min-w-[200px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors select-none group/th"
-                    title="Click to sort by Address"
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                      <span>Address</span>
-                      {renderSortIndicator('address')}
-                    </div>
-                  </th>
+                  {/* Sticky GR# column */}
+                  <SortableTableHeader
+                    field="grNo"
+                    label="GR#"
+                    currentField={sortField}
+                    currentDirection={sortDirection}
+                    onSort={handleSort}
+                    className="md:sticky md:left-0 z-20 bg-slate-50 dark:bg-slate-900 border-r border-brand-border md:shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] w-20 min-w-[72px]"
+                  />
+                  <SortableTableHeader
+                    field="studentName"
+                    label="Name of Student"
+                    currentField={sortField}
+                    currentDirection={sortDirection}
+                    onSort={handleSort}
+                    className="min-w-[200px] border-r border-brand-border/40"
+                  />
+                  <SortableTableHeader
+                    field="fatherName"
+                    label="Father / Guardian Name"
+                    currentField={sortField}
+                    currentDirection={sortDirection}
+                    onSort={handleSort}
+                    className="min-w-[210px]"
+                  />
+                  <SortableTableHeader
+                    field="currentClass"
+                    label="Class & Sec"
+                    currentField={sortField}
+                    currentDirection={sortDirection}
+                    onSort={handleSort}
+                    align="center"
+                    className="text-center min-w-[105px]"
+                  />
+                  <SortableTableHeader
+                    field="gender"
+                    label="Gender"
+                    currentField={sortField}
+                    currentDirection={sortDirection}
+                    onSort={handleSort}
+                    align="center"
+                    className="text-center min-w-[80px]"
+                  />
+                  <SortableTableHeader
+                    field="dob"
+                    label="DOB (D/M/Y)"
+                    currentField={sortField}
+                    currentDirection={sortDirection}
+                    onSort={handleSort}
+                    align="center"
+                    className="text-center min-w-[105px]"
+                  />
+                  <SortableTableHeader
+                    field="parentContact"
+                    label="Parent Contact"
+                    currentField={sortField}
+                    currentDirection={sortDirection}
+                    onSort={handleSort}
+                    className="min-w-[150px]"
+                  />
+                  <SortableTableHeader
+                    field="emergencyContact"
+                    label="Emergency Contact"
+                    currentField={sortField}
+                    currentDirection={sortDirection}
+                    onSort={handleSort}
+                    className="min-w-[150px]"
+                  />
+                  <SortableTableHeader
+                    field="status"
+                    label="Status"
+                    currentField={sortField}
+                    currentDirection={sortDirection}
+                    onSort={handleSort}
+                    align="center"
+                    className="text-center min-w-[120px]"
+                  />
+                  <SortableTableHeader
+                    field="bFormNo"
+                    label="B.Form No."
+                    currentField={sortField}
+                    currentDirection={sortDirection}
+                    onSort={handleSort}
+                    className="min-w-[140px]"
+                  />
+                  <SortableTableHeader
+                    field="parentCnic"
+                    label="Parent CNIC"
+                    currentField={sortField}
+                    currentDirection={sortDirection}
+                    onSort={handleSort}
+                    className="min-w-[140px]"
+                  />
+                  <SortableTableHeader
+                    field="address"
+                    label="Address"
+                    currentField={sortField}
+                    currentDirection={sortDirection}
+                    onSort={handleSort}
+                    className="min-w-[200px]"
+                  />
                   <th className="py-3 px-3 text-center min-w-[100px]">Class Admitted</th>
                   <th className="py-3 px-3 text-center min-w-[110px]">Admission Date</th>
                   <th className="py-3 px-4 min-w-[140px]">Partner Contact</th>
@@ -1168,236 +1061,25 @@ export const StudentRecordsView: React.FC = () => {
               <tbody className="divide-y divide-brand-border/60">
                 {paginatedRecords.map((student) => {
                   const grClean = normalizeGrKey(String(student.grNo || ''));
-                  const dossier = dossiersByGr[grClean];
-                  const docCount = dossier?.documents?.length || 0;
-                  const hasFlags = (dossier?.allFlags?.length || 0) > 0;
-                  const resolvedAvatar = resolveAvatarUrl(dossier);
-
                   return (
-                    <tr
+                    <RecordsTableRow
                       key={student.rowNumber}
-                      className="hover:bg-brand-bg/80 transition-colors group"
-                    >
-                      {/* Sticky GR# */}
-                      <td className="py-2.5 px-3.5 md:sticky md:left-0 z-10 bg-white dark:bg-brand-surface group-hover:bg-brand-bg border-r border-brand-border md:shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] font-mono font-bold text-brand-primary whitespace-nowrap">
-                        {student.grNo || '—'}
-                      </td>
-
-                      {/* Student Name with Circular Student Avatar */}
-                      <td className="py-2.5 px-4 bg-white dark:bg-brand-surface group-hover:bg-brand-bg border-r border-brand-border/40 whitespace-nowrap">
-                        <div className="flex items-center gap-2.5">
-                          <StudentAvatar
-                            name={student.studentName}
-                            grNo={student.grNo}
-                            avatarUrl={resolvedAvatar}
-                            size="md"
-                            onClick={() => {
-                              if (resolvedAvatar) {
-                                setAvatarPreviewUrl({
-                                  url: resolvedAvatar,
-                                  name: student.studentName,
-                                  grNo: student.grNo,
-                                });
-                              } else {
-                                setDetailStudent(student);
-                                setDetailModalTab('details');
-                              }
-                            }}
-                          />
-                          <div className="min-w-0">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setDetailStudent(student);
-                                setDetailModalTab('details');
-                              }}
-                              className="font-bold text-brand-text-primary hover:text-brand-primary text-left truncate block max-w-[200px] transition-colors"
-                              title={student.studentName}
-                            >
-                              {student.studentName || '—'}
-                            </button>
-                            {docCount > 0 ? (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setDetailStudent(student);
-                                  setDetailModalTab('documents');
-                                }}
-                                className={`inline-flex items-center gap-1 text-[10px] font-mono font-medium px-1.5 py-0.2 rounded transition-colors ${
-                                  hasFlags
-                                    ? 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100'
-                                    : 'text-brand-primary bg-brand-primary/10 hover:bg-brand-primary/20'
-                                }`}
-                                title={`${docCount} documents attached${hasFlags ? ' (has discrepancies)' : ''}`}
-                              >
-                                <FolderOpen className="w-2.5 h-2.5" />
-                                <span>{docCount} {docCount === 1 ? 'doc' : 'docs'}</span>
-                                {hasFlags && <AlertTriangle className="w-2.5 h-2.5 text-amber-600" />}
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setDetailStudent(student);
-                                  setDetailModalTab('documents');
-                                }}
-                                className="text-[10px] text-brand-text-secondary hover:text-brand-primary transition-colors flex items-center gap-0.5 min-h-[36px] px-1.5 -mx-1.5 rounded-lg hover:bg-brand-bg active:bg-brand-primary/15"
-                                title="Attach student document scan"
-                              >
-                                <Camera className="w-2.5 h-2.5 opacity-60" />
-                                <span>Attach</span>
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Father / Guardian Name - Completely visible and never cut off */}
-                      <td className="py-2.5 px-4 text-brand-text-primary font-medium whitespace-nowrap min-w-[210px]" title={student.fatherName}>
-                        {student.fatherName || '—'}
-                      </td>
-
-                      <td className="py-2.5 px-3 text-center">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-md font-mono text-[11px] font-bold bg-brand-bg border border-brand-border text-brand-text-primary">
-                          {student.currentClass || '—'}
-                          {student.section ? `-${student.section}` : ''}
-                        </span>
-                      </td>
-
-                      <td className="py-2.5 px-3 text-center text-brand-text-secondary">
-                        {student.gender || '—'}
-                      </td>
-
-                      <td className="py-2.5 px-3 text-center font-mono text-[11px] text-brand-text-secondary">
-                        {student.dobDay && student.dobMonth && student.dobYear
-                          ? `${student.dobDay}/${student.dobMonth}/${student.dobYear}`
-                          : '—'}
-                      </td>
-
-                      <td className="py-2.5 px-4 font-mono text-[11px]">
-                        {student.parentContact && student.parentContact !== 'NA' && student.parentContact !== 'N/A' ? (
-                          <a
-                            href={`tel:${student.parentContact}`}
-                            className="text-brand-primary hover:underline flex items-center gap-1"
-                          >
-                            <Phone className="w-3 h-3 flex-shrink-0" />
-                            <span>{student.parentContact}</span>
-                          </a>
-                        ) : (
-                          <span className="text-brand-text-secondary">NA</span>
-                        )}
-                      </td>
-
-                      <td className="py-2.5 px-4 font-mono text-[11px]">
-                        {student.emergencyContact && student.emergencyContact !== 'NA' && student.emergencyContact !== 'N/A' ? (
-                          <span className="text-brand-text-primary">{student.emergencyContact}</span>
-                        ) : (
-                          <span className="text-brand-text-secondary">NA</span>
-                        )}
-                      </td>
-
-                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                        {getStatusBadge(student.status)}
-                      </td>
-
-                      <td className="py-2.5 px-4 font-mono text-[11px] text-brand-text-secondary truncate max-w-[140px]">
-                        {student.bFormNo || '—'}
-                      </td>
-
-                      <td className="py-2.5 px-4 font-mono text-[11px] text-brand-text-secondary truncate max-w-[140px]">
-                        {student.parentCnic || '—'}
-                      </td>
-
-                      <td className="py-2.5 px-4 text-brand-text-secondary text-[11px] truncate max-w-[220px]" title={student.address}>
-                        {student.address || '—'}
-                      </td>
-
-                      <td className="py-2.5 px-3 text-center font-mono text-[11px] text-brand-text-secondary">
-                        {student.classAdmitted || '—'}
-                      </td>
-
-                      <td className="py-2.5 px-3 text-center font-mono text-[11px] text-brand-text-secondary">
-                        {student.admissionDay && student.admissionMonth && student.admissionYear
-                          ? `${student.admissionDay}/${student.admissionMonth}/${student.admissionYear}`
-                          : '—'}
-                      </td>
-
-                      <td className="py-2.5 px-4 font-mono text-[11px] text-brand-text-secondary truncate max-w-[140px]">
-                        {student.partnerContact || '—'}
-                      </td>
-
-                      <td className="py-2.5 px-3 text-center text-brand-text-secondary">
-                        {student.shift || 'Morning'}
-                      </td>
-
-                      <td className="py-2.5 px-3 text-center text-brand-text-secondary">
-                        {student.medium || 'English'}
-                      </td>
-
-                      {/* Docs & Scans Badge */}
-                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDetailStudent(student);
-                            setDetailModalTab('documents');
-                          }}
-                          className={`inline-flex items-center justify-center gap-1 min-h-[36px] px-2 py-1 rounded-lg text-[11px] font-semibold transition-all border active:scale-[0.97] ${
-                            docCount > 0
-                              ? hasFlags
-                                ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 hover:bg-amber-100 active:bg-amber-200 dark:active:bg-amber-950/70'
-                                : 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 active:bg-emerald-200 dark:active:bg-emerald-950/70'
-                              : 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800/60 dark:text-slate-400 dark:border-slate-700 hover:bg-slate-100 active:bg-slate-200 dark:active:bg-slate-700'
-                          }`}
-                          title={docCount > 0 ? `View ${docCount} documents for ${student.studentName}` : 'Attach documents'}
-                        >
-                          <FolderOpen className="w-3 h-3" />
-                          <span>{docCount > 0 ? `${docCount} Docs` : 'Attach'}</span>
-                          {hasFlags && <AlertTriangle className="w-3 h-3 text-amber-600 flex-shrink-0" />}
-                        </button>
-                      </td>
-
-                      {/* Actions */}
-                      <td className="py-2.5 px-3 text-center md:sticky md:right-0 z-10 bg-white dark:bg-brand-surface group-hover:bg-brand-bg border-l border-brand-border">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDetailStudent(student);
-                              setDetailModalTab('details');
-                            }}
-                            title="View Profile"
-                            className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-primary hover:bg-brand-surface transition-colors active:bg-brand-surface"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDetailStudent(student);
-                              setDetailModalTab('documents');
-                            }}
-                            title="View Documents & Scans"
-                            className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center text-brand-text-secondary hover:text-brand-primary hover:bg-brand-surface transition-colors active:bg-brand-surface"
-                          >
-                            <FolderOpen className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEdit(student)}
-                            title={isSheetEditingLocked ? 'Editing locked by school admin' : 'Edit Student Record'}
-                            disabled={isSheetEditingLocked}
-                            className={`p-1.5 rounded-lg transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center ${
-                              isSheetEditingLocked
-                                ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
-                                : 'text-brand-text-secondary hover:text-brand-primary hover:bg-brand-surface active:bg-brand-primary/15'
-                            }`}
-                          >
-                            {isSheetEditingLocked ? <Lock className="w-3.5 h-3.5" /> : <Edit2 className="w-3.5 h-3.5" />}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                      student={student}
+                      dossier={dossiersByGr[grClean]}
+                      isEditingLocked={isSheetEditingLocked}
+                      isAdmin={isAdmin}
+                      onViewStudent={(s) => {
+                        setDetailStudent(s);
+                        setDetailModalTab('details');
+                      }}
+                      onViewDocuments={(s) => {
+                        setDetailStudent(s);
+                        setDetailModalTab('documents');
+                      }}
+                      onEditStudent={handleOpenEdit}
+                      onPreviewAvatar={setAvatarPreviewUrl}
+                      getStatusBadge={getStatusBadge}
+                    />
                   );
                 })}
               </tbody>
@@ -1547,61 +1229,13 @@ export const StudentRecordsView: React.FC = () => {
         )}
 
         {/* Pagination Bar */}
-        {filteredRecords.length > 0 && (
-          <div className="py-3.5 px-4 border-t border-brand-border bg-slate-50/50 dark:bg-slate-900/40 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-            <span className="text-brand-text-secondary">
-              Page <strong className="text-brand-text-primary">{currentPage}</strong> of{' '}
-              <strong className="text-brand-text-primary">{totalPages}</strong> (
-              {(currentPage - 1) * pageSize + 1} -{' '}
-              {Math.min(currentPage * pageSize, filteredRecords.length)} of {filteredRecords.length} records)
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage <= 1}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-brand-border bg-white dark:bg-brand-surface text-brand-text-primary font-semibold hover:bg-brand-bg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-                <span>Previous</span>
-              </button>
-
-              <div className="flex items-center gap-1">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, idx) => {
-                  let pageNum = idx + 1;
-                  if (totalPages > 5 && currentPage > 3) {
-                    pageNum = currentPage - 3 + idx;
-                    if (pageNum > totalPages) pageNum = totalPages - (4 - idx);
-                  }
-                  return (
-                    <button
-                      key={pageNum}
-                      type="button"
-                      onClick={() => setCurrentPage(pageNum)}
-                      className={`w-7 h-7 rounded-lg font-mono font-semibold transition-colors ${
-                        currentPage === pageNum
-                          ? 'bg-brand-primary text-white'
-                          : 'text-brand-text-secondary hover:bg-brand-bg'
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage >= totalPages}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-brand-border bg-white dark:bg-brand-surface text-brand-text-primary font-semibold hover:bg-brand-bg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <span>Next</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        )}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredRecords.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       {/* Modals */}

@@ -1,4 +1,5 @@
 import { getCachedStudentRecords, setCachedStudentRecords, clearCachedStudentRecords } from './storageService';
+import { triggerFileDownload } from '../utils/download';
 
 /**
  * Google Sheets Service for Peoples Higher Secondary School Jamshoro (PHSSJ)
@@ -907,15 +908,7 @@ export function exportRecordsToCSV(records: StudentRecord[], filename: string = 
   });
 
   const csvContent = [headers.map((h) => `"${h}"`).join(','), ...rows.map((r) => r.join(','))].join('\r\n');
-
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-  link.setAttribute('href', url);
-  link.setAttribute('download', filename);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  triggerFileDownload(csvContent, filename, 'text/csv;charset=utf-8;');
 }
 
 /** Header layout of the attendance sheet. */

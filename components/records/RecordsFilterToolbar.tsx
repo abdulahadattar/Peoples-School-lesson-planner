@@ -1,5 +1,6 @@
 import React from 'react';
-import { Search, X, List, LayoutGrid } from 'lucide-react';
+import { List, LayoutGrid } from 'lucide-react';
+import { SearchInput } from '../ui/SearchInput';
 
 export interface RecordsFilterToolbarProps {
   searchQuery: string;
@@ -57,29 +58,15 @@ export const RecordsFilterToolbar: React.FC<RecordsFilterToolbarProps> = React.m
     <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-black/[0.06] dark:border-white/[0.08] shadow-xs space-y-3">
       <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
         {/* Main Search Input */}
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="search"
-            inputMode="search"
-            enterKeyHint="search"
-            autoComplete="off"
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Find student name, father name, contact number, GR#, B.Form, CNIC..."
-            className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-black/[0.08] dark:border-white/[0.08] focus:outline-none focus:ring-2 focus:ring-blue-500/30 text-xs text-slate-900 dark:text-white placeholder:text-slate-400"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => onSearchChange('')}
-              aria-label="Clear search"
-              className="absolute right-2 top-1/2 -translate-y-1/2 min-w-[32px] min-h-[32px] flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-md transition-colors cursor-pointer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
+        <SearchInput
+          className="flex-1"
+          inputClassName="pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-black/[0.08] dark:border-white/[0.08] focus:outline-hidden focus:ring-2 focus:ring-blue-500/30 text-xs text-slate-900 dark:text-white placeholder:text-slate-400"
+          value={searchQuery}
+          onChange={onSearchChange}
+          placeholder="Find student name, father name, contact number, GR#, B.Form, CNIC..."
+          resultCount={searchQuery ? filteredCount : undefined}
+          aria-label="Search student records"
+        />
 
         {/* Filter Dropdowns */}
         <div className="flex flex-wrap items-center gap-2 text-xs">

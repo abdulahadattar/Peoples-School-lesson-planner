@@ -11,7 +11,9 @@ import { LessonPlan, GeneratedPaper } from '../types';
 import Spinner from './ui/Spinner';
 import { ArchiveIcon } from './icons/MiscIcons';
 import { ConfirmDialog } from './ui/ConfirmDialog';
-import { Toast, ToastMessage } from './ui/Toast';
+import { useToast } from '../hooks/useToast';
+import { SearchInput } from './ui/SearchInput';
+import { EmptyState } from './ui/EmptyState';
 
 interface HistoryViewProps {
   onOpenLessonPlan: (plan: LessonPlan) => void;
@@ -42,14 +44,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
     variant?: 'danger' | 'warning' | 'primary';
     onConfirm: () => void;
   } | null>(null);
-  const [toast, setToast] = useState<ToastMessage | null>(null);
-
-  const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'error') => {
-    setToast({ type, message });
-    setTimeout(() => {
-      setToast((c) => (c?.message === message ? null : c));
-    }, 4500);
-  };
+  const { showToast, ToastComponent } = useToast(4500);
 
   const loadData = async () => {
     setLoading(true);
@@ -249,23 +244,12 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
       )}
 
       {/* Search Input */}
-      <div className="relative">
-        <input
-          type="text"
-          placeholder="Search by subject, title, grade, or topic..."
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          className="w-full px-4 py-2.5 text-sm rounded-xl border border-brand-border bg-brand-surface text-brand-text-primary shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery('')}
-            className="absolute right-3 top-2.5 text-sm text-brand-text-secondary hover:text-brand-text-primary"
-          >
-            ✕
-          </button>
-        )}
-      </div>
+      <SearchInput
+        value={searchQuery}
+        onChange={setSearchQuery}
+        placeholder="Search by subject, title, grade, or topic..."
+        resultCount={searchQuery ? totalCount : undefined}
+      />
 
       {/* Content */}
       {loading ? (
@@ -274,15 +258,10 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
           <span className="text-sm">Loading saved history from IndexedDB...</span>
         </div>
       ) : totalCount === 0 ? (
-        <div className="text-center py-16 px-4 bg-brand-surface rounded-2xl border border-dashed border-brand-border">
-          <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-brand-bg flex items-center justify-center text-brand-text-secondary">
-            <ArchiveIcon className="w-5 h-5" />
-          </div>
-          <h3 className="text-base font-semibold text-brand-text-primary">No saved records found</h3>
-          <p className="text-xs text-brand-text-secondary max-w-sm mx-auto mt-1">
-            Generated plans and papers appear here.
-          </p>
-        </div>
+        <EmptyState
+          title="No saved records found"
+          description={searchQuery ? "No lesson plans or papers match your search query." : "Generated plans and papers appear here automatically."}
+        />
       ) : (
         <div className="space-y-6">
           {/* Exam Papers Section */}
@@ -452,7 +431,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
         />
       )}
 
-      <Toast toast={toast} onClose={() => setToast(null)} />
+      {ToastComponent}
     </div>
   );
 };

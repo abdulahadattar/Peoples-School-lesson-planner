@@ -20,6 +20,8 @@ import {
 import SelectField from './ui/SelectField';
 import { UserIcon } from './icons/MiscIcons';
 import { printHtml } from '../utils/printHelper';
+import { copyToClipboard } from '../utils/clipboard';
+import { BaseModal } from './ui/BaseModal';
 
 interface SubstitutionManagerProps {
   timetable: TimetableData;
@@ -234,15 +236,17 @@ export const SubstitutionManager: React.FC<SubstitutionManagerProps> = ({
   };
 
   // WhatsApp Notice Generation & Copy
-  const handleCopyWhatsAppNotice = () => {
+  const handleCopyWhatsAppNotice = async () => {
     const absentTeacherNames = absentTeacherIds
       .map(id => teachers.find(t => t.id === id)?.name)
       .filter((n): n is string => !!n);
 
     const message = formatWhatsAppProxyNotice(todayKey, absentTeacherNames, assignments);
-    navigator.clipboard.writeText(message);
-    setWhatsappCopied(true);
-    setTimeout(() => setWhatsappCopied(false), 3000);
+    const success = await copyToClipboard(message);
+    if (success) {
+      setWhatsappCopied(true);
+      setTimeout(() => setWhatsappCopied(false), 3000);
+    }
   };
 
   // Official Printable Notice Slip
@@ -837,66 +841,51 @@ export const SubstitutionManager: React.FC<SubstitutionManagerProps> = ({
 
       {/* Teacher Assignment History Modal */}
       {inspectTeacherStats && (
-        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-brand-surface border border-brand-border rounded-2xl w-full max-w-lg p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-brand-border pb-3">
-              <div>
-                <h4 className="text-sm font-bold text-brand-text-primary">
-                  Proxy History: {inspectTeacherStats.teacherName}
-                </h4>
-                <p className="text-xs text-brand-text-secondary">
-                  {inspectTeacherStats.designation} • Total Proxies: {inspectTeacherStats.totalCount}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setInspectTeacherStats(null)}
-                className="text-brand-text-secondary hover:text-brand-text-primary font-bold text-base"
-              >
-                ✕
-              </button>
+        <BaseModal
+          isOpen={!!inspectTeacherStats}
+          onClose={() => setInspectTeacherStats(null)}
+          maxWidth="lg"
+          title={`Proxy History: ${inspectTeacherStats.teacherName}`}
+          subtitle={`${inspectTeacherStats.designation} • Total Proxies: ${inspectTeacherStats.totalCount}`}
+          footer={
+            <button
+              type="button"
+              onClick={() => setInspectTeacherStats(null)}
+              className="px-4 py-1.5 text-xs font-semibold rounded-xl bg-primary text-white hover:bg-primary/90 transition-colors cursor-pointer"
+            >
+              Close
+            </button>
+          }
+        >
+          {inspectTeacherStats.recentAssignments.length === 0 ? (
+            <div className="py-8 text-center text-xs text-slate-500 dark:text-slate-400">
+              No proxy periods recorded for this teacher yet.
             </div>
-
-            {inspectTeacherStats.recentAssignments.length === 0 ? (
-              <div className="py-8 text-center text-xs text-brand-text-secondary">
-                No proxy periods recorded for this teacher yet.
-              </div>
-            ) : (
-              <div className="max-h-72 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                {inspectTeacherStats.recentAssignments.map((a, idx) => (
-                  <div
-                    key={a.id || idx}
-                    className="p-3 rounded-xl bg-brand-bg/60 border border-brand-border flex items-center justify-between gap-3 text-xs"
-                  >
-                    <div>
-                      <div className="font-bold text-brand-text-primary">
-                        Period {a.periodNo} • Class {a.classLabel}
-                      </div>
-                      <div className="text-[11px] text-brand-text-secondary mt-0.5">
-                        Subject: {a.subjectName} • Relieving: {a.absentTeacherName}
-                      </div>
+          ) : (
+            <div className="max-h-72 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+              {inspectTeacherStats.recentAssignments.map((a, idx) => (
+                <div
+                  key={a.id || idx}
+                  className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3 text-xs"
+                >
+                  <div>
+                    <div className="font-bold text-slate-900 dark:text-white">
+                      Period {a.periodNo} • Class {a.classLabel}
                     </div>
-                    <div className="text-right shrink-0">
-                      <span className="font-mono text-[11px] font-semibold text-brand-primary block">
-                        {a.dateKey}
-                      </span>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      Subject: {a.subjectName} • Relieving: {a.absentTeacherName}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-
-            <div className="flex justify-end pt-3 border-t border-brand-border">
-              <button
-                type="button"
-                onClick={() => setInspectTeacherStats(null)}
-                className="px-4 py-1.5 text-xs font-semibold rounded-xl bg-brand-primary text-white"
-              >
-                Close
-              </button>
+                  <div className="text-right shrink-0">
+                    <span className="font-mono text-[11px] font-semibold text-primary block">
+                      {a.dateKey}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
-        </div>
+          )}
+        </BaseModal>
       )}
     </div>
   );

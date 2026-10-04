@@ -14,6 +14,8 @@
  * subtly different paths and casing.)
  */
 
+import { getGradeName } from './curriculumHelpers';
+
 /**
  * Map curriculum subject ids to their SLO JSON filenames when they differ
  * (the files live under public/curriculum/slos/Grade N/).
@@ -45,8 +47,7 @@ export async function loadSloChapter(
   chapterId: string
 ): Promise<SloChapter | null> {
   try {
-    const gradeNum = parseInt(classId.replace('class', ''), 10);
-    const grade = `Grade ${gradeNum}`;
+    const grade = getGradeName(classId);
     const chapterNum = parseInt(chapterId.replace('ch', ''), 10);
     const file = SUBJECT_FILE_ALIASES[subjectId.toLowerCase()] ?? subjectId.toLowerCase();
     const response = await fetch(`/curriculum/slos/${grade}/${file}.json`);

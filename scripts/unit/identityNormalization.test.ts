@@ -5,7 +5,10 @@ import {
   formatPhoneDisplay,
   getInitials,
   getAvatarGradient,
+  normalizePakistaniName,
+  validateNadraNumber,
 } from '../../services/identityNormalization';
+
 
 function assert(condition: boolean, msg: string) {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);
@@ -42,4 +45,21 @@ console.log('── identityNormalization.getAvatarGradient ──');
 assert(typeof getAvatarGradient('123') === 'string', 'returns class string');
 assert(getAvatarGradient('123') === getAvatarGradient('123'), 'deterministic');
 
+console.log('── identityNormalization.normalizePakistaniName ──');
+assert(normalizePakistaniName('Syed Muhammad Ahmad Brohi') === 'muhamad ahmed brohi', 'normalizes honorific, prefix, surname');
+assert(normalizePakistaniName('Mohd. Aly Solangy') === 'muhamad ali solangi', 'standardizes abbreviations and terminal y');
+assert(normalizePakistaniName('') === '', 'handles empty string');
+
+
+console.log('── identityNormalization.validateNadraNumber ──');
+const validSindh = validateNadraNumber('41506-0504781-7');
+assert(validSindh.isValid === true, 'valid Sindh CNIC is accepted');
+assert(validSindh.provinceCode === 4, 'identifies province code 4');
+assert(validSindh.provinceName === 'Sindh', 'identifies Sindh province name');
+assert(validSindh.digits === '4150605047817', 'extracts clean 13 digits');
+
+const invalidShort = validateNadraNumber('41506');
+assert(invalidShort.isValid === false, 'rejects short number');
+
 console.log('All identityNormalization tests passed!');
+

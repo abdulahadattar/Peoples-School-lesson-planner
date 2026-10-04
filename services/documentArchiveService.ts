@@ -9,6 +9,11 @@ import { cleanAndParseJson } from './jsonHelpers.js';
 import { sanitizeScriptNameField } from './extractedNameGuard.js';
 import { createStorageAdapter } from './storage/index.js';
 import {
+  normalizePakistaniName,
+  validateNadraNumber,
+  NadraValidationResult,
+} from './identityNormalization.js';
+import {
   StudentDocumentRecord,
   StudentDossier,
   BatchProcessingJob,
@@ -651,136 +656,13 @@ export function extractCasteFromName(name?: string): { baseName: string; detecte
   return { baseName: clean };
 }
 
-/**
- * Pakistani / Sindh Name Normalizer:
- * Removes titles, standardizes prefixes, resolves doubled letters (ghaffar/ghafar, sattar/satar),
- * and normalizes common phonetic transliteration variants (i/y, ee/i, oo/u, a/u).
- */
-export function normalizePakistaniName(name?: string): string {
-  if (!name) return '';
-  let clean = name.toLowerCase().trim();
-
-  // Strip common honorifics and titles
-  clean = clean.replace(/\b(syed|syyed|sayed|hafiz|hafeez|mst|mst\.|bibi|miss|master|mr|mrs|dr|al-haj|haji)\b/gi, ' ');
-
-  // Standardize common Pakistani / Muslim prefixes
-  clean = clean.replace(/\b(muhammad|mohammad|mohammed|mohd|md|md\.|m\.)\b/gi, 'muhammad');
-
-  // Normalize common Sindh / Pakistani surname and phonetic variations
-  const replacements: Array<[RegExp, string]> = [
-    [/\bahmad\b/g, 'ahmed'],
-    [/\brahman\b/g, 'rehman'],
-    [/\b(husain|hussan|hasan|hassan)\b/g, 'hussain'],
-    [/\baly\b/g, 'ali'],
-    [/\btarique\b/g, 'tariq'],
-    [/\bfarooque\b/g, 'farooq'],
-    [/\b(shoib|shuaib)\b/g, 'shoaib'],
-    [/\bbarohi\b/g, 'brohi'],
-    [/\bchannar\b/g, 'channa'],
-    [/\blashary\b/g, 'lashari'],
-    [/\brindo\b/g, 'rind'],
-    [/\bpanwhar\b/g, 'panhwar'],
-    [/\bsumro\b/g, 'soomro'],
-    [/\bchandeo\b/g, 'chandio'],
-    [/\bsial\b/g, 'siyal'],
-    [/\bmagasi\b/g, 'magsi'],
-    [/\bbhati\b/g, 'bhatti'],
-    [/\bsolangy\b/g, 'solangi'],
-    [/\bmalah\b/g, 'mallah'],
-    [/\bzardary\b/g, 'zardari'],
-    [/\bkhosa\b/g, 'khoso'],
-    [/\bjatoy\b/g, 'jatoi'],
-    [/\bsarwer\b/g, 'sarwar'],
-    [/\bnadim\b/g, 'nadeem'],
-    [/\bshahh\b/g, 'shah'],
-    // Phonetic vowel & consonant equivalences
-    [/\bkhameeso\b/g, 'khamiso'],
-    [/\bkunwal\b/g, 'kanwal'],
-    [/\bghaffar\b/g, 'ghafar'],
-    [/\bsattar\b/g, 'satar'],
-    [/\babbasi\b/g, 'abasi'],
-    [/\bjabbar\b/g, 'jabar'],
-    [/\bmemon\b/g, 'meman'],
-    [/\bkhetran\b/g, 'khetiran'],
-    [/\b(khooharo|khoharo|khuharo|khoohro|khuhro)\b/g, 'khuhro'],
-    [/\b(liaquat|liaqat|liyaqat)\b/g, 'liaquat'],
-    [/\b(bakhsh|baksh|bux)\b/g, 'bux'],
-    [/\b(sanjarani|sanjrani)\b/g, 'sanjrani'],
-  ];
-
-  for (const [pattern, rep] of replacements) {
-    clean = clean.replace(pattern, rep);
-  }
-
-  // Common interchangeable vowel clusters: ee -> i, oo -> u
-  clean = clean.replace(/ee/g, 'i').replace(/oo/g, 'u');
-
-  // Collapse consecutive doubled consonants: ff->f, tt->t, ss->s, mm->m, ll->l, dd->d, bb->b
-  clean = clean.replace(/([b-df-hj-np-tv-z])\1+/g, '$1');
-
-  // Convert terminal 'y' to 'i' for names like Aly -> Ali, Solangy -> Solangi
-  clean = clean.replace(/\b([a-z]+)y\b/g, '$1i');
-
-  return clean.replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
-}
-
-/**
- * Validate Pakistani NADRA 13-digit number format & province code
- */
-export function validateNadraNumber(val?: string, expectedProvince: number = 4): {
-  isValid: boolean;
-  digits: string;
-  formatted: string;
-  issue?: string;
-  provinceCode?: number;
-  provinceName?: string;
-} {
-  if (!val) return { isValid: false, digits: '', formatted: '', issue: 'Empty NADRA identity number' };
-  const digits = val.replace(/\D/g, '');
-  if (!digits) return { isValid: false, digits: '', formatted: '', issue: 'No numerical digits found' };
-
-  if (digits.length < 13) {
-    return {
-      isValid: false,
-      digits,
-      formatted: val,
-      issue: `Incomplete NADRA number: contains only ${digits.length} digits (13 required for official B-Form/CNIC)`,
-    };
-  }
-  if (digits.length > 13) {
-    return {
-      isValid: false,
-      digits,
-      formatted: val,
-      issue: `Too many digits: contains ${digits.length} digits (standard NADRA format is 13 digits)`,
-    };
-  }
-
-  const provinceDigit = parseInt(digits[0], 10);
-  const provinceNames: Record<number, string> = {
-    1: 'Khyber Pakhtunkhwa',
-    2: 'FATA',
-    3: 'Punjab',
-    4: 'Sindh',
-    5: 'Balochistan',
-    6: 'Islamabad Capital Territory',
-    7: 'Gilgit-Baltistan / AJK',
-  };
-
-  const formatted = `${digits.slice(0, 5)}-${digits.slice(5, 12)}-${digits.slice(12)}`;
-  const provinceName = provinceNames[provinceDigit] || 'Unknown Province';
-
-  return {
-    isValid: true,
-    digits,
-    formatted,
-    provinceCode: provinceDigit,
-    provinceName,
-  };
-}
+// Re-export canonical normalization helpers from identityNormalization.js
+export { normalizePakistaniName, validateNadraNumber };
+export type { NadraValidationResult };
 
 /**
  * Comprehensive Sindhi/Urdu name and word dictionary for educational documents
+
  */
 export const SINDHI_NAME_DICTIONARY: Record<string, string> = {
   'شعيب': 'Shoib',

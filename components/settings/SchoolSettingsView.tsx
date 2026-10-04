@@ -33,7 +33,7 @@ import { ClassEditorModal } from './ClassEditorModal';
 import { TeacherEditorModal } from './TeacherEditorModal';
 import { TimetableEditorTab } from './TimetableEditorTab';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
-import { Toast, ToastMessage } from '../ui/Toast';
+import { useToast } from '../../hooks/useToast';
 import { googleSignIn } from '../../services/googleAuth';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -76,14 +76,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({ onOpenLo
     confirmLabel?: string;
     onConfirm: () => void;
   } | null>(null);
-  const [toast, setToast] = useState<ToastMessage | null>(null);
-
-  const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'error') => {
-    setToast({ type, message });
-    setTimeout(() => {
-      setToast((c) => (c?.message === message ? null : c));
-    }, 4500);
-  };
+  const { showToast, ToastComponent } = useToast(4500);
 
   // Sync working copy when base config changes
   React.useEffect(() => {
@@ -977,7 +970,7 @@ export const SchoolSettingsView: React.FC<SchoolSettingsViewProps> = ({ onOpenLo
         </div>
       )}
 
-      <Toast toast={toast} onClose={() => setToast(null)} />
+      {ToastComponent}
     </div>
   );
 };

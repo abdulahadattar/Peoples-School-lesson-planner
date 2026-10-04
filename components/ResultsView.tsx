@@ -11,7 +11,7 @@ import Spinner from './ui/Spinner';
 import { QuestionEditor } from './QuestionEditor';
 import { saveExamPaperToDb, updateSavedPaperInDb } from '../services/storageService';
 import { ConfirmDialog } from './ui/ConfirmDialog';
-import { Toast, ToastMessage } from './ui/Toast';
+import { useToast } from '../hooks/useToast';
 
 interface ResultsViewProps {
   lessonPlans: LessonPlan[];
@@ -51,14 +51,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
     variant?: 'danger' | 'warning' | 'primary';
     onConfirm: () => void;
   } | null>(null);
-  const [toast, setToast] = useState<ToastMessage | null>(null);
-
-  const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'error') => {
-    setToast({ type, message });
-    setTimeout(() => {
-      setToast((c) => (c?.message === message ? null : c));
-    }, 4500);
-  };
+  const { showToast, ToastComponent } = useToast(4500);
   const [mathScale, setMathScale] = useState<number>(() => {
     const saved = localStorage.getItem('phssj_math_scale');
     return saved ? Number(saved) || 85 : 85;
@@ -549,7 +542,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({
           />
         )}
 
-        <Toast toast={toast} onClose={() => setToast(null)} />
+        {ToastComponent}
       </div>
     );
   }
