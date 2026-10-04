@@ -375,7 +375,7 @@ const App: React.FC = () => {
             ))}
           </nav>
 
-          <div className="mt-auto pt-4 border-t border-black/[0.04] dark:border-white/[0.06]">
+          <div className="mt-auto pt-4 border-t border-black/[0.04] dark:border-white/[0.06] space-y-3">
             <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-black/[0.04] dark:border-white/[0.06]">
               <div className="shrink-0 bg-white rounded-md p-1 border border-slate-200/80 flex items-center justify-center">
                 <ZiauddinLogo className="h-5 w-auto" />
@@ -385,6 +385,29 @@ const App: React.FC = () => {
                 <br />
                 <span className="font-semibold text-slate-800 dark:text-slate-200">Ziauddin University</span>
               </p>
+            </div>
+            <div className="px-3 text-[10px] text-slate-500 dark:text-slate-400 flex items-start gap-2">
+              <div
+                className={`mt-1 w-2 h-2 rounded-full ${
+                  versionConfig.environment === 'testing'
+                    ? 'bg-yellow-400 animate-pulse'
+                    : versionConfig.environment === 'partial-public'
+                    ? 'bg-blue-400'
+                    : 'bg-green-400'
+                }`}
+              />
+              <div>
+                <p className="font-semibold text-slate-700 dark:text-slate-300">v{versionConfig.version} ({versionConfig.branch})</p>
+                <p>Built: {new Date(versionConfig.buildDate).toLocaleString('en-PK', {
+                  timeZone: 'Asia/Karachi',
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: true,
+                })}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -616,33 +639,6 @@ const App: React.FC = () => {
           />
         )}
       </main>
-
-      {/* Version Footer. Sits above the Android gesture bar, and the main scroll
-          column carries matching pb-6 so it never covers the last row of data. */}
-      <div className="fixed bottom-0 left-0 right-0 min-h-6 py-0.5 pb-[max(0.125rem,env(safe-area-inset-bottom,0px))] bg-brand-surface/90 backdrop-blur-sm border-t border-brand-border/50 flex items-center justify-center text-[10px] sm:text-xs text-brand-text-secondary z-50">
-        <span className="flex items-center gap-2">
-          <span
-            className={`w-2 h-2 rounded-full ${
-              versionConfig.environment === 'testing'
-                ? 'bg-yellow-400 animate-pulse'
-                : versionConfig.environment === 'partial-public'
-                ? 'bg-blue-400'
-                : 'bg-green-400'
-            }`}
-          />
-          <span>{versionConfig.version}</span>
-          <span className={`px-1.5 py-0.25 rounded text-xs font-medium ${
-            versionConfig.environment === 'testing'
-              ? 'bg-yellow-400/20 text-yellow-300'
-              : versionConfig.environment === 'partial-public'
-              ? 'bg-blue-400/20 text-blue-300'
-              : 'bg-green-400/20 text-green-300'
-          }`}>
-            {versionConfig.branch}
-          </span>
-          <span>{versionConfig.deployUrl.replace('https://', '')}</span>
-        </span>
-      </div>
 
       {ToastComponent}
     </div>
