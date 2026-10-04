@@ -32,6 +32,7 @@ export interface DailyAttendanceRecord {
   recordedBy: string;
   notes: string;
   updatedAt: number;
+  syncedToSheetAt?: number;
   classes: Record<string, { presentBoys: number; presentGirls: number; classTeacher?: string }>;
 }
 
@@ -311,12 +312,35 @@ export async function loadClassEnrollments(): Promise<ClassEnrollment[]> {
 export async function saveAttendanceRecord(record: DailyAttendanceRecord): Promise<void> {
   try {
     const docRef = doc(db, 'daily_attendance', record.date);
-    await setDoc(docRef, record);
+    await setDoc(docRef, record, { merge: true });
     // Also save locally as a fallback
     localStorage.setItem(`attendance_${record.date}`, JSON.stringify(record));
   } catch (error) {
     console.warn("Failed to save to Firestore, saving locally", error);
     localStorage.setItem(`attendance_${record.date}`, JSON.stringify(record));
+  }
+}
+
+/**
+ * Marks a daily attendance record as successfully synced to Google Sheets.
+ */
+export async function markAttendanceSyncedToSheet(date: string, timestamp: number = Date.now()): Promise<void> {
+  try {
+    const docRef = doc(db, 'daily_attendance', date);
+    await setDoc(docRef, { syncedToSheetAt: timestamp }, { merge: true });
+  } catch (error) {
+    console.warn("Failed to update syncedToSheetAt in Firestore", error);
+  }
+
+  try {
+    const localStr = localStorage.getItem(`attendance_${date}`);
+    if (localStr) {
+      const parsed = JSON.parse(localStr);
+      parsed.syncedToSheetAt = timestamp;
+      localStorage.setItem(`attendance_${date}`, JSON.stringify(parsed));
+    }
+  } catch (error) {
+    console.warn("Failed to update syncedToSheetAt in localStorage", error);
   }
 }
 
@@ -439,12 +463,19 @@ function loadCachedEnrollments(): Map<string, number> {
   return map;
 }
 
-export async function loadAttendanceDates(): Promise<{ date: string; totalPresent: number; percentage: number }[]> {
+export interface AttendanceHistoryEntry {
+  date: string;
+  totalPresent: number;
+  percentage: number;
+  syncedToSheetAt?: number;
+}
+
+export async function loadAttendanceDates(): Promise<AttendanceHistoryEntry[]> {
   try {
     const attCol = collection(db, 'daily_attendance');
     const q = query(attCol, orderBy('date', 'desc'), limit(30));
     const snapshot = await getDocs(q);
-    const fromFirestore = snapshot.docs.map(d => {
+    const fromFirestore: AttendanceHistoryEntry[] = snapshot.docs.map(d => {
       const data = d.data() as DailyAttendanceRecord;
       const totalPresent = countTotalPresent(data);
       return {
@@ -453,6 +484,7 @@ export async function loadAttendanceDates(): Promise<{ date: string; totalPresen
         // Derived from the live enrollment totals so the history list is a real
         // metric rather than the constant 0% this used to return.
         percentage: resolveAttendancePercentage(data, totalPresent),
+        syncedToSheetAt: data.syncedToSheetAt,
       };
     });
 
@@ -461,7 +493,7 @@ export async function loadAttendanceDates(): Promise<{ date: string; totalPresen
     // history list even though records were cached locally. Merge the local
     // records for any date Firestore did not return; Firestore stays the source
     // of truth for the dates it does return.
-    const merged = new Map(fromFirestore.map(d => [d.date, d]));
+    const merged = new Map<string, AttendanceHistoryEntry>(fromFirestore.map(d => [d.date, d]));
     for (const local of readLocalAttendanceDates()) {
       if (!merged.has(local.date)) merged.set(local.date, local);
     }
@@ -474,8 +506,8 @@ export async function loadAttendanceDates(): Promise<{ date: string; totalPresen
 }
 
 /** Attendance history from the local per-date cache written by saveAttendanceRecord. */
-function readLocalAttendanceDates(): { date: string; totalPresent: number; percentage: number }[] {
-  const dates: { date: string; totalPresent: number; percentage: number }[] = [];
+function readLocalAttendanceDates(): AttendanceHistoryEntry[] {
+  const dates: AttendanceHistoryEntry[] = [];
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
     if (key && key.startsWith('attendance_')) {
@@ -489,6 +521,7 @@ function readLocalAttendanceDates(): { date: string; totalPresent: number; perce
             date: data.date,
             totalPresent,
             percentage: resolveAttendancePercentage(data, totalPresent),
+            syncedToSheetAt: data.syncedToSheetAt,
           });
         } catch {
           // A corrupt local entry should not abort the whole history list.
