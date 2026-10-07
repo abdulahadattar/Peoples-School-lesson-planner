@@ -171,3 +171,5 @@ export interface ContextPdf {
 
 export type ExportOption = 'individual' | 'byUnit' | 'byGrade' | 'all';
 export type ExportFormat = 'docx' | 'pdf' | 'both';
+
+export type { SchoolConfig } from './services/schoolConfigService';

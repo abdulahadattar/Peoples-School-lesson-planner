@@ -1,27 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React from 'react';
 import { Teacher } from '../types';
-import {
-  DayKey,
-  TimetableData,
-  computeStaff,
-  resolveSlot,
-  DAY_LABELS,
-} from '../services/timetable';
-import {
-  getSubstitutionsForDate,
-  saveSubstitutionsForDate,
-  getAllSubstitutionsHistory,
-  computeTeacherProxyStats,
-  formatWhatsAppProxyNotice,
-  SubstitutionAssignment,
-  DailySubstitutionRecord,
-  TeacherProxyStats,
-} from '../services/substitutionService';
-import { printHtml } from '../utils/printHelper';
-import { copyToClipboard } from '../utils/clipboard';
-import { SubstitutionTodayBoard, AffectedSlot } from './substitution/SubstitutionTodayBoard';
+import { DayKey, TimetableData, DAY_LABELS } from '../services/timetable';
+import { SubstitutionAssignment } from '../services/substitutionService';
+import { SubstitutionTodayBoard } from './substitution/SubstitutionTodayBoard';
 import { SubstitutionLedgerTable } from './substitution/SubstitutionLedgerTable';
 import { TeacherProxyStatsModal } from './substitution/TeacherProxyStatsModal';
+import { useSubstitutionManager } from './substitution/useSubstitutionManager';
 
 interface SubstitutionManagerProps {
   timetable: TimetableData;
@@ -36,338 +20,29 @@ export const SubstitutionManager: React.FC<SubstitutionManagerProps> = ({
   day,
   onSubstitutionsChanged,
 }) => {
-  const todayKey = useMemo(() => new Date().toISOString().split('T')[0], []);
-  const [absentTeacherIds, setAbsentTeacherIds] = useState<string[]>([]);
-  const [assignments, setAssignments] = useState<SubstitutionAssignment[]>([]);
-  const [historyRecords, setHistoryRecords] = useState<DailySubstitutionRecord[]>([]);
-  const [selectedTeacherToAdd, setSelectedTeacherToAdd] = useState('');
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [activeSubTab, setActiveSubTab] = useState<'today' | 'ledger'>('today');
-  const [whatsappCopied, setWhatsappCopied] = useState(false);
-  const [inspectTeacherStats, setInspectTeacherStats] = useState<TeacherProxyStats | null>(null);
-  const [searchLedger, setSearchLedger] = useState('');
-
-  // Load today's stored state + historical records for proxy equity tracking
-  useEffect(() => {
-    let mounted = true;
-
-    async function loadData() {
-      try {
-        const [todayRec, history] = await Promise.all([
-          getSubstitutionsForDate(todayKey),
-          getAllSubstitutionsHistory(),
-        ]);
-
-        if (mounted) {
-          setAbsentTeacherIds(todayRec.absentTeacherIds || []);
-          setAssignments(todayRec.assignments || []);
-          setHistoryRecords(history);
-          setIsLoaded(true);
-          onSubstitutionsChanged?.(todayRec.assignments || [], todayRec.absentTeacherIds || []);
-        }
-      } catch (err) {
-        console.error('Failed to load substitutions:', err);
-        if (mounted) setIsLoaded(true);
-      }
-    }
-
-    loadData();
-    return () => {
-      mounted = false;
-    };
-  }, [todayKey]);
-
-  // Compute live teacher proxy workload statistics
-  const combinedHistory = useMemo(() => {
-    const existingOtherDates = historyRecords.filter(r => r.dateKey !== todayKey);
-    const todayRecord: DailySubstitutionRecord = {
-      dateKey: todayKey,
-      absentTeacherIds,
-      assignments,
-      updatedAt: Date.now(),
-    };
-    return [todayRecord, ...existingOtherDates];
-  }, [historyRecords, todayKey, absentTeacherIds, assignments]);
-
-  const teacherProxyStats = useMemo(() => {
-    return computeTeacherProxyStats(teachers, combinedHistory, new Date());
-  }, [teachers, combinedHistory]);
-
-  const statsMap = useMemo(() => {
-    const map = new Map<string, TeacherProxyStats>();
-    teacherProxyStats.forEach(s => map.set(s.teacherId, s));
-    return map;
-  }, [teacherProxyStats]);
-
-  // Save changes to IndexedDB & Firestore
-  const persistChanges = (newAbsent: string[], newAssignments: SubstitutionAssignment[]) => {
-    setAbsentTeacherIds(newAbsent);
-    setAssignments(newAssignments);
-    saveSubstitutionsForDate(todayKey, newAbsent, newAssignments);
-    onSubstitutionsChanged?.(newAssignments, newAbsent);
-  };
-
-  const handleMarkAbsent = () => {
-    if (!selectedTeacherToAdd) return;
-    if (absentTeacherIds.includes(selectedTeacherToAdd)) return;
-    const newAbsent = [...absentTeacherIds, selectedTeacherToAdd];
-    persistChanges(newAbsent, assignments);
-    setSelectedTeacherToAdd('');
-  };
-
-  const handleRemoveAbsent = (teacherId: string) => {
-    const newAbsent = absentTeacherIds.filter(id => id !== teacherId);
-    const absentTeacher = teachers.find(t => t.id === teacherId);
-    const newAssignments = assignments.filter(
-      a => !absentTeacher || a.absentTeacherName !== absentTeacher.name
-    );
-    persistChanges(newAbsent, newAssignments);
-  };
-
-  // Find all affected slots today for the absent teachers
-  const affectedSlots: AffectedSlot[] = useMemo(() => {
-    if (absentTeacherIds.length === 0) return [];
-    const results: AffectedSlot[] = [];
-
-    const absentSet = new Set(absentTeacherIds);
-    const maxPeriods =
-      day === 'fri' ? 5 : Math.max(...timetable.classes.map(c => c.periods.length));
-
-    for (let pIdx = 0; pIdx < maxPeriods; pIdx++) {
-      const staffStatus = computeStaff(timetable.classes, teachers, day, pIdx);
-      const availableFreeTeachers = staffStatus.free.filter(t => !absentSet.has(t.id));
-
-      for (const entry of timetable.classes) {
-        if (pIdx >= entry.periods.length) continue;
-        const period = entry.periods[pIdx];
-        const slot = resolveSlot(entry, day, pIdx, teachers);
-
-        for (const t of slot.teachers) {
-          if (absentSet.has(t.id)) {
-            // Annotate and sort free teachers by workload equity (least proxies this week first)
-            const annotated = availableFreeTeachers.map(ft => {
-              const st = statsMap.get(ft.id);
-              const teachesSameSubject = ft.subjects.some(sub =>
-                slot.label.toLowerCase().includes(sub.name.toLowerCase())
-              );
-              return {
-                ...ft,
-                thisWeekCount: st?.thisWeekCount || 0,
-                teachesSameSubject,
-                loadLevel: st?.loadLevel || 'low',
-              };
-            });
-
-            // Sort: subject match first, then lowest weekly proxy load, then alphabetical
-            annotated.sort((a, b) => {
-              if (a.teachesSameSubject && !b.teachesSameSubject) return -1;
-              if (!a.teachesSameSubject && b.teachesSameSubject) return 1;
-              if (a.thisWeekCount !== b.thisWeekCount) return a.thisWeekCount - b.thisWeekCount;
-              return a.name.localeCompare(b.name);
-            });
-
-            results.push({
-              periodNo: period.no,
-              periodIndex: pIdx,
-              classLabel: entry.label,
-              subjectName: slot.label,
-              absentTeacher: t,
-              freeTeachers: annotated,
-            });
-          }
-        }
-      }
-    }
-
-    return results.sort((a, b) => a.periodNo - b.periodNo || a.classLabel.localeCompare(b.classLabel));
-  }, [absentTeacherIds, timetable, teachers, day, statsMap]);
-
-  const handleAssignProxy = (
-    slot: AffectedSlot,
-    proxyTeacherId: string
-  ) => {
-    const proxyTeacher = teachers.find(t => t.id === proxyTeacherId);
-    if (!proxyTeacher) return;
-
-    const assignmentId = `${todayKey}_${slot.periodNo}_${slot.classLabel}_${slot.absentTeacher.id}`;
-    const newAssignment: SubstitutionAssignment = {
-      id: assignmentId,
-      dateKey: todayKey,
-      periodNo: slot.periodNo,
-      classLabel: slot.classLabel,
-      subjectName: slot.subjectName,
-      absentTeacherName: slot.absentTeacher.name,
-      proxyTeacherId: proxyTeacher.id,
-      proxyTeacherName: proxyTeacher.name,
-      assignedAt: Date.now(),
-    };
-
-    const filtered = assignments.filter(
-      a =>
-        !(
-          a.periodNo === slot.periodNo &&
-          a.classLabel === slot.classLabel &&
-          a.absentTeacherName === slot.absentTeacher.name
-        )
-    );
-    persistChanges(absentTeacherIds, [...filtered, newAssignment]);
-  };
-
-  const handleRemoveAssignment = (assignmentId: string) => {
-    const filtered = assignments.filter(a => a.id !== assignmentId);
-    persistChanges(absentTeacherIds, filtered);
-  };
-
-  // WhatsApp Notice Generation & Copy
-  const handleCopyWhatsAppNotice = async () => {
-    const absentTeacherNames = absentTeacherIds
-      .map(id => teachers.find(t => t.id === id)?.name)
-      .filter((n): n is string => !!n);
-
-    const message = formatWhatsAppProxyNotice(todayKey, absentTeacherNames, assignments);
-    const success = await copyToClipboard(message);
-    if (success) {
-      setWhatsappCopied(true);
-      setTimeout(() => setWhatsappCopied(false), 3000);
-    }
-  };
-
-  // Official Printable Notice Slip
-  const handlePrintSlip = () => {
-    const absentTeacherNames = absentTeacherIds
-      .map(id => teachers.find(t => t.id === id)?.name)
-      .filter((n): n is string => !!n);
-
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Daily Faculty Substitution Slip - ${todayKey}</title>
-        <style>
-          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; color: #111; }
-          .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px; }
-          h1 { margin: 0; font-size: 18px; text-transform: uppercase; }
-          h2 { margin: 4px 0 0 0; font-size: 13px; font-weight: normal; color: #444; }
-          .meta { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 16px; font-weight: 500; }
-          table { width: 100%; border-collapse: collapse; font-size: 12px; }
-          th, td { border: 1px solid #999; padding: 7px 10px; text-align: left; }
-          th { background: #f3f4f6; font-weight: 600; }
-          .unassigned { color: #dc2626; font-weight: bold; }
-          .sign { margin-top: 48px; display: flex; justify-content: space-between; font-size: 12px; }
-          .absent-box { margin-bottom: 14px; padding: 8px 12px; background: #fafafa; border: 1px dashed #ccc; font-size: 12px; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>Peoples Higher Secondary School Jamshoro</h1>
-          <h2>Daily Faculty Substitution & Proxy Roster</h2>
-        </div>
-        <div class="meta">
-          <div><strong>Date:</strong> ${todayKey} (${DAY_LABELS[day]})</div>
-          <div><strong>Total Vacant Slots:</strong> ${affectedSlots.length}</div>
-          <div><strong>Assigned Proxies:</strong> ${assignments.length}</div>
-        </div>
-
-        ${
-          absentTeacherNames.length > 0
-            ? `<div class="absent-box"><strong>Absent Faculty Members:</strong> ${absentTeacherNames.join(', ')}</div>`
-            : ''
-        }
-
-        <table>
-          <thead>
-            <tr>
-              <th>Period</th>
-              <th>Class</th>
-              <th>Subject</th>
-              <th>Absent Teacher</th>
-              <th>Assigned Proxy Teacher</th>
-              <th>Teacher Signature</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${affectedSlots
-              .map(slot => {
-                const assigned = assignments.find(
-                  a =>
-                    a.periodNo === slot.periodNo &&
-                    a.classLabel === slot.classLabel &&
-                    a.absentTeacherName === slot.absentTeacher.name
-                );
-                return `
-                <tr>
-                  <td><strong>Period ${slot.periodNo}</strong></td>
-                  <td>${slot.classLabel}</td>
-                  <td>${slot.subjectName}</td>
-                  <td>${slot.absentTeacher.name}</td>
-                  <td>${
-                    assigned
-                      ? `<strong>${assigned.proxyTeacherName}</strong>`
-                      : '<span class="unassigned">UNASSIGNED</span>'
-                  }</td>
-                  <td style="width: 140px;"></td>
-                </tr>
-              `;
-              })
-              .join('')}
-          </tbody>
-        </table>
-
-        <div class="sign">
-          <div>Prepared By: ____________________</div>
-          <div>Vice Principal / Principal: ____________________</div>
-        </div>
-      </body>
-      </html>
-    `;
-
-    printHtml(html);
-  };
-
-  const coveredCount = affectedSlots.filter(s =>
-    assignments.some(
-      a =>
-        a.periodNo === s.periodNo &&
-        a.classLabel === s.classLabel &&
-        a.absentTeacherName === s.absentTeacher.name
-    )
-  ).length;
-
-  // Equity summary metrics
-  const equitySummary = useMemo(() => {
-    let totalWeekProxies = 0;
-    let heavyCount = 0;
-    let moderateCount = 0;
-    let optimalCount = 0;
-
-    teacherProxyStats.forEach(s => {
-      totalWeekProxies += s.thisWeekCount;
-      if (s.loadLevel === 'heavy') heavyCount++;
-      else if (s.loadLevel === 'moderate') moderateCount++;
-      else optimalCount++;
-    });
-
-    const activeTeachersCount = teachers.length || 1;
-    const avgLoad = (totalWeekProxies / activeTeachersCount).toFixed(1);
-
-    return {
-      totalWeekProxies,
-      avgLoad,
-      heavyCount,
-      moderateCount,
-      optimalCount,
-    };
-  }, [teacherProxyStats, teachers.length]);
-
-  const filteredLedger = useMemo(() => {
-    if (!searchLedger.trim()) return teacherProxyStats;
-    const q = searchLedger.toLowerCase();
-    return teacherProxyStats.filter(
-      t =>
-        t.teacherName.toLowerCase().includes(q) ||
-        (t.designation && t.designation.toLowerCase().includes(q))
-    );
-  }, [teacherProxyStats, searchLedger]);
+  const {
+    activeSubTab,
+    setActiveSubTab,
+    absentTeacherIds,
+    selectedTeacherToAdd,
+    setSelectedTeacherToAdd,
+    handleMarkAbsent,
+    handleRemoveAbsent,
+    affectedSlots,
+    assignments,
+    handleAssignProxy,
+    handleRemoveAssignment,
+    coveredCount,
+    whatsappCopied,
+    handleCopyWhatsAppNotice,
+    handlePrintSlip,
+    filteredLedger,
+    searchLedger,
+    setSearchLedger,
+    equitySummary,
+    inspectTeacherStats,
+    setInspectTeacherStats,
+  } = useSubstitutionManager(timetable, teachers, day, onSubstitutionsChanged);
 
   return (
     <div className="space-y-6">

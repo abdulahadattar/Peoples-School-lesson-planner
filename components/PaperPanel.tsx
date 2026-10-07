@@ -1,19 +1,16 @@
 import React, { useState, useMemo } from 'react';
 import { PaperConfig } from '../types';
 import { SelectionApi } from '../hooks/useSelection';
-import { subjectNames } from '../services/teacherRoster';
-import SelectField from './ui/SelectField';
 import Spinner from './ui/Spinner';
 import SegmentedControl, { EXPORT_FORMATS } from './ui/SegmentedControl';
 import { NumberField } from './ui/NumberField';
-import { PaperPresetSelector, PaperPreset, PAPER_PRESETS } from './paper/PaperPresetSelector';
+import { PaperPresetSelector, PaperPreset } from './paper/PaperPresetSelector';
+import { PaperMarkSummary } from './paper/PaperMarkSummary';
+import { PaperSelectToolbar } from './paper/PaperSelectToolbar';
+import { PaperSectionsList } from './paper/PaperSectionsList';
 import {
   DocumentTextIcon,
-  GraduationCapIcon,
-  BookOpenIcon,
-  ClipboardListIcon,
   SparklesIcon,
-  UserIcon,
 } from './icons/MiscIcons';
 import { motion } from 'motion/react';
 
@@ -69,10 +66,9 @@ export const PaperPanel: React.FC<PaperPanelProps> = ({
   const [balanceFeedback, setBalanceFeedback] = useState<string | null>(null);
 
   const markDistribution = useMemo(() => {
-    const MCQ_WEIGHT = 1;
     const attemptShort = Math.min(shortAttemptCount, shortQuestionCount);
     const attemptLong = Math.min(longAttemptCount, longQuestionCount);
-    const mcqMarks = mcqCount * MCQ_WEIGHT;
+    const mcqMarks = mcqCount * 1;
     const shortMarks = attemptShort * shortMarksPerQuestion;
     const longMarks = attemptLong * longMarksPerQuestion;
     const totalQuestionMarks = mcqMarks + shortMarks + longMarks;
@@ -148,322 +144,68 @@ export const PaperPanel: React.FC<PaperPanelProps> = ({
   }
 
   const canGenerate = !disabledReason;
-  const marksMatch = markDistribution.totalQuestionMarks === totalMarks;
   const isDisabled = isGenerating || !canGenerate;
-
-  const shortOptionalCount = Math.max(0, shortQuestionCount - shortAttemptCount);
-  const longOptionalCount = Math.max(0, longQuestionCount - longAttemptCount);
 
   return (
     <div className="w-full max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto space-y-6">
       <div className="rounded-2xl bg-white dark:bg-brand-surface border border-black/[0.06] dark:border-white/[0.08] shadow-soft">
         <div className="p-6 sm:p-8 space-y-6">
-          {/* Header */}
-          <div className="flex items-center justify-between pb-4 border-b border-black/[0.06] dark:border-white/[0.08]">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/15 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
-                <DocumentTextIcon className="w-5 h-5" />
+          <div className="border-b border-black/[0.06] dark:border-white/[0.08] pb-6">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
+                <DocumentTextIcon className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-base sm:text-lg font-bold text-brand-text-primary tracking-tight">
-                  Exam Paper Generator
-                </h2>
-                <p className="text-xs text-brand-text-secondary mt-0.5">
-                  Configure question distribution, choice rules, and mark formulas
-                </p>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Exam Paper Generator</h2>
+                <p className="text-sm text-slate-500">Configure questions, marking scheme, and format</p>
               </div>
             </div>
-            <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500">
-              <span className="font-semibold text-slate-700 dark:text-slate-300 font-mono tabular-nums">{markDistribution.totalQuestionMarks} Marks</span>
-              <span aria-hidden="true">·</span>
-              <span className="font-mono tabular-nums">{durationMinutes} mins</span>
+
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="w-full sm:w-auto">
+                <SegmentedControl
+                  value={exportFormat}
+                  onChange={onExportFormatChange}
+                  options={EXPORT_FORMATS}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500">Difficulty:</span>
+                <select
+                  value={difficulty}
+                  onChange={e => setDifficulty(e.target.value as any)}
+                  className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-black/[0.08] dark:border-white/[0.08] bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                >
+                  {DIFFICULTY_OPTIONS.map(d => (
+                    <option key={d.value} value={d.value}>{d.label}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
-          {/* Quick Presets Bar */}
-          <PaperPresetSelector
-            activePresetId={activePresetId}
-            onSelectPreset={applyPreset}
+          <PaperSelectToolbar selection={selection} />
+
+          <PaperPresetSelector activePresetId={activePresetId} onSelectPreset={applyPreset} />
+
+          <PaperSectionsList
+            markDistribution={markDistribution}
+            mcqCount={mcqCount}
+            setMcqCount={setMcqCount}
+            shortQuestionCount={shortQuestionCount}
+            setShortQuestionCount={setShortQuestionCount}
+            shortAttemptCount={shortAttemptCount}
+            setShortAttemptCount={setShortAttemptCount}
+            shortMarksPerQuestion={shortMarksPerQuestion}
+            setShortMarksPerQuestion={setShortMarksPerQuestion}
+            longQuestionCount={longQuestionCount}
+            setLongQuestionCount={setLongQuestionCount}
+            longAttemptCount={longAttemptCount}
+            setLongAttemptCount={setLongAttemptCount}
+            longMarksPerQuestion={longMarksPerQuestion}
+            setLongMarksPerQuestion={setLongMarksPerQuestion}
           />
 
-          {/* Curriculum Selectors Section */}
-          <div className="bg-slate-50/80 dark:bg-slate-900/40 p-4 sm:p-5 rounded-xl border border-black/[0.06] dark:border-white/[0.08] space-y-3.5">
-            <h3 className="text-xs font-bold text-brand-text-secondary uppercase tracking-wider">
-              1. Curriculum Alignment
-            </h3>
-
-            <SelectField
-              id="paper-teacher-select"
-              label="Select Teacher"
-              icon={<UserIcon className="w-3.5 h-3.5" />}
-              value={selectedTeacherId}
-              onChange={e => handleTeacherChange(e.target.value)}
-              className="h-11"
-            >
-              <option value="">Choose a teacher...</option>
-              {teacherChoices.map(t => (
-                <option key={t.id} value={t.id}>
-                  {`${t.name} — ${subjectNames(t).join(', ')}`}
-                </option>
-              ))}
-            </SelectField>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-              <SelectField
-                id="paper-class-select"
-                label="Select Class"
-                icon={<GraduationCapIcon className="w-3.5 h-3.5" />}
-                value={selectedClassId}
-                onChange={e => handleClassChange(e.target.value)}
-              >
-                <option value="">Choose a class</option>
-                {(selectedTeacher ? availableClasses : classes).map(cls => (
-                  <option key={cls.id} value={cls.id}>{cls.name}</option>
-                ))}
-              </SelectField>
-
-              <SelectField
-                id="paper-subject-select"
-                label="Select Subject"
-                icon={<BookOpenIcon className="w-3.5 h-3.5" />}
-                value={selectedSubjectId}
-                onChange={e => handleSubjectChange(e.target.value)}
-                disabled={!selectedClassId}
-              >
-                <option value="">Choose a subject</option>
-                {availableSubjects.map(subject => (
-                  <option key={subject.id} value={subject.id}>{subject.name}</option>
-                ))}
-              </SelectField>
-
-              <div className="sm:col-span-2 lg:col-span-1">
-                <SelectField
-                  id="paper-chapter-select"
-                  label="Select Chapter"
-                  icon={<ClipboardListIcon className="w-3.5 h-3.5" />}
-                  value={selectedChapterId}
-                  onChange={e => handleChapterChange(e.target.value)}
-                  disabled={!selectedSubjectId}
-                  dropdownWidth="xl"
-                >
-                  <option value="">Choose a chapter</option>
-                  {chapters.map(chapter => (
-                    <option key={chapter.id} value={chapter.id}>{chapter.name}</option>
-                  ))}
-                </SelectField>
-              </div>
-            </div>
-          </div>
-
-          {/* Rigor & Format Controls */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[11px] text-brand-text-secondary font-semibold uppercase tracking-wide mb-2">
-                Rigor / Difficulty
-              </label>
-              <SegmentedControl
-                value={difficulty}
-                options={DIFFICULTY_OPTIONS}
-                onChange={setDifficulty as any}
-              />
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-semibold text-brand-text-secondary uppercase tracking-wide mb-2">
-                Export File Format
-              </label>
-              <SegmentedControl value={exportFormat} options={EXPORT_FORMATS} onChange={onExportFormatChange} />
-            </div>
-          </div>
-
-          {/* Section Architecture Cards */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between pb-1 border-b border-black/[0.06] dark:border-white/[0.08]">
-              <h3 className="text-xs font-bold text-brand-text-secondary uppercase tracking-wider">
-                2. Section Blueprint & Optional Rules
-              </h3>
-              <span className="text-xs font-mono tabular-nums font-semibold text-blue-600 dark:text-blue-400">
-                Formula Total: {markDistribution.totalQuestionMarks} Marks
-              </span>
-            </div>
-
-            {/* SECTION A */}
-            <div className="bg-slate-50/70 dark:bg-slate-900/40 border border-black/[0.06] dark:border-white/[0.08] rounded-xl p-4">
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-black/[0.04] dark:border-white/[0.06]">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold text-xs flex items-center justify-center font-mono">
-                    A
-                  </span>
-                  <span className="text-sm font-semibold text-brand-text-primary">
-                    Section A: Multiple Choice Questions (MCQs)
-                  </span>
-                </div>
-                <span className="text-xs font-mono tabular-nums font-bold text-blue-600 dark:text-blue-400">
-                  {markDistribution.mcqMarks} Marks
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
-                <NumberField
-                  label="Number of MCQs (1 Mark Each)"
-                  value={mcqCount}
-                  min={0}
-                  max={50}
-                  onChange={setMcqCount}
-                />
-                <div className="text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800/60 rounded-xl p-3 border border-black/[0.04] dark:border-white/[0.06]">
-                  <p className="font-semibold text-slate-800 dark:text-slate-200 mb-0.5">MCQ Blueprint:</p>
-                  <p className="text-[11px] leading-relaxed">
-                    {mcqCount > 0
-                      ? `All ${mcqCount} MCQs are compulsory with 4 balanced distractors (A, B, C, D).`
-                      : 'No MCQs included in this paper.'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* SECTION B */}
-            <div className="bg-slate-50/70 dark:bg-slate-900/40 border border-black/[0.06] dark:border-white/[0.08] rounded-xl p-4">
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-black/[0.04] dark:border-white/[0.06]">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-xs flex items-center justify-center font-mono">
-                    B
-                  </span>
-                  <span className="text-sm font-semibold text-brand-text-primary">
-                    Section B: Short Answer Questions
-                  </span>
-                </div>
-                <span className="text-xs font-mono tabular-nums font-bold text-emerald-600 dark:text-emerald-400">
-                  {markDistribution.shortMarks} Marks ({markDistribution.shortAttempt} × {shortMarksPerQuestion}M)
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-                <NumberField
-                  label="Printed Questions"
-                  value={shortQuestionCount}
-                  min={0}
-                  max={30}
-                  hint="Questions printed on paper"
-                  onChange={v => {
-                    setShortQuestionCount(v);
-                    setShortAttemptCount(Math.min(shortAttemptCount, v));
-                  }}
-                />
-
-                <NumberField
-                  label="Questions to Attempt"
-                  value={shortAttemptCount}
-                  min={0}
-                  max={Math.max(0, shortQuestionCount)}
-                  hint="Mandatory student answers"
-                  onChange={setShortAttemptCount}
-                />
-
-                <NumberField
-                  label="Marks Per Question"
-                  value={shortMarksPerQuestion}
-                  min={1}
-                  max={10}
-                  hint="Typically 2M–4M"
-                  onChange={setShortMarksPerQuestion}
-                />
-              </div>
-
-              <div className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-white dark:bg-slate-800/60 border border-black/[0.04] dark:border-white/[0.06] text-xs">
-                <span className="text-slate-600 dark:text-slate-400">
-                  {shortQuestionCount === 0 ? (
-                    'No short questions included.'
-                  ) : shortOptionalCount > 0 ? (
-                    <span>
-                      Attempt <strong className="text-slate-900 dark:text-white">{shortAttemptCount} of {shortQuestionCount}</strong> questions ({shortOptionalCount} optional choice{shortOptionalCount > 1 ? 's' : ''}).
-                    </span>
-                  ) : (
-                    <span>
-                      All <strong className="text-slate-900 dark:text-white">{shortQuestionCount}</strong> questions are compulsory.
-                    </span>
-                  )}
-                </span>
-                {shortAttemptCount > 0 && (
-                  <span className="font-mono tabular-nums text-[11px] text-emerald-600 dark:text-emerald-400 font-bold shrink-0">
-                    {shortAttemptCount} × {shortMarksPerQuestion}M = {shortAttemptCount * shortMarksPerQuestion}M
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* SECTION C */}
-            <div className="bg-slate-50/70 dark:bg-slate-900/40 border border-black/[0.06] dark:border-white/[0.08] rounded-xl p-4">
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-black/[0.04] dark:border-white/[0.06]">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold text-xs flex items-center justify-center font-mono">
-                    C
-                  </span>
-                  <span className="text-sm font-semibold text-brand-text-primary">
-                    Section C: Detailed / Long Questions
-                  </span>
-                </div>
-                <span className="text-xs font-mono tabular-nums font-bold text-purple-600 dark:text-purple-400">
-                  {markDistribution.longMarks} Marks ({markDistribution.longAttempt} × {longMarksPerQuestion}M)
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-                <NumberField
-                  label="Printed Questions"
-                  value={longQuestionCount}
-                  min={0}
-                  max={20}
-                  hint="Questions printed on paper"
-                  onChange={v => {
-                    setLongQuestionCount(v);
-                    setLongAttemptCount(Math.min(longAttemptCount, v));
-                  }}
-                />
-
-                <NumberField
-                  label="Questions to Attempt"
-                  value={longAttemptCount}
-                  min={0}
-                  max={Math.max(0, longQuestionCount)}
-                  hint="Mandatory student answers"
-                  onChange={setLongAttemptCount}
-                />
-
-                <NumberField
-                  label="Marks Per Question"
-                  value={longMarksPerQuestion}
-                  min={2}
-                  max={20}
-                  hint="Typically 4M–8M"
-                  onChange={setLongMarksPerQuestion}
-                />
-              </div>
-
-              <div className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-white dark:bg-slate-800/60 border border-black/[0.04] dark:border-white/[0.06] text-xs">
-                <span className="text-slate-600 dark:text-slate-400">
-                  {longQuestionCount === 0 ? (
-                    'No detailed questions included.'
-                  ) : longOptionalCount > 0 ? (
-                    <span>
-                      Attempt <strong className="text-slate-900 dark:text-white">{longAttemptCount} of {longQuestionCount}</strong> questions ({longOptionalCount} optional choice{longOptionalCount > 1 ? 's' : ''}).
-                    </span>
-                  ) : (
-                    <span>
-                      All <strong className="text-slate-900 dark:text-white">{longQuestionCount}</strong> questions are compulsory.
-                    </span>
-                  )}
-                </span>
-                {longAttemptCount > 0 && (
-                  <span className="font-mono tabular-nums text-[11px] text-purple-600 dark:text-purple-400 font-bold shrink-0">
-                    {longAttemptCount} × {longMarksPerQuestion}M = {longAttemptCount * longMarksPerQuestion}M
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Duration & Target Controls */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <NumberField
               label="Target Marks"
@@ -473,7 +215,6 @@ export const PaperPanel: React.FC<PaperPanelProps> = ({
               step={5}
               onChange={setTotalMarks}
             />
-
             <NumberField
               label="Exam Duration (Minutes)"
               value={durationMinutes}
@@ -484,41 +225,18 @@ export const PaperPanel: React.FC<PaperPanelProps> = ({
             />
           </div>
 
-          {balanceFeedback && (
-            <motion.div
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="px-3 py-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-xl text-xs font-semibold text-emerald-800 dark:text-emerald-300 flex items-center gap-2"
-            >
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span>{balanceFeedback}</span>
-            </motion.div>
-          )}
+          <PaperMarkSummary
+            markDistribution={markDistribution}
+            totalMarks={totalMarks}
+            mcqCount={mcqCount}
+            shortQuestionCount={shortQuestionCount}
+            longQuestionCount={longQuestionCount}
+            shortMarksPerQuestion={shortMarksPerQuestion}
+            longMarksPerQuestion={longMarksPerQuestion}
+            balanceFeedback={balanceFeedback}
+            onSyncTargetMarks={() => setTotalMarks(markDistribution.totalQuestionMarks)}
+          />
 
-          {/* Formula summary */}
-          <div className="bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-black/[0.06] dark:border-white/[0.08] p-4 text-xs">
-            <div className="flex items-center justify-between mb-1 text-slate-500">
-              <span className="font-semibold uppercase tracking-wider text-[10px]">Live Formula Calculation</span>
-              <span className="font-mono tabular-nums font-bold text-slate-900 dark:text-white">{markDistribution.totalQuestionMarks} Marks</span>
-            </div>
-            <p className="font-mono tabular-nums text-slate-700 dark:text-slate-300">
-              {markDistribution.mcqMarks}M (MCQ) + {markDistribution.shortMarks}M ({markDistribution.shortAttempt} Short @ {shortMarksPerQuestion}M) + {markDistribution.longMarks}M ({markDistribution.longAttempt} Long @ {longMarksPerQuestion}M) = <strong>{markDistribution.totalQuestionMarks} Marks</strong>
-            </p>
-            {!marksMatch && (
-              <div className="flex items-center justify-between gap-2 pt-2 mt-2 border-t border-black/[0.04] dark:border-white/[0.06]">
-                <span className="text-amber-600 dark:text-amber-400">Target is set to {totalMarks}M.</span>
-                <button
-                  type="button"
-                  onClick={() => setTotalMarks(markDistribution.totalQuestionMarks)}
-                  className="font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-                >
-                  Sync Target to {markDistribution.totalQuestionMarks}M
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Generate Button */}
           <motion.button
             whileTap={{ scale: 0.985 }}
             type="button"

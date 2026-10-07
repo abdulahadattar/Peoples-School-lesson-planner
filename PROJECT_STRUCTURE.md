@@ -5,16 +5,23 @@
 ├── api/                        # Serverless API routes (Autonoma test environment factory & health endpoints)
 │   └── index.ts                # Express serverless handler for /api/autonoma & /api/health
 ├── components/                 # UI View & Presentation Layer
-│   ├── attendance/             # Attendance register, history drawer, summary cards, row views
+│   ├── attendance/             # Attendance register, history drawer, summary cards, row views, custom hooks
 │   ├── auth/                   # Authentication UI & animated login gate
-│   ├── documents/              # Document archive center: scans grid, discrepancy audit, dossier cards
-│   ├── icons/                  # SVG icon library & brand icons
-│   ├── live/                   # Live monitor cards, header, and staff room widgets
-│   ├── paper/                  # Exam paper generator widgets (presets, mark blueprints)
-│   ├── records/                # Student records register, filters, stats, cards, tables, detail modals
-│   ├── settings/               # School admin settings tabs (classes, teachers, periods, safeguards, identity)
+│   ├── documents/              # Document archive center: scans grid, discrepancy audit, transparency modals
+│   ├── history/                # History cards (SavedPlanCard, SavedPaperCard) & useHistoryData hook
+│   ├── icons/                  # SVG icon library & brand icons (MiscIcons)
+│   ├── lesson/                 # Lesson plan generator sub-components (TeacherMetadataPanel, SloSelectionList)
+│   ├── live/                   # Live monitor cards, header, period/day selectors, school status badge
+│   ├── paper/                  # Exam paper generator widgets (presets, mark summary, select toolbar, sections list, question edit form)
+│   ├── records/                # Student records register, filters, stats, cards, tables, modal controllers
+│   │   ├── analytics/          # Visual charts (ClassBarChart, EnrollmentStatusPieChart, KPI cards)
+│   │   ├── documents/          # Student document archive tab, scans list, inspector, discrepancy review
+│   │   └── form/               # Student identity & academic field form sections
+│   ├── results/                # Results view displays (ExamPaperDisplay, LessonPlanDisplay, PaperRevisionModal)
+│   ├── settings/               # School admin settings tabs (classes, teachers, periods, safeguards, identity, timetable)
+│   │   └── timetable/          # Timetable editor subcomponents & useTimetableEditor hook
 │   ├── substitution/           # Teacher substitution manager, daily board, proxy equity ledger
-│   ├── ui/                     # Reusable design system primitives (BaseModal, ConfirmDialog, NumberField, etc.)
+│   ├── ui/                     # Reusable design system primitives (BaseModal, ConfirmDialog, NumberField, SelectField, SegmentedControl, etc.)
 │   ├── BreakDutiesPanel.tsx    # Ground & gate break duty monitoring
 │   ├── DocumentArchiveCenterView.tsx # Student document verification & archive center
 │   ├── GenerationStatusPanel.tsx     # AI lesson plan & paper generation progress monitor
@@ -31,25 +38,25 @@
 │   └── SubstitutionManager.tsx # Faculty substitution & proxy coordinator
 ├── curriculum/                 # Curriculum syllabus & subject definitions (Grades 9-12)
 │   ├── index.ts                # Curriculum registry & grade mapping
-│   └── subjects/               # Individual subject syllabus modules
-├── data/                       # Bundled static baseline datasets
-│   ├── teachers.json           # Baseline teacher faculty roster
-│   └── timetable.json          # School master timetable schedule
+│   └── subjects/               # Individual subject syllabus modules (biology, chemistry, physics, math, etc.)
+├── data/                       # Bundled static baseline datasets (teachers.json, timetable.json)
 ├── docs/                       # Architectural documentation & runtime verified stack guides
-├── hooks/                      # Custom React hooks (state machines, sync queues, toast, selection)
-├── public/                     # Public static assets, SLO summaries, school logos
+├── hooks/                      # Custom React hooks (useSelection, useSchoolConfig, useToast, useClipboardCopy, useTimetableSheetSync)
+├── public/                     # Public static assets, curriculum SLO JSONs, school logos
 ├── scripts/                    # Build, test, audit, diagnostic, and model probe suites
 ├── services/                   # Business logic, Firebase, Google Sheets, Gemini AI, & Timetable engines
+│   ├── documentArchive/        # Server-side document processing, OCR extraction, and job queue
+│   ├── documentClient/         # Client-side API layer (queries, upload chunks, corrections)
 │   ├── storage/                # Local-first IndexedDB storage adapters
+│   ├── timetable/              # Timetable conflict engines, cell parsers, and layout detection
 │   ├── attendanceService.ts    # Attendance calculations, local persistence & CSV export
-│   ├── documentArchiveService.ts # Server-side document classification, OCR verification, & matching
-│   ├── documentClientService.ts  # Client-side API caller for document archive
 │   ├── geminiService.ts        # Gemini API client with multi-key pool rotation
 │   ├── googleAuth.ts           # Google OAuth 2.0 token management
 │   ├── googleSheetsService.ts  # Google Sheets API client, batch writer, & caching
+│   ├── paperService.ts         # Exam paper generation and question regeneration engine
 │   ├── schoolConfigService.ts  # School institutional configuration & Firestore sync
-│   ├── substitutionService.ts  # Teacher proxy equity engine & WhatsApp notice formatter
-│   └── timetable.ts            # Live schedule resolution & period locator
+│   └── substitutionService.ts  # Teacher proxy equity engine & WhatsApp notice formatter
+├── types/                      # TypeScript type definitions (documentArchive, etc.)
 ├── utils/                      # Core pure utility functions (clipboard, date, download, payload optimizer, print)
 ├── App.tsx                     # Top-level React application root & view router
 ├── firestore.rules             # Production Firestore security rules

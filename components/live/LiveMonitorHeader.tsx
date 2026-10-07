@@ -1,18 +1,17 @@
 import React from 'react';
 import {
   DayKey,
-  DAY_KEYS,
-  DAY_LABELS,
   SchoolTimeStatus,
   StandardPeriod,
-  formatMinutes,
 } from '../../services/timetable';
 import { RefreshIcon } from '../icons/MiscIcons';
-import { ClassTier, TIER_CONFIG } from '../../services/tierHelpers';
+import { ClassTier } from '../../services/tierHelpers';
 import { LiveDot } from './LiveCommon';
 import { SegmentedControl } from '../ui/SegmentedControl';
 import { motion } from 'motion/react';
-import { Search } from 'lucide-react';
+import { SchoolStatusBadge } from './SchoolStatusBadge';
+import { LivePeriodDaySelector } from './LivePeriodDaySelector';
+import { LiveTierSearchToolbar } from './LiveTierSearchToolbar';
 
 export interface LiveMonitorHeaderProps {
   monitorMode: 'classes' | 'duties' | 'substitutions';
@@ -55,7 +54,6 @@ export const LiveMonitorHeader: React.FC<LiveMonitorHeaderProps> = ({
   onSelectDay,
   effectiveCardPeriodIndex,
   livePeriodIndex,
-  previewPeriod,
   onSelectPeriod,
   schedule,
   currentPeriodInfo,
@@ -141,174 +139,31 @@ export const LiveMonitorHeader: React.FC<LiveMonitorHeaderProps> = ({
               </span>
             </div>
 
-            {/* School status indicator */}
-            {schoolStatus && (
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-black/[0.04] dark:border-white/[0.06] text-xs">
-                {schoolStatus.state === 'in_period' && (
-                  <>
-                    <LiveDot />
-                    <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                      Period {schoolStatus.periodNo} in session
-                    </span>
-                    <span className="text-slate-400 font-mono tabular-nums text-[11px]">
-                      ({schoolStatus.remainingMinutes}m left)
-                    </span>
-                  </>
-                )}
-                {schoolStatus.state === 'break' && (
-                  <>
-                    <span>☕</span>
-                    <span className="font-bold text-amber-600 dark:text-amber-400">
-                      Recess Break
-                    </span>
-                    <span className="text-slate-400 font-mono tabular-nums text-[11px]">
-                      ({schoolStatus.remainingMinutes}m left · Next: P{schoolStatus.nextPeriodNo})
-                    </span>
-                  </>
-                )}
-                {schoolStatus.state === 'before_school' && (
-                  <>
-                    <span>🌅</span>
-                    <span className="font-bold text-blue-600 dark:text-blue-400">
-                      Pre-Assembly
-                    </span>
-                    <span className="text-slate-400 text-xs">
-                      · P1 at {formatMinutes(schoolStatus.firstPeriodStart)}
-                    </span>
-                  </>
-                )}
-                {schoolStatus.state === 'after_school' && (
-                  <>
-                    <span>🏁</span>
-                    <span className="font-bold text-slate-500">
-                      Classes Dismissed
-                    </span>
-                    <span className="text-slate-400 text-[11px]">
-                      (ended {formatMinutes(schoolStatus.lastPeriodEnd)})
-                    </span>
-                  </>
-                )}
-              </div>
-            )}
+            <SchoolStatusBadge schoolStatus={schoolStatus} />
           </div>
 
-          {/* Unified Controls Row: Day Pills + Period Pills */}
-          <div className="pt-3 border-t border-black/[0.04] dark:border-white/[0.06] flex flex-col md:flex-row md:items-center justify-between gap-3">
-            {/* Day Selector */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1">
-                Day:
-              </span>
-              {DAY_KEYS.map(d => {
-                const isToday = liveDay === d;
-                const isSelected = effectiveDay === d;
-                return (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => onSelectDay(d)}
-                    className={`relative px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-blue-600 text-white shadow-xs'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-                    }`}
-                  >
-                    <span>{DAY_LABELS[d].slice(0, 3)}</span>
-                    {isToday && !isSelected && (
-                      <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+          <LivePeriodDaySelector
+            effectiveDay={effectiveDay}
+            liveDay={liveDay}
+            onSelectDay={onSelectDay}
+            effectiveCardPeriodIndex={effectiveCardPeriodIndex}
+            livePeriodIndex={livePeriodIndex}
+            onSelectPeriod={onSelectPeriod}
+            schedule={schedule}
+            currentPeriodInfo={currentPeriodInfo}
+          />
 
-            {/* Period Selector */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-0.5">
-                Period:
-              </span>
-              <div className="flex items-center gap-1">
-                {schedule.map((p, i) => {
-                  const isSelected = effectiveCardPeriodIndex === i;
-                  const isLiveInThisPeriod = livePeriodIndex === i;
-                  return (
-                    <button
-                      key={p.no}
-                      type="button"
-                      onClick={() => onSelectPeriod(i)}
-                      className={`relative px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer font-mono tabular-nums ${
-                        isSelected
-                          ? 'bg-blue-600 text-white shadow-xs'
-                          : isLiveInThisPeriod
-                            ? 'bg-emerald-500/15 border border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-bold'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-                      }`}
-                      title={p.formattedRange || `${p.start} – ${p.end}`}
-                    >
-                      <span>P{p.no}</span>
-                      {isLiveInThisPeriod && (
-                        <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {currentPeriodInfo && (
-                <span className="text-xs font-mono tabular-nums text-slate-500 bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1 rounded-lg border border-black/[0.04] dark:border-white/[0.06]">
-                  {currentPeriodInfo.formattedRange || `${currentPeriodInfo.start} – ${currentPeriodInfo.end}`}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Tiers & Search Filter */}
-          <div className="pt-3 border-t border-black/[0.04] dark:border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-1.5 w-full sm:w-auto flex-wrap text-xs">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1">Tiers:</span>
-              
-              <button
-                type="button"
-                onClick={() => onClassFilterChange('all')}
-                className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
-                  classFilter === 'all'
-                    ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                }`}
-              >
-                All ({totalClassesCount})
-              </button>
-
-              {(['primary', 'elementary', 'middle', 'secondary'] as ClassTier[]).map(tier => (
-                <button
-                  key={tier}
-                  type="button"
-                  onClick={() => onClassFilterChange(tier)}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer capitalize ${
-                    classFilter === tier
-                      ? TIER_CONFIG[tier].badgeClass + ' font-bold'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                  }`}
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full ${TIER_CONFIG[tier].dotClass}`} />
-                  <span>{tier}</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search class, teacher, subject..."
-                value={searchQuery}
-                onChange={e => onSearchQueryChange(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900/60 border border-black/[0.08] dark:border-white/[0.08] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none text-slate-900 dark:text-white transition-all placeholder:text-slate-400"
-              />
-            </div>
-          </div>
+          <LiveTierSearchToolbar
+            classFilter={classFilter}
+            onClassFilterChange={onClassFilterChange}
+            totalClassesCount={totalClassesCount}
+            searchQuery={searchQuery}
+            onSearchQueryChange={onSearchQueryChange}
+          />
         </div>
       )}
     </div>
   );
 };
+
+export default LiveMonitorHeader;

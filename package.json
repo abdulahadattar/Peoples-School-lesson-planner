@@ -29,7 +29,7 @@
     "test:unit:rendering": "tsx scripts/unit/rendering.test.ts",
     "test:unit:sheets": "tsx scripts/unit/timetableSync.test.ts",
     "test:unit:pull": "tsx scripts/unit/sheetPullSchedule.test.ts",
-    "test:unit:records": "tsx scripts/unit/recordBatch.test.ts",
+    "test:unit:records": "node --import tsx --import ./scripts/test-hooks/alias-idb.mjs scripts/unit/recordBatch.test.ts",
     "test:unit:shared": "node --import tsx --import ./scripts/test-hooks/alias-idb.mjs scripts/unit/sharedEdits.test.ts",
     "audit:wiring": "node scripts/wiring-audit.mjs",
     "test:coverage": "node scripts/test-coverage-gaps.mjs",

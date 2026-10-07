@@ -18,8 +18,9 @@ import { User } from 'firebase/auth';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { BaseModal } from '../ui/BaseModal';
 import { AdminAccessBadge } from '../ui/AdminAccessBadge';
+import { EnrollmentTableBody } from './EnrollmentTableBody';
 
-interface EnrollmentEditorModalProps {
+export interface EnrollmentEditorModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentEnrollments: ClassEnrollment[];
@@ -43,7 +44,6 @@ export const EnrollmentEditorModal: React.FC<EnrollmentEditorModalProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
-  // Sync state when opened
   React.useEffect(() => {
     if (isOpen) {
       setEnrollments(
@@ -91,10 +91,6 @@ export const EnrollmentEditorModal: React.FC<EnrollmentEditorModalProps> = ({
     setSaveSuccess(false);
   };
 
-  const handleResetToBaseline = () => {
-    setShowResetConfirm(true);
-  };
-
   const executeResetToBaseline = () => {
     setEnrollments(JSON.parse(JSON.stringify(DEFAULT_GRADE_ENROLLMENTS)));
     setShowResetConfirm(false);
@@ -111,7 +107,6 @@ export const EnrollmentEditorModal: React.FC<EnrollmentEditorModalProps> = ({
       setIsSaving(true);
       setErrorMessage(null);
 
-      // Sanitize: ensure totalEnrollment equals sum of boys+girls if not explicitly set
       const sanitized: ClassEnrollment[] = enrollments.map((e) => ({
         ...e,
         enrolledBoys: Math.max(0, e.enrolledBoys || 0),
@@ -161,7 +156,7 @@ export const EnrollmentEditorModal: React.FC<EnrollmentEditorModalProps> = ({
             <button
               type="button"
               disabled={!isAdmin || isSaving}
-              onClick={handleResetToBaseline}
+              onClick={() => setShowResetConfirm(true)}
               className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border transition-colors ${
                 isAdmin
                   ? 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 cursor-pointer'
@@ -199,7 +194,6 @@ export const EnrollmentEditorModal: React.FC<EnrollmentEditorModalProps> = ({
           </div>
         }
       >
-        {/* Admin Access Status Bar */}
         <div className="px-6 py-3 bg-slate-100/70 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex items-center space-x-2">
             <AdminAccessBadge
@@ -226,7 +220,6 @@ export const EnrollmentEditorModal: React.FC<EnrollmentEditorModalProps> = ({
           )}
         </div>
 
-        {/* Alerts */}
         {errorMessage && (
           <div className="mx-6 mt-3 p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-700 dark:text-red-300 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
@@ -240,7 +233,6 @@ export const EnrollmentEditorModal: React.FC<EnrollmentEditorModalProps> = ({
           </div>
         )}
 
-        {/* Scrollable Table */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -251,67 +243,11 @@ export const EnrollmentEditorModal: React.FC<EnrollmentEditorModalProps> = ({
                 <th className="py-2.5 px-3 text-center">Girls</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
-              {enrollments.map((enr, idx) => (
-                <tr key={enr.classKey} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                  <td className="py-2 px-3 font-medium text-slate-800 dark:text-slate-200">
-                    <span className="inline-block px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold mr-2">
-                      {enr.romanName}
-                    </span>
-                    <span className="text-xs text-slate-400 font-mono">({enr.classKey})</span>
-                  </td>
-                  <td className="py-2 px-3 text-center">
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      autoComplete="off"
-                      min="0"
-                      disabled={!isAdmin}
-                      value={enr.totalEnrollment ?? (enr.enrolledBoys + enr.enrolledGirls)}
-                      onChange={(e) => handleFieldChange(idx, 'totalEnrollment', e.target.value)}
-                      className={`w-20 px-2.5 py-1.5 text-center text-sm font-semibold rounded-lg border transition-colors ${
-                        isAdmin
-                          ? 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-slate-900 dark:text-white shadow-2xs'
-                          : 'bg-slate-100 dark:bg-slate-800/60 border-transparent text-slate-500 cursor-not-allowed'
-                      }`}
-                    />
-                  </td>
-                  <td className="py-2 px-3 text-center">
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      autoComplete="off"
-                      min="0"
-                      disabled={!isAdmin}
-                      value={enr.enrolledBoys}
-                      onChange={(e) => handleFieldChange(idx, 'enrolledBoys', e.target.value)}
-                      className={`w-20 px-2.5 py-1.5 text-center text-sm font-semibold rounded-lg border transition-colors ${
-                        isAdmin
-                          ? 'bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-blue-900 dark:text-blue-300 shadow-2xs'
-                          : 'bg-slate-100 dark:bg-slate-800/60 border-transparent text-slate-500 cursor-not-allowed'
-                      }`}
-                    />
-                  </td>
-                  <td className="py-2 px-3 text-center">
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      autoComplete="off"
-                      min="0"
-                      disabled={!isAdmin}
-                      value={enr.enrolledGirls}
-                      onChange={(e) => handleFieldChange(idx, 'enrolledGirls', e.target.value)}
-                      className={`w-20 px-2.5 py-1.5 text-center text-sm font-semibold rounded-lg border transition-colors ${
-                        isAdmin
-                          ? 'bg-white dark:bg-slate-900 border-pink-200 dark:border-pink-800 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 text-pink-900 dark:text-pink-300 shadow-2xs'
-                          : 'bg-slate-100 dark:bg-slate-800/60 border-transparent text-slate-500 cursor-not-allowed'
-                      }`}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            {/* Table Footer Totals */}
+            <EnrollmentTableBody
+              enrollments={enrollments}
+              isAdmin={isAdmin}
+              onFieldChange={handleFieldChange}
+            />
             <tfoot>
               <tr className="border-t-2 border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white">
                 <td className="py-3 px-3 uppercase text-xs tracking-wider">Total School Enrollment</td>
@@ -337,7 +273,7 @@ export const EnrollmentEditorModal: React.FC<EnrollmentEditorModalProps> = ({
         variant="warning"
         confirmLabel="Reset Enrollments"
         onConfirm={executeResetToBaseline}
-        onClose={() => setShowResetConfirm(false)}
+        onCancel={() => setShowResetConfirm(false)}
       />
     </>
   );
