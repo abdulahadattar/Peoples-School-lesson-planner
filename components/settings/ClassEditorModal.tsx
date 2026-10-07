@@ -174,7 +174,7 @@ export const ClassEditorModal: React.FC<ClassEditorModalProps> = ({
               className="w-full px-3 py-2 rounded-xl text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
             <datalist id="teachers-list">
-              {teachers.map((t) => (
+              {(teachers || []).map((t) => (
                 <option key={t.id} value={t.name} />
               ))}
             </datalist>

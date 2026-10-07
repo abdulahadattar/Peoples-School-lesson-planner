@@ -3,13 +3,19 @@ import { Check, User, Briefcase, BookOpen, Plus, Trash2 } from 'lucide-react';
 import { Teacher, TeacherSubject } from '../../types';
 import { BaseModal } from '../ui/BaseModal';
 
-interface TeacherEditorModalProps {
+export interface TeacherEditorModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (teacher: Teacher) => void;
   initialData?: Teacher | null;
-  availableClasses: string[];
+  availableClasses?: string[];
+  availableClassKeys?: string[];
 }
+
+const DEFAULT_FALLBACK_CLASSES = [
+  'ECE', 'I-A', 'I-B', 'II', 'III-A', 'III-B', 'IV-A', 'IV-B',
+  'V', 'VI-A', 'VI-B', 'VII', 'VIII', 'IX', 'X-A', 'X-B', 'XI', 'XII'
+];
 
 export const TeacherEditorModal: React.FC<TeacherEditorModalProps> = ({
   isOpen,
@@ -17,7 +23,9 @@ export const TeacherEditorModal: React.FC<TeacherEditorModalProps> = ({
   onSave,
   initialData,
   availableClasses,
+  availableClassKeys,
 }) => {
+  const activeClassList = availableClasses || availableClassKeys || DEFAULT_FALLBACK_CLASSES;
   const [name, setName] = useState(initialData?.name || '');
   const [designation, setDesignation] = useState(initialData?.designation || 'Subject Specialist');
   const [schoolName] = useState('Peoples Higher Secondary School Jamshoro');
@@ -205,7 +213,7 @@ export const TeacherEditorModal: React.FC<TeacherEditorModalProps> = ({
                   Assigned Class Sections:
                 </span>
                 <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto custom-scrollbar p-1">
-                  {availableClasses.map((cls) => {
+                  {activeClassList.map((cls) => {
                     const isAssigned = (sub.sections || []).includes(cls);
                     return (
                       <button

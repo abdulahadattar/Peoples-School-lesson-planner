@@ -9,6 +9,19 @@ import {
 } from './types';
 import { countTotalPresent, resolveAttendancePercentage } from './calculations';
 
+function isOfflineError(err: unknown): boolean {
+  if (!err) return false;
+  const str = String((err as any)?.message || err).toLowerCase();
+  const code = String((err as any)?.code || '').toLowerCase();
+  return (
+    code === 'unavailable' ||
+    str.includes('client is offline') ||
+    str.includes('failed to get document because the client is offline') ||
+    str.includes('network') ||
+    str.includes('offline')
+  );
+}
+
 export async function saveClassEnrollments(
   enrollments: ClassEnrollment[],
   updatedBy: string = 'Admin'
@@ -22,7 +35,9 @@ export async function saveClassEnrollments(
     const docRef = doc(db, 'settings', 'classEnrollments');
     await setDoc(docRef, payload);
   } catch (error) {
-    console.warn('Failed to save enrollments to Firestore, saving locally', error);
+    if (!isOfflineError(error)) {
+      console.warn('Failed to save enrollments to Firestore, saving locally', error);
+    }
   }
   localStorage.setItem('school_class_enrollments', JSON.stringify(enrollments));
 }
@@ -38,7 +53,9 @@ export async function loadClassEnrollments(): Promise<ClassEnrollment[]> {
       }
     }
   } catch (error) {
-    console.warn('Failed to load enrollments from Firestore, checking localStorage', error);
+    if (!isOfflineError(error)) {
+      console.warn('Failed to load enrollments from Firestore, checking localStorage', error);
+    }
   }
 
   const local = localStorage.getItem('school_class_enrollments');
@@ -60,7 +77,9 @@ export async function saveAttendanceRecord(record: DailyAttendanceRecord): Promi
     await setDoc(docRef, record, { merge: true });
     localStorage.setItem(`attendance_${record.date}`, JSON.stringify(record));
   } catch (error) {
-    console.warn('Failed to save to Firestore, saving locally', error);
+    if (!isOfflineError(error)) {
+      console.warn('Failed to save to Firestore, saving locally', error);
+    }
     localStorage.setItem(`attendance_${record.date}`, JSON.stringify(record));
   }
 }
@@ -70,7 +89,9 @@ export async function markAttendanceSyncedToSheet(date: string, timestamp: numbe
     const docRef = doc(db, 'daily_attendance', date);
     await setDoc(docRef, { syncedToSheetAt: timestamp }, { merge: true });
   } catch (error) {
-    console.warn('Failed to update syncedToSheetAt in Firestore', error);
+    if (!isOfflineError(error)) {
+      console.warn('Failed to update syncedToSheetAt in Firestore', error);
+    }
   }
 
   try {
@@ -81,7 +102,9 @@ export async function markAttendanceSyncedToSheet(date: string, timestamp: numbe
       localStorage.setItem(`attendance_${date}`, JSON.stringify(parsed));
     }
   } catch (error) {
-    console.warn('Failed to update syncedToSheetAt in localStorage', error);
+    if (!isOfflineError(error)) {
+      console.warn('Failed to update syncedToSheetAt in localStorage', error);
+    }
   }
 }
 
@@ -97,7 +120,9 @@ export async function loadAttendanceRecord(date: string): Promise<AttendanceLoad
   } catch (error: any) {
     firestoreFailed = true;
     firestoreError = error?.message || String(error);
-    console.warn('Failed to load from Firestore, trying local', error);
+    if (!isOfflineError(error)) {
+      console.warn('Failed to load from Firestore, trying local', error);
+    }
   }
 
   try {
@@ -170,7 +195,9 @@ export async function loadAttendanceDates(): Promise<AttendanceHistoryEntry[]> {
     }
     return [...merged.values()].sort((a, b) => b.date.localeCompare(a.date));
   } catch (err) {
-    console.warn('Error fetching attendance dates', err);
+    if (!isOfflineError(err)) {
+      console.warn('Error fetching attendance dates', err);
+    }
   }
 
   return readLocalAttendanceDates().sort((a, b) => b.date.localeCompare(a.date));
