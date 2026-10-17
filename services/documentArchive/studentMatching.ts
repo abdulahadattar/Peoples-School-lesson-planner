@@ -175,13 +175,31 @@ export function autoLinkDocumentsAgainstSheet(records: any[]): {
   if (!Array.isArray(records) || records.length === 0) {
     return { totalMatched: 0, reassignedDocs: 0, dossiers: Object.values(dossiersStore), documents: Object.values(documentsStore), discrepancies: {} };
   }
-  setCachedSheetRecords(records);
+  // The sheet proxy sends compact-shaped records (r/g/n/b/f/s/c/sec/st/p/d).
+  // Normalize once so profile matching and dossier enrichment survive both
+  // the compact and full StudentRecord shapes.
+  const normalizedRecords = records.map((r: any) => ({
+    ...r,
+    grNo: r.grNo || r.g || r['G.R.NO'] || '',
+    studentName: r.studentName || r.n || r['STUDENTNAME'] || '',
+    bFormNo: r.bFormNo || r.b || '',
+    fatherName: r.fatherName || r.f || '',
+    gender: r.gender || r.s || '',
+    currentClass: r.currentClass || r.c || '',
+    section: r.section || r.sec || '',
+  }));
+  setCachedSheetRecords(normalizedRecords);
+  const recordByGr = new Map<string, any>();
+  for (const r of normalizedRecords) {
+    const gr = String(r.grNo || r['G.R.NO'] || '').trim();
+    if (gr) recordByGr.set(gr, r);
+  }
   let totalMatched = 0;
   let reassignedDocs = 0;
 
   const unassignedDocs = Object.values(documentsStore).filter((d) => d.grNo === 'UNASSIGNED');
   for (const doc of unassignedDocs) {
-    const match = matchAggregatedProfileToStudentRecords(doc.extractedData, records);
+    const match = matchAggregatedProfileToStudentRecords(doc.extractedData, normalizedRecords);
     if (match && match.student) {
       const targetGr = String(match.student.grNo || match.student['G.R.NO'] || '').trim();
       if (targetGr && targetGr !== 'UNASSIGNED') {
@@ -201,9 +219,26 @@ export function autoLinkDocumentsAgainstSheet(records: any[]): {
     }
   }
 
-  const discrepancies = auditAllDossiersAgainstSheet(records);
+  enrichDossiersFromSheet(recordByGr);
+
+  const discrepancies = auditAllDossiersAgainstSheet(normalizedRecords);
   saveStores();
   return { totalMatched, reassignedDocs, dossiers: Object.values(dossiersStore), documents: Object.values(documentsStore), discrepancies };
+}
+
+function enrichDossiersFromSheet(recordByGr: Map<string, any>): void {
+  for (const [grNo, dossier] of Object.entries(dossiersStore)) {
+    const rec = recordByGr.get(grNo);
+    if (!rec) continue;
+    const sheetName = rec.studentName || rec['STUDENTNAME'] || '';
+    const sheetFather = rec.fatherName || rec['FATHERNAME'] || '';
+    const sheetClass = rec.currentClass || rec['CURRENTCLASS'] || '';
+    const sheetSection = rec.section || rec['SECTION'] || '';
+    if (!dossier.studentName && sheetName) dossier.studentName = sheetName;
+    if (!dossier.fatherName && sheetFather) dossier.fatherName = sheetFather;
+    if (!dossier.currentClass && sheetClass) dossier.currentClass = sheetClass;
+    if (!dossier.section && sheetSection) dossier.section = sheetSection;
+  }
 }
 
 export function assignDocumentToGr(docId: string, targetGrNo: string, studentRecord?: any): StudentDocumentRecord | null {

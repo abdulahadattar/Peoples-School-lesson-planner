@@ -1,6 +1,6 @@
 # Verified Stack & Official Documentation
 
-**Last verified: 2026-10-02** (re-verify with the commands in section 2 before trusting anything here)
+**Last verified: 2026-10-17** (re-verify with the commands in section 2 before trusting anything here)
 
 > **For AI agents:** if you arrived here from memory — a remembered API shape, a
 > remembered version number, a remembered model id — stop and re-verify. Every
@@ -125,37 +125,44 @@ Source: <https://docs.sheetjs.com/docs/getting-started/installation/nodejs/>
 
 ---
 
-## 4. Gemini model chain — live probe results (2026-10-02)
+## 4. Gemini model chain — live probe results (2026-10-17)
 
 Official docs: <https://ai.google.dev/gemini-api/docs/models> ·
 <https://ai.google.dev/gemini-api/docs/deprecations>
 
-The account currently advertises **44** `generateContent` models. Measured
-against our live keys with `npm run probe:models`:
+The account currently advertises **46** `generateContent` models. Measured
+against our live keys with `node scripts/probe-model-chain.mjs`:
 
 | Model id | Result | Latency | Verdict |
 | :--- | :--- | :--- | :--- |
-| `gemini-3.5-flash-lite` | 200 OK | 0.6s | **Chain position 1. Fastest, keep first.** |
-| `gemma-4-26b-a4b-it` | **no response** | >60s, aborted | **Chain position 2 — HANGS.** See defect below. |
-| `gemini-3.1-flash-lite` | 200 OK | 1.5s | Good second choice. |
-| `gemini-3.5-flash` | 200 OK | 18.5s | Slow; last resort only. |
-| `gemini-flash-latest` | 200 OK | 6.2s | Moving alias; acceptable fallback. |
-| `gemini-2.5-flash` | **HTTP 404** | — | "no longer available to new users". Must stay out of the chain. |
-| `gemini-3.6-flash` | 200 OK | 1.6s | Viable upgrade candidate. |
-| `gemini-3.7-flash` | 200 OK | 22.8s | Works but slow. |
-| `gemini-3.8-flash` | HTTP 503 | 1.1s | "high demand" — transient, not dead. |
+| `gemini-3.5-flash-lite` | 200 OK | 6.2s | **Chain position 1. Keep first.** |
+| `gemma-4-26b-a4b-it` | 200 OK | 1.5s | **Chain position 2 — now responds.** Was reported hanging on 2026-10-02; reverted. |
+| `gemini-3.1-flash-lite` | 200 OK | 2.1s | Good second choice. |
+| `gemini-3.5-flash` | 200 OK | 1.4s | Works; no longer slow. |
+| `gemini-flash-latest` | 200 OK | 2.5s | Moving alias; acceptable fallback. |
+| `gemini-3.6-flash` | 200 OK | 1.4s | Viable upgrade candidate. |
+| `gemini-3.7-flash` | 200 OK | 2.5s | Works; faster than the 2026-10-02 measurement. |
+| `gemini-3.8-flash` | 200 OK | 3.0s | Works; the earlier 503 was transient. |
+| `gemini-flash-lite-latest` | 200 OK | 7.4s | Alias; usable fallback. |
+| `gemini-2.5-flash` | **HTTP 404** | — | "no longer available to new users". Must stay out of every list. |
+| `gemini-2.5-flash-lite` | **HTTP 404** | — | Same 404. Must stay out of every list. |
+| `gemma-4-31b-it` | **HTTP 500** | 53.8s | Internal error and a near-hang. Do not use. |
+| `gemma-4-26b-it` | **HTTP 404** | — | Not a real id; the correct one is `gemma-4-26b-a4b-it`. |
 
-### Two real defects found while verifying this
+### Defects fixed while verifying this
 
-1. **`gemma-4-26b-a4b-it` sits at position 2 of `MODEL_CHAIN` but never
-   responds.** Any request that falls past position 1 stalls for the full
-   timeout instead of moving on. It *is* advertised in `ListModels`, which is
-   exactly why "does the model appear in the list" is not a sufficient test.
-2. **`scripts/lib/gemini-keys.mjs` `APP_MODEL_CHAIN` has drifted from the real
-   chain.** It lists 3 models including the dead `gemini-2.5-flash`, and never
-   tests `gemma-4-26b-a4b-it`, `gemini-3.5-flash` or `gemini-flash-latest`.
-   `npm run test:keys` therefore reports "2/3 models answer" about a chain that
-   is actually a different set of five.
+1. **`api/index.ts` server fallback listed four dead ids** (`gemini-2.5-flash`,
+   `gemini-2.5-flash-lite`, `gemma-4-31b-it`, `gemma-4-26b-it`) ahead of the real
+   chain. Replaced with the working chain in `services/gemini/types.ts`.
+2. **`scripts/lib/gemini-keys.mjs` `APP_MODEL_CHAIN` had drifted from the real
+   chain.** It listed 3 models including the dead `gemini-2.5-flash` and never
+   tested `gemma-4-26b-a4b-it`, `gemini-3.5-flash` or `gemini-flash-latest`. It
+   now mirrors `MODEL_CHAIN` from `services/gemini/types.ts` exactly.
+3. **`gemma-4-26b-a4b-it` no longer hangs.** The 2026-10-02 "no response >60s"
+   finding did not reproduce; it answered in 1.5s on 2026-10-17. Keep it at
+   chain position 2, but the client timeout/fallback still protects against a
+   relapse.
+
 
 ### Model naming rules (from the official docs)
 
@@ -250,8 +257,10 @@ Kept so nobody re-introduces them.
 
 - **Recharts docs are not on `recharts.org/en-US/api`.** That path is 404, as is
   `/en-US/guide/api/`. The v3 docs moved to `recharts.github.io`.
-- **`gemini-2.5-flash` is gone** for new users (404). It was still hardcoded in
-  the probe's model list.
+- **`gemini-2.5-flash` and `gemini-2.5-flash-lite` are gone** for new users
+  (404). They were still hardcoded in the `api/index.ts` server fallback and in
+  the probe's `APP_MODEL_CHAIN`; both lists were corrected on 2026-10-17
+  (section 4).
 - **`gemini-3.1-flash-lite-preview` is shut down** per the models page, while
   the non-preview `gemini-3.1-flash-lite` still works. Easy to confuse.
 - **npmjs.com returns 403 to bots.** That is bot protection, not a dead package.

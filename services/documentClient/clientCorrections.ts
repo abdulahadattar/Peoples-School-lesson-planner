@@ -17,12 +17,20 @@ export async function fetchDiscrepancyFlags(records?: any[]): Promise<Record<str
 }
 
 export async function dismissDiscrepancyFlag(flagId: string): Promise<boolean> {
-  const res = await fetch(`/api/documents/flag/${encodeURIComponent(flagId)}/dismiss`, { method: 'POST' });
+  const res = await fetch('/api/documents/discrepancies/dismiss', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ flagId }),
+  });
   return res.ok;
 }
 
 export async function undismissDiscrepancyFlag(flagId: string): Promise<boolean> {
-  const res = await fetch(`/api/documents/flag/${encodeURIComponent(flagId)}/undismiss`, { method: 'POST' });
+  const res = await fetch('/api/documents/discrepancies/undismiss', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ flagId }),
+  });
   return res.ok;
 }
 
@@ -30,7 +38,7 @@ export async function fetchDismissedFlags(): Promise<Record<string, boolean>> {
   const res = await fetch('/api/documents/dismissed-flags');
   if (!res.ok) return {};
   const data = await res.json();
-  return data.dismissedFlags || {};
+  return data.flags || {};
 }
 
 export async function applyCorrectionToRecord(
@@ -39,7 +47,7 @@ export async function applyCorrectionToRecord(
   correction: { field: string; newValue: string; reason?: string },
   accessToken?: string
 ): Promise<{ success: boolean; message: string; updatedRecord?: any; dossier?: StudentDossier }> {
-  const res = await fetch('/api/documents/apply-correction', {
+  const res = await fetch('/api/documents/discrepancies/apply-correction', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ grNo, flagId, correction, accessToken }),
@@ -52,7 +60,7 @@ export async function batchApplyCorrections(
   corrections: Array<{ grNo: string; flagId: string; field: string; newValue: string; reason?: string }>,
   accessToken?: string
 ): Promise<{ success: boolean; appliedCount: number; errors: string[] }> {
-  const res = await fetch('/api/documents/batch-apply-corrections', {
+  const res = await fetch('/api/documents/discrepancies/batch-apply', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ corrections, accessToken }),
@@ -68,7 +76,7 @@ export async function autoLinkDocumentsWithSheet(records: any[]): Promise<{
   documents: StudentDocumentRecord[];
   discrepancies: Record<string, DocumentDiscrepancy[]>;
 }> {
-  const res = await fetch('/api/documents/autolink', {
+  const res = await fetch('/api/documents/auto-link', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ records }),

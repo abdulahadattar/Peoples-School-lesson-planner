@@ -10,15 +10,17 @@ import path from 'path';
 export const API_ROOT = 'https://generativelanguage.googleapis.com/v1beta';
 
 /**
- * The models the application hardcodes in services/geminiService.ts.
+ * The models the application hardcodes in services/gemini/types.ts (MODEL_CHAIN).
  *
- * WARNING: this list is a hand-maintained copy and it HAS DRIFTED. On 2026-10-02
- * it still contained `gemini-2.5-flash` (now 404) while omitting three ids that
- * the app really uses. Prefer importing MODEL_CHAIN from services/geminiService
- * so the probe can never test a different chain than the app runs.
+ * Hand-maintained copy. Re-verified 2026-10-17 against the live API with
+ * `node scripts/probe-model-chain.mjs`: all five ids answer generateContent.
+ * `gemini-2.5-flash` and `gemini-2.5-flash-lite` were removed here because
+ * Google returns 404 "no longer available to new users". Prefer importing
+ * MODEL_CHAIN from services/gemini/types.ts so the probe can never test a
+ * different chain than the app runs.
  * See docs/VERIFIED_STACK.md section 4.
  */
-export const APP_MODEL_CHAIN = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-2.5-flash'];
+export const APP_MODEL_CHAIN = ['gemini-3.5-flash-lite', 'gemma-4-26b-a4b-it', 'gemini-3.1-flash-lite', 'gemini-3.5-flash', 'gemini-flash-latest'];
 
 /**
  * Env files that may hold a Gemini key.

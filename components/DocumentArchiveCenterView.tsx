@@ -94,6 +94,49 @@ export const DocumentArchiveCenterView: React.FC = () => {
     d.allFlags.map((f) => ({ grNo: d.grNo, studentName: d.studentName, currentClass: d.currentClass, flag: f }))
   );
 
+  const openStudentDossier = (gr: string) => {
+    const trimmed = gr.trim();
+    const sheetMatch = sheetRecords.find(
+      (r) => String(r.grNo || r['G.R.NO'] || '').trim() === trimmed
+    );
+    const dossier = dossiers.find((d) => d.grNo === trimmed);
+    if (sheetMatch) {
+      setActiveStudentModal(sheetMatch);
+      return;
+    }
+    if (dossier) {
+      setActiveStudentModal({
+        rowNumber: 0,
+        grNo: dossier.grNo,
+        studentName: dossier.studentName,
+        bFormNo: dossier.bFormNo,
+        fatherName: dossier.fatherName,
+        gender: '',
+        dobDay: '',
+        dobMonth: '',
+        dobYear: '',
+        classAdmitted: '',
+        currentClass: dossier.currentClass,
+        parentCnic: dossier.parentCnic,
+        religion: '',
+        address: '',
+        parentContact: '',
+        emergencyContact: '',
+        admissionDay: '',
+        admissionMonth: '',
+        admissionYear: '',
+        section: dossier.section,
+        partnerContact: '',
+        shift: '',
+        medium: '',
+        picture: dossier.avatarUrl,
+        status: '',
+      });
+      return;
+    }
+    showToast(`Student GR #${trimmed} not found in sheet records or dossiers`, 'error');
+  };
+
   return (
     <div className="space-y-6 animate-fadeIn pb-12">
       {ToastComponent}
@@ -189,10 +232,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
         <DossiersGridView
           dossiers={filteredDossiers}
           onPreviewDoc={setSelectedPreviewDoc}
-          onOpenStudentModal={(gr) => {
-            const s = sheetRecords.find((r) => String(r.grNo || r['G.R.NO'] || '').trim() === gr);
-            if (s) setActiveStudentModal(s);
-          }}
+          onOpenStudentModal={openStudentDossier}
         />
       )}
 
@@ -214,10 +254,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
           onRescanDoc={handleRescanDoc}
           onDeleteDocPrompt={handleDeleteDoc}
           onAssignDocPrompt={setAssigningDoc}
-          onOpenStudentModal={(gr) => {
-            const s = sheetRecords.find((r) => String(r.grNo || r['G.R.NO'] || '').trim() === gr);
-            if (s) setActiveStudentModal(s);
-          }}
+          onOpenStudentModal={openStudentDossier}
         />
       )}
 
@@ -238,10 +275,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
             await dismissDiscrepancyFlag(id);
             await refreshData();
           }}
-          onOpenStudentModal={(gr) => {
-            const s = sheetRecords.find((r) => String(r.grNo || r['G.R.NO'] || '').trim() === gr);
-            if (s) setActiveStudentModal(s);
-          }}
+          onOpenStudentModal={openStudentDossier}
         />
       )}
 

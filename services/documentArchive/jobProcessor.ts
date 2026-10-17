@@ -16,7 +16,7 @@ import {
   updateJobFileItem,
 } from './store.js';
 import { extractGrFromPath, toEnglishTitleCase, normalizeNadraNumber, validateNadraNumber } from './nameMatching.js';
-import { optimizeAndPrepareImage } from './imageProcessing.js';
+import { extractImagesFromPdf, optimizeAndPrepareImage } from './imageProcessing.js';
 import { callGeminiVision, EXTRACTION_SCHEMA } from './aiVision.js';
 import { updateStudentDossier } from './discrepancies.js';
 import { getOrCreateChunkSession, removeChunkSession } from './chunkSessions.js';
@@ -216,6 +216,32 @@ export async function addSingleFileToJob(
   }
   const resolvedGr = grNo || extractGrFromPath(filename);
   updateJobFileItem(jobId, filename, resolvedGr, { fileSizeBytes: buffer.length, stage: 'queued', status: 'pending', progressPercent: 0 });
+
+    const isPdf = filename.toLowerCase().endsWith('.pdf') || buffer.subarray(0, 5).toString('latin1').startsWith('%PDF-');
+    if (isPdf) {
+      // PDFs are not images; sharp would reject the raw buffer at the optimize
+      // stage. Split every embedded document image into its own queue item.
+      const pages = await extractImagesFromPdf(buffer);
+      if (pages.length > 0) {
+        const bundleId = crypto.randomUUID().slice(0, 8);
+        for (const page of pages) {
+          processingQueue.push({
+            id: crypto.randomUUID().slice(0, 8), jobId, grNo: resolvedGr, originalFilename: filename,
+            sourceBuffer: page.buffer, mimeType: 'image/jpeg',
+            bundleId, sourceFilename: filename, pageNumber: page.pageNumber, totalPages: pages.length,
+          });
+        }
+        // The split pages REPLACE the single expected upload, they do not add
+        // to it — otherwise the job keeps one phantom file and never completes.
+        job.totalFiles = Math.max(0, (job.totalFiles || 0) - 1) + pages.length;
+        job.remainingFiles = Math.max(0, job.totalFiles - (job.processedFiles || 0));
+        saveStores();
+        addJobLog(jobId, 'info', 'PDF_EXTRACT', `Split ${filename} into ${pages.length} page image(s)`, { filename, grNo: resolvedGr });
+        return { enqueued: pages.length, job };
+      }
+      addJobLog(jobId, 'warn', 'PDF_EXTRACT', `No page images found in ${filename}; enqueuing raw file`, { filename, grNo: resolvedGr });
+    }
+
   processingQueue.push({
     id: crypto.randomUUID().slice(0, 8), jobId, grNo: resolvedGr, originalFilename: filename,
     sourceBuffer: buffer, mimeType: 'image/jpeg',

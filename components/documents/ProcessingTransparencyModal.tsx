@@ -99,7 +99,7 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
   const handleStopJob = async () => {
     if (!jobId) return;
     try {
-      await fetch(`/api/documents/job/${encodeURIComponent(jobId)}/stop`, { method: 'POST' });
+      await fetch(`/api/documents/jobs/${encodeURIComponent(jobId)}/stop`, { method: 'POST' });
       await loadJob();
     } catch {}
   };

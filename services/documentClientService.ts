@@ -41,7 +41,7 @@ export const applyDiscrepancyCorrectionClient = applyCorrectionToRecord;
 export const batchApplyDiscrepancyCorrectionsClient = batchApplyCorrections;
 export const getExportZipUrl = (targetClass?: string) => `/api/documents/export/zip?class=${encodeURIComponent(targetClass || 'ALL')}`;
 export const retryFailedJob = async (jobId: string) => {
-  const res = await fetch(`/api/documents/job/${encodeURIComponent(jobId)}/retry`, { method: 'POST' });
+  const res = await fetch(`/api/documents/jobs/${encodeURIComponent(jobId)}/retry`, { method: 'POST' });
   if (!res.ok) return null;
   const data = await res.json();
   return data.job;

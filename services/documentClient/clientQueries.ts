@@ -7,7 +7,7 @@ import {
 import { formatApiErrorMessage } from './clientUpload.js';
 
 export async function fetchStudentDossier(grNo: string): Promise<StudentDossier | null> {
-  const res = await fetch(`/api/documents/dossier/${encodeURIComponent(grNo)}`);
+  const res = await fetch(`/api/documents/dossiers/${encodeURIComponent(grNo)}`);
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(formatApiErrorMessage(res.status, await res.text()));
   const data = await res.json();
@@ -22,33 +22,33 @@ export async function fetchAllDossiers(): Promise<StudentDossier[]> {
 }
 
 export async function fetchAllDocuments(): Promise<StudentDocumentRecord[]> {
-  const res = await fetch('/api/documents/all');
+  const res = await fetch('/api/documents/all-docs');
   if (!res.ok) throw new Error(formatApiErrorMessage(res.status, await res.text()));
   const data = await res.json();
   return data.documents || [];
 }
 
 export async function fetchJobStatus(jobId: string): Promise<BatchProcessingJob | null> {
-  const res = await fetch(`/api/documents/job/${encodeURIComponent(jobId)}`);
+  const res = await fetch(`/api/documents/jobs/${encodeURIComponent(jobId)}`);
   if (!res.ok) return null;
   const data = await res.json();
   return data.job;
 }
 
 export async function fetchLatestJob(): Promise<BatchProcessingJob | null> {
-  const res = await fetch('/api/documents/job-latest');
+  const res = await fetch('/api/documents/jobs-latest');
   if (!res.ok) return null;
   const data = await res.json();
   return data.job;
 }
 
 export async function stopJob(jobId: string): Promise<boolean> {
-  const res = await fetch(`/api/documents/job/${encodeURIComponent(jobId)}/stop`, { method: 'POST' });
+  const res = await fetch(`/api/documents/jobs/${encodeURIComponent(jobId)}/stop`, { method: 'POST' });
   return res.ok;
 }
 
 export async function retryFailedDocuments(jobId: string): Promise<BatchProcessingJob | null> {
-  const res = await fetch(`/api/documents/job/${encodeURIComponent(jobId)}/retry`, { method: 'POST' });
+  const res = await fetch(`/api/documents/jobs/${encodeURIComponent(jobId)}/retry`, { method: 'POST' });
   if (!res.ok) return null;
   const data = await res.json();
   return data.job;

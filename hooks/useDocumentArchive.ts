@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   StudentDossier,
   BatchProcessingJob,
@@ -9,6 +9,7 @@ import {
   fetchAllDossiers,
   fetchAllDocuments,
   fetchLatestJob,
+  fetchJobStatus,
   autoLinkDocumentsWithSheet,
   assignDocumentToStudent,
   dismissDiscrepancyFlag,
@@ -56,6 +57,28 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
   useEffect(() => {
     refreshData();
   }, []);
+
+  useEffect(() => {
+    if (!activeJob) return;
+    if (activeJob.status !== 'processing' && activeJob.status !== 'uploading') return;
+    const poll = setInterval(async () => {
+      try {
+        const job = await fetchJobStatus(activeJob.id);
+        if (job) setActiveJob(job);
+      } catch {
+        // transient network error — next tick retries
+      }
+    }, 4000);
+    return () => clearInterval(poll);
+  }, [activeJob?.id, activeJob?.status]);
+
+  const terminalRefreshedJobsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!activeJob || (activeJob.status !== 'completed' && activeJob.status !== 'failed')) return;
+    if (terminalRefreshedJobsRef.current.has(activeJob.id)) return;
+    terminalRefreshedJobsRef.current.add(activeJob.id);
+    refreshData();
+  }, [activeJob?.id, activeJob?.status]);
 
   const handleToggleSelectDoc = (docId: string) => {
     setSelectedDocIds((prev) => (prev.includes(docId) ? prev.filter((id) => id !== docId) : [...prev, docId]));

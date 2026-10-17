@@ -48,7 +48,6 @@ export const parseTextForDocx = async (text: string, mathScale: number = 100): P
           width: Math.min(Math.round((seg.width || 120) * scaleMultiplier), 480),
           height: Math.min(Math.round((seg.height || 24) * scaleMultiplier), 140),
         },
-        type: 'png',
       }));
     } else {
       runs.push(...parseMarkdownRuns(seg.value));

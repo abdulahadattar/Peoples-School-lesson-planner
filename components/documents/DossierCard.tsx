@@ -4,10 +4,10 @@ import { StudentDossier } from '../../types/documentArchive';
 
 export interface DossierCardProps {
   dossier: StudentDossier;
-  onOpenModal: (grNo: string) => void;
+  onOpenStudentModal: (grNo: string) => void;
 }
 
-export const DossierCard: React.FC<DossierCardProps> = React.memo(({ dossier, onOpenModal }) => {
+export const DossierCard: React.FC<DossierCardProps> = React.memo(({ dossier, onOpenStudentModal }) => {
   const hasPhoto = dossier.documents.some((d) => d.classification === 'STUDENT_PHOTO');
   const hasBForm = dossier.documents.some((d) => d.classification === 'B_FORM');
   const hasCnic = dossier.documents.some((d) => d.classification.includes('CNIC'));
@@ -118,7 +118,7 @@ export const DossierCard: React.FC<DossierCardProps> = React.memo(({ dossier, on
 
         <button
           type="button"
-          onClick={() => onOpenModal(dossier.grNo)}
+          onClick={() => onOpenStudentModal(dossier.grNo)}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-brand-primary bg-brand-primary/10 hover:bg-brand-primary/20 transition-colors cursor-pointer"
         >
           <Eye className="w-3.5 h-3.5" />

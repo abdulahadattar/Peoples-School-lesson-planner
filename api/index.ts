@@ -461,7 +461,7 @@ app.post('/api/gemini', async (req, res) => {
       generationConfig: { temperature: temperature ?? 0.2, responseMimeType: 'application/json', responseSchema: schema },
       systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
     });
-    const modelsToTry = Array.from(new Set([model, 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemma-4-31b-it', 'gemma-4-26b-it']));
+    const modelsToTry = Array.from(new Set([model, 'gemini-3.5-flash-lite', 'gemma-4-26b-a4b-it', 'gemini-3.1-flash-lite', 'gemini-3.5-flash', 'gemini-flash-latest']));
     let lastErrText = '';
     let lastStatus = 500;
     for (const currentModel of modelsToTry) {
