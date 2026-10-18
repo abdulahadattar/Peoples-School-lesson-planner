@@ -43,25 +43,27 @@ export async function processSingleDocument(
 ): Promise<StudentDocumentRecord | null> {
   const fileStart = Date.now();
   const jobId = item.jobId;
-  updateJobFileItem(jobId, item.originalFilename, item.grNo, { stage: 'optimizing', status: 'in_progress', progressPercent: 20, fileSizeBytes: item.sourceBuffer.length });
+  updateJobFileItem(jobId, item.originalFilename, item.grNo, { stage: 'optimizing', status: 'in_progress', progressPercent: 20, fileSizeBytes: item.sourceBuffer.length }, item.pageNumber);
 
   try {
     const fileHash = crypto.createHash('sha256').update(item.sourceBuffer).digest('hex');
     const existingDoc = Object.values(documentsStore).find((d) => d.fileHash === fileHash && d.grNo === item.grNo);
     if (existingDoc) {
       if (jobsStore[jobId]) jobsStore[jobId].duplicateCount = (jobsStore[jobId].duplicateCount || 0) + 1;
-      updateJobFileItem(jobId, item.originalFilename, item.grNo, { stage: 'duplicate', status: 'duplicate', progressPercent: 100, classification: existingDoc.classification });
-      return existingDoc;
+      updateJobFileItem(jobId, item.originalFilename, item.grNo, { stage: 'duplicate', status: 'duplicate', progressPercent: 100, classification: existingDoc.classification }, item.pageNumber);
+      // Duplicates already exist in the archive; returning the existing doc
+      // would ALSO count it as a fresh success in runBackgroundQueue.
+      return null;
     }
 
     let optimized = await optimizeAndPrepareImage(item.sourceBuffer, false, 0);
     const isSmallIcon = optimized.width < 350 || optimized.height < 350 || optimized.width * optimized.height < 140000;
     if (isSmallIcon) {
-      updateJobFileItem(jobId, item.originalFilename, item.grNo, { stage: 'completed', status: 'success', progressPercent: 100, classification: 'IGNORED_NOISE' });
+      updateJobFileItem(jobId, item.originalFilename, item.grNo, { stage: 'completed', status: 'success', progressPercent: 100, classification: 'IGNORED_NOISE' }, item.pageNumber);
       return null;
     }
 
-    updateJobFileItem(jobId, item.originalFilename, item.grNo, { stage: 'ai_vision', status: 'in_progress', progressPercent: 50 });
+    updateJobFileItem(jobId, item.originalFilename, item.grNo, { stage: 'ai_vision', status: 'in_progress', progressPercent: 50 }, item.pageNumber);
     const prompt = 'Analyze this educational document scan. Classify document and extract student/father details.';
     let aiResult: any = { classification: 'OTHER_UNCLASSIFIED', confidence: 0.5, suggestedRotation: 0 };
     let modelUsed = 'none';
@@ -78,7 +80,7 @@ export async function processSingleDocument(
 
     const classification: DocumentClassificationType = aiResult.classification || 'OTHER_UNCLASSIFIED';
     if (classification === 'IGNORED_NOISE') {
-      updateJobFileItem(jobId, item.originalFilename, item.grNo, { stage: 'completed', status: 'success', progressPercent: 100, classification: 'IGNORED_NOISE' });
+      updateJobFileItem(jobId, item.originalFilename, item.grNo, { stage: 'completed', status: 'success', progressPercent: 100, classification: 'IGNORED_NOISE' }, item.pageNumber);
       return null;
     }
 
@@ -143,13 +145,13 @@ export async function processSingleDocument(
       savedFilename: finalFilename, stage: 'completed', status: 'success', progressPercent: 100,
       classification, classificationConfidence: docRecord.classificationConfidence, url: docRecord.url,
       aiModelUsed: modelUsed, processedAt: docRecord.processedAt, executionTimeMs: totalTimeMs,
-    });
+    }, item.pageNumber);
 
     saveStores();
     (docRecord as any)._aiExhausted = modelUsed === 'none';
     return docRecord;
   } catch (error: any) {
-    updateJobFileItem(jobId, item.originalFilename, item.grNo, { stage: 'failed', status: 'failed', progressPercent: 100, error: error.message });
+    updateJobFileItem(jobId, item.originalFilename, item.grNo, { stage: 'failed', status: 'failed', progressPercent: 100, error: error.message }, item.pageNumber);
     if (jobsStore[jobId]) jobsStore[jobId].failedCount = (jobsStore[jobId].failedCount || 0) + 1;
     return null;
   }
@@ -215,7 +217,6 @@ export async function addSingleFileToJob(
     jobsStore[jobId] = job;
   }
   const resolvedGr = grNo || extractGrFromPath(filename);
-  updateJobFileItem(jobId, filename, resolvedGr, { fileSizeBytes: buffer.length, stage: 'queued', status: 'pending', progressPercent: 0 });
 
     const isPdf = filename.toLowerCase().endsWith('.pdf') || buffer.subarray(0, 5).toString('latin1').startsWith('%PDF-');
     if (isPdf) {
@@ -230,6 +231,14 @@ export async function addSingleFileToJob(
             sourceBuffer: page.buffer, mimeType: 'image/jpeg',
             bundleId, sourceFilename: filename, pageNumber: page.pageNumber, totalPages: pages.length,
           });
+          // One telemetry entry per page, keyed by pageNumber — a single entry
+          // keyed (filename, grNo) would be overwritten by every page.
+          updateJobFileItem(jobId, filename, resolvedGr, {
+            sourceFilename: filename,
+            fileSizeBytes: page.buffer.length,
+            totalPages: pages.length,
+            stage: 'queued', status: 'pending', progressPercent: 0,
+          }, page.pageNumber);
         }
         // The split pages REPLACE the single expected upload, they do not add
         // to it — otherwise the job keeps one phantom file and never completes.
@@ -242,6 +251,7 @@ export async function addSingleFileToJob(
       addJobLog(jobId, 'warn', 'PDF_EXTRACT', `No page images found in ${filename}; enqueuing raw file`, { filename, grNo: resolvedGr });
     }
 
+  updateJobFileItem(jobId, filename, resolvedGr, { fileSizeBytes: buffer.length, stage: 'queued', status: 'pending', progressPercent: 0 });
   processingQueue.push({
     id: crypto.randomUUID().slice(0, 8), jobId, grNo: resolvedGr, originalFilename: filename,
     sourceBuffer: buffer, mimeType: 'image/jpeg',
@@ -324,9 +334,22 @@ export async function ingestIndividualFiles(files: Array<{ filename: string; buf
   return job;
 }
 
-export async function retryFailedDocumentsInJob(jobId: string, serverKeys: string[]): Promise<BatchProcessingJob | null> {
+export function retryFailedDocumentsInJob(jobId: string, serverKeys: string[]): BatchProcessingJob | null {
   const job = jobsStore[jobId];
   if (!job) return null;
+  // Failed page buffers are not retained in memory, so "retry" cannot
+  // re-enqueue them; flipping to 'processing' with an empty queue would
+  // leave the job stuck forever. Report honest terminal state instead.
+  const queued = processingQueue.filter((q) => q.jobId === jobId).length;
+  if (queued === 0) {
+    job.status = (job.failedCount || 0) > 0 ? 'failed' : (job.successCount || 0) > 0 ? 'completed' : 'failed';
+    job.currentStage = job.status === 'completed' ? 'COMPLETE' : 'ERROR';
+    if ((job.failedCount || 0) > 0) {
+      job.currentStageDescription = `${job.failedCount} file(s) failed; re-upload or Rescan individual documents`;
+    }
+    saveStores();
+    return job;
+  }
   job.status = 'processing';
   saveStores();
   runBackgroundQueue(serverKeys).catch(console.error);

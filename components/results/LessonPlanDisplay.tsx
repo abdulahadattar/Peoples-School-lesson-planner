@@ -33,7 +33,7 @@ export const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
       <div className="flex-shrink-0 px-4 py-3 bg-brand-surface/80 backdrop-blur-xl border-b border-brand-border flex items-center justify-between sticky top-0 z-10">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-brand-text-secondary hover:text-brand-primary transition-all duration-200 text-sm font-semibold active:scale-95 cursor-pointer"
+          className="flex items-center gap-2 text-brand-text-secondary hover:text-brand-primary transition-[color,background-color,border-color,transform] duration-200 text-sm font-semibold active:scale-95 cursor-pointer"
         >
           <ArrowLeftIcon className="w-4 h-4" />
           Back
@@ -46,7 +46,7 @@ export const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
                 onClick={() => setSelectedPlanIndex(prev => Math.max(0, prev - 1))}
                 disabled={selectedPlanIndex === 0}
                 aria-label="Previous plan"
-                className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center border border-brand-border hover:bg-brand-bg disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 active:scale-90 active:bg-brand-bg cursor-pointer"
+                className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center border border-brand-border hover:bg-brand-bg disabled:opacity-40 disabled:cursor-not-allowed transition-[color,background-color,border-color,transform] duration-200 active:scale-90 active:bg-brand-bg cursor-pointer"
               >
                 <ChevronLeftIcon className="w-4 h-4" />
               </button>
@@ -57,7 +57,7 @@ export const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
                 onClick={() => setSelectedPlanIndex(prev => Math.min(lessonPlans.length - 1, prev + 1))}
                 disabled={selectedPlanIndex === lessonPlans.length - 1}
                 aria-label="Next plan"
-                className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center border border-brand-border hover:bg-brand-bg disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 active:scale-90 active:bg-brand-bg cursor-pointer"
+                className="p-1.5 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center border border-brand-border hover:bg-brand-bg disabled:opacity-40 disabled:cursor-not-allowed transition-[color,background-color,border-color,transform] duration-200 active:scale-90 active:bg-brand-bg cursor-pointer"
               >
                 <ChevronRightIcon className="w-4 h-4" />
               </button>
@@ -66,7 +66,7 @@ export const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({
           {onExportPlan && (
             <button
               onClick={() => onExportPlan(selectedPlan)}
-              className="flex items-center gap-1.5 px-3 py-1.5 brand-gradient text-white rounded-lg text-xs font-semibold hover:shadow-glass transition-all duration-200 active:scale-95 cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 brand-gradient text-white rounded-lg text-xs font-semibold hover:shadow-glass transition-[transform,box-shadow] duration-200 active:scale-95 cursor-pointer"
             >
               <DownloadIcon className="w-3.5 h-3.5" />
               Export {exportFormat === 'both' ? 'DOCX + PDF' : exportFormat.toUpperCase()}

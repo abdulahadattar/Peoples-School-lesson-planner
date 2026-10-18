@@ -243,7 +243,7 @@ export const PaperPanel: React.FC<PaperPanelProps> = ({
             id="generate-exam-paper-btn"
             onClick={handleGenerate}
             disabled={isDisabled}
-            className="w-full flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-sm hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all min-h-[48px] cursor-pointer"
+            className="w-full flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-sm hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-[color,background-color,border-color,box-shadow] min-h-[48px] cursor-pointer"
           >
             {isGenerating ? (
               <>

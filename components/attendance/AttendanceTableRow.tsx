@@ -69,7 +69,7 @@ export const AttendanceTableRow: React.FC<AttendanceTableRowProps> = React.memo(
               onChange={(e) =>
                 onInputChange(row.classKey, 'presentBoys', e.target.value, row.enrolledBoys)
               }
-              className={`w-full h-9 text-center font-bold text-sm rounded-xl border bg-brand-bg text-brand-text-primary focus:outline-none focus:ring-2 transition-all ${
+              className={`w-full h-9 text-center font-bold text-sm rounded-xl border bg-brand-bg text-brand-text-primary focus:outline-none focus:ring-2 transition-[color,background-color,border-color] ${
                 typeof row.presentBoys === 'number' && row.presentBoys > row.enrolledBoys
                   ? 'border-rose-500 focus:ring-rose-200'
                   : 'border-brand-border focus:border-blue-500 focus:ring-blue-100 dark:focus:ring-blue-950'
@@ -97,7 +97,7 @@ export const AttendanceTableRow: React.FC<AttendanceTableRowProps> = React.memo(
               onChange={(e) =>
                 onInputChange(row.classKey, 'presentGirls', e.target.value, row.enrolledGirls)
               }
-              className={`w-full h-9 text-center font-bold text-sm rounded-xl border bg-brand-bg text-brand-text-primary focus:outline-none focus:ring-2 transition-all ${
+              className={`w-full h-9 text-center font-bold text-sm rounded-xl border bg-brand-bg text-brand-text-primary focus:outline-none focus:ring-2 transition-[color,background-color,border-color] ${
                 typeof row.presentGirls === 'number' && row.presentGirls > row.enrolledGirls
                   ? 'border-rose-500 focus:ring-rose-200'
                   : 'border-brand-border focus:border-pink-500 focus:ring-pink-100 dark:focus:ring-pink-950'
@@ -149,10 +149,10 @@ export const AttendanceTableRow: React.FC<AttendanceTableRowProps> = React.memo(
         <div className="space-y-1">
           <div className="w-full h-3 bg-brand-bg rounded-full overflow-hidden p-0.5 border border-brand-border">
             <div
-              className={`h-full rounded-full transition-all duration-300 ${getProgressColor(
+              className={`h-full w-full rounded-full transition-transform duration-300 ease-out will-change-transform ${getProgressColor(
                 row.percentage
               )}`}
-              style={{ width: `${row.percentage}%` }}
+              style={{ transform: `scaleX(${Math.min(100, row.percentage) / 100})`, transformOrigin: 'left' }}
             />
           </div>
           <div className="flex justify-between text-[10px] text-brand-text-secondary font-medium">

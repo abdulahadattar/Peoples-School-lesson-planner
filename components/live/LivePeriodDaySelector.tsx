@@ -42,7 +42,7 @@ export const LivePeriodDaySelector: React.FC<LivePeriodDaySelectorProps> = ({
               key={d}
               type="button"
               onClick={() => onSelectDay(d)}
-              className={`relative px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              className={`relative px-2.5 py-1 rounded-lg text-xs font-semibold transition-[color,background-color,border-color,box-shadow] cursor-pointer ${
                 isSelected
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
@@ -71,7 +71,7 @@ export const LivePeriodDaySelector: React.FC<LivePeriodDaySelectorProps> = ({
                 key={p.no}
                 type="button"
                 onClick={() => onSelectPeriod(i)}
-                className={`relative px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer font-mono tabular-nums ${
+                className={`relative px-2.5 py-1 rounded-lg text-xs font-semibold transition-[color,background-color,border-color,box-shadow] cursor-pointer font-mono tabular-nums ${
                   isSelected
                     ? 'bg-blue-600 text-white shadow-xs'
                     : isLiveInThisPeriod

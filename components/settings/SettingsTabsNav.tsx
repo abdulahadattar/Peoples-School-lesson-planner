@@ -45,7 +45,7 @@ export const SettingsTabsNav: React.FC<SettingsTabsNavProps> = ({
             key={tab.id}
             type="button"
             onClick={() => onTabChange(tab.id)}
-            className={`relative px-4 py-2.5 rounded-t-xl text-xs font-semibold whitespace-nowrap flex items-center gap-2 transition-all cursor-pointer ${
+            className={`relative px-4 py-2.5 rounded-t-xl text-xs font-semibold whitespace-nowrap flex items-center gap-2 transition-[color,background-color,border-color,box-shadow] cursor-pointer ${
               isActive
                 ? 'text-brand-primary bg-white dark:bg-brand-surface border-t-2 border-brand-primary shadow-xs'
                 : 'text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg/50'

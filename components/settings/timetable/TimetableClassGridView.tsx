@@ -194,7 +194,7 @@ export const TimetableClassGridView: React.FC<TimetableClassGridViewProps> = ({
                             <button
                               type="button"
                               onClick={() => onOpenCellEditor(dKey, pIdx)}
-                              className={`w-full text-left p-2.5 rounded-xl border transition-all relative cursor-pointer ${
+                              className={`w-full text-left p-2.5 rounded-xl border transition-[color,background-color,border-color,box-shadow] relative cursor-pointer ${
                                 parsed.empty
                                   ? 'border-dashed border-brand-border/70 hover:border-brand-primary/50 text-brand-text-secondary/50 bg-brand-bg/20'
                                   : clashingTeacher

@@ -79,7 +79,7 @@ export const StudentDocumentsHeader: React.FC<StudentDocumentsHeaderProps> = ({
             type="button"
             onClick={onReprocessDossier}
             disabled={isReprocessing}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 border border-indigo-200 dark:border-indigo-800 transition-all disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 border border-indigo-200 dark:border-indigo-800 transition-colors disabled:opacity-50"
             title="Re-extract and re-audit all documents for this student"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isReprocessing ? 'animate-spin text-indigo-600' : ''}`} />
@@ -90,7 +90,7 @@ export const StudentDocumentsHeader: React.FC<StudentDocumentsHeaderProps> = ({
             type="button"
             onClick={onAutoLink}
             disabled={isAutoLinking}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-brand-text-primary bg-brand-bg hover:bg-slate-200 dark:hover:bg-slate-700 border border-brand-border transition-all disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-brand-text-primary bg-brand-bg hover:bg-slate-200 dark:hover:bg-slate-700 border border-brand-border transition-colors disabled:opacity-50"
             title="Scan all unassigned uploads and auto-link to this student"
           >
             <LinkIcon className={`w-3.5 h-3.5 text-brand-primary ${isAutoLinking ? 'animate-spin' : ''}`} />
@@ -101,7 +101,7 @@ export const StudentDocumentsHeader: React.FC<StudentDocumentsHeaderProps> = ({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-all disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-[color,background-color,border-color,transform] disabled:opacity-50"
           >
             <UploadCloud className="w-3.5 h-3.5" />
             <span>{isUploading ? 'Uploading...' : 'Upload PDFs / Scans'}</span>

@@ -36,7 +36,7 @@ export const TeachersSettingsTab: React.FC<TeachersSettingsTabProps> = ({
         <button
           type="button"
           onClick={onAddTeacher}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-all self-start sm:self-auto cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-[color,background-color,border-color,transform] self-start sm:self-auto cursor-pointer"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>Add Faculty Member</span>

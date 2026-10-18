@@ -27,7 +27,7 @@ export const LiveTierSearchToolbar: React.FC<LiveTierSearchToolbarProps> = ({
         <button
           type="button"
           onClick={() => onClassFilterChange('all')}
-          className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
+          className={`px-2.5 py-1 rounded-lg font-semibold transition-[color,background-color,border-color] cursor-pointer ${
             classFilter === 'all'
               ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -41,7 +41,7 @@ export const LiveTierSearchToolbar: React.FC<LiveTierSearchToolbarProps> = ({
             key={tier}
             type="button"
             onClick={() => onClassFilterChange(tier)}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer capitalize ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-semibold transition-[color,background-color,border-color] cursor-pointer capitalize ${
               classFilter === tier
                 ? TIER_CONFIG[tier].badgeClass + ' font-bold'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -60,7 +60,7 @@ export const LiveTierSearchToolbar: React.FC<LiveTierSearchToolbarProps> = ({
           placeholder="Search class, teacher, subject..."
           value={searchQuery}
           onChange={(e) => onSearchQueryChange(e.target.value)}
-          className="w-full pl-8 pr-3 py-1.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900/60 border border-black/[0.08] dark:border-white/[0.08] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none text-slate-900 dark:text-white transition-all placeholder:text-slate-400"
+          className="w-full pl-8 pr-3 py-1.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900/60 border border-black/[0.08] dark:border-white/[0.08] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none text-slate-900 dark:text-white transition-colors placeholder:text-slate-400"
         />
       </div>
     </div>

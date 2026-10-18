@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Teacher } from '../../types';
 import {
   DayKey,
@@ -36,6 +36,11 @@ export function useSubstitutionManager(
   const [whatsappCopied, setWhatsappCopied] = useState(false);
   const [inspectTeacherStats, setInspectTeacherStats] = useState<TeacherProxyStats | null>(null);
   const [searchLedger, setSearchLedger] = useState('');
+  // Keep the callback in a ref so the load effect does not refire when the
+  // parent re-renders every second (the LiveMonitor clock) with a fresh
+  // inline arrow — that previously caused a Firestore refetch each tick.
+  const onSubstitutionsChangedRef = useRef(onSubstitutionsChanged);
+  onSubstitutionsChangedRef.current = onSubstitutionsChanged;
 
   useEffect(() => {
     let mounted = true;
@@ -52,7 +57,7 @@ export function useSubstitutionManager(
           setAssignments(todayRec.assignments || []);
           setHistoryRecords(history);
           setIsLoaded(true);
-          onSubstitutionsChanged?.(todayRec.assignments || [], todayRec.absentTeacherIds || []);
+          onSubstitutionsChangedRef.current?.(todayRec.assignments || [], todayRec.absentTeacherIds || []);
         }
       } catch (err) {
         console.error('Failed to load substitutions:', err);
@@ -64,7 +69,7 @@ export function useSubstitutionManager(
     return () => {
       mounted = false;
     };
-  }, [todayKey, onSubstitutionsChanged]);
+  }, [todayKey]);
 
   const combinedHistory = useMemo(() => {
     const existingOtherDates = historyRecords.filter((r) => r.dateKey !== todayKey);

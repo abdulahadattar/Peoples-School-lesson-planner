@@ -48,8 +48,16 @@ export function extractGrFromPath(filePath: string): string {
   if (grMatch) return grMatch[1];
   const prefixMatch = baseName.match(/^(\d{2,6})(?:[\s_.-]|$)/);
   if (prefixMatch) return prefixMatch[1];
-  const isolatedMatch = baseName.match(/(?:^|[\s_.-])(\d{3,6})(?:[\s_.-]|$)/);
-  if (isolatedMatch) return isolatedMatch[1];
+  // Last resort: an isolated number anywhere in the name. Accept 2+ digits
+  // (2-digit GRs are common in the sheet) but never hand back a plausible
+  // calendar year — "class of 2023" must not become GR 2023.
+  const isolatedMatch = baseName.match(/(?:^|[\s_.\-()])(\d{2,6})(?:[\s_.\-()]|$)/);
+  if (isolatedMatch) {
+    const value = isolatedMatch[1];
+    const numeric = parseInt(value, 10);
+    const isLikelyYear = value.length === 4 && numeric >= 1950 && numeric <= 2035;
+    if (!isLikelyYear) return value;
+  }
   return 'UNASSIGNED';
 }
 

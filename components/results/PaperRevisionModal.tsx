@@ -26,7 +26,7 @@ export const PaperRevisionModal: React.FC<PaperRevisionModalProps> = ({
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
             <button
               onClick={() => setShowRevision(true)}
-              className="flex-1 flex items-center gap-3 px-4 py-2.5 bg-brand-bg hover:bg-brand-bg/80 border border-brand-border rounded-xl text-left transition-all duration-200 group active:scale-[0.99] cursor-pointer"
+              className="flex-1 flex items-center gap-3 px-4 py-2.5 bg-brand-bg hover:bg-brand-bg/80 border border-brand-border rounded-xl text-left transition-[color,background-color,border-color,transform] duration-200 group active:scale-[0.99] cursor-pointer"
             >
               <div className="w-7 h-7 rounded-lg brand-gradient flex items-center justify-center text-white flex-shrink-0 shadow-soft">
                 <RefreshIcon className="w-3.5 h-3.5" />
@@ -43,21 +43,21 @@ export const PaperRevisionModal: React.FC<PaperRevisionModalProps> = ({
               <button
                 type="button"
                 onClick={() => { setRevisionPrompt('Add 5 more MCQs to Section A'); setShowRevision(true); }}
-                className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-brand-bg border border-brand-border text-brand-text-secondary hover:text-brand-primary hover:border-brand-primary/40 whitespace-nowrap transition-all cursor-pointer"
+                className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-brand-bg border border-brand-border text-brand-text-secondary hover:text-brand-primary hover:border-brand-primary/40 whitespace-nowrap transition-colors cursor-pointer"
               >
                 + 5 MCQs
               </button>
               <button
                 type="button"
                 onClick={() => { setRevisionPrompt('Add 2 more short questions with optional choices'); setShowRevision(true); }}
-                className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-brand-bg border border-brand-border text-brand-text-secondary hover:text-brand-primary hover:border-brand-primary/40 whitespace-nowrap transition-all cursor-pointer"
+                className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-brand-bg border border-brand-border text-brand-text-secondary hover:text-brand-primary hover:border-brand-primary/40 whitespace-nowrap transition-colors cursor-pointer"
               >
                 + 2 Short Qs
               </button>
               <button
                 type="button"
                 onClick={() => { setRevisionPrompt('Make the questions slightly more challenging and conceptually oriented'); setShowRevision(true); }}
-                className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-brand-bg border border-brand-border text-brand-text-secondary hover:text-brand-primary hover:border-brand-primary/40 whitespace-nowrap transition-all hidden md:inline-block cursor-pointer"
+                className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-brand-bg border border-brand-border text-brand-text-secondary hover:text-brand-primary hover:border-brand-primary/40 whitespace-nowrap transition-colors hidden md:inline-block cursor-pointer"
               >
                 Higher Rigor
               </button>
@@ -71,7 +71,7 @@ export const PaperRevisionModal: React.FC<PaperRevisionModalProps> = ({
   return (
     <div className="flex-shrink-0 border-t border-brand-border bg-brand-surface/95 dark:bg-brand-surface backdrop-blur-xl px-4 py-3 z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
       <div className="max-w-3xl mx-auto">
-        <div className="glass-card rounded-2xl border border-brand-primary/30 shadow-card overflow-hidden transition-all animate-scaleIn">
+        <div className="glass-card rounded-2xl border border-brand-primary/30 shadow-card overflow-hidden transition-colors animate-scaleIn">
           <div className="px-4 pt-3 pb-2">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
@@ -105,7 +105,7 @@ export const PaperRevisionModal: React.FC<PaperRevisionModalProps> = ({
                 }
               }}
               placeholder="Describe what to change (e.g. 'Add 5 MCQs about vectors, replace question 3 with a numerical problem, rebalance total marks to 50')..."
-              className="w-full h-18 px-3 py-2 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text-primary placeholder:text-brand-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary resize-none transition-all"
+              className="w-full h-18 px-3 py-2 bg-brand-bg border border-brand-border rounded-xl text-sm text-brand-text-primary placeholder:text-brand-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary resize-none transition-colors"
               disabled={isRevising}
               autoFocus
             />
@@ -130,7 +130,7 @@ export const PaperRevisionModal: React.FC<PaperRevisionModalProps> = ({
                   if (result) { setRevisionPrompt(''); setShowRevision(false); }
                 }}
                 disabled={isRevising || !revisionPrompt.trim()}
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl brand-gradient text-white text-xs font-semibold hover:shadow-glass disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 active:scale-95 cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl brand-gradient text-white text-xs font-semibold hover:shadow-glass disabled:opacity-40 disabled:cursor-not-allowed transition-[transform,box-shadow] duration-200 active:scale-95 cursor-pointer"
               >
                 {isRevising ? (
                   <>

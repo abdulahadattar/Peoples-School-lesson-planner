@@ -174,7 +174,7 @@ export const SubstitutionTodayBoard: React.FC<SubstitutionTodayBoardProps> = ({
               return (
                 <div
                   key={`${slot.periodNo}_${slot.classLabel}_${slot.absentTeacher.id}`}
-                  className="bg-brand-surface p-4 rounded-xl border border-brand-border hover:border-brand-primary/30 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs"
+                  className="bg-brand-surface p-4 rounded-xl border border-brand-border hover:border-brand-primary/30 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs"
                 >
                   {/* Class & Slot Details */}
                   <div className="space-y-1">

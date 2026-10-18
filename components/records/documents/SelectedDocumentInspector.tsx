@@ -264,7 +264,7 @@ export const SelectedDocumentInspector: React.FC<SelectedDocumentInspectorProps>
                             type="button"
                             disabled={isSelectingChild}
                             onClick={() => onSelectChild(ch.entryNo || idx + 1)}
-                            className="px-2 py-1 rounded text-[10px] font-semibold bg-white dark:bg-slate-800 border border-brand-border hover:border-brand-primary text-brand-primary transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+                            className="px-2 py-1 rounded text-[10px] font-semibold bg-white dark:bg-slate-800 border border-brand-border hover:border-brand-primary text-brand-primary transition-[color,background-color,border-color,transform] cursor-pointer active:scale-95 disabled:opacity-50"
                           >
                             Select Target
                           </button>

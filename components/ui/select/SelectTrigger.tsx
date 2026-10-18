@@ -36,7 +36,7 @@ export const SelectTrigger: React.FC<SelectTriggerProps> = ({
       onClick={onToggleOpen}
       aria-haspopup="listbox"
       aria-expanded={isOpen}
-      className={`w-full min-h-11 px-3.5 py-2 flex items-center justify-between gap-2.5 rounded-xl border text-left transition-all select-none cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 ${
+      className={`w-full min-h-11 px-3.5 py-2 flex items-center justify-between gap-2.5 rounded-xl border text-left transition-[color,background-color,border-color,box-shadow] select-none cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 ${
         disabled
           ? 'opacity-40 cursor-not-allowed bg-slate-100/60 dark:bg-slate-800/40 border-black/[0.04] dark:border-white/[0.06]'
           : isOpen

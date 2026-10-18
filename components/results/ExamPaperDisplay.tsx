@@ -37,7 +37,7 @@ export const ExamPaperDisplay: React.FC<ExamPaperDisplayProps> = ({
       <div className="flex-shrink-0 px-4 py-3 bg-brand-surface/80 backdrop-blur-xl border-b border-brand-border flex items-center justify-between gap-3 sticky top-0 z-10">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-brand-text-secondary hover:text-brand-primary transition-all duration-200 text-sm font-semibold active:scale-95 cursor-pointer"
+          className="flex items-center gap-2 text-brand-text-secondary hover:text-brand-primary transition-[color,background-color,border-color,transform] duration-200 text-sm font-semibold active:scale-95 cursor-pointer"
         >
           <ArrowLeftIcon className="w-4 h-4" />
           Back
@@ -67,7 +67,7 @@ export const ExamPaperDisplay: React.FC<ExamPaperDisplayProps> = ({
                 <button
                   key={s}
                   onClick={() => onMathScaleChange(s)}
-                  className={`px-2 py-0.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+                  className={`px-2 py-0.5 rounded-md text-[11px] font-semibold transition-[color,background-color,border-color,box-shadow] cursor-pointer ${
                     mathScale === s
                       ? 'brand-gradient text-white shadow-xs'
                       : 'text-brand-text-tertiary hover:text-brand-text-primary hover:bg-brand-surface'
@@ -81,7 +81,7 @@ export const ExamPaperDisplay: React.FC<ExamPaperDisplayProps> = ({
 
           <button
             onClick={() => onExportPaper(paper)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 brand-gradient text-white rounded-xl text-xs font-semibold hover:shadow-glass transition-all duration-200 active:scale-95 cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 brand-gradient text-white rounded-xl text-xs font-semibold hover:shadow-glass transition-[transform,box-shadow] duration-200 active:scale-95 cursor-pointer"
           >
             <DownloadIcon className="w-3.5 h-3.5" />
             Export {exportFormat === 'both' ? 'DOCX + PDF' : exportFormat.toUpperCase()}

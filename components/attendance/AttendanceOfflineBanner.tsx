@@ -17,7 +17,7 @@ export const AttendanceOfflineBanner: React.FC<AttendanceOfflineBannerProps> = (
   return (
     <div
       role="alert"
-      className="flex items-start gap-3.5 p-4 sm:p-5 rounded-2xl border border-amber-300/80 dark:border-amber-500/30 bg-amber-50/90 dark:bg-amber-950/30 text-amber-950 dark:text-amber-100 shadow-soft backdrop-blur-xs transition-all"
+      className="flex items-start gap-3.5 p-4 sm:p-5 rounded-2xl border border-amber-300/80 dark:border-amber-500/30 bg-amber-50/90 dark:bg-amber-950/30 text-amber-950 dark:text-amber-100 shadow-soft backdrop-blur-xs transition-[color,background-color,border-color,box-shadow]"
     >
       <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/50 border border-amber-300/60 dark:border-amber-700/50 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 mt-0.5 shadow-xs">
         <AlertTriangle className="w-5 h-5" />
@@ -44,7 +44,7 @@ export const AttendanceOfflineBanner: React.FC<AttendanceOfflineBannerProps> = (
             type="button"
             onClick={onRetry}
             disabled={isLoading}
-            className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl bg-amber-600 hover:bg-amber-700 text-white transition-all shadow-xs active:scale-95 disabled:opacity-50 cursor-pointer"
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl bg-amber-600 hover:bg-amber-700 text-white transition-[color,background-color,border-color,transform] shadow-xs active:scale-95 disabled:opacity-50 cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
             <span>{isLoading ? 'Retrying...' : `Retry loading ${selectedDate}`}</span>

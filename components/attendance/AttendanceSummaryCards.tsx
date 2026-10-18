@@ -60,7 +60,7 @@ export const AttendanceSummaryCards: React.FC<AttendanceSummaryCardsProps> = Rea
                     }
                   }
                 }}
-                className={`px-2 py-1 min-h-[32px] rounded-lg text-[10px] font-bold transition-all active:scale-[0.97] cursor-pointer ${
+                className={`px-2 py-1 min-h-[32px] rounded-lg text-[10px] font-bold transition-[color,background-color,border-color,transform,box-shadow] active:scale-[0.97] cursor-pointer ${
                   schoolConfig.enrollmentMode === 'manual'
                     ? 'bg-white dark:bg-slate-900 text-primary shadow-2xs'
                     : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
@@ -81,7 +81,7 @@ export const AttendanceSummaryCards: React.FC<AttendanceSummaryCardsProps> = Rea
                     }
                   }
                 }}
-                className={`px-2 py-1 min-h-[32px] rounded-lg text-[10px] font-bold transition-all active:scale-[0.97] cursor-pointer ${
+                className={`px-2 py-1 min-h-[32px] rounded-lg text-[10px] font-bold transition-[color,background-color,border-color,transform,box-shadow] active:scale-[0.97] cursor-pointer ${
                   schoolConfig.enrollmentMode === 'google_sheet'
                     ? 'bg-emerald-600 text-white shadow-2xs'
                     : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
@@ -134,8 +134,8 @@ export const AttendanceSummaryCards: React.FC<AttendanceSummaryCardsProps> = Rea
         {/* Proportional Bar */}
         <div className="w-full h-4 sm:h-5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-200 dark:border-slate-700">
           <div
-            className={`h-full rounded-full transition-all duration-500 ${getProgressColor(schoolSummary.overallPercentage)}`}
-            style={{ width: `${Math.min(100, schoolSummary.overallPercentage)}%` }}
+            className={`h-full w-full rounded-full transition-transform duration-500 ease-out will-change-transform ${getProgressColor(schoolSummary.overallPercentage)}`}
+            style={{ transform: `scaleX(${Math.min(100, schoolSummary.overallPercentage) / 100})`, transformOrigin: 'left' }}
           />
         </div>
       </div>

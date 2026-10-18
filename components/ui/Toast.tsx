@@ -47,8 +47,13 @@ export const Toast: React.FC<ToastProps> = ({ toast, onClose }) => {
 
   return (
     <div className="fixed bottom-8 right-6 z-[200] max-w-sm w-full animate-fadeIn shadow-lg">
-      <div className={`flex items-start gap-3 p-3.5 rounded-xl border ${bgStyle} backdrop-blur-md`}>
-        <IconComponent className="w-5 h-5 shrink-0 mt-0.5" />
+      <div
+        className={`flex items-start gap-3 p-3.5 rounded-xl border ${bgStyle} backdrop-blur-md`}
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        <IconComponent className="w-5 h-5 shrink-0 mt-0.5" aria-hidden="true" />
         <p className="text-xs sm:text-sm font-medium flex-1 leading-snug break-words">
           {toast.message}
         </p>

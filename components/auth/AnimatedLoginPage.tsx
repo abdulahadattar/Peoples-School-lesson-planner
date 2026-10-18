@@ -90,7 +90,7 @@ export const AnimatedLoginPage: React.FC<AnimatedLoginPageProps> = ({
           <button
             onClick={onContinueAsGuest}
             id="login-explore-guest-top-btn"
-            className="text-xs font-medium text-slate-300 hover:text-white px-3.5 py-1.5 rounded-full hover:bg-white/10 transition-all border border-transparent hover:border-white/10 active:scale-95"
+            className="text-xs font-medium text-slate-300 hover:text-white px-3.5 py-1.5 rounded-full hover:bg-white/10 transition-[color,background-color,border-color,transform] border border-transparent hover:border-white/10 active:scale-95"
           >
             Explore as Guest
           </button>

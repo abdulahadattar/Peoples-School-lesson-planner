@@ -87,7 +87,7 @@ export const DiscrepancyAuditTable: React.FC<DiscrepancyAuditTableProps> = React
               type="button"
               disabled={isBatchApplying}
               onClick={() => onBatchApplyCorrections(flagsWithCorrection)}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-60 whitespace-nowrap"
+              className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-[color,background-color,border-color,transform] flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-60 whitespace-nowrap"
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>{isBatchApplying ? 'Applying...' : `Apply All ${flagsWithCorrection.length} to Sheet`}</span>

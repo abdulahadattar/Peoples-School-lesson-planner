@@ -127,7 +127,7 @@ export const PaperPresetSelector: React.FC<PaperPresetSelectorProps> = ({
               key={preset.id}
               type="button"
               onClick={() => onSelectPreset(preset)}
-              className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+              className={`p-2.5 rounded-xl border text-left transition-[color,background-color,border-color,box-shadow] cursor-pointer ${
                 isActive
                   ? 'border-brand-primary bg-brand-primary/10 dark:bg-brand-primary/20 shadow-xs'
                   : 'border-brand-border bg-brand-surface hover:border-brand-primary/40'

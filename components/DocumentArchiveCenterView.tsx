@@ -149,6 +149,8 @@ export const DocumentArchiveCenterView: React.FC = () => {
             setActiveJob(job);
             setIsTransparencyModalOpen(true);
             await refreshData();
+          } catch (err: any) {
+            showToast(err?.message || 'ZIP upload failed', 'error');
           } finally {
             setIsUploading(false);
             setUploadProgress(null);
@@ -161,10 +163,12 @@ export const DocumentArchiveCenterView: React.FC = () => {
         if (files.length > 0) {
           setIsUploading(true);
           try {
-            const job = await uploadIndividualFiles(files, (p) => setUploadProgress({ percent: p, statusText: `Uploading ${files.length} files...` }));
+            const job = await uploadIndividualFiles(files, (p) => setUploadProgress({ percent: p, statusText: `Uploading ${files.length} files…` }));
             setActiveJob(job);
             setIsTransparencyModalOpen(true);
             await refreshData();
+          } catch (err: any) {
+            showToast(err?.message || 'File upload failed', 'error');
           } finally {
             setIsUploading(false);
             setUploadProgress(null);
@@ -195,14 +199,14 @@ export const DocumentArchiveCenterView: React.FC = () => {
         onAutoLink={handleAutoLink}
         isRescanningAll={isRescanningAll}
         onRescanAll={handleRescanAll}
-        onDownloadReport={() => window.open(`/api/documents/export/zip?class=${encodeURIComponent(selectedClass)}`, '_blank')}
+        onDownloadReport={() => window.open(`/api/documents/export-zip?class=${encodeURIComponent(selectedClass)}`, '_blank')}
       />
 
       <div className="flex border-b border-brand-border bg-white dark:bg-brand-surface rounded-2xl p-1 shadow-soft">
         <button
           type="button"
           onClick={() => setActiveMainTab('dossiers')}
-          className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+          className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-[color,background-color,border-color,box-shadow] flex items-center justify-center gap-2 cursor-pointer ${
             activeMainTab === 'dossiers' ? 'bg-brand-primary text-white shadow-xs' : 'text-brand-text-secondary hover:text-brand-text-primary'
           }`}
         >
@@ -211,7 +215,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveMainTab('extracted')}
-          className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+          className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-[color,background-color,border-color,box-shadow] flex items-center justify-center gap-2 cursor-pointer ${
             activeMainTab === 'extracted' ? 'bg-brand-primary text-white shadow-xs' : 'text-brand-text-secondary hover:text-brand-text-primary'
           }`}
         >
@@ -220,7 +224,7 @@ export const DocumentArchiveCenterView: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveMainTab('audit')}
-          className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+          className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-[color,background-color,border-color,box-shadow] flex items-center justify-center gap-2 cursor-pointer ${
             activeMainTab === 'audit' ? 'bg-brand-primary text-white shadow-xs' : 'text-brand-text-secondary hover:text-brand-text-primary'
           }`}
         >
@@ -293,9 +297,9 @@ export const DocumentArchiveCenterView: React.FC = () => {
         document={assigningDoc}
         targetGr={targetAssignGr}
         onTargetGrChange={setTargetAssignGr}
-        onAssign={() => {
+        onAssign={async () => {
           if (assigningDoc && targetAssignGr.trim()) {
-            handleAssignDoc(assigningDoc.id, targetAssignGr);
+            await handleAssignDoc(assigningDoc.id, targetAssignGr);
             setAssigningDoc(null);
             setTargetAssignGr('');
           }

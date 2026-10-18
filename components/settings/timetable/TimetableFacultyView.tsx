@@ -132,7 +132,7 @@ export const TimetableFacultyView: React.FC<TimetableFacultyViewProps> = ({
                                   type="button"
                                   key={sIdx}
                                   onClick={() => onOpenCellEditor(dKey, pIdx, slot.classLabel)}
-                                  className={`w-full text-left p-2 rounded-xl border transition-all mb-1 last:mb-0 ${
+                                  className={`w-full text-left p-2 rounded-xl border transition-[color,background-color,border-color] mb-1 last:mb-0 ${
                                     isClash
                                       ? 'border-rose-400 bg-rose-50/70 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 active:bg-rose-100 dark:active:bg-rose-950/70'
                                       : 'border-brand-primary/30 bg-brand-primary/5 hover:bg-brand-primary/10 active:bg-brand-primary/20 text-brand-text-primary'

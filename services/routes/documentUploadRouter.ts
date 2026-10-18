@@ -200,6 +200,14 @@ export function createDocumentUploadRouter(getDocumentApiKeys: () => string[]): 
       res.setHeader('Content-Disposition', `attachment; filename="${zipName}"`);
 
       const zipStream = createArchiveZipStream(targetClass);
+      zipStream.on('error', (err: Error) => {
+        console.error('[export-zip] archive error:', err);
+        if (!res.headersSent) res.status(500).send(err.message);
+        else res.destroy();
+      });
+      // archiver only flushes and ends the response once finalize() runs —
+      // without it the request stays open forever.
+      zipStream.finalize();
       zipStream.pipe(res);
     } catch (err) {
       res.status(500).send((err as Error).message);

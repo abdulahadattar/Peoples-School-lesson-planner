@@ -68,7 +68,7 @@ export const StaffRoomPanel: React.FC<StaffRoomPanelProps> = ({
                 return (
                   <div
                     key={t.id}
-                    className={`flex items-center gap-2.5 rounded-xl p-2.5 border transition-all ${
+                    className={`flex items-center gap-2.5 rounded-xl p-2.5 border transition-[color,background-color,border-color] ${
                       isTeacherAbsent
                         ? 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900 opacity-60'
                         : 'bg-white dark:bg-brand-panel border-brand-border'

@@ -71,7 +71,7 @@ export const AssignDocumentModal: React.FC<AssignDocumentModalProps> = ({
             type="button"
             disabled={!targetGr.trim() || isOperating}
             onClick={onAssign}
-            className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-brand-primary hover:bg-brand-primary-hover shadow-sm transition-all flex items-center gap-1.5 disabled:opacity-50"
+            className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-brand-primary hover:bg-brand-primary-hover shadow-sm transition-colors flex items-center gap-1.5 disabled:opacity-50"
           >
             <UserPlus className="w-3.5 h-3.5" />
             <span>{isOperating ? 'Assigning...' : 'Assign to Student'}</span>

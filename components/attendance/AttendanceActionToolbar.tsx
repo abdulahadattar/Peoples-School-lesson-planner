@@ -51,7 +51,7 @@ export const AttendanceActionToolbar: React.FC<AttendanceActionToolbarProps> = (
           type="button"
           id="action-toolbar-enrollments-btn"
           onClick={onOpenEnrollments}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all shadow-xs cursor-pointer ${
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border transition-[color,background-color,border-color,box-shadow] shadow-xs cursor-pointer ${
             isAdmin
               ? 'bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-300 dark:border-blue-800'
               : 'bg-brand-bg hover:bg-brand-border text-brand-text-primary border-brand-border'
@@ -113,7 +113,7 @@ export const AttendanceActionToolbar: React.FC<AttendanceActionToolbarProps> = (
           onClick={onSyncToGoogleSheet}
           disabled={isSyncingToSheet || isSaving}
           title="Push this date's attendance to the official Google Sheet on demand"
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 transition-all shadow-xs active:scale-95 cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 transition-[color,background-color,border-color,transform] shadow-xs active:scale-95 cursor-pointer"
         >
           {isSyncingToSheet ? (
             <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -135,7 +135,7 @@ export const AttendanceActionToolbar: React.FC<AttendanceActionToolbarProps> = (
           onClick={onSaveToDatabase}
           disabled={isSaving}
           title={loadError ? 'The register below is blank because loading failed - saving will overwrite this date' : 'Save attendance to application database & storage'}
-          className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl brand-gradient text-white hover:opacity-90 disabled:opacity-50 transition-all shadow-md active:scale-95 cursor-pointer"
+          className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl brand-gradient text-white hover:opacity-90 disabled:opacity-50 transition-transform shadow-md active:scale-95 cursor-pointer"
         >
           {isSaving ? (
             <RefreshCw className="w-3.5 h-3.5 animate-spin" />

@@ -59,7 +59,7 @@ export async function updateDocumentMetadata(
   newTag?: DocumentClassificationType,
   rotateAngle?: 90 | 180 | 270
 ): Promise<StudentDocumentRecord> {
-  const res = await fetch('/api/documents/update-meta', {
+  const res = await fetch('/api/documents/update-doc', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ docId, newTag, rotateAngle }),
@@ -70,12 +70,16 @@ export async function updateDocumentMetadata(
 }
 
 export async function deleteDocumentScan(docId: string): Promise<boolean> {
-  const res = await fetch(`/api/documents/delete/${encodeURIComponent(docId)}`, { method: 'DELETE' });
+  const res = await fetch('/api/documents/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ docId }),
+  });
   return res.ok;
 }
 
 export async function deleteMultipleDocumentScans(docIds: string[]): Promise<number> {
-  const res = await fetch('/api/documents/delete-batch', {
+  const res = await fetch('/api/documents/delete', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ docIds }),
@@ -86,7 +90,11 @@ export async function deleteMultipleDocumentScans(docIds: string[]): Promise<num
 }
 
 export async function rescanDocumentScan(docId: string): Promise<StudentDocumentRecord> {
-  const res = await fetch(`/api/documents/rescan/${encodeURIComponent(docId)}`, { method: 'POST' });
+  const res = await fetch('/api/documents/rescan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ docId }),
+  });
   if (!res.ok) throw new Error(formatApiErrorMessage(res.status, await res.text()));
   const data = await res.json();
   return data.document;
@@ -99,14 +107,22 @@ export async function rescanAllDocuments(): Promise<{ total: number; rescanned: 
 }
 
 export async function reprocessDocumentWithAi(docId: string): Promise<StudentDocumentRecord> {
-  const res = await fetch(`/api/documents/reprocess/${encodeURIComponent(docId)}`, { method: 'POST' });
+  const res = await fetch('/api/documents/reprocess-doc', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ docId }),
+  });
   if (!res.ok) throw new Error(formatApiErrorMessage(res.status, await res.text()));
   const data = await res.json();
   return data.document;
 }
 
 export async function reprocessDossierWithAi(grNo: string): Promise<StudentDossier> {
-  const res = await fetch(`/api/documents/reprocess-dossier/${encodeURIComponent(grNo)}`, { method: 'POST' });
+  const res = await fetch('/api/documents/reprocess-dossier', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ grNo }),
+  });
   if (!res.ok) throw new Error(formatApiErrorMessage(res.status, await res.text()));
   const data = await res.json();
   return data.dossier;

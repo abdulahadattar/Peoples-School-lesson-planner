@@ -31,7 +31,7 @@ export const DocumentScansList: React.FC<DocumentScansListProps> = ({
               key={doc.id}
               type="button"
               onClick={() => onSelectDoc(doc)}
-              className={`w-full text-left p-2.5 rounded-xl border transition-all flex items-center gap-3 ${
+              className={`w-full text-left p-2.5 rounded-xl border transition-[color,background-color,border-color] flex items-center gap-3 ${
                 isSelected
                   ? 'bg-brand-primary/10 border-brand-primary/40 ring-1 ring-brand-primary/20'
                   : 'bg-white dark:bg-brand-surface border-brand-border hover:bg-brand-bg'

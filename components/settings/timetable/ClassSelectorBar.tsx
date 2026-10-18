@@ -69,7 +69,7 @@ export const ClassSelectorBar: React.FC<ClassSelectorBarProps> = ({
               key={cls.key}
               type="button"
               onClick={() => setSelectedClassLabel(cls.label)}
-              className={`relative px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              className={`relative px-3 py-1.5 rounded-xl text-xs font-semibold transition-[color,background-color,border-color,box-shadow] cursor-pointer ${
                 isSelected
                   ? 'bg-brand-primary text-white shadow-sm ring-2 ring-brand-primary/20 font-bold'
                   : 'bg-brand-surface text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-surface/90 border border-brand-border/60'

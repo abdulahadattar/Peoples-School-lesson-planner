@@ -57,7 +57,7 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
       <div className="fixed inset-0" onClick={onClose} aria-hidden="true" />
 
       <div
-        className="relative bg-white dark:bg-slate-900 rounded-2xl max-w-5xl w-full p-4 border border-black/[0.08] dark:border-white/[0.1] shadow-2xl flex flex-col max-h-[92vh] z-10 transition-all space-y-3"
+        className="relative bg-white dark:bg-slate-900 rounded-2xl max-w-5xl w-full p-4 border border-black/[0.08] dark:border-white/[0.1] shadow-2xl flex flex-col max-h-[92vh] z-10 transition-colors space-y-3"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -68,7 +68,7 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                 GR #{doc.grNo}
               </span>
             )}
-            {doc.grNo && <span className="text-slate-400 shrink-0">•</span>}
+            {doc.grNo && <span className="text-slate-400 shrink-0">â€¢</span>}
             <span className="text-xs font-bold text-slate-900 dark:text-white shrink-0">
               {classificationLabel}
             </span>
@@ -85,10 +85,10 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                 onClick={() => onRotate(doc.id!, 90)}
                 disabled={isRotating}
                 className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-1 cursor-pointer border border-slate-200 dark:border-slate-700"
-                title="Rotate document 90° clockwise"
+                title="Rotate document 90Â° clockwise"
               >
                 <RotateCw className={`w-3.5 h-3.5 ${isRotating ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline">Rotate 90°</span>
+                <span className="hidden sm:inline">Rotate 90Â°</span>
               </button>
             )}
 

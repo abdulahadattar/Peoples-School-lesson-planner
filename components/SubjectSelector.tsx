@@ -36,7 +36,7 @@ const MODES = [
 ] as const;
 
 const INPUT_CLASS =
-  'w-full h-11 px-4 bg-slate-50 dark:bg-slate-800/60 border border-black/[0.08] dark:border-white/[0.1] rounded-xl text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all';
+  'w-full h-11 px-4 bg-slate-50 dark:bg-slate-800/60 border border-black/[0.08] dark:border-white/[0.1] rounded-xl text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-[color,background-color,border-color]';
 
 export const SubjectSelector: React.FC<SubjectSelectorProps> = ({
   selection,
@@ -224,7 +224,7 @@ export const SubjectSelector: React.FC<SubjectSelectorProps> = ({
               type="button"
               onClick={onGenerate}
               disabled={isGenerateDisabled}
-              className="w-full flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-sm hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150 min-h-[48px] cursor-pointer"
+              className="w-full flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-sm hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-[color,background-color,border-color,box-shadow] duration-150 min-h-[48px] cursor-pointer"
             >
               {isGenerating && <Spinner className="w-4 h-4" />}
               {isGenerating ? (

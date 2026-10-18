@@ -164,7 +164,7 @@ const Header: React.FC<HeaderProps> = ({
                 type="button"
                 onClick={() => googleSignIn()}
                 title="Reconnect Google Sheets"
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold text-amber-800 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 active:scale-95 transition-all"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold text-amber-800 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 active:scale-95 transition-[color,background-color,border-color,transform]"
               >
                 <AlertTriangle className="w-3 h-3 text-amber-500" />
                 <span className="hidden sm:inline">Reconnect</span>
@@ -196,7 +196,7 @@ const Header: React.FC<HeaderProps> = ({
               }
             }}
             id="header-login-gate-btn"
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition-colors cursor-pointer"
           >
             <LogIn className="w-3.5 h-3.5" />
             <span>Sign In</span>
@@ -209,7 +209,7 @@ const Header: React.FC<HeaderProps> = ({
           onClick={onToggleTheme}
           aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
           title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-          className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all active:scale-95 cursor-pointer border border-transparent hover:border-black/[0.04] dark:hover:border-white/[0.06]"
+          className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-[color,background-color,border-color,transform] active:scale-95 cursor-pointer border border-transparent hover:border-black/[0.04] dark:hover:border-white/[0.06]"
         >
           {theme === 'light' ? (
             <MoonIcon className="w-4 h-4" />

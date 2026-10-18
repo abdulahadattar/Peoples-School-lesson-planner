@@ -98,7 +98,7 @@ export const ClassBarChart: React.FC<ClassBarChartProps> = ({
                 <Cell
                   key={`cell-${entry.className}`}
                   fill={isSelected ? '#059669' : '#10b981'}
-                  className="transition-all hover:opacity-80"
+                  className="transition-colors hover:opacity-80"
                 />
               );
             })}

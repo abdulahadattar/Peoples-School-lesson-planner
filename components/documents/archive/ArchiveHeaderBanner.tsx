@@ -47,7 +47,7 @@ export const ArchiveHeaderBanner: React.FC<ArchiveHeaderBannerProps> = ({
             <button
               type="button"
               onClick={onOpenTransparency}
-              className="px-3 py-2 rounded-xl text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              className="px-3 py-2 rounded-xl text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <Activity className="w-3.5 h-3.5 animate-pulse text-indigo-600" />
               <span>Job #{activeJob.id} Telemetry</span>
@@ -58,7 +58,7 @@ export const ArchiveHeaderBanner: React.FC<ArchiveHeaderBannerProps> = ({
             type="button"
             disabled={isUploading}
             onClick={onUploadFilesClick}
-            className="px-3.5 py-2 rounded-xl text-xs font-bold text-brand-text-primary bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            className="px-3.5 py-2 rounded-xl text-xs font-bold text-brand-text-primary bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
           >
             <UploadCloud className="w-4 h-4 text-slate-600 dark:text-slate-400" />
             <span>Upload Scans</span>
@@ -68,7 +68,7 @@ export const ArchiveHeaderBanner: React.FC<ArchiveHeaderBannerProps> = ({
             type="button"
             disabled={isUploading}
             onClick={onUploadZipClick}
-            className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-brand-primary hover:bg-brand-primary-hover shadow-sm transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
+            className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-brand-primary hover:bg-brand-primary-hover shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
           >
             <FileArchive className="w-4 h-4" />
             <span>Upload ZIP Archive</span>
@@ -89,8 +89,8 @@ export const ArchiveHeaderBanner: React.FC<ArchiveHeaderBannerProps> = ({
           </div>
           <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
             <div
-              className="h-full bg-brand-primary transition-all duration-300 rounded-full"
-              style={{ width: `${uploadProgress.percent}%` }}
+              className="h-full w-full bg-brand-primary rounded-full transition-transform duration-300 ease-out will-change-transform"
+              style={{ transform: `scaleX(${uploadProgress.percent / 100})`, transformOrigin: 'left' }}
             />
           </div>
         </div>
@@ -112,9 +112,10 @@ export const ArchiveHeaderBanner: React.FC<ArchiveHeaderBannerProps> = ({
           </div>
           <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
             <div
-              className="h-full bg-brand-primary transition-all duration-300 rounded-full"
+              className="h-full w-full bg-brand-primary rounded-full transition-transform duration-500 ease-out will-change-transform"
               style={{
-                width: `${activeJob.totalFiles > 0 ? Math.min(100, Math.round((activeJob.processedFiles / activeJob.totalFiles) * 100)) : 0}%`,
+                transform: `scaleX(${activeJob.totalFiles > 0 ? Math.min(100, Math.round((activeJob.processedFiles / activeJob.totalFiles) * 100)) / 100 : 0})`,
+                transformOrigin: 'left',
               }}
             />
           </div>

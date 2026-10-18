@@ -56,7 +56,7 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
       onClick={onSignIn}
       disabled={isLoading}
       title="Sign in with Google to sync edits directly to Google Sheets"
-      className="inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-white dark:bg-brand-surface border border-brand-border hover:border-brand-primary/40 text-brand-text-primary text-xs font-semibold shadow-soft hover:shadow-card active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+      className="inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-white dark:bg-brand-surface border border-brand-border hover:border-brand-primary/40 text-brand-text-primary text-xs font-semibold shadow-soft hover:shadow-card active:scale-[0.98] transition-[color,background-color,border-color,transform,box-shadow] disabled:opacity-60 disabled:cursor-not-allowed"
     >
       <svg className="w-4 h-4" viewBox="0 0 48 48">
         <path

@@ -150,6 +150,34 @@ export function auditDossierAgainstSheet(grNo: string, sheetRecord?: any): Docum
       }
     }
 
+    if (!dossier.bFormNo && sheetBForm) {
+      const doc = primaryDoc;
+      const id = `flag_bform_missing_${grNo}`;
+      discrepancies.push({
+        id, grNo, studentName, fatherName, currentClass, field: 'missing', fieldName: 'NADRA B-Form / CRC Number',
+        sheetValue: sheetBForm, extractedValue: '', severity: 'medium',
+        message: `Missing Data: No verified B-Form scan on file. Sheet has B-Form ${sheetBForm}. Upload or rescan the student's B-Form to verify.`,
+        suggestedAction: 'reformat_bform',
+        documentId: doc?.id, documentUrl: doc?.url, documentFilename: doc?.originalFilename,
+        documentClassification: doc?.classification,
+        isDismissed: Boolean(dismissedFlagsStore[id]),
+      });
+    }
+
+    if (!dossier.parentCnic && sheetCnic) {
+      const doc = cnicDoc || primaryDoc;
+      const id = `flag_cnic_missing_${grNo}`;
+      discrepancies.push({
+        id, grNo, studentName, fatherName, currentClass, field: 'missing', fieldName: 'Father / Guardian CNIC',
+        sheetValue: sheetCnic, extractedValue: '', severity: 'medium',
+        message: `Missing Data: No verified father CNIC on file. Sheet has CNIC ${sheetCnic}. Upload or rescan the father's CNIC to verify.`,
+        suggestedAction: 'reformat_bform',
+        documentId: doc?.id, documentUrl: doc?.url, documentFilename: doc?.originalFilename,
+        documentClassification: doc?.classification,
+        isDismissed: Boolean(dismissedFlagsStore[id]),
+      });
+    }
+
     if (dossier.studentName && sheetStudentName) {
       const vStudent = analyzeNameCasteOrFullNameVariance(dossier.studentName, sheetStudentName);
       if (vStudent.isMatch && vStudent.hasEnrichment && vStudent.recommendedFullName) {

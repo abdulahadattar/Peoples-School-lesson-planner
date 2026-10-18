@@ -31,6 +31,7 @@
 /* ── Brand palette ───────────────────────────────────────────────
    Apple-calibrated Royal Blue + Emerald + Porcelain Slate */
 :root {
+  color-scheme: light;
   --bg-color: #f8fafc;
   --surface-color: #ffffff;
   --panel-color: #f1f5f9;
@@ -46,6 +47,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --bg-color: #0b1120;
   --surface-color: #111a2e;
   --panel-color: #17233d;

@@ -63,7 +63,7 @@ export const StudentAvatar: React.FC<StudentAvatarProps> = React.memo(({
       <div
         onClick={onClick}
         className={`${sizeClasses} rounded-full border border-black/10 dark:border-white/15 overflow-hidden flex-shrink-0 shadow-xs relative group/avatar ${
-          onClick ? 'cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all' : ''
+          onClick ? 'cursor-pointer hover:ring-2 hover:ring-blue-500 transition-colors' : ''
         }`}
         title={`${name} (Click to inspect photo)`}
       >

@@ -38,7 +38,7 @@ export const BreakDutiesPanel: React.FC<{
     return (
       <div
         key={`${groundKey}-${item.rawName}`}
-        className={`flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl border transition-all ${
+        className={`flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl border transition-[color,background-color,border-color] ${
           item.isAbsent
             ? 'bg-rose-50/70 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/60'
             : 'bg-white dark:bg-brand-panel border-brand-border/80 hover:border-brand-primary/30'
@@ -110,7 +110,7 @@ export const BreakDutiesPanel: React.FC<{
           <button
             type="button"
             onClick={() => setActiveTab('both')}
-            className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
+            className={`px-2.5 py-1 rounded-md font-semibold transition-[color,background-color,border-color,box-shadow] ${
               activeTab === 'both'
                 ? 'bg-white dark:bg-brand-surface text-brand-primary font-bold shadow-xs'
                 : 'text-brand-text-secondary hover:text-brand-text-primary'
@@ -121,7 +121,7 @@ export const BreakDutiesPanel: React.FC<{
           <button
             type="button"
             onClick={() => setActiveTab('break')}
-            className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
+            className={`px-2.5 py-1 rounded-md font-semibold transition-[color,background-color,border-color,box-shadow] ${
               activeTab === 'break'
                 ? 'bg-white dark:bg-brand-surface text-brand-primary font-bold shadow-xs'
                 : 'text-brand-text-secondary hover:text-brand-text-primary'
@@ -132,7 +132,7 @@ export const BreakDutiesPanel: React.FC<{
           <button
             type="button"
             onClick={() => setActiveTab('leave')}
-            className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
+            className={`px-2.5 py-1 rounded-md font-semibold transition-[color,background-color,border-color,box-shadow] ${
               activeTab === 'leave'
                 ? 'bg-white dark:bg-brand-surface text-brand-primary font-bold shadow-xs'
                 : 'text-brand-text-secondary hover:text-brand-text-primary'

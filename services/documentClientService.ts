@@ -39,7 +39,7 @@ export const deleteDocumentsBatch = deleteMultipleDocumentScans;
 export const rescanDocument = rescanDocumentScan;
 export const applyDiscrepancyCorrectionClient = applyCorrectionToRecord;
 export const batchApplyDiscrepancyCorrectionsClient = batchApplyCorrections;
-export const getExportZipUrl = (targetClass?: string) => `/api/documents/export/zip?class=${encodeURIComponent(targetClass || 'ALL')}`;
+export const getExportZipUrl = (targetClass?: string) => `/api/documents/export-zip?class=${encodeURIComponent(targetClass || 'ALL')}`;
 export const retryFailedJob = async (jobId: string) => {
   const res = await fetch(`/api/documents/jobs/${encodeURIComponent(jobId)}/retry`, { method: 'POST' });
   if (!res.ok) return null;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   BatchProcessingJob,
   JobLogEntry,
@@ -43,23 +43,41 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
   const [isRetrying, setIsRetrying] = useState(false);
   const [copiedLogs, setCopiedLogs] = useState(false);
 
+  const jobRef = useRef<BatchProcessingJob | null>(null);
+  const isTerminal = job?.status === 'completed' || job?.status === 'failed';
   const loadJob = async () => {
     if (!jobId) return;
     try {
       const updated = await fetchJobStatus(jobId);
-      if (updated) {
+      // Ignore out-of-order responses from overlapping polls.
+      if (updated && (!jobRef.current || updated.startedAt >= jobRef.current.startedAt)) {
+        jobRef.current = updated;
         setJob(updated);
         if (onJobUpdated) onJobUpdated(updated);
       }
-    } catch {}
+    } catch {
+      // transient network error — next tick retries
+    }
   };
 
   useEffect(() => {
     if (!isOpen || !jobId) return;
+    jobRef.current = null;
     loadJob();
+    // Poll while processing; stop once the job reached a terminal state.
+    if (isTerminal) return;
     const interval = setInterval(loadJob, 2000);
     return () => clearInterval(interval);
-  }, [isOpen, jobId]);
+  }, [isOpen, jobId, isTerminal]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -91,6 +109,8 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
         setJob(updated);
         if (onJobUpdated) onJobUpdated(updated);
       }
+    } catch {
+      // keep the modal usable; next poll refreshes state
     } finally {
       setIsRetrying(false);
     }
@@ -99,7 +119,8 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
   const handleStopJob = async () => {
     if (!jobId) return;
     try {
-      await fetch(`/api/documents/jobs/${encodeURIComponent(jobId)}/stop`, { method: 'POST' });
+      const res = await fetch(`/api/documents/jobs/${encodeURIComponent(jobId)}/stop`, { method: 'POST' });
+      if (!res.ok) return;
       await loadJob();
     } catch {}
   };
@@ -116,8 +137,14 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
   const completionPercent = job?.totalFiles ? Math.round((job.processedFiles / job.totalFiles) * 100) : 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white dark:bg-brand-surface border border-brand-border rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Document Processing Transparency"
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white dark:bg-brand-surface border border-brand-border rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] overscroll-contain">
         {/* Header */}
         <div className="p-4 border-b border-brand-border flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
           <div className="flex items-center gap-3">
@@ -136,8 +163,8 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
               </p>
             </div>
           </div>
-          <button type="button" onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 transition-colors">
-            <X className="w-5 h-5" />
+          <button type="button" onClick={onClose} aria-label="Close telemetry modal" className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 transition-colors">
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -152,7 +179,14 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
             </span>
           </div>
           <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-            <div className="h-full bg-brand-primary transition-all duration-300 rounded-full" style={{ width: `${completionPercent}%` }} />
+            <div
+              className="h-full w-full bg-brand-primary rounded-full transition-transform duration-500 ease-out will-change-transform"
+              style={{ transform: `scaleX(${completionPercent / 100})`, transformOrigin: 'left' }}
+              role="progressbar"
+              aria-valuenow={completionPercent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            />
           </div>
         </div>
 
@@ -161,7 +195,7 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
           <button
             type="button"
             onClick={() => setActiveTab('files')}
-            className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-[color,background-color,border-color] flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'files' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -170,7 +204,7 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
           <button
             type="button"
             onClick={() => setActiveTab('logs')}
-            className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-[color,background-color,border-color] flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'logs' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -179,7 +213,7 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
           <button
             type="button"
             onClick={() => setActiveTab('pipeline')}
-            className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-[color,background-color,border-color] flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'pipeline' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >

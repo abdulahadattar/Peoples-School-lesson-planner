@@ -38,7 +38,7 @@ export const AttendanceNotesBar: React.FC<AttendanceNotesBarProps> = ({
           onClick={onSyncToGoogleSheet}
           disabled={isSyncingToSheet || isSaving}
           title="Push to Google Sheet on demand"
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 transition-all shadow-xs active:scale-95 cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 transition-[color,background-color,border-color,transform] shadow-xs active:scale-95 cursor-pointer"
         >
           {isSyncingToSheet ? (
             <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -53,7 +53,7 @@ export const AttendanceNotesBar: React.FC<AttendanceNotesBarProps> = ({
           onClick={onSaveToDatabase}
           disabled={isSaving}
           title={loadError ? 'The register below is blank because loading failed - saving will overwrite this date' : 'Save attendance to application database & storage'}
-          className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl brand-gradient text-white hover:opacity-90 disabled:opacity-50 transition-all shadow-sm active:scale-95 cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl brand-gradient text-white hover:opacity-90 disabled:opacity-50 transition-transform shadow-sm active:scale-95 cursor-pointer"
         >
           {isSaving ? (
             <RefreshCw className="w-3.5 h-3.5 animate-spin" />

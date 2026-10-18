@@ -82,7 +82,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             type="button"
             onClick={onConfirm}
             disabled={isLoading}
-            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold shadow-xs active:scale-95 transition-all disabled:opacity-50 cursor-pointer ${confirmButtonClass}`}
+            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold shadow-xs active:scale-95 transition-transform disabled:opacity-50 cursor-pointer ${confirmButtonClass}`}
           >
             {isLoading ? (
               <span>Processing...</span>

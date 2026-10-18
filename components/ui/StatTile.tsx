@@ -82,7 +82,7 @@ export const StatTile: React.FC<StatTileProps> = ({
       onClick={onClick}
       role={isClickable ? 'button' : undefined}
       tabIndex={isClickable ? 0 : undefined}
-      className={`relative rounded-xl p-4 transition-all duration-200 border ${styles.bg} ${styles.border} ${
+      className={`relative rounded-xl p-4 transition-[color,background-color,border-color,transform,box-shadow] duration-200 border ${styles.bg} ${styles.border} ${
         isClickable ? `cursor-pointer ${styles.hoverBorder} active:scale-[0.98]` : ''
       } ${active ? 'ring-2 ring-primary ring-offset-1 ring-offset-white dark:ring-offset-slate-900 shadow-md' : ''} ${className}`}
     >

@@ -217,7 +217,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
       </p>
       <button
         onClick={onBack}
-        className="flex items-center gap-2 px-5 py-2.5 brand-gradient text-white font-semibold rounded-xl hover:shadow-glass hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer"
+        className="flex items-center gap-2 px-5 py-2.5 brand-gradient text-white font-semibold rounded-xl hover:shadow-glass hover:-translate-y-0.5 active:translate-y-0 transition-[transform,box-shadow] duration-200 cursor-pointer"
       >
         <ArrowLeftIcon className="w-5 h-5" />
         Get Started

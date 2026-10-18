@@ -108,7 +108,7 @@ export const DailyAttendanceView: React.FC = () => {
     <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 py-6 space-y-6 animate-fadeInUp">
       {notification && (
         <div
-          className={`fixed bottom-6 right-6 z-[130] flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium transition-all duration-300 ${
+          className={`fixed bottom-6 right-6 z-[130] flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium transition-colors duration-300 ${
             notification.type === 'success'
               ? 'bg-emerald-900/90 text-white border-emerald-700'
               : notification.type === 'error'

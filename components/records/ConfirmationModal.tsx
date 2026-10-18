@@ -64,7 +64,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             type="button"
             onClick={onConfirm}
             disabled={isSubmitting}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-primary hover:bg-primary/90 shadow-soft active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-primary hover:bg-primary/90 shadow-soft active:scale-95 transition-[color,background-color,border-color,transform] disabled:opacity-50 cursor-pointer"
           >
             {isSubmitting ? (
               <span>Syncing to Google Sheets...</span>

@@ -19,7 +19,7 @@ export const HIGHLIGHT_MODULES = [
   {
     icon: BookOpen,
     title: 'Sindh Board SLO Lesson Plans',
-    badge: 'Grades 9–12',
+    badge: 'Grades 9â€“12',
     desc: 'Structured 40-minute lesson plans with 5E instructional phases & DOK levels.',
     color: 'from-emerald-500 to-teal-600',
   },
@@ -89,7 +89,7 @@ export const LoginFeaturePills: React.FC<LoginFeaturePillsProps> = ({
               onClick={() => setActiveTab(idx)}
               whileHover={{ scale: 1.015 }}
               whileTap={{ scale: 0.985 }}
-              className={`cursor-pointer relative p-3.5 rounded-2xl border transition-all duration-300 ${
+              className={`cursor-pointer relative p-3.5 rounded-2xl border transition-[color,background-color,border-color,box-shadow] duration-300 ${
                 isActive
                   ? 'bg-white/10 border-blue-400/40 shadow-lg shadow-blue-500/10 backdrop-blur-xl'
                   : 'bg-white/[0.03] border-white/5 hover:bg-white/[0.06] hover:border-white/10'

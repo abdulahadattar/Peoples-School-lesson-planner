@@ -45,7 +45,7 @@ export const DiscrepancyAuditCard: React.FC<DiscrepancyAuditCardProps> = ({
   const imageUrl = docImgUrl || matchedDoc?.url;
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all space-y-4">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-3 flex-wrap">
           <span
@@ -143,7 +143,7 @@ export const DiscrepancyAuditCard: React.FC<DiscrepancyAuditCardProps> = ({
                 type="button"
                 disabled={applyingFlagId === item.flag.id}
                 onClick={() => onApplyCorrection(item.grNo, item.flag)}
-                className="px-4 py-1.5 rounded-xl text-xs font-bold text-white bg-brand-primary hover:bg-brand-primary-hover shadow-sm transition-all flex items-center gap-1.5"
+                className="px-4 py-1.5 rounded-xl text-xs font-bold text-white bg-brand-primary hover:bg-brand-primary-hover shadow-sm transition-colors flex items-center gap-1.5"
               >
                 <Wand2 className="w-3.5 h-3.5" />
                 <span>{applyingFlagId === item.flag.id ? 'Applying...' : 'Apply Correction'}</span>

@@ -96,7 +96,7 @@ export const AttendanceHeader: React.FC<AttendanceHeaderProps> = ({
         <button
           type="button"
           onClick={() => onSelectDate(getTodayDateString())}
-          className={`px-3 py-2 text-xs font-semibold rounded-xl border transition-all cursor-pointer ${
+          className={`px-3 py-2 text-xs font-semibold rounded-xl border transition-[color,background-color,border-color,box-shadow] cursor-pointer ${
             isToday
               ? 'bg-brand-primary text-white border-brand-primary shadow-xs'
               : 'bg-brand-surface text-brand-text-secondary border-brand-border hover:text-brand-text-primary hover:bg-brand-bg'

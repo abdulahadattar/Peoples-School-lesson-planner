@@ -72,7 +72,7 @@ export const SloSelectionList: React.FC<SloSelectionListProps> = ({
               return (
                 <label
                   key={sloId}
-                  className={`flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-all duration-150 ${
+                  className={`flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-[color,background-color,border-color] duration-150 ${
                     isSelected
                       ? 'bg-blue-50/80 dark:bg-blue-950/40 border border-blue-500/30'
                       : 'bg-white dark:bg-brand-surface border border-black/[0.04] dark:border-white/[0.06] hover:border-black/[0.1]'

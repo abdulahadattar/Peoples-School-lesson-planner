@@ -52,7 +52,7 @@ export const TransparencyFilesTab: React.FC<TransparencyFilesTabProps> = ({
             return (
               <div
                 key={file.id}
-                className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3 shadow-2xs hover:border-slate-300 dark:hover:border-slate-700 transition-all text-xs"
+                className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3 shadow-2xs hover:border-slate-300 dark:hover:border-slate-700 transition-colors text-xs"
               >
                 <div
                   onClick={() => setExpandedFileId(isExpanded ? null : file.id)}
@@ -65,6 +65,12 @@ export const TransparencyFilesTab: React.FC<TransparencyFilesTabProps> = ({
                     <div className="min-w-0">
                       <div className="font-semibold text-brand-text-primary truncate">
                         {file.originalFilename}
+                        {file.pageNumber != null && (
+                          <span className="ml-1.5 font-mono text-[10px] text-brand-primary">
+                            p{file.pageNumber}
+                            {file.totalPages ? `/${file.totalPages}` : ''}
+                          </span>
+                        )}
                       </div>
                       <div className="text-[10px] text-brand-text-tertiary flex items-center gap-2">
                         <span>GR #{file.grNo || 'Unassigned'}</span>

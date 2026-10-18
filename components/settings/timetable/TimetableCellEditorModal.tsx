@@ -108,7 +108,7 @@ export const TimetableCellEditorModal: React.FC<TimetableCellEditorModalProps> =
                     key={sub}
                     type="button"
                     onClick={() => onSelectSubject(sub)}
-                    className={`px-2.5 py-1 text-[11px] rounded-lg font-medium transition-all cursor-pointer ${
+                    className={`px-2.5 py-1 text-[11px] rounded-lg font-medium transition-[color,background-color,border-color,box-shadow] cursor-pointer ${
                       isSelected
                         ? 'bg-brand-primary text-white shadow-xs'
                         : 'bg-brand-surface text-brand-text-secondary hover:text-brand-text-primary hover:bg-white dark:hover:bg-slate-800'

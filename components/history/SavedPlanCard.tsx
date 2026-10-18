@@ -20,7 +20,7 @@ export const SavedPlanCard: React.FC<SavedPlanCardProps> = ({
   return (
     <div
       onClick={() => onOpenLessonPlan(item.plan)}
-      className="group bg-brand-surface p-4 rounded-xl border border-brand-border hover:border-emerald-500/40 hover:shadow-card-hover transition-all cursor-pointer flex flex-col justify-between"
+      className="group bg-brand-surface p-4 rounded-xl border border-brand-border hover:border-emerald-500/40 hover:shadow-card-hover transition-[color,background-color,border-color,box-shadow] cursor-pointer flex flex-col justify-between"
     >
       <div>
         <div className="flex items-start justify-between gap-2">

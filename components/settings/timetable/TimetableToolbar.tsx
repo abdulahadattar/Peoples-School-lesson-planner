@@ -100,7 +100,7 @@ export const TimetableToolbar: React.FC<TimetableToolbarProps> = ({
             <button
               type="button"
               onClick={() => setViewMode('class')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-[color,background-color,border-color,box-shadow] cursor-pointer ${
                 viewMode === 'class'
                   ? 'bg-brand-surface text-brand-primary shadow-xs font-bold'
                   : 'text-brand-text-secondary hover:text-brand-text-primary'
@@ -111,7 +111,7 @@ export const TimetableToolbar: React.FC<TimetableToolbarProps> = ({
             <button
               type="button"
               onClick={() => setViewMode('faculty')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-[color,background-color,border-color,box-shadow] cursor-pointer ${
                 viewMode === 'faculty'
                   ? 'bg-brand-surface text-brand-primary shadow-xs font-bold'
                   : 'text-brand-text-secondary hover:text-brand-text-primary'
@@ -122,7 +122,7 @@ export const TimetableToolbar: React.FC<TimetableToolbarProps> = ({
             <button
               type="button"
               onClick={() => setViewMode('auditor')}
-              className={`relative px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              className={`relative px-3 py-1.5 rounded-lg text-xs font-semibold transition-[color,background-color,border-color,box-shadow] cursor-pointer ${
                 viewMode === 'auditor'
                   ? 'bg-brand-surface text-brand-primary shadow-xs font-bold'
                   : 'text-brand-text-secondary hover:text-brand-text-primary'

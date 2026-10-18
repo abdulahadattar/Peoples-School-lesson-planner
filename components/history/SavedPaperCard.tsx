@@ -20,7 +20,7 @@ export const SavedPaperCard: React.FC<SavedPaperCardProps> = ({
   onExportPdf,
 }) => {
   return (
-    <div className="group bg-brand-surface p-4 rounded-xl border border-brand-border hover:border-brand-primary/40 hover:shadow-card-hover transition-all flex flex-col justify-between">
+    <div className="group bg-brand-surface p-4 rounded-xl border border-brand-border hover:border-brand-primary/40 hover:shadow-card-hover transition-[color,background-color,border-color,box-shadow] flex flex-col justify-between">
       <button
         type="button"
         onClick={() => onOpenPaper({ ...item.paper, savedPaperId: item.id })}

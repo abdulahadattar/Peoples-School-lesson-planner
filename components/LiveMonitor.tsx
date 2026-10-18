@@ -197,7 +197,7 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers = [] }
                     key={d}
                     type="button"
                     onClick={() => setPreviewDay(d)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-[color,background-color,border-color,box-shadow] ${
                       effectiveDay === d
                         ? 'bg-brand-primary text-white shadow-sm'
                         : 'bg-white dark:bg-brand-panel border border-brand-border text-brand-text-secondary hover:text-brand-text-primary'

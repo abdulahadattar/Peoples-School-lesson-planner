@@ -167,7 +167,7 @@ const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
                     }}
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.985 }}
-                    className="group relative flex flex-col justify-between p-5 rounded-2xl bg-white dark:bg-brand-surface border border-brand-border/80 dark:border-white/[0.08] shadow-soft hover:shadow-card-hover transition-all duration-200 text-left cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
+                    className="group relative flex flex-col justify-between p-5 rounded-2xl bg-white dark:bg-brand-surface border border-brand-border/80 dark:border-white/[0.08] shadow-soft hover:shadow-card-hover transition-shadow duration-200 text-left cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
                   >
                     <div>
                       <div className="flex items-center justify-between mb-3.5">

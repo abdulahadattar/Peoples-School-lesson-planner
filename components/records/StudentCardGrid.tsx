@@ -116,7 +116,7 @@ export const StudentCardGrid: React.FC<StudentCardGridProps> = React.memo(({
               <button
                 type="button"
                 onClick={() => onViewDocuments(student)}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-[color,background-color,border-color] cursor-pointer ${
                   docCount > 0
                     ? hasFlags
                       ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300'

@@ -114,7 +114,7 @@ export const LiveMonitorHeader: React.FC<LiveMonitorHeaderProps> = ({
               whileTap={{ scale: 0.96 }}
               type="button"
               onClick={onGoLive}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-xs font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-xs font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 transition-colors cursor-pointer"
               title="Reset to current real-time clock"
             >
               <RefreshIcon className="w-3.5 h-3.5" />

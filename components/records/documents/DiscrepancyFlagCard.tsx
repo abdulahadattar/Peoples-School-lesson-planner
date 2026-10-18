@@ -220,7 +220,7 @@ export const DiscrepancyFlagCard: React.FC<DiscrepancyFlagCardProps> = ({
           type="button"
           disabled={isApplying || !currentInputVal.trim()}
           onClick={() => onApplyCorrection(flag)}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-brand-primary hover:bg-brand-primary-hover shadow-sm active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-brand-primary hover:bg-brand-primary-hover shadow-sm active:scale-95 transition-[color,background-color,border-color,transform] disabled:opacity-50 cursor-pointer"
         >
           {isApplying ? (
             <>

@@ -61,7 +61,7 @@ export const AttendanceHistoryDrawer: React.FC<AttendanceHistoryDrawerProps> = R
             return (
               <div
                 key={item.date}
-                className={`p-3 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                className={`p-3 rounded-xl border transition-[color,background-color,border-color] flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                   isSelected
                     ? 'bg-blue-500/10 border-blue-500 text-blue-600 dark:text-blue-400 font-bold'
                     : 'bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 border-black/[0.06] dark:border-white/[0.08] text-slate-800 dark:text-slate-200'
@@ -119,7 +119,7 @@ export const AttendanceHistoryDrawer: React.FC<AttendanceHistoryDrawerProps> = R
                           ? `Synced to Google Sheet at ${new Date(item.syncedToSheetAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Click to re-sync.`
                           : 'Click to sync this date to Google Sheet'
                       }
-                      className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                      className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-[color,background-color,border-color] cursor-pointer ${
                         isSynced
                           ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
                           : 'bg-brand-bg text-brand-text-secondary hover:text-emerald-600 hover:bg-emerald-50 border-brand-border'

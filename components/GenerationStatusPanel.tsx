@@ -85,7 +85,7 @@ const GenerationStatusPanel: React.FC<GenerationStatusPanelProps> = ({
         <button
           onClick={onClose}
           aria-label="Close status panel"
-          className="p-1.5 text-brand-text-secondary hover:text-brand-text-primary rounded-full hover:bg-brand-bg transition-all duration-200 active:scale-90"
+          className="p-1.5 text-brand-text-secondary hover:text-brand-text-primary rounded-full hover:bg-brand-bg transition-[color,background-color,border-color,transform] duration-200 active:scale-90"
         >
           <CloseIcon className="w-5 h-5" />
         </button>
@@ -101,7 +101,7 @@ const GenerationStatusPanel: React.FC<GenerationStatusPanelProps> = ({
               <React.Fragment key={step}>
                 <div className="flex items-center gap-1.5 flex-1">
                   <span
-                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-300 flex-shrink-0 ${
+                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-[color,background-color,border-color] duration-300 flex-shrink-0 ${
                       isDone
                         ? 'bg-green-500 text-white'
                         : isActive
@@ -138,8 +138,8 @@ const GenerationStatusPanel: React.FC<GenerationStatusPanelProps> = ({
             </div>
             <div className="w-full bg-brand-bg rounded-full h-2 overflow-hidden border border-brand-border/50">
               <div
-                className={`h-full rounded-full transition-all duration-300 ease-out ${progressPct < 100 ? 'brand-gradient progress-stripes' : 'bg-green-500'}`}
-                style={{ width: `${Math.max(4, progressPct)}%` }}
+                className={`h-full w-full rounded-full transition-transform duration-300 ease-out will-change-transform ${progressPct < 100 ? 'brand-gradient progress-stripes' : 'bg-green-500'}`}
+                style={{ transform: `scaleX(${Math.min(100, Math.max(4, progressPct)) / 100})`, transformOrigin: 'left' }}
               />
             </div>
           </div>
@@ -165,7 +165,7 @@ const GenerationStatusPanel: React.FC<GenerationStatusPanelProps> = ({
           {isLoading && (
             <button
               onClick={onStop}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-xl text-sm font-semibold transition-all duration-200 active:scale-[0.98]"
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-xl text-sm font-semibold transition-[color,background-color,border-color,transform] duration-200 active:scale-[0.98]"
             >
               <StopIcon className="w-4 h-4" />
               Cancel
@@ -174,7 +174,7 @@ const GenerationStatusPanel: React.FC<GenerationStatusPanelProps> = ({
           {isComplete && (
             <button
               onClick={onViewResults}
-              className="flex-1 brand-gradient text-white font-bold py-2.5 rounded-xl hover:shadow-glass hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 text-sm"
+              className="flex-1 brand-gradient text-white font-bold py-2.5 rounded-xl hover:shadow-glass hover:-translate-y-0.5 active:translate-y-0 transition-[transform,box-shadow] duration-200 text-sm"
             >
               View Results
             </button>

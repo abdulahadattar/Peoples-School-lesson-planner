@@ -199,7 +199,7 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-all disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-[color,background-color,border-color,transform] disabled:opacity-50"
             >
               <UploadCloud className="w-4 h-4" />
               <span>{isUploading ? 'Uploading...' : 'Upload Student Documents / PDFs'}</span>

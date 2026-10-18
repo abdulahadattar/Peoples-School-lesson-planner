@@ -118,7 +118,9 @@ try {
   console.warn('[documentArchiveService] Failed loading local stores, initializing clean:', e);
 }
 
-export function saveStores() {
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+function flushStores() {
   try {
     fs.writeFileSync(JOBS_FILE, JSON.stringify(jobsStore, null, 2));
     fs.writeFileSync(DOSSIERS_FILE, JSON.stringify(dossiersStore, null, 2));
@@ -128,6 +130,16 @@ export function saveStores() {
   } catch (err) {
     console.error('[documentArchiveService] Error saving stores to disk:', err);
   }
+}
+
+// Write-behind: telemetry mutates stores up to ~7x per processed document;
+// coalesce the storm into a single flush per 250ms window.
+export function saveStores() {
+  if (saveTimer) return;
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    flushStores();
+  }, 250);
 }
 
 export function addJobLog(
@@ -165,13 +177,16 @@ export function updateJobFileItem(
   jobId: string,
   filename: string,
   grNo: string,
-  update: Partial<JobFileItem>
+  update: Partial<JobFileItem>,
+  pageNumber?: number
 ): JobFileItem | null {
   const job = jobsStore[jobId];
   if (!job) return null;
   if (!job.files) job.files = [];
 
-  let fileItem = job.files.find((f) => f.originalFilename === filename && f.grNo === grNo);
+  let fileItem = job.files.find(
+    (f) => f.originalFilename === filename && f.grNo === grNo && f.pageNumber === pageNumber
+  );
   if (!fileItem) {
     fileItem = {
       id: crypto.randomUUID().slice(0, 8),
@@ -182,6 +197,7 @@ export function updateJobFileItem(
       status: 'pending',
       progressPercent: 0,
       ...update,
+      pageNumber: pageNumber ?? update.pageNumber,
     };
     job.files.push(fileItem);
   } else {

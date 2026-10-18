@@ -142,6 +142,9 @@ export async function rescanDocumentRecord(docId: string, serverKeys: string[]):
   const filePath = path.join(DATA_DIR, `GR_${doc.grNo}`, doc.filename);
   if (!fs.existsSync(filePath)) return null;
   const fileBuffer = fs.readFileSync(filePath);
+  // Remove the old record first so the rescan does not leave an orphan
+  // duplicate row behind (same scan would re-enter the store under a new id).
+  deleteDocumentRecord(docId);
   const queueItem = {
     id: `rescan-${Date.now()}`, jobId: doc.jobId || 'rescan', grNo: doc.grNo,
     originalFilename: doc.originalFilename || doc.filename, sourceBuffer: fileBuffer, mimeType: 'image/jpeg',

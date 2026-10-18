@@ -64,7 +64,7 @@ export const DocumentDiscrepancyReview: React.FC<DocumentDiscrepancyReviewProps>
           type="button"
           onClick={onApplyAllSuggestions}
           disabled={isBatchApplying}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-rose-900 dark:text-rose-100 bg-rose-200/80 dark:bg-rose-900/80 hover:bg-rose-300 dark:hover:bg-rose-800 border border-rose-300 dark:border-rose-700 transition-all disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-rose-900 dark:text-rose-100 bg-rose-200/80 dark:bg-rose-900/80 hover:bg-rose-300 dark:hover:bg-rose-800 border border-rose-300 dark:border-rose-700 transition-colors disabled:opacity-50"
         >
           {isBatchApplying ? (
             <div className="w-3.5 h-3.5 rounded-full border-2 border-rose-900 dark:border-rose-100 border-t-transparent animate-spin" />

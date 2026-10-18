@@ -101,7 +101,7 @@ export const DocumentScansGrid: React.FC<DocumentScansGridProps> = React.memo(({
                 type="button"
                 onClick={onBatchDeletePrompt}
                 disabled={isOperatingDoc}
-                className="px-4 py-1.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-sm transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer disabled:opacity-50"
+                className="px-4 py-1.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-sm transition-[color,background-color,border-color,transform] flex items-center gap-1.5 active:scale-95 cursor-pointer disabled:opacity-50"
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Delete Selected ({selectedDocIds.length})</span>

@@ -13,7 +13,7 @@ export const DossierCard: React.FC<DossierCardProps> = React.memo(({ dossier, on
   const hasCnic = dossier.documents.some((d) => d.classification.includes('CNIC'));
 
   return (
-    <div className="rounded-xl bg-white dark:bg-brand-surface border border-brand-border hover:border-brand-primary/40 transition-all p-4 shadow-soft flex flex-col justify-between space-y-4 group">
+    <div className="rounded-xl bg-white dark:bg-brand-surface border border-brand-border hover:border-brand-primary/40 transition-colors p-4 shadow-soft flex flex-col justify-between space-y-4 group">
       <div>
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">

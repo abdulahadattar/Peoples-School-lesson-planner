@@ -67,7 +67,7 @@ export const BaseModal: React.FC<BaseModalProps> = ({
         aria-hidden="true"
       />
       <div
-        className={`relative w-full ${MAX_WIDTH_MAP[maxWidth] || 'max-w-lg'} rounded-2xl bg-white dark:bg-slate-900 border border-black/[0.08] dark:border-white/[0.1] shadow-2xl flex flex-col max-h-[92dvh] overflow-hidden z-10 transition-all ${className}`}
+        className={`relative w-full ${MAX_WIDTH_MAP[maxWidth] || 'max-w-lg'} rounded-2xl bg-white dark:bg-slate-900 border border-black/[0.08] dark:border-white/[0.1] shadow-2xl flex flex-col max-h-[92dvh] overflow-hidden z-10 transition-[color,background-color,border-color] ${className}`}
         onClick={(e) => e.stopPropagation()}
       >
         {(title || icon || headerActions || showCloseButton) && (

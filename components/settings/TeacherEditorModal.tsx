@@ -116,7 +116,7 @@ export const TeacherEditorModal: React.FC<TeacherEditorModalProps> = ({
           <button
             type="button"
             onClick={handleSubmit}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-primary hover:bg-primary/90 shadow-soft active:scale-95 transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-primary hover:bg-primary/90 shadow-soft active:scale-95 transition-[color,background-color,border-color,transform] cursor-pointer"
           >
             <Check className="w-3.5 h-3.5" />
             <span>{initialData ? 'Update Teacher' : 'Save Teacher'}</span>
@@ -220,7 +220,7 @@ export const TeacherEditorModal: React.FC<TeacherEditorModalProps> = ({
                         key={cls}
                         type="button"
                         onClick={() => handleToggleSection(idx, cls)}
-                        className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition-all cursor-pointer ${
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition-[color,background-color,border-color,box-shadow] cursor-pointer ${
                           isAssigned
                             ? 'bg-primary text-white shadow-xs'
                             : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'

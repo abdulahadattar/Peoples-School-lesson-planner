@@ -245,6 +245,10 @@ export interface JobLogEntry {
 export interface JobFileItem {
   id: string;
   originalFilename: string;
+  /** For split PDFs each page gets its own entry keyed by this number. */
+  pageNumber?: number;
+  totalPages?: number;
+  sourceFilename?: string;
   savedFilename?: string;
   grNo: string;
   fileSizeBytes: number;

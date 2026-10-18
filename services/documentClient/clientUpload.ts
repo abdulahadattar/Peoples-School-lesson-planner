@@ -99,9 +99,10 @@ export async function uploadZipArchive(
   const jobId = initialJob.jobId ?? initialJob.id;
 
   if (file.size > CHUNK_SIZE_BYTES) {
-    await uploadFileInChunks(file, jobId, undefined, true, (pct, msg) => {
+    const chunked = await uploadFileInChunks(file, jobId, undefined, true, (pct, msg) => {
       if (onProgress) onProgress(10 + Math.round(pct / 100 * 85), msg);
     });
+    if (!chunked) throw new Error(`Chunked upload of ${file.name} did not complete`);
   } else {
     const base64Data = await fileToBase64(file);
     const res = await fetch('/api/documents/upload-single', {
@@ -135,19 +136,25 @@ export async function uploadIndividualFiles(
   const { job: initialJob } = await initRes.json();
   const jobId = initialJob.jobId ?? initialJob.id;
 
+  const failedFiles: string[] = [];
   for (let i = 0; i < files.length; i++) {
     const { file, grNo } = files[i];
     if (file.size > CHUNK_SIZE_BYTES) {
-      await uploadFileInChunks(file, jobId, grNo, false);
+      const chunked = await uploadFileInChunks(file, jobId, grNo, false);
+      if (!chunked) failedFiles.push(file.name);
     } else {
       const base64Data = await fileToBase64(file);
-      await fetch('/api/documents/upload-single', {
+      const res = await fetch('/api/documents/upload-single', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jobId, filename: file.name, grNo, base64Data }),
       });
+      if (!res.ok) failedFiles.push(file.name);
     }
     if (onProgress) onProgress(Math.round(((i + 1) / files.length) * 100));
+  }
+  if (failedFiles.length > 0) {
+    throw new Error(`Upload failed for: ${failedFiles.slice(0, 3).join(', ')}${failedFiles.length > 3 ? ` (+${failedFiles.length - 3} more)` : ''}`);
   }
 
   const finalizeRes = await fetch('/api/documents/finalize-job', {
@@ -155,6 +162,7 @@ export async function uploadIndividualFiles(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ jobId }),
   });
+  if (!finalizeRes.ok) throw new Error(formatApiErrorMessage(finalizeRes.status, await finalizeRes.text()));
   const data = await finalizeRes.json();
   return data.job;
 }
@@ -185,19 +193,4 @@ export async function uploadSingleDocumentForStudent(
     status: 'verified',
     processedAt: new Date().toISOString()
   };
-}
-
-export async function replaceDocumentScan(
-  docId: string,
-  newFile: File
-): Promise<StudentDocumentRecord> {
-  const base64Data = await fileToBase64(newFile);
-  const res = await fetch('/api/documents/replace', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ docId, filename: newFile.name, base64Data }),
-  });
-  if (!res.ok) throw new Error(formatApiErrorMessage(res.status, await res.text()));
-  const data = await res.json();
-  return data.document;
 }

@@ -184,7 +184,7 @@ export const RecordsTableRow: React.FC<RecordsTableRowProps> = React.memo(({
         <button
           type="button"
           onClick={() => onViewDocuments(student)}
-          className={`inline-flex items-center justify-center gap-1 min-h-[32px] px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all border cursor-pointer active:scale-[0.97] ${
+          className={`inline-flex items-center justify-center gap-1 min-h-[32px] px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-[color,background-color,border-color,transform] border cursor-pointer active:scale-[0.97] ${
             docCount > 0
               ? hasFlags
                 ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 hover:bg-amber-100'

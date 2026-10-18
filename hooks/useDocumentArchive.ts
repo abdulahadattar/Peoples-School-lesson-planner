@@ -19,6 +19,7 @@ import {
   rescanAllDocuments,
   applyCorrectionToRecord,
   batchApplyCorrections,
+  fetchDiscrepancyFlags,
 } from '../services/documentClientService';
 import { StudentRecord, fetchSheetData } from '../services/googleSheetsService';
 import { DiscrepancyAuditItem } from '../components/documents/DiscrepancyAuditTable';
@@ -39,16 +40,23 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
   const refreshData = async () => {
     try {
       setLoading(true);
-      const [dossiersList, docsList, latestJob, sheetData] = await Promise.all([
-        fetchAllDossiers().catch(() => []),
+      const [docsList, latestJob, sheetData] = await Promise.all([
         fetchAllDocuments().catch(() => []),
         fetchLatestJob().catch(() => null),
         fetchSheetData().catch(() => ({ records: [] })),
       ]);
-      setDossiers(dossiersList);
+      const records = sheetData?.records || [];
       setDocuments(docsList);
       setActiveJob(latestJob);
-      if (sheetData?.records) setSheetRecords(sheetData.records);
+      setSheetRecords(records);
+      // Recompute discrepancy flags server-side whenever sheet data is
+      // available, otherwise the audit tab only ever shows stale flags.
+      let dossiersList = await fetchAllDossiers().catch(() => []);
+      if (records.length > 0) {
+        await fetchDiscrepancyFlags(records).catch(() => null);
+        dossiersList = await fetchAllDossiers().catch(() => dossiersList);
+      }
+      setDossiers(dossiersList);
     } finally {
       setLoading(false);
     }
@@ -94,10 +102,16 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
     if (selectedDocIds.length === 0) return;
     try {
       setIsOperatingDoc(true);
-      await deleteDocumentsBatch(selectedDocIds);
-      showToast(`Deleted ${selectedDocIds.length} document scans`, 'success');
-      setSelectedDocIds([]);
+      const deletedCount = await deleteDocumentsBatch(selectedDocIds);
+      if (deletedCount > 0) {
+        showToast(`Deleted ${deletedCount} document scan${deletedCount === 1 ? '' : 's'}`, 'success');
+        setSelectedDocIds([]);
+      } else {
+        showToast('No document scans were deleted', 'error');
+      }
       await refreshData();
+    } catch (err: any) {
+      showToast(err?.message || 'Batch delete failed', 'error');
     } finally {
       setIsOperatingDoc(false);
     }
@@ -106,9 +120,15 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
   const handleDeleteDoc = async (doc: StudentDocumentRecord) => {
     try {
       setIsOperatingDoc(true);
-      await deleteDocument(doc.id);
-      showToast('Document scan deleted', 'success');
+      const ok = await deleteDocument(doc.id);
+      if (ok) {
+        showToast('Document scan deleted', 'success');
+      } else {
+        showToast('Delete failed on the server', 'error');
+      }
       await refreshData();
+    } catch (err: any) {
+      showToast(err?.message || 'Delete failed', 'error');
     } finally {
       setIsOperatingDoc(false);
     }
@@ -120,6 +140,8 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
       await rescanDocument(docId);
       showToast('Document re-scanned with AI', 'success');
       await refreshData();
+    } catch (err: any) {
+      showToast(err?.message || 'Rescan failed', 'error');
     } finally {
       setIsOperatingDoc(false);
     }
@@ -131,6 +153,8 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
       await rescanAllDocuments();
       showToast('All documents re-scanned with AI', 'success');
       await refreshData();
+    } catch (err: any) {
+      showToast(err?.message || 'Rescan All failed', 'error');
     } finally {
       setIsRescanningAll(false);
     }
@@ -142,6 +166,8 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
       const res = await autoLinkDocumentsWithSheet(sheetRecords);
       showToast(`Auto-linked ${res.totalMatched} documents to student records`, 'success');
       await refreshData();
+    } catch (err: any) {
+      showToast(err?.message || 'Auto-link failed', 'error');
     } finally {
       setIsAutoLinking(false);
     }
@@ -154,6 +180,8 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
       await assignDocumentToStudent(docId, grNo.trim(), matchedStudent);
       showToast(`Document assigned to GR #${grNo}`, 'success');
       await refreshData();
+    } catch (err: any) {
+      showToast(err?.message || `Could not assign to GR #${grNo}`, 'error');
     } finally {
       setIsOperatingDoc(false);
     }
@@ -166,6 +194,8 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
       await applyCorrectionToRecord(grNo, flag.id, flag.suggestedCorrection);
       showToast(`Correction applied for GR #${grNo}`, 'success');
       await refreshData();
+    } catch (err: any) {
+      showToast(err?.message || 'Correction failed', 'error');
     } finally {
       setApplyingFlagId(null);
     }
@@ -180,6 +210,8 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
       await batchApplyCorrections(list);
       showToast(`Applied ${list.length} corrections to sheet records`, 'success');
       await refreshData();
+    } catch (err: any) {
+      showToast(err?.message || 'Batch apply failed', 'error');
     } finally {
       setIsBatchApplying(false);
     }

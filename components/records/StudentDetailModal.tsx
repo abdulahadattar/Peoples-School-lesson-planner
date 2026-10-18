@@ -48,24 +48,42 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     }
   }, [student, isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
+
   if (!isOpen || !student) return null;
 
   const activeFlags = discrepancies.filter((f) => !f.isDismissed);
   const docCount = dossier?.documents.length || 0;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto p-4 bg-slate-900/50 backdrop-blur-xs animate-fadeIn">
+    <div
+      className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto p-4 bg-slate-900/50 backdrop-blur-xs animate-fadeIn"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Student dossier: ${student.studentName || student.grNo}`}
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ overscrollBehavior: 'contain' }}
+    >
       <div className="w-full max-w-2xl rounded-2xl bg-white dark:bg-brand-surface border border-brand-border shadow-card p-6 flex flex-col max-h-[90dvh] overflow-hidden">
         {/* Header */}
         <div className="flex items-start justify-between pb-4 border-b border-brand-border">
           <div className="flex items-center gap-3.5">
             {/* Student Photo or Logo */}
-            <div
+            <button
+              type="button"
               onClick={() => {
                 if (dossier?.avatarUrl) setPreviewPhotoUrl(dossier.avatarUrl);
               }}
+              aria-label={dossier?.avatarUrl ? 'View full student photo' : 'Student avatar'}
               className={`w-14 h-14 rounded-full bg-white dark:bg-slate-900 shadow-soft border border-brand-border flex items-center justify-center p-0.5 ring-1 ring-black/5 dark:ring-white/10 flex-shrink-0 overflow-hidden ${
-                dossier?.avatarUrl ? 'cursor-pointer hover:ring-2 hover:ring-brand-primary' : ''
+                dossier?.avatarUrl ? 'cursor-pointer hover:ring-2 hover:ring-brand-primary' : 'cursor-default'
               }`}
               title={dossier?.avatarUrl ? 'Click to view full photo' : 'Student Avatar'}
             >
@@ -73,12 +91,14 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 <img
                   src={dossier.avatarUrl}
                   alt={student.studentName}
+                  width={56}
+                  height={56}
                   className="w-full h-full object-cover rounded-full"
                 />
               ) : (
                 <PhssjLogo className="w-full h-full rounded-full" />
               )}
-            </div>
+            </button>
 
             <div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -109,9 +129,10 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
           <button
             type="button"
             onClick={onClose}
+            aria-label="Close student dossier"
             className="p-2 text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg rounded-xl transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -120,7 +141,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('details')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-[color,background-color,border-color,box-shadow] flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'details'
                 ? 'bg-brand-primary text-white shadow-xs'
                 : 'text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg'
@@ -132,7 +153,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('documents')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-[color,background-color,border-color,box-shadow] flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'documents'
                 ? 'bg-brand-primary text-white shadow-xs'
                 : 'text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-bg'
@@ -186,7 +207,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                   onClose();
                   onEdit(student);
                 }}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-brand-primary text-white hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-all cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-brand-primary text-white hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-[color,background-color,border-color,transform] cursor-pointer"
               >
                 <Edit2 className="w-3.5 h-3.5" />
                 <span>Edit Record</span>

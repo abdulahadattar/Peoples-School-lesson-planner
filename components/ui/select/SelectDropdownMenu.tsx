@@ -56,7 +56,7 @@ export const SelectDropdownMenu: React.FC<SelectDropdownMenuProps> = ({
               value={searchQuery}
               onChange={e => onSearchQueryChange(e.target.value)}
               placeholder="Search options..."
-              className="w-full h-8 pl-8 pr-7 text-xs font-medium bg-white dark:bg-slate-900 border border-black/[0.08] dark:border-white/[0.1] rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all"
+              className="w-full h-8 pl-8 pr-7 text-xs font-medium bg-white dark:bg-slate-900 border border-black/[0.08] dark:border-white/[0.1] rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-colors"
             />
             {searchQuery && (
               <button
@@ -120,7 +120,7 @@ export const SelectDropdownMenu: React.FC<SelectDropdownMenuProps> = ({
                 disabled={opt.disabled}
                 onClick={() => !opt.disabled && onSelectValue(opt.value)}
                 onMouseEnter={() => onHighlightIndex(index)}
-                className={`w-full px-3 py-2 rounded-xl flex items-start sm:items-center justify-between gap-2.5 text-left transition-all cursor-pointer ${
+                className={`w-full px-3 py-2 rounded-xl flex items-start sm:items-center justify-between gap-2.5 text-left transition-colors cursor-pointer ${
                   opt.disabled
                     ? 'opacity-40 cursor-not-allowed'
                     : isSelected

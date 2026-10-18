@@ -87,7 +87,7 @@ export const LoginCard: React.FC<LoginCardProps> = ({
             whileHover={{ scale: 1.02, y: -1 }}
             whileTap={{ scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-            className="w-full group relative flex items-center justify-center gap-3 px-6 py-3.5 rounded-2xl bg-white hover:bg-slate-50 text-slate-900 font-semibold text-sm shadow-xl shadow-white/5 transition-all cursor-pointer overflow-hidden border border-white"
+            className="w-full group relative flex items-center justify-center gap-3 px-6 py-3.5 rounded-2xl bg-white hover:bg-slate-50 text-slate-900 font-semibold text-sm shadow-xl shadow-white/5 transition-colors cursor-pointer overflow-hidden border border-white"
           >
             {/* Subtle sheen highlight */}
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />

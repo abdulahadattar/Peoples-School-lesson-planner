@@ -35,7 +35,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
         placeholder={placeholder}
         autoFocus={autoFocus}
         aria-label={ariaLabel || placeholder}
-        className={`w-full pl-9 pr-16 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all ${inputClassName}`}
+        className={`w-full pl-9 pr-16 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-primary/40 focus:border-primary transition-colors ${inputClassName}`}
       />
       <div className="absolute right-2.5 flex items-center gap-1.5">
         {resultCount !== undefined && value.trim().length > 0 && (

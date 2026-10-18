@@ -194,7 +194,7 @@ export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
         <TimetableFacultyView
           teachers={teachers}
           selectedTeacherId={selectedTeacherId}
-          setSelectedTeacherId={setSelectedTeacherId}
+          onSelectTeacherId={setSelectedTeacherId}
           teacherSchedule={teacherSchedule}
           onOpenCellEditor={(dayKey, pIdx, clsLabel) => handleOpenCellEditor(dayKey, pIdx, clsLabel)}
           onExportSingleTeacherExcel={() => {
@@ -208,12 +208,10 @@ export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
       {viewMode === 'auditor' && (
         <TimetableAuditorView
           auditReport={auditReport}
-          timetableMap={timetableMap}
-          teachers={teachers}
-          onOpenCellEditor={(clsLabel, dayKey, pIdx) => {
-            setSelectedClassLabel(clsLabel);
+          onResolveClash={(dayKey, periodIndex, classLabel) => {
+            setSelectedClassLabel(classLabel);
             setViewMode('class');
-            handleOpenCellEditor(dayKey, pIdx, clsLabel);
+            handleOpenCellEditor(dayKey, periodIndex, classLabel);
           }}
         />
       )}

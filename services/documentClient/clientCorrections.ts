@@ -86,7 +86,7 @@ export async function autoLinkDocumentsWithSheet(records: any[]): Promise<{
 }
 
 export async function downloadAuditCsvReport(targetClass: string = 'ALL'): Promise<void> {
-  window.open(`/api/documents/export/zip?class=${encodeURIComponent(targetClass)}`, '_blank');
+  window.open(`/api/documents/export-zip?class=${encodeURIComponent(targetClass)}`, '_blank');
 }
 
 export async function selectChildRecordForDoc(docId: string, entryNoOrIndex: number): Promise<StudentDocumentRecord> {

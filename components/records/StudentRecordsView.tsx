@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useSchoolConfig } from '../../hooks/useSchoolConfig';
 import { StudentRecord } from '../../services/googleSheetsService';
-import { loginWithGoogle, logoutUser } from '../../services/googleAuth';
+import { logoutUser } from '../../services/googleAuth';
 import { RecordsModals } from './RecordsModals';
 import { useRecordModals } from './useRecordModals';
 import { RecordsNotificationBanner } from './RecordsNotificationBanner';
@@ -46,6 +46,8 @@ export const StudentRecordsView: React.FC = () => {
     error,
     lastSynced,
     authUser,
+    isAuthLoading,
+    handleSignIn,
     searchQuery,
     setSearchQuery,
     selectedClass,
@@ -135,8 +137,9 @@ export const StudentRecordsView: React.FC = () => {
         showNotification={showNotification}
         filteredRecords={filteredRecords}
         authUser={authUser}
-        onSignIn={loginWithGoogle}
+        onSignIn={handleSignIn}
         onSignOut={logoutUser}
+        isAuthLoading={isAuthLoading}
       />
 
       <RecordsStatsStrip stats={stats} />

@@ -125,7 +125,7 @@ export const ClassAnalyticsCharts: React.FC<ClassAnalyticsChartsProps> = ({
     }, [records]);
 
   return (
-    <div className="rounded-2xl bg-white dark:bg-brand-surface border border-brand-border shadow-card overflow-hidden transition-all">
+    <div className="rounded-2xl bg-white dark:bg-brand-surface border border-brand-border shadow-card overflow-hidden transition-[color,background-color,border-color]">
       <div className="p-4 sm:p-5 border-b border-brand-border flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 bg-slate-50/50 dark:bg-slate-900/40">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center flex-shrink-0 border border-brand-primary/20">
@@ -149,7 +149,7 @@ export const ClassAnalyticsCharts: React.FC<ClassAnalyticsChartsProps> = ({
                 setActiveTab('students');
                 setIsCollapsed(false);
               }}
-              className={`px-3 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
+              className={`px-3 py-1 rounded-lg font-semibold transition-[color,background-color,border-color,box-shadow] cursor-pointer ${
                 activeTab === 'students' && !isCollapsed
                   ? 'bg-white dark:bg-brand-surface text-brand-primary shadow-xs'
                   : 'text-brand-text-secondary hover:text-brand-text-primary'
@@ -163,7 +163,7 @@ export const ClassAnalyticsCharts: React.FC<ClassAnalyticsChartsProps> = ({
                 setActiveTab('gender');
                 setIsCollapsed(false);
               }}
-              className={`px-3 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
+              className={`px-3 py-1 rounded-lg font-semibold transition-[color,background-color,border-color,box-shadow] cursor-pointer ${
                 activeTab === 'gender' && !isCollapsed
                   ? 'bg-white dark:bg-brand-surface text-brand-primary shadow-xs'
                   : 'text-brand-text-secondary hover:text-brand-text-primary'
@@ -177,7 +177,7 @@ export const ClassAnalyticsCharts: React.FC<ClassAnalyticsChartsProps> = ({
                 setActiveTab('status');
                 setIsCollapsed(false);
               }}
-              className={`px-3 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
+              className={`px-3 py-1 rounded-lg font-semibold transition-[color,background-color,border-color,box-shadow] cursor-pointer ${
                 activeTab === 'status' && !isCollapsed
                   ? 'bg-white dark:bg-brand-surface text-brand-primary shadow-xs'
                   : 'text-brand-text-secondary hover:text-brand-text-primary'

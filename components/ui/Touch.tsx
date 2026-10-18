@@ -71,7 +71,7 @@ export const IconButton: React.FC<IconButtonProps> = ({
  * Standard press feedback for any control. Pair with a `hover:` style so the
  * same element responds correctly to mouse, touch and keyboard.
  */
-export const pressable = 'transition-all duration-200 ease-out active:scale-[0.98]';
+export const pressable = 'transition-transform duration-200 ease-out active:scale-[0.98]';
 
 /**
  * Reveals hover-only affordances to touch users.

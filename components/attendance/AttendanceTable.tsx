@@ -114,10 +114,10 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
               <td className="py-4 px-4">
                 <div className="w-full h-3.5 bg-brand-bg rounded-full overflow-hidden p-0.5 border border-brand-border">
                   <div
-                    className={`h-full rounded-full transition-all duration-500 ${getProgressColor(
+                    className={`h-full w-full rounded-full transition-transform duration-500 ease-out will-change-transform ${getProgressColor(
                       schoolSummary.overallPercentage
                     )}`}
-                    style={{ width: `${schoolSummary.overallPercentage}%` }}
+                    style={{ transform: `scaleX(${Math.min(100, schoolSummary.overallPercentage) / 100})`, transformOrigin: 'left' }}
                   />
                 </div>
               </td>

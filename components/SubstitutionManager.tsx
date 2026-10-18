@@ -68,7 +68,7 @@ export const SubstitutionManager: React.FC<SubstitutionManagerProps> = ({
             <button
               type="button"
               onClick={handleCopyWhatsAppNotice}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl transition-all shadow-sm cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl transition-[color,background-color,border-color,box-shadow] shadow-sm cursor-pointer ${
                 whatsappCopied
                   ? 'bg-emerald-600 text-white shadow-emerald-500/20'
                   : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
@@ -99,7 +99,7 @@ export const SubstitutionManager: React.FC<SubstitutionManagerProps> = ({
           <button
             type="button"
             onClick={() => setActiveSubTab('today')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-[color,background-color,border-color,box-shadow] cursor-pointer ${
               activeSubTab === 'today'
                 ? 'bg-brand-primary text-white shadow-xs'
                 : 'text-brand-text-secondary hover:text-brand-text-primary bg-brand-bg/50'
@@ -110,7 +110,7 @@ export const SubstitutionManager: React.FC<SubstitutionManagerProps> = ({
           <button
             type="button"
             onClick={() => setActiveSubTab('ledger')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-[color,background-color,border-color,box-shadow] flex items-center gap-1.5 cursor-pointer ${
               activeSubTab === 'ledger'
                 ? 'bg-brand-primary text-white shadow-xs'
                 : 'text-brand-text-secondary hover:text-brand-text-primary bg-brand-bg/50'

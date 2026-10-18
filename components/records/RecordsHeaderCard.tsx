@@ -29,6 +29,7 @@ export interface RecordsHeaderCardProps {
   authUser?: User | null;
   onSignIn?: () => void;
   onSignOut?: () => void;
+  isAuthLoading?: boolean;
 }
 
 export const RecordsHeaderCard: React.FC<RecordsHeaderCardProps> = ({
@@ -46,6 +47,7 @@ export const RecordsHeaderCard: React.FC<RecordsHeaderCardProps> = ({
   authUser,
   onSignIn,
   onSignOut,
+  isAuthLoading = false,
 }) => {
   return (
     <div className="space-y-4">
@@ -76,7 +78,7 @@ export const RecordsHeaderCard: React.FC<RecordsHeaderCardProps> = ({
           {onSignIn && onSignOut && (
             <GoogleSignInButton
               user={authUser ?? null}
-              isLoading={isLoading}
+              isLoading={isAuthLoading}
               onSignIn={onSignIn}
               onSignOut={onSignOut}
             />
@@ -87,7 +89,7 @@ export const RecordsHeaderCard: React.FC<RecordsHeaderCardProps> = ({
             onClick={onRefresh}
             disabled={isRefreshing || isLoading}
             title="Refresh from Google Sheet"
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-brand-surface border border-brand-border text-brand-text-primary hover:border-brand-primary/40 hover:text-brand-primary shadow-soft active:scale-95 transition-all disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-brand-surface border border-brand-border text-brand-text-primary hover:border-brand-primary/40 hover:text-brand-primary shadow-soft active:scale-95 transition-[color,background-color,border-color,transform] disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-brand-primary' : ''}`} />
             <span>{isRefreshing ? 'Syncing...' : 'Sync Sheet'}</span>
@@ -98,7 +100,7 @@ export const RecordsHeaderCard: React.FC<RecordsHeaderCardProps> = ({
             onClick={onAddStudent}
             disabled={isSheetEditingLocked}
             title={isSheetEditingLocked ? 'Editing locked by school admin' : 'Add Student'}
-            className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold shadow-soft transition-all ${
+            className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold shadow-soft transition-[color,background-color,border-color,transform,box-shadow] ${
               isSheetEditingLocked
                 ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed'
                 : 'text-white bg-brand-primary hover:bg-brand-primary/90 active:scale-95'
@@ -112,7 +114,7 @@ export const RecordsHeaderCard: React.FC<RecordsHeaderCardProps> = ({
             type="button"
             onClick={() => exportRecordsToCSV(filteredRecords)}
             title="Export filtered records as CSV"
-            className="inline-flex items-center gap-1.5 p-2 rounded-xl text-xs font-semibold bg-white dark:bg-brand-surface border border-brand-border text-brand-text-secondary hover:text-brand-text-primary hover:border-brand-border shadow-soft transition-all"
+            className="inline-flex items-center gap-1.5 p-2 rounded-xl text-xs font-semibold bg-white dark:bg-brand-surface border border-brand-border text-brand-text-secondary hover:text-brand-text-primary hover:border-brand-border shadow-soft transition-colors"
           >
             <Download className="w-4 h-4" />
           </button>
@@ -122,7 +124,7 @@ export const RecordsHeaderCard: React.FC<RecordsHeaderCardProps> = ({
             target="_blank"
             rel="noopener noreferrer"
             title="Open original spreadsheet in Google Sheets"
-            className="inline-flex items-center gap-1.5 p-2 rounded-xl text-xs font-semibold bg-white dark:bg-brand-surface border border-brand-border text-brand-text-secondary hover:text-brand-text-primary hover:border-brand-border shadow-soft transition-all"
+            className="inline-flex items-center gap-1.5 p-2 rounded-xl text-xs font-semibold bg-white dark:bg-brand-surface border border-brand-border text-brand-text-secondary hover:text-brand-text-primary hover:border-brand-border shadow-soft transition-colors"
           >
             <ExternalLink className="w-4 h-4" />
           </a>

@@ -77,7 +77,7 @@ export const SettingsHeaderBanner: React.FC<SettingsHeaderBannerProps> = ({
               if (onOpenLoginGate) onOpenLoginGate();
               else onGoogleSignIn();
             }}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-soft active:scale-95 transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-soft active:scale-95 transition-[color,background-color,border-color,transform] cursor-pointer"
           >
             <LogIn className="w-3.5 h-3.5" />
             <span>Sign In as Admin</span>
@@ -88,7 +88,7 @@ export const SettingsHeaderBanner: React.FC<SettingsHeaderBannerProps> = ({
           type="button"
           onClick={onResetBaseline}
           disabled={!isAdmin || isSaving}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-brand-surface border border-brand-border text-brand-text-secondary hover:text-rose-600 hover:border-rose-200 shadow-soft active:scale-95 transition-all disabled:opacity-40 cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-brand-surface border border-brand-border text-brand-text-secondary hover:text-rose-600 hover:border-rose-200 shadow-soft active:scale-95 transition-[color,background-color,border-color,transform] disabled:opacity-40 cursor-pointer"
         >
           <RotateCcw className="w-3.5 h-3.5" />
           <span>Reset Baseline</span>
@@ -98,7 +98,7 @@ export const SettingsHeaderBanner: React.FC<SettingsHeaderBannerProps> = ({
           type="button"
           onClick={onSaveAll}
           disabled={!isAdmin || isSaving}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-all disabled:opacity-40 cursor-pointer"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-[color,background-color,border-color,transform] disabled:opacity-40 cursor-pointer"
         >
           <Save className="w-3.5 h-3.5" />
           <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
