@@ -10,6 +10,7 @@ import {
   retryFailedDocuments,
 } from '../../services/documentClientService';
 import { copyToClipboard } from '../../utils/clipboard';
+import { adoptPollResponse, isTerminalJobStatus, recordPollMiss, shouldStartPollInterval } from '../../hooks/useDocumentArchive/selectors';
 import {
   Activity,
   X,
@@ -18,6 +19,7 @@ import {
   Cpu,
   RefreshCw,
   StopCircle,
+  CloudOff,
 } from 'lucide-react';
 import { TransparencyFilesTab } from './transparency/TransparencyFilesTab';
 import { TransparencyLogsTab } from './transparency/TransparencyLogsTab';
@@ -29,6 +31,12 @@ export interface ProcessingTransparencyModalProps {
   onClose: () => void;
   onJobUpdated?: (job: BatchProcessingJob) => void;
 }
+
+/** Status-poll feed rate (ms) for the transparency modal. */
+const POLL_INTERVAL_MS = 2000;
+/** Wording shown when the job record becomes unreachable (server rotation). */
+const LOST_RECORD_MESSAGE =
+  'Processing record unavailable — the job was completed but its record is no longer reachable from this server instance. Check Document Archive.';
 
 export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalProps> = ({
   jobId,
@@ -45,39 +53,68 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
   const [copiedLogs, setCopiedLogs] = useState(false);
 
   const jobRef = useRef<BatchProcessingJob | null>(null);
-  const isTerminal = job?.status === 'completed' || job?.status === 'failed';
+  const isTerminal = isTerminalJobStatus(job?.status);
+  /** C5b: consecutive unreachable-poll accounting (404s + network errors). */
+  const missesRef = useRef(0);
+  const [isRecordLost, setIsRecordLost] = useState(false);
+
+  /** C5b: a poll hit/bookkeeping miss — track consecutive misses honestly. */
+  const recordMiss = () => {
+    const next = recordPollMiss(missesRef.current);
+    missesRef.current = next.misses;
+    if (next.lost) setIsRecordLost(true);
+  };
+
   const loadJob = async () => {
     if (!jobId) return;
     try {
       const updated = await fetchJobStatus(jobId);
-      if (!updated) return;
+      if (!updated) {
+        // 404 "not found" (rotated instance without this job's /tmp store).
+        recordMiss();
+        return;
+      }
       // Ignore out-of-order responses from overlapping polls. `startedAt` is
       // immutable per job, so it can never arbitrate freshness; instead only
       // apply updates whose progress (processedFiles) does not regress the
       // already-applied progress. Terminal states always apply so completion
       // or failure is never swallowed.
+      // C5b additionally: only apply updates that belong to THIS job at all.
+      const adopted = adoptPollResponse(jobRef.current, jobId, updated);
+      if (!adopted || adopted === jobRef.current) return; // stale / other-job id
       const prev = jobRef.current;
-      const prevTerminal = prev?.status === 'completed' || prev?.status === 'failed';
-      const updatedTerminal = updated.status === 'completed' || updated.status === 'failed';
+      const prevTerminal = isTerminalJobStatus(prev?.status);
+      const updatedTerminal = isTerminalJobStatus(updated.status);
       if (!prev || updatedTerminal || (!prevTerminal && updated.processedFiles >= prev.processedFiles)) {
+        missesRef.current = 0;
+        setIsRecordLost(false);
         jobRef.current = updated;
         setJob(updated);
         if (onJobUpdated) onJobUpdated(updated);
       }
     } catch {
-      // transient network error — next tick retries
+      // network error — accounted as a miss so a dead record converges to an
+      // honest "unavailable" state instead of an endless frozen 0/0.
+      recordMiss();
     }
   };
 
   useEffect(() => {
     if (!isOpen || !jobId) return;
     jobRef.current = null;
+    missesRef.current = 0;
+    setIsRecordLost(false);
     loadJob();
-    // Poll while processing; stop once the job reached a terminal state.
-    if (isTerminal) return;
-    const interval = setInterval(loadJob, 2000);
+  }, [isOpen, jobId]);
+
+  useEffect(() => {
+    // Poll while the record is reachable and not terminal; stop on terminal
+    // (nothing left to learn) or on lost record (see MAX_JOB_POLL_MISSES).
+    if (!isOpen || !jobId) return;
+    if (!shouldStartPollInterval(job, isRecordLost)) return;
+    const interval = setInterval(loadJob, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [isOpen, jobId, isTerminal]);
+  }, [isOpen, jobId, isTerminal, isRecordLost]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -181,10 +218,12 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
         <div className="p-4 border-b border-brand-border bg-white dark:bg-brand-surface space-y-2">
           <div className="flex items-center justify-between text-xs">
             <span className="font-semibold text-brand-text-primary">
-              {job?.currentStageDescription || 'Processing documents...'}
+              {job?.currentStageDescription || (isRecordLost ? 'Processing record unavailable' : 'Processing documents...')}
             </span>
             <span className="font-mono font-bold text-brand-primary">
-              {job?.processedFiles || 0} / {job?.totalFiles || 0} ({completionPercent}%)
+              {job
+                ? `${job?.processedFiles || 0} / ${job?.totalFiles || 0} (${completionPercent}%)`
+                : (isRecordLost ? '—' : '0 / 0 (0%)')}
             </span>
           </div>
           <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
@@ -198,6 +237,18 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
             />
           </div>
         </div>
+
+        {/* Lost-record banner (C5b): shown once the status poll is confirmed
+            dead (consecutive misses >= MAX_JOB_POLL_MISSES in
+            hooks/useDocumentArchive/selectors) — polling then stops. */}
+        {isRecordLost && (
+          <div className="px-4 pt-3" role="status" aria-live="polite">
+            <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl border border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-200">
+              <CloudOff className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
+              <p className="text-[11px] leading-snug">{LOST_RECORD_MESSAGE}</p>
+            </div>
+          </div>
+        )}
 
         {/* Tab Controls */}
         <div className="flex border-b border-brand-border bg-slate-50 dark:bg-slate-900/50 px-4">

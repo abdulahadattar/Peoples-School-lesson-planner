@@ -593,6 +593,11 @@ await runJobCompletionFlowTests({ describe, it, eq });
 const { runApiDocumentRoutesTests } = await import('./unit/apiDocumentRoutes.test');
 await runApiDocumentRoutesTests({ describe, itAsync, eq });
 
+/* ── document archive: active-job ownership selectors (C5b) ── */
+
+const { runDocumentArchiveSelectorsTests } = await import('./unit/documentArchiveSelectors.test');
+await runDocumentArchiveSelectorsTests({ describe, it, eq });
+
 /* ── summary ─────────────────────────────────────────────────── */
 
 log(`\n${c.b(c.cy('══════════════════════════════════'))}`);

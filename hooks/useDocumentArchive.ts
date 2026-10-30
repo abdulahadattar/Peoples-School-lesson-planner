@@ -23,12 +23,19 @@ import {
 } from '../services/documentClientService';
 import { StudentRecord, fetchSheetData } from '../services/googleSheetsService';
 import { DiscrepancyAuditItem } from '../components/documents/DiscrepancyAuditTable';
+import { adoptLatestJob, adoptPollResponse } from './useDocumentArchive/selectors';
 
 export function useDocumentArchive(showToast: (msg: string, type?: 'success' | 'error' | 'info') => void) {
   const [dossiers, setDossiers] = useState<StudentDossier[]>([]);
   const [documents, setDocuments] = useState<StudentDocumentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeJob, setActiveJob] = useState<BatchProcessingJob | null>(null);
+  /**
+   * C5b: mirror of activeJob for stale-closure-free reads. jobs-latest may
+   * only ever SEED the active-job slot (see selectors.adoptLatestJob), so
+   * refreshData must consult the freshest value instead of a stale closure.
+   */
+  const activeJobRef = useRef<BatchProcessingJob | null>(null);
   const [sheetRecords, setSheetRecords] = useState<StudentRecord[]>([]);
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
   const [isOperatingDoc, setIsOperatingDoc] = useState(false);
@@ -36,6 +43,12 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
   const [isRescanningAll, setIsRescanningAll] = useState(false);
   const [isBatchApplying, setIsBatchApplying] = useState(false);
   const [applyingFlagId, setApplyingFlagId] = useState<string | null>(null);
+
+  /** Only path that actually writes the active job — keeps the ref in sync. */
+  const applyActiveJob = (job: BatchProcessingJob | null) => {
+    activeJobRef.current = job;
+    setActiveJob(job);
+  };
 
   const refreshData = async () => {
     try {
@@ -47,7 +60,12 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
       ]);
       const records = sheetData?.records || [];
       setDocuments(docsList);
-      setActiveJob(latestJob);
+      // C5b: a rotated Vercel instance's jobs-latest can report a stale record
+      // of an EARLIER dead attempt. While this view holds an active job (the
+      // transparency modal is showing the user's upload) that record must
+      // never overwrite it — jobs-latest may only seed when nothing is active.
+      const adopted = adoptLatestJob(activeJobRef.current, latestJob);
+      if (adopted !== activeJobRef.current) applyActiveJob(adopted);
       setSheetRecords(records);
       // Recompute discrepancy flags server-side whenever sheet data is
       // available, otherwise the audit tab only ever shows stale flags.
@@ -77,7 +95,10 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
     const poll = setInterval(async () => {
       try {
         const job = await fetchJobStatus(String(jobId));
-        if (job) setActiveJob(job);
+        // C5b: only adopt a response that belongs to THIS job — a mis-routed
+        // record (schema drift rot) must never be displayed.
+        const adopted = adoptPollResponse(activeJobRef.current, String(jobId), job);
+        if (adopted && adopted !== activeJobRef.current) applyActiveJob(adopted);
       } catch {
         // transient network error — next tick retries
       }
@@ -227,7 +248,7 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
     documents,
     loading,
     activeJob,
-    setActiveJob,
+    setActiveJob: applyActiveJob,
     sheetRecords,
     selectedDocIds,
     setSelectedDocIds,

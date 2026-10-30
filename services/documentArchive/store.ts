@@ -144,12 +144,20 @@ try {
 export type StorePersistenceMode = 'debounce' | 'sync';
 let persistenceMode: StorePersistenceMode = process.env.VERCEL ? 'sync' : 'debounce';
 
+/**
+ * MUST also stay above reconcileInterruptedJobs() (line below): saveStores()
+ * reads this binding at module-init time when the FIX-4b sweep is non-empty,
+ * and in local 'debounce' mode touches it directly. A `let` declared after
+ * that call is in temporal-dead-zone and crashed `npm run dev` whenever a
+ * previous process left a job 'processing'/'uploading' on disk
+ * (scripts/unit/documentStoreInit.test.ts pins this).
+ */
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
 // FIX-4b: hydration-time sweep. Runs once during module init, before
 // jobProcessor (and thus processingQueue) can be reached by any request, so
 // everything it caps really was orphaned by a previous process.
 reconcileInterruptedJobs();
-
-let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
 function flushStores() {
   try {
