@@ -106,13 +106,15 @@ export function createArchiveZipStream(targetClass?: string): Archiver {
   return archive;
 }
 
-export function deleteDocumentRecord(docId: string): boolean {
+export function deleteDocumentRecord(docId: string, opts?: { keepFile?: boolean }): boolean {
   const doc = documentsStore[docId];
   if (!doc) return false;
   const grNo = doc.grNo;
-  const filePath = path.join(DATA_DIR, `GR_${grNo}`, doc.filename);
-  if (fs.existsSync(filePath)) {
-    try { fs.unlinkSync(filePath); } catch {}
+  if (!opts?.keepFile) {
+    const filePath = path.join(DATA_DIR, `GR_${grNo}`, doc.filename);
+    if (fs.existsSync(filePath)) {
+      try { fs.unlinkSync(filePath); } catch {}
+    }
   }
   delete documentsStore[docId];
   if (dossiersStore[grNo]) {
@@ -142,14 +144,33 @@ export async function rescanDocumentRecord(docId: string, serverKeys: string[]):
   const filePath = path.join(DATA_DIR, `GR_${doc.grNo}`, doc.filename);
   if (!fs.existsSync(filePath)) return null;
   const fileBuffer = fs.readFileSync(filePath);
-  // Remove the old record first so the rescan does not leave an orphan
-  // duplicate row behind (same scan would re-enter the store under a new id).
-  deleteDocumentRecord(docId);
-  const queueItem = {
-    id: `rescan-${Date.now()}`, jobId: doc.jobId || 'rescan', grNo: doc.grNo,
-    originalFilename: doc.originalFilename || doc.filename, sourceBuffer: fileBuffer, mimeType: 'image/jpeg',
-  };
-  return processSingleDocument(queueItem, serverKeys);
+  // FIX-3: reprocess the in-memory buffer BEFORE deleting anything. The old
+  // flow unlinked the on-disk file first; if processSingleDocument then
+  // failed, the scan AND its file were permanently gone. skipDuplicateCheck
+  // is required here — the scan being replaced hashes to the same file, so
+  // the ordinary duplicate guard would reject the rescan outright.
+  const reprocessed = await processSingleDocument(
+    {
+      id: `rescan-${Date.now()}`, jobId: doc.jobId || 'rescan', grNo: doc.grNo,
+      originalFilename: doc.originalFilename || doc.filename, sourceBuffer: fileBuffer, mimeType: 'image/jpeg',
+    },
+    serverKeys,
+    { skipDuplicateCheck: true }
+  );
+  if (!reprocessed) {
+    // Reprocess failed: keep the original record and file intact so the UI
+    // still has the document; null signals the failure back to the caller.
+    return null;
+  }
+  if (doc.grNo === reprocessed.grNo && doc.filename === reprocessed.filename) {
+    // The new record overwrote the old file in place — remove only the old
+    // record and dossier row; unlinking now would delete the replaced file.
+    deleteDocumentRecord(docId, { keepFile: true });
+  } else {
+    // Success and a new file on disk — now the old on-disk file is retired.
+    deleteDocumentRecord(docId);
+  }
+  return reprocessed;
 }
 
 export async function rescanAllDocumentsRecord(serverKeys: string[]): Promise<{ total: number; rescanned: number; errors: number; dossiers: StudentDossier[]; documents: StudentDocumentRecord[] }> {

@@ -579,6 +579,13 @@ await itAsync('returns a well-formed audit report', async () => {
   eq(report.healthy, report.totalClashes === 0);
 });
 
+/* ── document archive: job completion flow (FIX-1a / FIX-4b) ── */
+
+// Separate module so it can import the pure queue math without loading
+// sharp / Gemini / the disk-backed document stores.
+const { runJobCompletionFlowTests } = await import('./unit/jobCompletionFlow.test');
+await runJobCompletionFlowTests({ describe, it, eq });
+
 /* ── summary ─────────────────────────────────────────────────── */
 
 log(`\n${c.b(c.cy('══════════════════════════════════'))}`);

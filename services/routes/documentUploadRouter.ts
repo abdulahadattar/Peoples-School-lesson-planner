@@ -60,7 +60,7 @@ export function createDocumentUploadRouter(getDocumentApiKeys: () => string[]): 
 
   router.post('/documents/upload-chunk', async (req, res) => {
     try {
-      const { uploadId, chunkIndex, totalChunks, chunkBase64, filename, grNo, isZip } = req.body || {};
+      const { uploadId, chunkIndex, totalChunks, chunkBase64, filename, grNo, isZip, jobId } = req.body || {};
       if (!uploadId || chunkIndex === undefined || !totalChunks || !chunkBase64 || !filename) {
         res.status(400).json({ error: 'Missing required chunk parameters' });
         return;
@@ -74,7 +74,10 @@ export function createDocumentUploadRouter(getDocumentApiKeys: () => string[]): 
         filename,
         grNo,
         Boolean(isZip),
-        keys
+        keys,
+        // FIX-1b: the batch job shell the client created for this upload —
+        // non-ZIP chunked files must land in it, not in a detached new job.
+        typeof jobId === 'string' ? jobId : undefined
       );
       res.json({ ok: true, ...result });
     } catch (err) {

@@ -17,6 +17,7 @@ import {
   DISMISSED_FLAGS_FILE,
   APPLIED_CORRECTIONS_FILE,
 } from './constants.js';
+import { sweepInterruptedJobs } from './queueMath.js';
 
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -118,6 +119,11 @@ try {
   console.warn('[documentArchiveService] Failed loading local stores, initializing clean:', e);
 }
 
+// FIX-4b: hydration-time sweep. Runs once during module init, before
+// jobProcessor (and thus processingQueue) can be reached by any request, so
+// everything it caps really was orphaned by a previous process.
+reconcileInterruptedJobs();
+
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
 function flushStores() {
@@ -132,14 +138,72 @@ function flushStores() {
   }
 }
 
+/**
+ * FIX-4a: persistence mode. On a serverless runtime (api/index.ts entry via
+ * vercel.json) the lambda may freeze right after the response while a
+ * debounced write is still pending, silently losing terminal job states,
+ * dossier updates and dismissed flags. `sync` writes synchronously on every
+ * saveStores() call instead (server.ts locally stays on the debounced
+ * write-behind, whose behavior is unchanged).
+ *
+ * The api/index.ts entrypoint does NOT import this module (it is a deliberate
+ * self-contained stub whose own stores live under /tmp), so the mode cannot
+ * be switched from there; defaulting to 'sync' whenever VERCEL is set covers
+ * the serverless case wherever the real pipeline ever runs.
+ */
+export type StorePersistenceMode = 'debounce' | 'sync';
+let persistenceMode: StorePersistenceMode = process.env.VERCEL ? 'sync' : 'debounce';
+
+export function setStorePersistenceMode(mode: StorePersistenceMode): void {
+  persistenceMode = mode;
+  if (mode === 'sync' && saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
+}
+
+export function flushStoresImmediately(): void {
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
+  flushStores();
+}
+
 // Write-behind: telemetry mutates stores up to ~7x per processed document;
-// coalesce the storm into a single flush per 250ms window.
+// coalesce the storm into a single flush per 250ms window (local server only
+// — on Vercel persistenceMode is 'sync' and every save writes immediately).
 export function saveStores() {
+  if (persistenceMode === 'sync') {
+    flushStores();
+    return;
+  }
   if (saveTimer) return;
   saveTimer = setTimeout(() => {
     saveTimer = null;
     flushStores();
   }, 250);
+}
+
+/**
+ * FIX-4b: after a restart, persisted jobs with status 'processing'/'uploading'
+ * look mid-flight to every client, but this fresh process's queue is empty —
+ * the completion condition can never fire and ports poll forever. Sweep them
+ * to 'failed' with a Retry/Rescan hint.
+ *
+ * Ordering guarantee: this is only ever called while stores hydrate (module
+ * init, here) or at jobProcessor module init — both strictly before the app
+ * can accept an HTTP request, i.e. before ANY enqueue can have happened in
+ * this process. A live upload whose client is between create-job and
+ * upload-single therefore cannot be swept by accident; once it resumes, its
+ * enqueued files simply run against the (now failed) job and finish it.
+ */
+export function reconcileInterruptedJobs(): string[] {
+  const swept = sweepInterruptedJobs(jobsStore);
+  if (swept.length > 0) {
+    saveStores();
+  }
+  return swept;
 }
 
 export function addJobLog(

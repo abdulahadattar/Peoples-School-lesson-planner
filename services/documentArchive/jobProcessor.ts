@@ -1,10 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import AdmZip from 'adm-zip';
 import {
   StudentDocumentRecord,
-  BatchProcessingJob,
   DocumentClassificationType,
 } from '../../types/documentArchive';
 import { DATA_DIR } from './constants.js';
@@ -14,32 +12,32 @@ import {
   saveStores,
   addJobLog,
   updateJobFileItem,
+  reconcileInterruptedJobs,
 } from './store.js';
-import { extractGrFromPath, toEnglishTitleCase, normalizeNadraNumber, validateNadraNumber } from './nameMatching.js';
-import { extractImagesFromPdf, optimizeAndPrepareImage } from './imageProcessing.js';
+import { toEnglishTitleCase, normalizeNadraNumber, validateNadraNumber } from './nameMatching.js';
+import { optimizeAndPrepareImage } from './imageProcessing.js';
 import { callGeminiVision, EXTRACTION_SCHEMA } from './aiVision.js';
 import { updateStudentDossier } from './discrepancies.js';
-import { getOrCreateChunkSession, removeChunkSession } from './chunkSessions.js';
+import { QueueItem, processingQueue, countQueuedForJob } from './queue.js';
+import { isJobComplete, terminalStatusForJob } from './queueMath.js';
 
-export interface QueueItem {
-  id: string;
-  jobId: string;
-  grNo: string;
-  originalFilename: string;
-  sourceBuffer: Buffer;
-  mimeType: string;
-  bundleId?: string;
-  sourceFilename?: string;
-  pageNumber?: number;
-  totalPages?: number;
-}
+// Keep the queue types/exports part of jobProcessor's public surface — the
+// documentArchiveService facade re-exports them for the routers.
+export { processingQueue, countQueuedForJob } from './queue.js';
+export type { QueueItem } from './queue.js';
 
-export const processingQueue: QueueItem[] = [];
 let isQueueRunning = false;
+
+// FIX-4b: jobs persisted with status 'processing' while processingQueue lives
+// only in memory could poll forever after a restart. run this sweep at module
+// init too — it is a no-op when store.ts hydration already swept (both run
+// strictly before the app can accept a request, i.e. before any enqueue).
+reconcileInterruptedJobs();
 
 export async function processSingleDocument(
   item: QueueItem,
-  serverKeys: string[]
+  serverKeys: string[],
+  opts?: { skipDuplicateCheck?: boolean }
 ): Promise<StudentDocumentRecord | null> {
   const fileStart = Date.now();
   const jobId = item.jobId;
@@ -48,7 +46,7 @@ export async function processSingleDocument(
   try {
     const fileHash = crypto.createHash('sha256').update(item.sourceBuffer).digest('hex');
     const existingDoc = Object.values(documentsStore).find((d) => d.fileHash === fileHash && d.grNo === item.grNo);
-    if (existingDoc) {
+    if (existingDoc && !opts?.skipDuplicateCheck) {
       if (jobsStore[jobId]) jobsStore[jobId].duplicateCount = (jobsStore[jobId].duplicateCount || 0) + 1;
       updateJobFileItem(jobId, item.originalFilename, item.grNo, { stage: 'duplicate', status: 'duplicate', progressPercent: 100, classification: existingDoc.classification }, item.pageNumber);
       // Duplicates already exist in the archive; returning the existing doc
@@ -179,8 +177,8 @@ export async function runBackgroundQueue(serverKeys: string[]) {
       if (job) {
         job.processedFiles = (job.processedFiles || 0) + 1;
         job.remainingFiles = Math.max(0, job.totalFiles - job.processedFiles);
-        if (job.remainingFiles === 0 && processingQueue.filter((q) => q.jobId === job.id).length === 0) {
-          job.status = (job.failedCount || 0) > 0 && (job.successCount || 0) === 0 ? 'failed' : 'completed';
+        if (isJobComplete(job, countQueuedForJob(job.id))) {
+          job.status = terminalStatusForJob(job);
           job.currentStage = 'COMPLETE';
           job.completedAt = new Date().toISOString();
         }
@@ -190,180 +188,4 @@ export async function runBackgroundQueue(serverKeys: string[]) {
   } finally {
     isQueueRunning = false;
   }
-}
-
-export function createBatchJob(expectedFilesCount: number = 0): BatchProcessingJob {
-  const jobId = crypto.randomUUID().slice(0, 8);
-  const job: BatchProcessingJob = {
-    id: jobId, totalFiles: expectedFilesCount, processedFiles: 0, remainingFiles: expectedFilesCount,
-    flaggedCount: 0, duplicateCount: 0, failedCount: 0, successCount: 0, unclassifiedCount: 0,
-    status: 'uploading', currentStage: 'UPLOAD', currentStageDescription: `Receiving ${expectedFilesCount} documents...`,
-    logs: [], files: [], startedAt: new Date().toISOString(),
-  };
-  jobsStore[jobId] = job;
-  saveStores();
-  return job;
-}
-
-export async function addSingleFileToJob(
-  jobId: string,
-  filename: string,
-  buffer: Buffer,
-  grNo?: string
-): Promise<{ enqueued: number; job: BatchProcessingJob }> {
-  let job = jobsStore[jobId];
-  if (!job) {
-    job = createBatchJob(1);
-    jobsStore[jobId] = job;
-  }
-  const resolvedGr = grNo || extractGrFromPath(filename);
-
-    const isPdf = filename.toLowerCase().endsWith('.pdf') || buffer.subarray(0, 5).toString('latin1').startsWith('%PDF-');
-    if (isPdf) {
-      // PDFs are not images; sharp would reject the raw buffer at the optimize
-      // stage. Split every embedded document image into its own queue item.
-      const pages = await extractImagesFromPdf(buffer);
-      if (pages.length > 0) {
-        const bundleId = crypto.randomUUID().slice(0, 8);
-        for (const page of pages) {
-          processingQueue.push({
-            id: crypto.randomUUID().slice(0, 8), jobId, grNo: resolvedGr, originalFilename: filename,
-            sourceBuffer: page.buffer, mimeType: 'image/jpeg',
-            bundleId, sourceFilename: filename, pageNumber: page.pageNumber, totalPages: pages.length,
-          });
-          // One telemetry entry per page, keyed by pageNumber — a single entry
-          // keyed (filename, grNo) would be overwritten by every page.
-          updateJobFileItem(jobId, filename, resolvedGr, {
-            sourceFilename: filename,
-            fileSizeBytes: page.buffer.length,
-            totalPages: pages.length,
-            stage: 'queued', status: 'pending', progressPercent: 0,
-          }, page.pageNumber);
-        }
-        // The split pages REPLACE the single expected upload, they do not add
-        // to it — otherwise the job keeps one phantom file and never completes.
-        job.totalFiles = Math.max(0, (job.totalFiles || 0) - 1) + pages.length;
-        job.remainingFiles = Math.max(0, job.totalFiles - (job.processedFiles || 0));
-        saveStores();
-        addJobLog(jobId, 'info', 'PDF_EXTRACT', `Split ${filename} into ${pages.length} page image(s)`, { filename, grNo: resolvedGr });
-        return { enqueued: pages.length, job };
-      }
-      addJobLog(jobId, 'warn', 'PDF_EXTRACT', `No page images found in ${filename}; enqueuing raw file`, { filename, grNo: resolvedGr });
-    }
-
-  updateJobFileItem(jobId, filename, resolvedGr, { fileSizeBytes: buffer.length, stage: 'queued', status: 'pending', progressPercent: 0 });
-  processingQueue.push({
-    id: crypto.randomUUID().slice(0, 8), jobId, grNo: resolvedGr, originalFilename: filename,
-    sourceBuffer: buffer, mimeType: 'image/jpeg',
-  });
-  job.totalFiles = (job.totalFiles || 0) + 1;
-  job.remainingFiles = Math.max(0, job.totalFiles - (job.processedFiles || 0));
-  saveStores();
-  return { enqueued: 1, job };
-}
-
-export function finalizeBatchJob(jobId: string, serverKeys: string[]): BatchProcessingJob {
-  const job = jobsStore[jobId];
-  if (job) {
-    job.status = 'processing';
-    job.currentStage = 'AI_VISION';
-    saveStores();
-  }
-  runBackgroundQueue(serverKeys).catch(console.error);
-  return job || createBatchJob(0);
-}
-
-export async function handleChunkUpload(
-  uploadId: string,
-  chunkIndex: number,
-  totalChunks: number,
-  chunkBase64: string,
-  filename: string,
-  grNo?: string,
-  isZip?: boolean,
-  serverKeys: string[] = []
-): Promise<{ completed: boolean; job?: BatchProcessingJob }> {
-  const session = getOrCreateChunkSession(uploadId, totalChunks, filename, grNo, isZip);
-  session.chunks[chunkIndex] = Buffer.from(chunkBase64, 'base64');
-  if (Object.keys(session.chunks).length >= totalChunks) {
-    const sortedBuffers: Buffer[] = [];
-    for (let i = 0; i < totalChunks; i++) sortedBuffers.push(session.chunks[i] || Buffer.alloc(0));
-    const fullBuffer = Buffer.concat(sortedBuffers);
-    removeChunkSession(uploadId);
-    if (session.isZip || filename.toLowerCase().endsWith('.zip')) {
-      const job = await ingestUploadedArchive(fullBuffer, filename, serverKeys);
-      return { completed: true, job };
-    } else {
-      const job = await ingestIndividualFiles([{ filename, buffer: fullBuffer, grNo: session.grNo }], serverKeys);
-      return { completed: true, job };
-    }
-  }
-  return { completed: false };
-}
-
-export async function ingestUploadedArchive(archiveBuffer: Buffer, originalFilename: string, serverKeys: string[]): Promise<BatchProcessingJob> {
-  const jobId = crypto.randomUUID().slice(0, 8);
-  const zip = new AdmZip(archiveBuffer);
-  const validEntries = zip.getEntries().filter((e) => !e.isDirectory && !e.entryName.includes('__MACOSX') && /\.(jpe?g|png|webp|pdf)$/i.test(e.entryName));
-  const job = createBatchJob(validEntries.length);
-  job.id = jobId;
-  jobsStore[jobId] = job;
-  for (const entry of validEntries) {
-    processingQueue.push({
-      id: crypto.randomUUID().slice(0, 8), jobId, grNo: extractGrFromPath(entry.entryName),
-      originalFilename: path.basename(entry.entryName), sourceBuffer: entry.getData(), mimeType: 'image/jpeg',
-    });
-  }
-  job.status = 'processing';
-  saveStores();
-  runBackgroundQueue(serverKeys).catch(console.error);
-  return job;
-}
-
-export async function ingestIndividualFiles(files: Array<{ filename: string; buffer: Buffer; grNo?: string }>, serverKeys: string[]): Promise<BatchProcessingJob> {
-  const job = createBatchJob(files.length);
-  for (const f of files) {
-    processingQueue.push({
-      id: crypto.randomUUID().slice(0, 8), jobId: job.id, grNo: f.grNo || extractGrFromPath(f.filename),
-      originalFilename: f.filename, sourceBuffer: f.buffer, mimeType: 'image/jpeg',
-    });
-  }
-  job.status = 'processing';
-  saveStores();
-  runBackgroundQueue(serverKeys).catch(console.error);
-  return job;
-}
-
-export function retryFailedDocumentsInJob(jobId: string, serverKeys: string[]): BatchProcessingJob | null {
-  const job = jobsStore[jobId];
-  if (!job) return null;
-  // Failed page buffers are not retained in memory, so "retry" cannot
-  // re-enqueue them; flipping to 'processing' with an empty queue would
-  // leave the job stuck forever. Report honest terminal state instead.
-  const queued = processingQueue.filter((q) => q.jobId === jobId).length;
-  if (queued === 0) {
-    job.status = (job.failedCount || 0) > 0 ? 'failed' : (job.successCount || 0) > 0 ? 'completed' : 'failed';
-    job.currentStage = job.status === 'completed' ? 'COMPLETE' : 'ERROR';
-    if ((job.failedCount || 0) > 0) {
-      job.currentStageDescription = `${job.failedCount} file(s) failed; re-upload or Rescan individual documents`;
-    }
-    saveStores();
-    return job;
-  }
-  job.status = 'processing';
-  saveStores();
-  runBackgroundQueue(serverKeys).catch(console.error);
-  return job;
-}
-
-export function stopProcessingJob(jobId: string): boolean {
-  const job = jobsStore[jobId];
-  if (!job) return false;
-  for (let i = processingQueue.length - 1; i >= 0; i--) {
-    if (processingQueue[i].jobId === jobId) processingQueue.splice(i, 1);
-  }
-  job.status = 'failed';
-  job.currentStage = 'CANCELLED';
-  saveStores();
-  return true;
 }
