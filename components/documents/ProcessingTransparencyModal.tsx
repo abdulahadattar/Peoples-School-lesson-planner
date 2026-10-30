@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   BatchProcessingJob,
   JobLogEntry,
@@ -49,8 +50,16 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
     if (!jobId) return;
     try {
       const updated = await fetchJobStatus(jobId);
-      // Ignore out-of-order responses from overlapping polls.
-      if (updated && (!jobRef.current || updated.startedAt >= jobRef.current.startedAt)) {
+      if (!updated) return;
+      // Ignore out-of-order responses from overlapping polls. `startedAt` is
+      // immutable per job, so it can never arbitrate freshness; instead only
+      // apply updates whose progress (processedFiles) does not regress the
+      // already-applied progress. Terminal states always apply so completion
+      // or failure is never swallowed.
+      const prev = jobRef.current;
+      const prevTerminal = prev?.status === 'completed' || prev?.status === 'failed';
+      const updatedTerminal = updated.status === 'completed' || updated.status === 'failed';
+      if (!prev || updatedTerminal || (!prevTerminal && updated.processedFiles >= prev.processedFiles)) {
         jobRef.current = updated;
         setJob(updated);
         if (onJobUpdated) onJobUpdated(updated);
@@ -136,9 +145,9 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
 
   const completionPercent = job?.totalFiles ? Math.round((job.processedFiles / job.totalFiles) * 100) : 0;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn"
+      className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn"
       role="dialog"
       aria-modal="true"
       aria-label="Document Processing Transparency"
@@ -276,6 +285,7 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

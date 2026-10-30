@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Edit2,
@@ -62,7 +63,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
   const activeFlags = discrepancies.filter((f) => !f.isDismissed);
   const docCount = dossier?.documents.length || 0;
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto p-4 bg-slate-900/50 backdrop-blur-xs animate-fadeIn"
       role="dialog"
@@ -223,6 +224,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

@@ -19,7 +19,7 @@ export const HIGHLIGHT_MODULES = [
   {
     icon: BookOpen,
     title: 'Sindh Board SLO Lesson Plans',
-    badge: 'Grades 9â€“12',
+    badge: 'Grades 9–12',
     desc: 'Structured 40-minute lesson plans with 5E instructional phases & DOK levels.',
     color: 'from-emerald-500 to-teal-600',
   },

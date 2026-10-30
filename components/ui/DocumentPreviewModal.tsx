@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, ZoomIn, ZoomOut, RotateCw, ExternalLink, Download } from 'lucide-react';
 import { DOCUMENT_LABELS, DocumentClassificationType } from '../../types/documentArchive';
 import { triggerFileDownload } from '../../utils/download';
@@ -48,7 +49,7 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
     ? DOCUMENT_LABELS[doc.classification as DocumentClassificationType] || doc.classification
     : 'Document';
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[125] bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-fadeIn"
       role="dialog"
@@ -68,7 +69,7 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                 GR #{doc.grNo}
               </span>
             )}
-            {doc.grNo && <span className="text-slate-400 shrink-0">â€¢</span>}
+            {doc.grNo && <span className="text-slate-400 shrink-0">•</span>}
             <span className="text-xs font-bold text-slate-900 dark:text-white shrink-0">
               {classificationLabel}
             </span>
@@ -85,10 +86,10 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                 onClick={() => onRotate(doc.id!, 90)}
                 disabled={isRotating}
                 className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-1 cursor-pointer border border-slate-200 dark:border-slate-700"
-                title="Rotate document 90Â° clockwise"
+                title="Rotate document 90° clockwise"
               >
                 <RotateCw className={`w-3.5 h-3.5 ${isRotating ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline">Rotate 90Â°</span>
+                <span className="hidden sm:inline">Rotate 90°</span>
               </button>
             )}
 
@@ -184,6 +185,7 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

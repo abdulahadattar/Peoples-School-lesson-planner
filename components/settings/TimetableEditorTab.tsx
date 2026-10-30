@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Teacher } from '../../types';
 import { SchoolConfig } from '../../services/schoolConfigService';
 import {
@@ -110,21 +111,23 @@ export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
 
   return (
     <div className="space-y-6">
-      {exportNotice && (
-        <div className="fixed top-5 right-5 z-[130] px-4 py-3 rounded-2xl bg-brand-surface border border-brand-primary text-brand-text-primary shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-200">
-          <div className="w-8 h-8 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center font-bold text-base">
-            📊
-          </div>
-          <div className="text-xs font-semibold">{exportNotice}</div>
-          <button
-            type="button"
-            onClick={() => setExportNotice(null)}
-            className="text-brand-text-secondary hover:text-brand-text-primary font-bold ml-2 cursor-pointer"
-          >
-            ✕
-          </button>
-        </div>
-      )}
+      {exportNotice &&
+        createPortal(
+          <div className="fixed top-5 right-5 z-[130] px-4 py-3 rounded-2xl bg-brand-surface border border-brand-primary text-brand-text-primary shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-200">
+            <div className="w-8 h-8 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center font-bold text-base">
+              📊
+            </div>
+            <div className="text-xs font-semibold">{exportNotice}</div>
+            <button
+              type="button"
+              onClick={() => setExportNotice(null)}
+              className="text-brand-text-secondary hover:text-brand-text-primary font-bold ml-2 cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>,
+          document.body
+        )}
 
       <TimetableToolbar
         viewMode={viewMode}

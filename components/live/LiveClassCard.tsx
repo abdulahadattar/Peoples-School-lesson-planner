@@ -103,19 +103,19 @@ export const LiveClassCard: React.FC<LiveClassCardProps> = ({
   } else if (live && schoolStatusState === 'break') {
     liveAlertBadge = (
       <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/30 text-[10px] font-bold text-amber-700 dark:text-amber-300 shrink-0">
-        â˜• BREAK
+        ☕ BREAK
       </span>
     );
   } else if (activeSub) {
     liveAlertBadge = (
       <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-300 dark:border-emerald-500/30 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 shrink-0">
-        ðŸ”„ PROXY
+        🔄 PROXY
       </span>
     );
   } else if (isAbsent) {
     liveAlertBadge = (
       <span className="px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-500/10 border border-rose-300 dark:border-rose-500/30 text-[10px] font-bold text-rose-700 dark:text-rose-300 shrink-0">
-        âš ï¸ ABSENT
+        ⚠️ ABSENT
       </span>
     );
   }
@@ -204,7 +204,7 @@ export const LiveClassCard: React.FC<LiveClassCardProps> = ({
                           />
                           <span>{t.name}</span>
                           {t.designation ? (
-                            <span className="text-brand-text-tertiary"> Â· {t.designation}</span>
+                            <span className="text-brand-text-tertiary"> · {t.designation}</span>
                           ) : null}
                         </span>
                       </span>
@@ -225,7 +225,7 @@ export const LiveClassCard: React.FC<LiveClassCardProps> = ({
           {activeSub && (
             <div className="mt-2 px-2.5 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700/60 flex items-center justify-between text-[11px] font-semibold text-emerald-800 dark:text-emerald-300">
               <span className="flex items-center gap-1">
-                <span>ðŸ”„ Proxy:</span>
+                <span>🔄 Proxy:</span>
                 <span className="font-bold">{activeSub.proxyTeacherName}</span>
               </span>
               <span className="text-[9px] font-normal text-emerald-600 dark:text-emerald-400">
@@ -235,7 +235,7 @@ export const LiveClassCard: React.FC<LiveClassCardProps> = ({
           )}
           {!activeSub && isAbsent && (
             <div className="mt-2 px-2.5 py-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-700/60 text-[11px] font-semibold text-rose-700 dark:text-rose-300 flex items-center gap-1.5">
-              <span>âš ï¸ Teacher Absent â€” Proxy Needed</span>
+              <span>⚠️ Teacher Absent — Proxy Needed</span>
             </div>
           )}
         </div>

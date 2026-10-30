@@ -33,10 +33,15 @@ export function useAppThemeAndAuth() {
   }, []);
 
   useEffect(() => {
+    // Keep in sync with the index.html bootstrap script: dark class present
+    // => dark. Set `style.colorScheme` on every apply (including initial) so
+    // UA form controls and scrollbars switch theme together with the class.
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
+      document.documentElement.style.colorScheme = 'dark';
     } else {
       document.documentElement.classList.remove('dark');
+      document.documentElement.style.colorScheme = 'light';
     }
     localStorage.setItem('theme', theme);
   }, [theme]);

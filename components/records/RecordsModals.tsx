@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { StudentRecord } from '../../services/googleSheetsService';
 import { StudentDetailModal } from './StudentDetailModal';
@@ -82,7 +83,7 @@ export const RecordsModals: React.FC<RecordsModalsProps> = ({
         onCancel={onCancelConfirm}
       />
 
-      {avatarPreviewUrl && (
+      {avatarPreviewUrl && createPortal(
         <div
           className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={onCloseAvatarPreview}
@@ -112,7 +113,8 @@ export const RecordsModals: React.FC<RecordsModalsProps> = ({
               />
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

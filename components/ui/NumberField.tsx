@@ -36,7 +36,7 @@ export const NumberField: React.FC<NumberFieldProps> = ({
       <div className="flex items-center justify-between">
         <label className="block text-xs text-brand-text-secondary font-medium">{label}</label>
         <span className="text-[10px] font-mono tabular-nums text-brand-text-tertiary">
-          [{min}â€“{max}]
+          [{min}–{max}]
         </span>
       </div>
       <div className="flex items-center rounded-xl border border-black/[0.08] dark:border-white/[0.1] bg-slate-50 dark:bg-slate-900/40 overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-colors">
@@ -47,7 +47,7 @@ export const NumberField: React.FC<NumberFieldProps> = ({
           className="w-10 h-10 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.04] disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-base font-bold shrink-0 active:scale-90 select-none cursor-pointer"
           aria-label={`Decrease ${label}`}
         >
-          âˆ’
+          −
         </button>
         <input
           type="number"

@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { Teacher } from '../../../types';
 import { DayKey, DAY_LABELS } from '../../../services/timetable';
 import { ParallelTrackEditor } from './ParallelTrackEditor';
@@ -68,9 +69,9 @@ export const TimetableCellEditorModal: React.FC<TimetableCellEditorModalProps> =
 }) => {
   if (!editingCell) return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn"
+      className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn"
       onClick={onClose}
     >
       <div
@@ -256,6 +257,7 @@ export const TimetableCellEditorModal: React.FC<TimetableCellEditorModalProps> =
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
