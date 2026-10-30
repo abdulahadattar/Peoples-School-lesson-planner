@@ -22,7 +22,19 @@ import { extractGrFromPath } from './nameMatching.js';
 import { getOrCreateChunkSession, removeChunkSession } from './chunkSessions.js';
 import { enqueueFileForJob, countQueuedForJob, processingQueue } from './queue.js';
 import { computeJobTotals, isJobComplete, terminalStatusForJob } from './queueMath.js';
-import { runBackgroundQueue } from './jobProcessor.js';
+import { runBackgroundQueue, drainProcessingQueue } from './jobProcessor.js';
+
+/**
+ * FIX-C5: serverless semantics. On Vercel the Lambda freezes after the
+ * response, so callers that must advance a job (finalize, chunk completion,
+ * archive ingest, retry) pass `{ awaitCompletion: true }` — the queue then
+ * runs to completion inside the request, and the `sync` persistence mode
+ * leaves everything on disk. The live server (documentUploadRouter) never
+ * sets it and keeps the fire-and-forget behavior.
+ */
+export interface JobAdvanceOptions {
+  awaitCompletion?: boolean;
+}
 
 export function createBatchJob(expectedFilesCount: number = 0): BatchProcessingJob {
   const jobId = crypto.randomUUID().slice(0, 8);
@@ -59,7 +71,11 @@ export async function addSingleFileToJob(
   return { enqueued, job };
 }
 
-export function finalizeBatchJob(jobId: string, serverKeys: string[]): BatchProcessingJob {
+export async function finalizeBatchJob(
+  jobId: string,
+  serverKeys: string[],
+  opts?: JobAdvanceOptions
+): Promise<BatchProcessingJob> {
   const job = jobsStore[jobId];
   if (job) {
     // FIX-1a: exactly once, before the queue drains for this job, recompute
@@ -93,6 +109,12 @@ export function finalizeBatchJob(jobId: string, serverKeys: string[]): BatchProc
     job.status = 'processing';
     job.currentStage = 'AI_VISION';
     saveStores();
+    if (opts?.awaitCompletion) {
+      // Run the queue to completion now and return the terminal job — the
+      // response is the last chance the pipeline has on a Lambda.
+      await drainProcessingQueue(serverKeys);
+      return jobsStore[jobId] || job;
+    }
   }
   runBackgroundQueue(serverKeys).catch(console.error);
   return job || createBatchJob(0);
@@ -107,7 +129,8 @@ export async function handleChunkUpload(
   grNo?: string,
   isZip?: boolean,
   serverKeys: string[] = [],
-  existingJobId?: string
+  existingJobId?: string,
+  opts?: JobAdvanceOptions
 ): Promise<{ completed: boolean; job?: BatchProcessingJob }> {
   const session = getOrCreateChunkSession(uploadId, totalChunks, filename, grNo, isZip, existingJobId);
   session.chunks[chunkIndex] = Buffer.from(chunkBase64, 'base64');
@@ -121,7 +144,7 @@ export async function handleChunkUpload(
       // self-contained job (it can hold many students' documents, each with
       // its own GR extracted from entry paths), so it does not join the
       // caller's per-file batch job.
-      const job = await ingestUploadedArchive(fullBuffer, filename, serverKeys);
+      const job = await ingestUploadedArchive(fullBuffer, filename, serverKeys, opts);
       return { completed: true, job };
     }
     // FIX-1b: a >2.5MB file inside a multi-file batch used to detach into a
@@ -135,13 +158,18 @@ export async function handleChunkUpload(
       saveStores();
       return { completed: true, job };
     }
-    const job = await ingestIndividualFiles([{ filename, buffer: fullBuffer, grNo: session.grNo }], serverKeys);
+    const job = await ingestIndividualFiles([{ filename, buffer: fullBuffer, grNo: session.grNo }], serverKeys, opts);
     return { completed: true, job };
   }
   return { completed: false };
 }
 
-export async function ingestUploadedArchive(archiveBuffer: Buffer, originalFilename: string, serverKeys: string[]): Promise<BatchProcessingJob> {
+export async function ingestUploadedArchive(
+  archiveBuffer: Buffer,
+  originalFilename: string,
+  serverKeys: string[],
+  opts?: JobAdvanceOptions
+): Promise<BatchProcessingJob> {
   const jobId = crypto.randomUUID().slice(0, 8);
   const zip = new AdmZip(archiveBuffer);
   const validEntries = zip.getEntries().filter((e) => !e.isDirectory && !e.entryName.includes('__MACOSX') && /\.(jpe?g|png|webp|pdf)$/i.test(e.entryName));
@@ -153,17 +181,21 @@ export async function ingestUploadedArchive(archiveBuffer: Buffer, originalFilen
   for (const entry of validEntries) {
     await enqueueFileForJob(job, path.basename(entry.entryName), entry.getData(), extractGrFromPath(entry.entryName));
   }
-  startOrTerminateEmptyJob(job, serverKeys, `No supported document entries found in ${originalFilename}`);
+  await startOrTerminateEmptyJob(job, serverKeys, `No supported document entries found in ${originalFilename}`, opts);
   return job;
 }
 
-export async function ingestIndividualFiles(files: Array<{ filename: string; buffer: Buffer; grNo?: string }>, serverKeys: string[]): Promise<BatchProcessingJob> {
+export async function ingestIndividualFiles(
+  files: Array<{ filename: string; buffer: Buffer; grNo?: string }>,
+  serverKeys: string[],
+  opts?: JobAdvanceOptions
+): Promise<BatchProcessingJob> {
   const job = createBatchJob(0);
   job.currentStageDescription = `Receiving ${files.length} documents...`;
   for (const f of files) {
     await enqueueFileForJob(job, f.filename, f.buffer, f.grNo);
   }
-  startOrTerminateEmptyJob(job, serverKeys, 'No documents were received for this job');
+  await startOrTerminateEmptyJob(job, serverKeys, 'No documents were received for this job', opts);
   return job;
 }
 
@@ -172,7 +204,12 @@ export async function ingestIndividualFiles(files: Array<{ filename: string; buf
  * when nothing actually reached the queue (prevents status:'processing' jobs
  * whose completion condition can never fire).
  */
-function startOrTerminateEmptyJob(job: BatchProcessingJob, serverKeys: string[], nothingQueuedDescription: string): void {
+async function startOrTerminateEmptyJob(
+  job: BatchProcessingJob,
+  serverKeys: string[],
+  nothingQueuedDescription: string,
+  opts?: JobAdvanceOptions
+): Promise<void> {
   if (countQueuedForJob(job.id) === 0) {
     job.status = 'failed';
     job.currentStage = 'ERROR';
@@ -182,10 +219,18 @@ function startOrTerminateEmptyJob(job: BatchProcessingJob, serverKeys: string[],
   }
   job.status = 'processing';
   saveStores();
+  if (opts?.awaitCompletion) {
+    await drainProcessingQueue(serverKeys);
+    return;
+  }
   runBackgroundQueue(serverKeys).catch(console.error);
 }
 
-export function retryFailedDocumentsInJob(jobId: string, serverKeys: string[]): BatchProcessingJob | null {
+export async function retryFailedDocumentsInJob(
+  jobId: string,
+  serverKeys: string[],
+  opts?: JobAdvanceOptions
+): Promise<BatchProcessingJob | null> {
   const job = jobsStore[jobId];
   if (!job) return null;
   // Failed page buffers are not retained in memory, so "retry" cannot
@@ -203,6 +248,11 @@ export function retryFailedDocumentsInJob(jobId: string, serverKeys: string[]): 
   }
   job.status = 'processing';
   saveStores();
+  if (opts?.awaitCompletion) {
+    // Serverless: run the re-queued items to completion before responding.
+    await drainProcessingQueue(serverKeys);
+    return jobsStore[jobId] || job;
+  }
   runBackgroundQueue(serverKeys).catch(console.error);
   return job;
 }

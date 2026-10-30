@@ -157,6 +157,15 @@ export async function processSingleDocument(
 
 export async function runBackgroundQueue(serverKeys: string[]) {
   if (isQueueRunning) return;
+  await queueLoop(serverKeys);
+}
+
+/**
+ * FIX-C5 (part 1): extracted loop body so two entry styles can share it —
+ * `runBackgroundQueue` (fire-and-forget, live-server semantics) and
+ * `drainProcessingQueue` below (awaited, serverless semantics).
+ */
+async function queueLoop(serverKeys: string[]) {
   isQueueRunning = true;
   try {
     while (processingQueue.length > 0) {
@@ -187,5 +196,32 @@ export async function runBackgroundQueue(serverKeys: string[]) {
     }
   } finally {
     isQueueRunning = false;
+  }
+}
+
+/**
+ * FIX-C5 (part 2): awaited drain for the serverless entrypoint. On Vercel the
+ * Lambda freezes right after the response is sent, so a fire-and-forget
+ * queue would never finish (the production hang this task fixes). Every
+ * request that mutates or advances a job must process the queue to
+ * completion BEFORE responding; the `sync` persistence mode in store.ts
+ * makes each step durable on disk as it happens.
+ */
+export async function drainProcessingQueue(serverKeys: string[]): Promise<void> {
+  while (processingQueue.length > 0 || isQueueRunning) {
+    if (isQueueRunning) {
+      // A concurrent request is already draining; wait for it, then re-check
+      // in case items were enqueued while it ran.
+      await new Promise<void>((resolve) => {
+        const timer = setInterval(() => {
+          if (!isQueueRunning) {
+            clearInterval(timer);
+            resolve();
+          }
+        }, 25);
+      });
+      continue;
+    }
+    await queueLoop(serverKeys);
   }
 }

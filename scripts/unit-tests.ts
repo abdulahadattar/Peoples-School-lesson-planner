@@ -586,6 +586,13 @@ await itAsync('returns a well-formed audit report', async () => {
 const { runJobCompletionFlowTests } = await import('./unit/jobCompletionFlow.test');
 await runJobCompletionFlowTests({ describe, it, eq });
 
+/* ── document pipeline: serverless api route integration (C5) ── */
+
+// Separate module, dynamically imported after the pure suites so it can set
+// the simulated VERCEL runtime env vars BEFORE api/index.ts initializes.
+const { runApiDocumentRoutesTests } = await import('./unit/apiDocumentRoutes.test');
+await runApiDocumentRoutesTests({ describe, itAsync, eq });
+
 /* ── summary ─────────────────────────────────────────────────── */
 
 log(`\n${c.b(c.cy('══════════════════════════════════'))}`);

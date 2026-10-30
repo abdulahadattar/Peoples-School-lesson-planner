@@ -1,12 +1,24 @@
 import path from 'path';
 
-export const DATA_DIR = path.join(process.cwd(), 'data', 'student_documents');
-export const JOBS_FILE = path.join(process.cwd(), 'data', 'document_jobs.json');
-export const DOSSIERS_FILE = path.join(process.cwd(), 'data', 'student_dossiers.json');
-export const DOCUMENTS_FILE = path.join(process.cwd(), 'data', 'student_documents_meta.json');
-export const BUNDLES_FILE = path.join(process.cwd(), 'data', 'document_bundles.json');
-export const DISMISSED_FLAGS_FILE = path.join(process.cwd(), 'data', 'dismissed_flags.json');
-export const APPLIED_CORRECTIONS_FILE = path.join(process.cwd(), 'data', 'applied_corrections.json');
+/**
+ * Where the document archive persists.
+ *
+ * - Local (self-hosted, `npm run dev`): ./data — unchanged layout.
+ * - Serverless (VERCEL set): /tmp/data — the Lambda filesystem is read-only
+ *   except /tmp; api/index.ts already kept its own stores there under the
+ *   same layout (docs/ALPHA_STATUS.md), so every file below keeps its name
+ *   and only the root moves. Selected once at import time, strictly before
+ *   any store hydrates.
+ */
+const DATA_ROOT = process.env.VERCEL ? path.join(path.sep, 'tmp', 'data') : path.join(process.cwd(), 'data');
+
+export const DATA_DIR = path.join(DATA_ROOT, 'student_documents');
+export const JOBS_FILE = path.join(DATA_ROOT, 'document_jobs.json');
+export const DOSSIERS_FILE = path.join(DATA_ROOT, 'student_dossiers.json');
+export const DOCUMENTS_FILE = path.join(DATA_ROOT, 'student_documents_meta.json');
+export const BUNDLES_FILE = path.join(DATA_ROOT, 'document_bundles.json');
+export const DISMISSED_FLAGS_FILE = path.join(DATA_ROOT, 'dismissed_flags.json');
+export const APPLIED_CORRECTIONS_FILE = path.join(DATA_ROOT, 'applied_corrections.json');
 
 export const SINDH_PAKISTANI_CASTES = [
   'Baloch', 'Brohi', 'Khetran', 'Memon', 'Chandio', 'Lashari', 'Magsi',

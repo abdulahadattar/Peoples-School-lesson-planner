@@ -69,9 +69,14 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
   useEffect(() => {
     if (!activeJob) return;
     if (activeJob.status !== 'processing' && activeJob.status !== 'uploading') return;
+    // C5 guard: prefer the jobId alias, and never poll a falsy id — a job
+    // without an id (stub-era payload) cannot be fetched at all.
+    const paired = activeJob as BatchProcessingJob & { jobId?: string };
+    const jobId = paired.jobId || activeJob.id;
+    if (!jobId) return;
     const poll = setInterval(async () => {
       try {
-        const job = await fetchJobStatus(activeJob.id);
+        const job = await fetchJobStatus(String(jobId));
         if (job) setActiveJob(job);
       } catch {
         // transient network error — next tick retries

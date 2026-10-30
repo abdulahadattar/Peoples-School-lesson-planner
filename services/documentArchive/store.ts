@@ -119,6 +119,31 @@ try {
   console.warn('[documentArchiveService] Failed loading local stores, initializing clean:', e);
 }
 
+/**
+ * FIX-4a: persistence mode. On a serverless runtime (api/index.ts entry via
+ * vercel.json) the lambda may freeze right after the response while a
+ * debounced write is still pending, silently losing terminal job states,
+ * dossier updates and dismissed flags. `sync` writes synchronously on every
+ * saveStores() call instead (server.ts locally stays on the debounced
+ * write-behind, whose behavior is unchanged).
+ *
+ * The persistence `sync` mode is selected automatically whenever VERCEL is
+ * set (services/documentArchive/constants.ts likewise relocates the files
+ * to /tmp/data), covering the serverless entrypoint api/index.ts which
+ * imports this module since C5 and drives every mutating request through
+ * drainProcessingQueue. flushStoresImmediately() is available to any caller
+ * that needs the write-loose debounced mode durable at a commit boundary.
+ *
+ * MUST stay above the FIX-4b hydration sweep below: reconcileInterruptedJobs()
+ * → saveStores() reads this binding at module-init time, and a `let` declared
+ * after that call is in temporal-dead-zone — any persisted job left in
+ * 'processing'/'uploading' by a previous process made this module throw
+ * "Cannot access 'persistenceMode' before initialization" (caught first by
+ * scripts/unit/apiDocumentRoutes.test.ts).
+ */
+export type StorePersistenceMode = 'debounce' | 'sync';
+let persistenceMode: StorePersistenceMode = process.env.VERCEL ? 'sync' : 'debounce';
+
 // FIX-4b: hydration-time sweep. Runs once during module init, before
 // jobProcessor (and thus processingQueue) can be reached by any request, so
 // everything it caps really was orphaned by a previous process.
@@ -137,22 +162,6 @@ function flushStores() {
     console.error('[documentArchiveService] Error saving stores to disk:', err);
   }
 }
-
-/**
- * FIX-4a: persistence mode. On a serverless runtime (api/index.ts entry via
- * vercel.json) the lambda may freeze right after the response while a
- * debounced write is still pending, silently losing terminal job states,
- * dossier updates and dismissed flags. `sync` writes synchronously on every
- * saveStores() call instead (server.ts locally stays on the debounced
- * write-behind, whose behavior is unchanged).
- *
- * The api/index.ts entrypoint does NOT import this module (it is a deliberate
- * self-contained stub whose own stores live under /tmp), so the mode cannot
- * be switched from there; defaulting to 'sync' whenever VERCEL is set covers
- * the serverless case wherever the real pipeline ever runs.
- */
-export type StorePersistenceMode = 'debounce' | 'sync';
-let persistenceMode: StorePersistenceMode = process.env.VERCEL ? 'sync' : 'debounce';
 
 export function setStorePersistenceMode(mode: StorePersistenceMode): void {
   persistenceMode = mode;

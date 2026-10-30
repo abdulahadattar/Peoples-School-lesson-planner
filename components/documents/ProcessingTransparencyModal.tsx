@@ -164,7 +164,7 @@ export const ProcessingTransparencyModal: React.FC<ProcessingTransparencyModalPr
               <h3 className="text-sm font-bold text-brand-text-primary flex items-center gap-2">
                 Document Processing Transparency
                 <span className="font-mono text-xs px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                  #{jobId}
+                  #{jobId || (job as { jobId?: string } | null)?.jobId || job?.id || '—'}
                 </span>
               </h3>
               <p className="text-[11px] text-brand-text-secondary">

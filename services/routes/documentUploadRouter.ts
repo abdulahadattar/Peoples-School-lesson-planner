@@ -43,7 +43,7 @@ export function createDocumentUploadRouter(getDocumentApiKeys: () => string[]): 
     }
   });
 
-  router.post('/documents/finalize-job', (req, res) => {
+  router.post('/documents/finalize-job', async (req, res) => {
     try {
       const { jobId } = req.body || {};
       if (!jobId) {
@@ -51,7 +51,11 @@ export function createDocumentUploadRouter(getDocumentApiKeys: () => string[]): 
         return;
       }
       const keys = getDocumentApiKeys();
-      const job = finalizeBatchJob(jobId, keys);
+      // finalizeBatchJob is async since C5 (optional awaited drain for the
+      // serverless entrypoint); the live server never passes opts, so the
+      // fire-and-forget queue behavior is unchanged — only the job snapshot
+      // in the response is now awaited.
+      const job = await finalizeBatchJob(jobId, keys);
       res.json({ ok: true, job });
     } catch (err) {
       res.status(500).json({ error: (err as Error).message });
