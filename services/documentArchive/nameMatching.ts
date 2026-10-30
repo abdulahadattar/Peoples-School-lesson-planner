@@ -1,6 +1,6 @@
 import path from 'path';
 import { normalizePakistaniName, validateNadraNumber, NadraValidationResult } from '../identityNormalization.js';
-import { SINDH_PAKISTANI_CASTES, SINDHI_NAME_DICTIONARY, SINDHI_CHAR_MAP } from './constants.js';
+import { SINDH_PAKISTANI_CASTES } from './constants.js';
 
 export { normalizePakistaniName, validateNadraNumber };
 export type { NadraValidationResult };
@@ -76,26 +76,8 @@ export function extractCasteFromName(name?: string): { baseName: string; detecte
   return { baseName: clean };
 }
 
-export function transliterateSindhiToEnglish(text?: string): string {
-  if (!text) return '';
-  const clean = text.trim();
-  if (SINDHI_NAME_DICTIONARY[clean]) return SINDHI_NAME_DICTIONARY[clean];
-  const words = clean.split(/\s+/).map((w) => {
-    if (SINDHI_NAME_DICTIONARY[w]) return SINDHI_NAME_DICTIONARY[w];
-    let res = '';
-    for (let i = 0; i < w.length; i++) {
-      const pair = w.slice(i, i + 2);
-      if (SINDHI_CHAR_MAP[pair]) {
-        res += SINDHI_CHAR_MAP[pair];
-        i++;
-      } else if (SINDHI_CHAR_MAP[w[i]]) {
-        res += SINDHI_CHAR_MAP[w[i]];
-      }
-    }
-    return res ? res.charAt(0).toUpperCase() + res.slice(1) : w;
-  });
-  return words.join(' ');
-}
+// (deleted) `transliterateSindhiToEnglish` — only caller was `isSindhiNameMatch`,
+// which had 0 callers anywhere; export audit 2026-10-30 removed the chain.
 
 export function calculateStringSimilarity(str1?: string, str2?: string): number {
   if (!str1 || !str2) return 0;
@@ -118,25 +100,6 @@ export function calculateStringSimilarity(str1?: string, str2?: string): number 
   const distance = track[s2.length][s1.length];
   const maxLen = Math.max(s1.length, s2.length);
   return Math.max(0, 1 - distance / maxLen);
-}
-
-export function isSindhiNameMatch(sindhiName?: string, englishName?: string): boolean {
-  if (!sindhiName || !englishName) return false;
-  const s = sindhiName.trim();
-  const e = englishName.toLowerCase().trim();
-  const transliterated = transliterateSindhiToEnglish(s).toLowerCase();
-  if (transliterated) {
-    if (transliterated === e || transliterated.includes(e) || e.includes(transliterated)) return true;
-    if (calculateStringSimilarity(transliterated, e) >= 0.65) return true;
-  }
-  const sTokens = s.split(/\s+/).map((t) => transliterateSindhiToEnglish(t).toLowerCase());
-  const eTokens = e.split(/\s+/).map((t) => t.toLowerCase());
-  for (const st of sTokens) {
-    for (const et of eTokens) {
-      if (st && et && (st === et || calculateStringSimilarity(st, et) >= 0.70)) return true;
-    }
-  }
-  return false;
 }
 
 export function analyzeNameCasteOrFullNameVariance(docName?: string, sheetName?: string): NameCasteVarianceResult {

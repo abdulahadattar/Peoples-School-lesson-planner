@@ -62,7 +62,6 @@
 ├── firestore.rules             # Production Firestore security rules
 ├── index.html                  # HTML entry point with metadata
 ├── index.tsx                   # React 19 application bootstrapping
-├── metadata.json               # Applet capability declarations
 ├── package.json                # Project dependencies & npm scripts
 ├── server.ts                   # Dev & full-stack Express server (Vite middleware proxy)
 ├── tsconfig.json               # TypeScript compiler configuration

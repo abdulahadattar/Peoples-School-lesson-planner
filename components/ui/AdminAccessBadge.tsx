@@ -37,6 +37,6 @@ export const AdminAccessBadge: React.FC<AdminAccessBadgeProps> = ({
   );
 };
 
-export const AdminStatusBadge = AdminAccessBadge;
-export type AdminStatusBadgeProps = AdminAccessBadgeProps;
+// (deleted) `AdminStatusBadge` legacy alias and its props type — export audit
+// 2026-10-30 found 0 callers; all consumers import AdminAccessBadge directly.
 

@@ -70,8 +70,9 @@ const SIZE_MAP = {
 
 /**
  * Automatically resolves a badge tone based on status keywords.
+ * Internal helper — export audit 2026-10-30 found 0 external callers.
  */
-export function getStatusTone(statusText: string | undefined): BadgeTone {
+function getStatusTone(statusText: string | undefined): BadgeTone {
   if (!statusText) return 'slate';
   const s = statusText.toLowerCase();
 

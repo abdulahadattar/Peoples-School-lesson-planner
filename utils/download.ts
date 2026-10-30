@@ -21,7 +21,3 @@ export function triggerFileDownload(content: Blob | string, filename: string, mi
 }
 
 export const downloadFile = triggerFileDownload;
-
-export function downloadCsv(filename: string, csvContent: string): void {
-  triggerFileDownload(csvContent, filename, 'text/csv;charset=utf-8;');
-}

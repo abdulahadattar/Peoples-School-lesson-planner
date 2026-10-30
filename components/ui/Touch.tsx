@@ -16,9 +16,6 @@ import React from 'react';
  * professional rather than decorative.
  */
 
-export const tapClasses =
-  'transition-colors duration-150 ease-out active:bg-brand-bg active:scale-[0.97]';
-
 type IconButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   /** Visual weight. `solid` is for primary actions, `ghost` for inline row actions. */
   variant?: 'ghost' | 'solid' | 'danger' | 'accent';
@@ -71,16 +68,7 @@ export const IconButton: React.FC<IconButtonProps> = ({
  * Standard press feedback for any control. Pair with a `hover:` style so the
  * same element responds correctly to mouse, touch and keyboard.
  */
-export const pressable = 'transition-transform duration-200 ease-out active:scale-[0.98]';
-
-/**
- * Reveals hover-only affordances to touch users.
- *
- * On a fine pointer the hint stays hidden until hover, which keeps the desktop
- * UI quiet. On a coarse pointer there is no hover, so the hint is always
- * visible rather than permanently unreachable.
- */
-export const hoverHint =
-  'opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:transition-opacity';
+// (deleted) `pressable` — single-line variant of IconButton's built-in active
+// feedback; export audit 2026-10-30 found 0 callers in components or scripts.
 
 export default IconButton;

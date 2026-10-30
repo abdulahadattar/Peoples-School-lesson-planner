@@ -134,6 +134,6 @@ export const Pagination: React.FC<PaginationProps> = ({
   );
 };
 
-export const PaginationControl = Pagination;
-export type PaginationControlProps = PaginationProps;
+// (deleted) `PaginationControl` legacy alias and its props type — export audit
+// 2026-10-30 found 0 callers; all consumers import Pagination directly.
 
