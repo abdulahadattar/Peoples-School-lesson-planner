@@ -598,6 +598,16 @@ await runApiDocumentRoutesTests({ describe, itAsync, eq });
 const { runDocumentArchiveSelectorsTests } = await import('./unit/documentArchiveSelectors.test');
 await runDocumentArchiveSelectorsTests({ describe, it, eq });
 
+/* ── document archive: Firestore durable store (C6) ── */
+
+const { runDocumentFirestoreStoreTests } = await import('./unit/documentFirestoreStore.test');
+await runDocumentFirestoreStoreTests({ describe, it, eq });
+
+/* ── document pipeline: Firestore emulator cross-instance flow (C6) ── */
+
+const { runDocumentFirestoreInstancesTests } = await import('./unit/documentFirestoreInstances.test');
+await runDocumentFirestoreInstancesTests({ describe, itAsync, eq });
+
 /* ── summary ─────────────────────────────────────────────────── */
 
 log(`\n${c.b(c.cy('══════════════════════════════════'))}`);

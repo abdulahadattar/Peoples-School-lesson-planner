@@ -41,8 +41,12 @@ import {
   getJobStatus,
   getLatestJob,
   flushStoresImmediately,
+  drainProcessingQueue,
+  documentsStore,
 } from '../documentArchiveService.js';
-
+// C6: Firestore durability guards (no-ops without service-account credentials).
+import { documentStoreRequestGuards } from '../documentArchive/firestoreRequestGuards.js';
+import { ensureJobLoaded, loadStoredScanBytesForRoute } from '../documentArchive/firestoreStore.js';
 /** Serverless: the request must finish the pipeline, never hand it off. */
 const AWAIT_COMPLETION = { awaitCompletion: true } as const;
 
@@ -64,6 +68,11 @@ function withJobId(job: BatchProcessingJob | null): any {
 export function createServerlessDocumentRoutes(): Router {
   const router = Router();
 
+  // C6 guard FIRST: hydrates the shared Firestore-backed stores before any
+  // handler runs and awaits all write-throughs inside res.json. No-op
+  // without Firestore credentials, so the local pipeline is untouched.
+  router.use(documentStoreRequestGuards);
+
   router.post('/documents/create-job', (req, res) => {
     try {
       const { expectedCount = 0 } = req.body || {};
@@ -83,6 +92,11 @@ export function createServerlessDocumentRoutes(): Router {
       }
       const buffer = Buffer.from(base64Data, 'base64');
       const result = await addSingleFileToJob(jobId, filename, buffer, grNo);
+      // C6: the per-request queue is memory-only, while the JOB RECORD is
+      // now shared across Lambda instances (Firestore). Process this upload
+      // synchronously here — finalize may run on a DIFFERENT instance that
+      // can never see this instance's queue items.
+      await drainProcessingQueue(getDocumentApiKeys());
       flushStoresImmediately();
       res.json({ ok: true, jobId, filename, size: buffer.length, enqueued: result.enqueued, job: withJobId(result.job) });
     } catch (err) {
@@ -164,7 +178,10 @@ export function createServerlessDocumentRoutes(): Router {
     }
   });
 
-  router.get('/documents/jobs/:jobId', (req, res) => {
+  router.get('/documents/jobs/:jobId', async (req, res) => {
+    // C6: lazy per-key load — the job may have been created on another
+    // instance after this one hydrated.
+    await ensureJobLoaded(req.params.jobId);
     const job = getJobStatus(req.params.jobId);
     if (!job) {
       res.status(404).json({ error: 'Job not found' });
@@ -191,8 +208,10 @@ export function createServerlessDocumentRoutes(): Router {
     }
   });
 
-  router.post('/documents/jobs/:jobId/stop', (req, res) => {
+  router.post('/documents/jobs/:jobId/stop', async (req, res) => {
     try {
+      // C6: the job may live in the shared store only.
+      await ensureJobLoaded(req.params.jobId);
       const success = stopProcessingJob(req.params.jobId);
       flushStoresImmediately();
       res.json({ ok: true, success, job: withJobId(getJobStatus(req.params.jobId)) });
@@ -203,18 +222,32 @@ export function createServerlessDocumentRoutes(): Router {
 
   // Same contract as the live server; jobProcessor writes optimized scans to
   // DATA_DIR/GR_<gr>/ (which is /tmp/data/student_documents on Vercel),
-  // identical to the path the pre-C5 stub served.
-  router.get('/documents/file/:grNo/:filename', (req, res) => {
+  // identical to the path the pre-C5 stub served. C6: in Firestore mode a
+  // fresh instance's /tmp cannot hold bytes it never processed — fall back
+  // to the durable page blob before giving up.
+  router.get('/documents/file/:grNo/:filename', async (req, res) => {
     try {
       const { grNo, filename } = req.params;
       const safeGr = path.basename(decodeURIComponent(grNo));
       const safeFilename = path.basename(decodeURIComponent(filename));
       const filePath = path.join(DATA_DIR, `GR_${safeGr}`, safeFilename);
+      const ext = path.extname(safeFilename).toLowerCase();
       if (!filePath.startsWith(DATA_DIR) || !fs.existsSync(filePath)) {
-        res.status(404).send('File not found');
+        const blobBytes = await loadStoredScanBytesForRoute(
+          (gr, fname) =>
+            (Object.values(documentsStore) as Array<any>).find((d) => d.grNo === gr && d.filename === fname) ?? null,
+          safeGr,
+          safeFilename
+        );
+        if (!blobBytes) {
+          res.status(404).send('File not found');
+          return;
+        }
+        res.setHeader('Content-Type', 'image/jpeg');
+        res.setHeader('Cache-Control', 'no-store');
+        res.end(blobBytes);
         return;
       }
-      const ext = path.extname(safeFilename).toLowerCase();
       const mime: Record<string, string> = {
         '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
         '.webp': 'image/webp', '.gif': 'image/gif', '.pdf': 'application/pdf',

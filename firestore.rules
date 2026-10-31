@@ -62,6 +62,46 @@ service cloud.firestore {
       allow get, list: if isSignedIn();
       allow create, update, delete: if isSignedIn() && isValidId(rowKey);
     }
+
+    // ── Document archive durable store (C6) ──────────────────────────────
+    // The serverless pipeline WRITES these collections through the Firebase
+    // Admin SDK, which by design bypasses security rules — the trusted
+    // server process is the only write path. The browser never performs a
+    // direct Firestore write on any of them, so client writes stay denied.
+    // Reads are re-opened narrowly for signed-in users (same bar as
+    // student_record_edits — these documents carry student names, CNICs and
+    // B-Form numbers alongside the scans) instead of leaving the catch-all
+    // default-deny to hide accidental direct reads.
+    // NOTE: flat match blocks on purpose — nested match braces are what the
+    // rules parity checker (scripts/test-firestore-rules.mjs) parses.
+    match /documentJobs/{jobId} {
+      allow get, list: if isSignedIn() && isValidId(jobId);
+      allow write: if false;
+    }
+    match /documentJobs/{jobId}/files/{fileId} {
+      allow get, list: if isSignedIn();
+      allow write: if false;
+    }
+    match /documentJobs/{jobId}/files/{fileId}/chunks/{chunkId} {
+      allow get, list: if isSignedIn();
+      allow write: if false;
+    }
+    match /documentRecords/{docId} {
+      allow get, list: if isSignedIn() && isValidId(docId);
+      allow write: if false;
+    }
+    match /dossiers/{grNo} {
+      allow get, list: if isSignedIn() && isValidId(grNo);
+      allow write: if false;
+    }
+    match /dismissedFlags/{flagId} {
+      allow get, list: if isSignedIn() && isValidId(flagId);
+      allow write: if false;
+    }
+    match /documentCorrections/{grNo} {
+      allow get, list: if isSignedIn() && isValidId(grNo);
+      allow write: if false;
+    }
   }
 }
 

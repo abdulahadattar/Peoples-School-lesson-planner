@@ -59,7 +59,7 @@ page said so — run `npm run probe:models` and use its output.
 | zod | **4.6.5** | `^4.6.5` | 4.6.5 | Current. |
 | pdf-lib | **1.17.1** | `^1.17.1` | 1.17.1 | Effectively frozen upstream. |
 | sharp | **0.35.4** | `^0.35.4` | 0.3x line | Native addon; used server-side for image work. |
-| firebase-admin | **14.5.0** | `^14.5.0` | 14.5.0 | Current. |
+| firebase-admin | **14.5.0** | `^14.5.0` | 14.5.0 | Current — also drives the serverless document-archive Firestore store (`services/documentArchive/firestoreConnection.ts`, C6, verified `npm ls firebase-admin` 2026-10-31). The dynamic `import('firebase-admin')` stays inside the activated path so unused runtimes never load it; Vercel File Trace bundles it only where imported. |
 | lucide-react | **1.47.0** | `^1.43.0` | 1.4x line | Icon set. |
 | idb-keyval | **6.3.0** | `^6.2.1` | 6.3.0 | IndexedDB wrapper for offline sync. |
 

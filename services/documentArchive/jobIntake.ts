@@ -23,6 +23,8 @@ import { getOrCreateChunkSession, removeChunkSession } from './chunkSessions.js'
 import { enqueueFileForJob, countQueuedForJob, processingQueue } from './queue.js';
 import { computeJobTotals, isJobComplete, terminalStatusForJob } from './queueMath.js';
 import { runBackgroundQueue, drainProcessingQueue } from './jobProcessor.js';
+// C6: Firestore mode/guards — no-ops in local disk modes.
+import { ensureJobLoaded } from './firestoreStore.js';
 
 /**
  * FIX-C5: serverless semantics. On Vercel the Lambda freezes after the
@@ -55,6 +57,9 @@ export async function addSingleFileToJob(
   buffer: Buffer,
   grNo?: string
 ): Promise<{ enqueued: number; job: BatchProcessingJob }> {
+  // C6: the job shell may live on another Lambda instance (created-job there,
+  // upload arriving here) — pull it out of the shared store first.
+  await ensureJobLoaded(jobId);
   let job = jobsStore[jobId];
   if (!job) {
     // No job shell exists for this upload (caller never hit /create-job):
@@ -76,6 +81,9 @@ export async function finalizeBatchJob(
   serverKeys: string[],
   opts?: JobAdvanceOptions
 ): Promise<BatchProcessingJob> {
+  // C6: lazy per-key hydration — finalize must see the shared job even when
+  // create-job ran on a different instance (the multi-instance failure mode).
+  await ensureJobLoaded(jobId);
   const job = jobsStore[jobId];
   if (job) {
     // FIX-1a: exactly once, before the queue drains for this job, recompute
@@ -152,6 +160,10 @@ export async function handleChunkUpload(
     // assembled file into the caller's job instead. If the job shell is gone
     // (e.g. the client created it before a restart), fall back to a
     // standalone job so the payload still processes.
+    if (existingJobId) {
+      // C6: the shell may have been created on another instance.
+      await ensureJobLoaded(existingJobId);
+    }
     if (existingJobId && jobsStore[existingJobId]) {
       const job = jobsStore[existingJobId];
       await enqueueFileForJob(job, filename, fullBuffer, session.grNo);
@@ -231,6 +243,7 @@ export async function retryFailedDocumentsInJob(
   serverKeys: string[],
   opts?: JobAdvanceOptions
 ): Promise<BatchProcessingJob | null> {
+  await ensureJobLoaded(jobId);
   const job = jobsStore[jobId];
   if (!job) return null;
   // Failed page buffers are not retained in memory, so "retry" cannot

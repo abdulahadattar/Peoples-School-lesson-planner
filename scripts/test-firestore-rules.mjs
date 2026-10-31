@@ -35,7 +35,7 @@ function parseRules(text) {
   // Default deny: `allow read, write: if false;` at the top level
   const hasDefaultDeny = /allow\s+read,\s*write\s*:\s*if\s+false\s*;/.test(text);
 
-  const re = /match\s+(\/[^\s{]*[^\s]*?)\s*\{([\s\S]*?)\n\s*\}/g;
+  const re = /match\s+(\/\S+)\s*\{([\s\S]*?)\n\s*\}/g;
   let m;
   while ((m = re.exec(text)) !== null) {
     const p = m[1].trim();
@@ -64,16 +64,28 @@ function ruleFor(docPath) {
   let best = null;
   for (const r of rules) {
     const rsegs = r.path.split('/').filter(Boolean);
-    // strip braces to compare segment counts/shapes
-    const shape = rsegs.map(s => (s.startsWith('{') ? '*' : s));
-    if (shape.length > segs.length) continue;
-    let ok = true;
-    for (let i = 0; i < shape.length; i++) {
-      if (shape[i] !== '*' && shape[i] !== segs[i]) { ok = false; break; }
-    }
-    if (ok && (!best || rsegs.length > best.segs)) best = { r, segs: rsegs.length };
+    // Rule variables ({date}, {docId}, ...) match zero-or-one usage segment:
+    // `doc(db, 'daily_attendance', date)` resolves to a DOC inside the
+    // collection, while bare collection reads resolve to the collection-only
+    // path — both are legal against the same match block.
+    if (!shapeMatches(rsegs, segs)) continue;
+    if (!best || rsegs.length > best.segs) best = { r, segs: rsegs.length };
   }
   return best ? best.r : null;
+}
+
+/** Wildcard-aware prefix matcher: constants exact, {vars} absorb 0..1 segs. */
+function shapeMatches(ruleSegs, usageSegs) {
+  function at(ri, ui) {
+    if (ri === ruleSegs.length) return ui === usageSegs.length;
+    const rseg = ruleSegs[ri];
+    if (rseg.startsWith('{')) {
+      // consume 0 or 1 usage segment
+      return at(ri + 1, ui) || (ui < usageSegs.length && at(ri + 1, ui + 1));
+    }
+    return ui < usageSegs.length && ruleSegs[ri] === usageSegs[ui] && at(ri + 1, ui + 1);
+  }
+  return at(0, 0);
 }
 
 /* ── 2. re-derive the access surface from the source ──────────── */
@@ -220,6 +232,46 @@ for (const r of rows.sort((a, b) => a.path.localeCompare(b.path) || a.line - b.l
   const mark = r.verdict === 'UNMATCHED' || r.verdict === 'DENIED' ? 'X' : r.verdict === 'ALLOWED' ? ' ' : '~';
   console.log(`${mark}${w(r.path, 23)} ${w(r.kind, 10)} ${w(r.rule, 26)} ${w(r.verdict, 22)} ${r.file}:${r.line}`);
   if (r.detail && r.verdict !== 'ALLOWED') console.log(`   ${' '.repeat(4)}-> ${r.detail}`);
+}
+
+/* ── 3b. required document-archive collections (C6) ──────────── */
+/* The Firestore-backed durable store depends on these exact rule paths.
+ * The Admin SDK bypasses rules, but the signed-in read path and the
+ * default-deny client write posture must stay intact; assert them here so a
+ * rules edit cannot silently drop one. */
+const REQUIRED_DOCUMENT_RULES = [
+  '/documentJobs/{jobId}',
+  '/documentJobs/{jobId}/files/{fileId}',
+  '/documentJobs/{jobId}/files/{fileId}/chunks/{chunkId}',
+  '/documentRecords/{docId}',
+  '/dossiers/{grNo}',
+  '/dismissedFlags/{flagId}',
+  '/documentCorrections/{grNo}',
+];
+{
+  console.log(`\n${'-'.repeat(78)}\ndocument archive (C6) rule coverage`);
+  for (const required of REQUIRED_DOCUMENT_RULES) {
+    const block = rules.find((r) => r.path === required);
+    if (!block) {
+      console.log(`  X missing match block for ${required}`);
+      gaps++;
+      continue;
+    }
+    const readOk = block.perms.get !== undefined && block.perms.list !== undefined;
+    const writeDenied = block.perms.write === 'false' &&
+      block.perms.create === undefined && block.perms.update === undefined && block.perms.delete === undefined;
+    if (!readOk) {
+      console.log(`  X ${required}: signed-in \`get, list\` reads must stay available`);
+      gaps++;
+      continue;
+    }
+    if (!writeDenied) {
+      console.log(`  X ${required}: client writes must stay fully denied (server writes go through the Admin SDK)`);
+      gaps++;
+      continue;
+    }
+    console.log(`  OK ${required} — signed-in reads, client writes denied`);
+  }
 }
 
 /* ── 4. admin email drift ─────────────────────────────────────── */

@@ -18,6 +18,10 @@ import {
   APPLIED_CORRECTIONS_FILE,
 } from './constants.js';
 import { sweepInterruptedJobs } from './queueMath.js';
+// C6: Firestore durable-store mode (source of truth on Vercel; local ./data
+// path is untouched — deployment-mode detection is pure and cheap).
+import { isFirestoreDocumentModeRequested } from './firestoreBackend.js';
+import { bindFirestoreDocumentStores, dispatchFirestoreDelta } from './firestoreStore.js';
 
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -36,6 +40,38 @@ if (fs.existsSync(APPLIED_CORRECTIONS_FILE)) {
   } catch (e) {
     appliedCorrectionsStore = {};
   }
+}
+
+/**
+ * C6: Firestore durability. When real service-account credentials exist AND
+ * the runtime is serverless (or the emulator is configured for tests), the
+ * stores below are wrapped in candidate-tracking proxies (firestoreTracking)
+ * whose deltas dispatch to Firestore on every saveStores() — in-memory stays
+ * the per-request cache, Firestore is the source of truth, hydrated lazily
+ * per instance (firestoreStore.ts header has the full design note).
+ */
+const firestoreActive = isFirestoreDocumentModeRequested();
+if (firestoreActive) {
+  bindFirestoreDocumentStores({
+    raw: (kind) => {
+      switch (kind) {
+        case 'jobs': return jobsStore;
+        case 'records': return documentsStore;
+        case 'dossiers': return dossiersStore;
+        case 'flags': return dismissedFlagsStore;
+        case 'corrections': return appliedCorrectionsStore;
+      }
+    },
+    rebind: (kind, proxy) => {
+      switch (kind) {
+        case 'jobs': jobsStore = proxy as Record<string, BatchProcessingJob>; break;
+        case 'records': documentsStore = proxy as Record<string, StudentDocumentRecord>; break;
+        case 'dossiers': dossiersStore = proxy as Record<string, StudentDossier>; break;
+        case 'flags': dismissedFlagsStore = proxy as Record<string, boolean>; break;
+        case 'corrections': appliedCorrectionsStore = proxy as Record<string, Record<string, string>>; break;
+      }
+    },
+  });
 }
 
 export function saveAppliedCorrection(grNo: string, field: string, newValue: string) {
@@ -99,11 +135,16 @@ export function getCachedSheetRecords(): any[] {
 }
 
 try {
-  if (fs.existsSync(JOBS_FILE)) jobsStore = JSON.parse(fs.readFileSync(JOBS_FILE, 'utf-8'));
-  if (fs.existsSync(DOSSIERS_FILE)) dossiersStore = JSON.parse(fs.readFileSync(DOSSIERS_FILE, 'utf-8'));
-  if (fs.existsSync(DOCUMENTS_FILE)) documentsStore = JSON.parse(fs.readFileSync(DOCUMENTS_FILE, 'utf-8'));
-  if (fs.existsSync(BUNDLES_FILE)) bundlesStore = JSON.parse(fs.readFileSync(BUNDLES_FILE, 'utf-8'));
-  if (fs.existsSync(DISMISSED_FLAGS_FILE)) dismissedFlagsStore = JSON.parse(fs.readFileSync(DISMISSED_FLAGS_FILE, 'utf-8'));
+  if (!firestoreActive) {
+    // Firestore mode skips the disk hydrate entirely: the shared store is the
+    // source of truth and per-instance /tmp (if anything is left there) is a
+    // stale cache, while writes below keep dumping a debug/backup copy.
+    if (fs.existsSync(JOBS_FILE)) jobsStore = JSON.parse(fs.readFileSync(JOBS_FILE, 'utf-8'));
+    if (fs.existsSync(DOSSIERS_FILE)) dossiersStore = JSON.parse(fs.readFileSync(DOSSIERS_FILE, 'utf-8'));
+    if (fs.existsSync(DOCUMENTS_FILE)) documentsStore = JSON.parse(fs.readFileSync(DOCUMENTS_FILE, 'utf-8'));
+    if (fs.existsSync(BUNDLES_FILE)) bundlesStore = JSON.parse(fs.readFileSync(BUNDLES_FILE, 'utf-8'));
+    if (fs.existsSync(DISMISSED_FLAGS_FILE)) dismissedFlagsStore = JSON.parse(fs.readFileSync(DISMISSED_FLAGS_FILE, 'utf-8'));
+  }
 
   for (const [id, doc] of Object.entries(documentsStore)) {
     if (doc.classification === 'IGNORED_NOISE' || doc.filename.includes('CS') || doc.originalFilename?.toLowerCase().includes('camscanner')) {
@@ -143,7 +184,6 @@ try {
  */
 export type StorePersistenceMode = 'debounce' | 'sync';
 let persistenceMode: StorePersistenceMode = process.env.VERCEL ? 'sync' : 'debounce';
-
 /**
  * MUST also stay above reconcileInterruptedJobs() (line below): saveStores()
  * reads this binding at module-init time when the FIX-4b sweep is non-empty,
@@ -190,7 +230,13 @@ export function flushStoresImmediately(): void {
 // Write-behind: telemetry mutates stores up to ~7x per processed document;
 // coalesce the storm into a single flush per 250ms window (local server only
 // — on Vercel persistenceMode is 'sync' and every save writes immediately).
+//
+// C6: in Firestore mode saveStores additionally dispatches the candidate-key
+// delta to Firestore (un-awaited, tracked). The disk flush stays on 'sync'
+// because the handler-level res.json guard (firestoreRequestGuards) awaits
+// commitDocumentStoreWrites() before the response — still no debounce here.
 export function saveStores() {
+  if (firestoreActive) dispatchFirestoreDelta();
   if (persistenceMode === 'sync') {
     flushStores();
     return;

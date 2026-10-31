@@ -20,6 +20,7 @@ import { callGeminiVision, EXTRACTION_SCHEMA } from './aiVision.js';
 import { updateStudentDossier } from './discrepancies.js';
 import { QueueItem, processingQueue, countQueuedForJob } from './queue.js';
 import { isJobComplete, terminalStatusForJob } from './queueMath.js';
+import { persistPageImage } from './firestoreStore.js';
 
 // Keep the queue types/exports part of jobProcessor's public surface — the
 // documentArchiveService facade re-exports them for the routers.
@@ -136,6 +137,10 @@ export async function processSingleDocument(
     };
 
     documentsStore[docRecord.id] = docRecord;
+    // C6: durable page bytes — the optimized buffer is ALREADY compressed by
+    // the existing optimizer (reused per the mission), so this is the
+    // natural persistence point; no-op outside Firestore mode.
+    if (jobsStore[jobId]) await persistPageImage(jobsStore[jobId], docRecord, optimized.buffer);
     if (currentGr !== 'UNASSIGNED') updateStudentDossier(currentGr, docRecord);
 
     const totalTimeMs = Date.now() - fileStart;

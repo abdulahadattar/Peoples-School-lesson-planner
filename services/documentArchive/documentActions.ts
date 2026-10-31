@@ -25,6 +25,12 @@ import {
 import { optimizeAndPrepareImage } from './imageProcessing.js';
 import { autoLinkDocumentsAgainstSheet } from './studentMatching.js';
 import { processSingleDocument } from './jobProcessor.js';
+// C6: Firestore byte fallbacks — no-ops outside Firestore mode.
+import {
+  loadRecordScanBytes,
+  writeRecordScanBytes,
+  deleteStoredPageBytes,
+} from './firestoreStore.js';
 
 export function getAllDossiers(): StudentDossier[] {
   return Object.values(dossiersStore);
@@ -65,10 +71,15 @@ export async function updateDocumentMetadata(
   if (newTag) doc.classification = newTag;
   if (rotateAngle) {
     const filePath = path.join(DATA_DIR, `GR_${doc.grNo}`, doc.filename);
-    if (fs.existsSync(filePath)) {
-      const raw = fs.readFileSync(filePath);
+    // C6: the scan bytes may only exist in Firestore (fresh instance); fall
+    // back to the durable page blob, then write the rotated copy back to
+    // both the on-disk file (if available) and the Firestore blob.
+    let raw: Buffer | null = fs.existsSync(filePath) ? fs.readFileSync(filePath) : null;
+    if (!raw) raw = await loadRecordScanBytes(doc);
+    if (raw) {
       const reoptimized = await optimizeAndPrepareImage(raw, doc.classification === 'STUDENT_PHOTO', rotateAngle);
-      fs.writeFileSync(filePath, reoptimized.buffer);
+      if (fs.existsSync(filePath)) fs.writeFileSync(filePath, reoptimized.buffer);
+      await writeRecordScanBytes(doc, reoptimized.buffer);
       doc.rotationApplied = ((doc.rotationApplied + rotateAngle) % 360) as any;
       doc.width = reoptimized.width;
       doc.height = reoptimized.height;
@@ -115,6 +126,9 @@ export function deleteDocumentRecord(docId: string, opts?: { keepFile?: boolean 
     if (fs.existsSync(filePath)) {
       try { fs.unlinkSync(filePath); } catch {}
     }
+    // C6: retire the durable Firestore copy as well (fire-and-forget; stale
+    // bytes are harmless because the record that resolves them is gone).
+    void deleteStoredPageBytes(doc);
   }
   delete documentsStore[docId];
   if (dossiersStore[grNo]) {
@@ -142,8 +156,11 @@ export async function rescanDocumentRecord(docId: string, serverKeys: string[]):
   const doc = documentsStore[docId];
   if (!doc) return null;
   const filePath = path.join(DATA_DIR, `GR_${doc.grNo}`, doc.filename);
-  if (!fs.existsSync(filePath)) return null;
-  const fileBuffer = fs.readFileSync(filePath);
+  // C6: fall back to the durable Firestore copy when this instance's /tmp is
+  // empty (the scan may have been processed on another instance).
+  let fileBuffer: Buffer | null = fs.existsSync(filePath) ? fs.readFileSync(filePath) : null;
+  if (!fileBuffer) fileBuffer = await loadRecordScanBytes(doc);
+  if (!fileBuffer) return null;
   // FIX-3: reprocess the in-memory buffer BEFORE deleting anything. The old
   // flow unlinked the on-disk file first; if processSingleDocument then
   // failed, the scan AND its file were permanently gone. skipDuplicateCheck
