@@ -98,9 +98,14 @@ export function addQuestionToPaper(
   const newQ: PaperQuestion = {
     id: `q_${idSuffix}`,
     type: isMcq ? 'mcq' : isShort ? 'short' : 'long',
-    question: 'New question text goes here (click edit to modify or regenerate)',
+    question: 'New question text goes here (click Edit or Regenerate)',
     marks: defaultMarks,
-    options: isMcq ? ['Option A', 'Option B', 'Option C', 'Option D'] : undefined,
+    ...(isMcq
+      ? {
+          options: ['Option A', 'Option B', 'Option C', 'Option D'],
+          correctAnswer: 'A',
+        }
+      : {}),
   };
 
   section.questions.push(newQ);

@@ -29,6 +29,7 @@ import {
   PaperAuditModelPayload,
   runDeterministicPaperAudit,
 } from './paperQualityRules';
+import { regenerateSingleQuestion } from './singleQuestionRegenerator';
 
 export interface AuditPaperOptions {
   teacherInfo?: TeacherInfo;
@@ -102,11 +103,12 @@ ${wordExcerpt || '(unavailable)'}
 ${pdfExcerpt || '(unavailable)'}
 
 AUDIT CHECKLIST (check EVERY point):
-1. MCQ ANSWER KEYS (CRITICAL): Re-solve EVERY MCQ independently using ${paper.subject} (${paper.gradeLevel}) knowledge. If 'KEY=' points to the wrong option, is scientifically/mathematically false, or if options are ambiguous/duplicate/none-correct, put the question in 'questionFixes' with corrected 'fixedCorrectAnswer' (and/or 'fixedOptions' / 'fixedQuestion').
-2. SPELLING, GRAMMAR & HALLUCINATIONS: Fix typos, garbled words, truncated stems, nonsensical distractors, or factual errors in any question/option.
-3. MATH & CHEMISTRY FORMATTING IN PDF & WORD: Look for raw '$', unrendered '\\frac', '\\ce', '\\alpha', lost subscripts/superscripts (e.g. 'H2O' where subscript broke or '\\left.' dot leaked), prose wrapped in '$...$', or garbled equations in the rendered PDF & Word views. Express inline math properly using '$...$' and chemistry with '$\\ce{...}$' or standard '$H_2O$' / '$SO_4^{2-}$'.
-4. QUESTION/OPTION HYGIENE & VISUAL LAYOUT: Ensure NO question starts with leftover numbering ('1.', 'Q1:'), NO option has leftover 'A)'/'a)' prefix, and long options or column layouts do not collide in PDF or Word.
-5. Do NOT change the number of questions or marks. Only include entries in 'questionFixes' that actually need fixing. If everything is clean and verified, set passed=true and questionFixes=[].`;
+1. MCQ ANSWER KEYS & ACCURACY (CRITICAL): Re-solve EVERY MCQ independently using ${paper.subject} (${paper.gradeLevel}) knowledge. If 'KEY=' points to the wrong option, is scientifically/mathematically false, or if options are ambiguous/duplicate/none-correct, put the question in 'questionFixes' with corrected 'fixedCorrectAnswer' (and/or 'fixedOptions' / 'fixedQuestion').
+2. CHAPTER & MARKS SCHEME ALIGNMENT: Verify every question belongs to chapter "${paper.chapterName || paper.subject}" and fits its section's marks scheme and depth (MCQs, Short questions, Long questions). If a question is off-chapter or duplicates another item, replace it via 'questionFixes'.
+3. SPELLING, GRAMMAR & FACTS: Fix typos, garbled words, truncated stems, nonsensical distractors, or factual errors in any question/option.
+4. MATH & CHEMISTRY FORMATTING IN PDF & WORD: Look for raw '$', unrendered '\\frac', '\\ce', '\\alpha', lost subscripts/superscripts (e.g. 'H2O' where subscript broke or '\\left.' dot leaked), prose wrapped in '$...$', or garbled equations in the rendered PDF & Word views. Express inline math properly using '$...$' and chemistry with '$\\ce{...}$' or standard '$H_2O$' / '$SO_4^{2-}$'.
+5. QUESTION/OPTION HYGIENE & VISUAL LAYOUT: Ensure NO question starts with leftover numbering ('1.', 'Q1:'), NO option has leftover 'A)'/'a)' prefix, and long options or column layouts do not collide in PDF or Word.
+6. Do NOT change the number of questions or marks. Only include entries in 'questionFixes' that actually need fixing. If everything is clean and verified, set passed=true and questionFixes=[].`;
 }
 
 function normalizeModelAuditPayload(raw: string): PaperAuditModelPayload {
@@ -271,7 +273,56 @@ export async function auditAndRefinePaper(
     }
   }
 
-  const finalDet = runDeterministicPaperAudit(currentPaper);
+  let finalDet = runDeterministicPaperAudit(currentPaper);
+  const flawedPositions = new Map<string, { sIdx: number; qIdx: number; reasons: string[]; category: DeterministicFinding['category'] }>();
+  for (const f of finalDet.findings) {
+    if (f.severity !== 'error' || f.sectionIndex === undefined || f.questionIndex === undefined) continue;
+    const key = `${f.sectionIndex}:${f.questionIndex}`;
+    const existing = flawedPositions.get(key);
+    if (existing) {
+      existing.reasons.push(f.message);
+    } else {
+      flawedPositions.set(key, {
+        sIdx: f.sectionIndex,
+        qIdx: f.questionIndex,
+        reasons: [f.message],
+        category: f.category,
+      });
+    }
+  }
+
+  if (flawedPositions.size > 0 && aiCompletedAnyPass) {
+    let repairedCount = 0;
+    for (const target of Array.from(flawedPositions.values()).slice(0, 5)) {
+      const targetQ = currentPaper.sections?.[target.sIdx]?.questions?.[target.qIdx];
+      if (!targetQ) continue;
+      try {
+        const replacement = await regenerateSingleQuestion(
+          currentPaper,
+          targetQ,
+          `Fix quality issue(s): ${target.reasons.join('; ')}. Keep strictly aligned with chapter "${currentPaper.chapterName || currentPaper.subject}" and ensure accurate options and answer key.`
+        );
+        currentPaper.sections[target.sIdx].questions[target.qIdx] = replacement;
+        allFixes.push({
+          sectionIndex: target.sIdx,
+          questionNumber: target.qIdx + 1,
+          category: target.category,
+          reason: `Section ${target.sIdx + 1} Q${target.qIdx + 1}: Automatically replaced flawed question.`,
+          applied: true,
+        });
+        repairedCount += 1;
+      } catch (repairErr) {
+        console.warn('Silent targeted question repair skipped:', repairErr);
+      }
+    }
+    if (repairedCount > 0) {
+      const postRepairClean = applyDeterministicCleanup(currentPaper);
+      currentPaper = postRepairClean.paper;
+      allFixes.push(...postRepairClean.fixes);
+      finalDet = runDeterministicPaperAudit(currentPaper);
+    }
+  }
+
   if (allFixes.length > 0 && lastWarnings.length === 0 && !lastPassClean) {
     const finalBuild = await inspectPaperBuilds(currentPaper, options.teacherInfo, options.mathScale ?? 85);
     checkedPdf = checkedPdf || finalBuild.pdfBuilt;

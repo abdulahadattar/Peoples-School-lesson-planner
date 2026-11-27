@@ -61,9 +61,9 @@ export const PaperSectionCard: React.FC<PaperSectionCardProps> = ({
             value={questionCount}
             min={mcqMin}
             max={mcqMax}
-            hint="Strictly 30–50 classroom MCQs (1 mark each)"
+            hint={`${questionCount} MCQs · ${marksPerQuestion} ${marksPerQuestion === 1 ? 'mark' : 'marks'} each`}
             onChange={(val) =>
-              onQuestionCountChange(Math.max(mcqMin, Math.min(mcqMax, Math.round(val || mcqMin))))
+              onQuestionCountChange(Math.max(mcqMin, Math.min(mcqMax, Math.round(val ?? mcqMin))))
             }
           />
           <div className="space-y-1.5 p-3 rounded-lg bg-white dark:bg-slate-800/60 border border-black/[0.04] dark:border-white/[0.06] text-xs text-slate-600 dark:text-slate-400">
@@ -73,7 +73,7 @@ export const PaperSectionCard: React.FC<PaperSectionCardProps> = ({
             </div>
             <input
               type="range"
-              aria-label="Classroom MCQ count slider"
+              aria-label="MCQ count slider"
               min={mcqMin}
               max={mcqMax}
               step={1}
@@ -82,7 +82,7 @@ export const PaperSectionCard: React.FC<PaperSectionCardProps> = ({
               className="w-full accent-blue-600 cursor-pointer"
             />
             <p className="text-[11px]">
-              Auto-saves answer key &amp; Test Code for OMR sheets.
+              Auto-syncs Answer Key and printable OMR sheet.
             </p>
           </div>
         </div>

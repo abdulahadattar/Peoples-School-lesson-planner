@@ -57,6 +57,7 @@ export interface PaperQuestion {
 }
 
 export type PaperDifficulty = 'easy' | 'medium' | 'hard';
+export type PaperFormat = 'full' | 'section_ab' | 'mcq_only';
 export type ClassroomTestFrequency = 'weekly' | 'monthly';
 
 export interface PaperOmrMeta {
@@ -76,8 +77,11 @@ export interface PaperConfig {
   gradeId: string;
   subjectId: string;
   chapterId: string;
+  paperFormat?: PaperFormat;
   totalMarks: number;
   mcqCount: number;
+  /** Marks per MCQ question (default 1). */
+  mcqMarksPerQuestion?: number;
   /** Overall difficulty of the generated questions. */
   difficulty?: PaperDifficulty;
   /** Number of short questions listed on the paper (students attempt `shortAttemptCount`). */
@@ -93,7 +97,7 @@ export interface PaperConfig {
   /** Marks per long question (default 4 for class test, 8 or 10 for mid/board). */
   longMarksPerQuestion?: number;
   durationMinutes: number;
-  /** Auto-paired OMR sheet + answer key metadata when generating MCQ-only tests. */
+  /** Auto-paired OMR sheet + answer key metadata when MCQs are included. */
   omrMeta?: Omit<PaperOmrMeta, 'testCode'> & { testCode?: string };
 }
 

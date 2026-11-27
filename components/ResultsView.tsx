@@ -77,12 +77,11 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
       });
   };
 
-  // Keep the OMR answer key in lock-step with the paper after any structural
-  // edit (single-question edit/regenerate, add, remove). registerOmrTestFromPaper
-  // rewrites the registry (UI state via localStorage) and syncs to Firestore, so
-  // OMR grading and key exports never drift from the edited paper.
   const syncOmrAfterEdit = (paper: GeneratedPaper) => {
-    if (paper.omrMeta?.enabled || isMcqOnlyPaper(paper)) {
+    const hasMcqs = paper.sections.some((sec) =>
+      sec.questions.some((q) => q.type === 'mcq' || (Array.isArray(q.options) && q.options.length > 0))
+    );
+    if ((paper.omrMeta?.enabled || isMcqOnlyPaper(paper)) && hasMcqs) {
       try {
         registerOmrTestFromPaper(paper, { paperSnapshot: paper });
       } catch (err) {
@@ -94,8 +93,8 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
   const handleUpdateQuestion = (sIdx: number, qIdx: number, updatedQuestion: PaperQuestion) => {
     if (!papers || papers.length === 0) return;
     const newPaper = applyQuestionUpdateToPaper(papers[0], sIdx, qIdx, updatedQuestion);
-    onUpdatePaper?.(newPaper);
     syncOmrAfterEdit(newPaper);
+    onUpdatePaper?.(newPaper);
     persistPaperEdit(newPaper).catch(console.error);
   };
 
@@ -109,8 +108,8 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
       confirmLabel: 'Remove',
       onConfirm: () => {
         const newPaper = removeQuestionFromPaper(papers[0], sIdx, qIdx);
-        onUpdatePaper?.(newPaper);
         syncOmrAfterEdit(newPaper);
+        onUpdatePaper?.(newPaper);
         persistPaperEdit(newPaper).catch(console.error);
         setConfirmDialog(null);
         showToast('Question removed and marks recalculated.', 'info');
@@ -121,8 +120,8 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
   const handleAddQuestion = (sIdx: number) => {
     if (!papers || papers.length === 0) return;
     const newPaper = addQuestionToPaper(papers[0], sIdx);
-    onUpdatePaper?.(newPaper);
     syncOmrAfterEdit(newPaper);
+    onUpdatePaper?.(newPaper);
     persistPaperEdit(newPaper).catch(console.error);
   };
 

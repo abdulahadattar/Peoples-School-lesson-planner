@@ -20,15 +20,12 @@ import { toUserErrorMessage } from './utils/userMessage';
 import { PrivacyPolicyPage } from './components/legal/PrivacyPolicyPage';
 import { TermsOfServicePage } from './components/legal/TermsOfServicePage';
 
-const App: React.FC = () => {
-  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
-  if (pathname === '/privacy') {
-    return <PrivacyPolicyPage />;
-  }
-  if (pathname === '/terms') {
-    return <TermsOfServicePage />;
-  }
+function normalizeRoutePath(pathname: string): string {
+  const cleaned = pathname.replace(/\/+$/, '');
+  return cleaned || '/';
+}
 
+const MainPortalApp: React.FC = () => {
   const [view, setView] = useState<View>('home');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const {
@@ -336,6 +333,17 @@ const App: React.FC = () => {
       {ToastComponent}
     </div>
   );
+};
+
+const App: React.FC = () => {
+  const pathname = typeof window !== 'undefined' ? normalizeRoutePath(window.location.pathname) : '/';
+  if (pathname === '/privacy') {
+    return <PrivacyPolicyPage />;
+  }
+  if (pathname === '/terms') {
+    return <TermsOfServicePage />;
+  }
+  return <MainPortalApp />;
 };
 
 export default App;

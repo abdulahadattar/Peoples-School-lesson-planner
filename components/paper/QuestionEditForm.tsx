@@ -46,7 +46,7 @@ export const QuestionEditForm: React.FC<QuestionEditFormProps> = ({
       question: editText.trim(),
       marks: Number(editMarks) || question.marks,
       options: editOptions.length > 0 ? editOptions.map((o) => o.trim()).filter(Boolean) : undefined,
-      ...(question.type === 'mcq' && cleanCorrect ? { correctAnswer: cleanCorrect } : {}),
+      ...(question.type === 'mcq' ? { correctAnswer: cleanCorrect || 'A' } : {}),
     });
   };
 

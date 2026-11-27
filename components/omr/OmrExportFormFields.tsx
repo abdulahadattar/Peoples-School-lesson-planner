@@ -165,17 +165,22 @@ export const OmrExportFormFields: React.FC<OmrExportFormFieldsProps> = ({
             htmlFor="omr-qcount-input"
             className="block text-xs font-semibold text-brand-text-secondary mb-1"
           >
-            MCQ Count ({CLASSROOM_MCQ_MIN}–{CLASSROOM_MCQ_MAX})
+            MCQ Count ({hasLockedPaper ? '1–100' : `${CLASSROOM_MCQ_MIN}–${CLASSROOM_MCQ_MAX}`})
           </label>
           <input
             id="omr-qcount-input"
             type="number"
-            min={CLASSROOM_MCQ_MIN}
-            max={CLASSROOM_MCQ_MAX}
+            min={hasLockedPaper ? 1 : CLASSROOM_MCQ_MIN}
+            max={hasLockedPaper ? 100 : CLASSROOM_MCQ_MAX}
             value={questionCount}
-            onChange={(e) =>
-              onQuestionCountChange(clampClassroomMcqCount(Number(e.target.value)))
-            }
+            onChange={(e) => {
+              const raw = Number(e.target.value);
+              onQuestionCountChange(
+                hasLockedPaper
+                  ? Math.max(1, Math.min(100, Math.round(raw || 1)))
+                  : clampClassroomMcqCount(raw)
+              );
+            }}
             className="w-full px-3 py-2 text-xs font-semibold tabular-nums rounded-lg border border-brand-border bg-brand-surface text-brand-text-primary"
           />
         </div>

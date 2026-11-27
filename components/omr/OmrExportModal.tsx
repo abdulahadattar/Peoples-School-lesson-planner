@@ -76,9 +76,11 @@ export const OmrExportModal: React.FC<OmrExportModalProps> = ({
   const [isExporting, setIsExporting] = useState(false);
   const [exportStatus, setExportStatus] = useState<string | null>(null);
 
+  const clampOmrCount = (raw: number) => Math.max(1, Math.min(100, Math.round(Number(raw) || 30)));
+
   const applySavedTest = (record: OmrTestRecord) => {
     const cls = normalizeGradeLevel(record.classLevel) || record.classLevel || 'IX';
-    const cnt = clampClassroomMcqCount(record.questionCount);
+    const cnt = clampOmrCount(record.questionCount);
     setSelectedSavedCode(record.testCode);
     setClassLevel(cls);
     setSubject(record.subject);
@@ -98,7 +100,7 @@ export const OmrExportModal: React.FC<OmrExportModalProps> = ({
 
     if (extracted) {
       const cls = normalizeGradeLevel(extracted.classLevel) || extracted.classLevel || 'IX';
-      const cnt = clampClassroomMcqCount(extracted.questionCount);
+      const cnt = clampOmrCount(extracted.questionCount);
       setSelectedSavedCode(extracted.paperId || '');
       setClassLevel(cls);
       setSubject(extracted.subject);

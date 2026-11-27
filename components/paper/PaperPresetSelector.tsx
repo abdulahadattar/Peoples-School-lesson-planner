@@ -1,75 +1,44 @@
 import React from 'react';
 import { Check } from 'lucide-react';
-import type { ClassroomTestFrequency } from '../../services/omr/types';
+import { PaperFormat } from '../../types';
+import {
+  getPresetsForFormat,
+  PAPER_PRESETS,
+  type PaperPreset,
+} from '../../services/paper/paperFormatPresets';
 
-export interface PaperPreset {
-  id: string;
-  name: string;
-  total: number;
-  duration: number;
-  mcq: number;
-  testFrequency: ClassroomTestFrequency;
-  formulaLabel: string;
-}
-
-export const PAPER_PRESETS: PaperPreset[] = [
-  {
-    id: 'weekly-30',
-    name: 'Weekly Test (30 MCQs)',
-    total: 30,
-    duration: 30,
-    mcq: 30,
-    testFrequency: 'weekly',
-    formulaLabel: '30 MCQs · Weekly',
-  },
-  {
-    id: 'weekly-35',
-    name: 'Weekly Review (35 MCQs)',
-    total: 35,
-    duration: 35,
-    mcq: 35,
-    testFrequency: 'weekly',
-    formulaLabel: '35 MCQs · Weekly',
-  },
-  {
-    id: 'monthly-40',
-    name: 'Unit Test (40 MCQs)',
-    total: 40,
-    duration: 45,
-    mcq: 40,
-    testFrequency: 'monthly',
-    formulaLabel: '40 MCQs · Monthly',
-  },
-  {
-    id: 'monthly-50',
-    name: 'Monthly Test (50 MCQs)',
-    total: 50,
-    duration: 50,
-    mcq: 50,
-    testFrequency: 'monthly',
-    formulaLabel: '50 MCQs · Monthly',
-  },
-];
+export { PAPER_PRESETS, type PaperPreset };
 
 export interface PaperPresetSelectorProps {
+  paperFormat: PaperFormat;
   activePresetId: string;
   onSelectPreset: (preset: PaperPreset) => void;
 }
 
+const FORMAT_LABELS: Record<PaperFormat, { title: string; subtitle: string }> = {
+  full: { title: 'Full Paper Presets', subtitle: 'Section A + B + C templates' },
+  section_ab: { title: 'Section A + B Presets', subtitle: 'MCQs + Short questions' },
+  mcq_only: { title: 'Unit Test Presets', subtitle: 'Answer Key & OMR ready' },
+};
+
 export const PaperPresetSelector: React.FC<PaperPresetSelectorProps> = ({
+  paperFormat,
   activePresetId,
   onSelectPreset,
 }) => {
+  const presets = getPresetsForFormat(paperFormat);
+  const labels = FORMAT_LABELS[paperFormat];
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <label className="block text-xs text-brand-text-secondary font-medium">
-          Classroom Test Presets (30–50 MCQs)
+          {labels.title}
         </label>
-        <span className="text-[11px] text-brand-text-tertiary">Weekly &amp; monthly OMR-ready tests</span>
+        <span className="text-[11px] text-brand-text-tertiary">{labels.subtitle}</span>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-        {PAPER_PRESETS.map((preset) => {
+        {presets.map((preset) => {
           const isActive = activePresetId === preset.id;
           return (
             <button

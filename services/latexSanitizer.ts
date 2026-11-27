@@ -100,16 +100,45 @@ function wrapBareMath(text: string): string {
   return out.join('');
 }
 
+/** Wrap plain-text math expressions (sqrt, fractions, equations) in LaTeX dollar delimiters. */
+export function wrapPlainMathExpressions(text: string): string {
+  if (!text || text.includes('$')) return text;
+  let modified = text;
+
+  // 1. sqrt(...) -> $\sqrt{...}$
+  modified = modified.replace(/\bsqrt\s*\(([^)]+)\)/gi, (_m, inner) => `$\\sqrt{${inner}}$`);
+
+  // 2. Fractions like (3/2) or 3/2 followed by variable tokens like kT, RT
+  modified = modified.replace(/\b(\(?\d+\s*\/\s*\d+\)?)\s*([a-zA-Z\d^._]+)/g, (_m, frac, rest) => {
+    if (/^[a-zA-Z]/.test(rest)) {
+      return `$${frac} ${rest}$`;
+    }
+    return _m;
+  });
+
+  // 3. Short equations with '='
+  if (modified.includes('=') && !modified.includes('$')) {
+    const words = modified.trim().split(/\s+/);
+    if (words.length <= 10 && !/\b(which|where|when|that|find|calculate|determine|what|choose|select)\b/i.test(modified)) {
+      return `$${modified}$`;
+    }
+  }
+
+  return modified;
+}
+
 /**
  * Repair one AI-generated string:
+ *  - wrap plain-text math formulas in delimiters,
  *  - demote prose-only $...$ fragments to plain text,
  *  - wrap bare LaTeX commands / powers in delimiters,
  *  - drop stray unbalanced '$' characters.
  */
 export function sanitizeMathText(rawText: string): string {
   if (!rawText) return rawText;
-  const text = normalizeMathDelimiters(rawText);
+  let text = normalizeMathDelimiters(rawText);
   if (!text.includes('$')) {
+    text = wrapPlainMathExpressions(text);
     // No delimiters at all — only bare-command repair applies
     return /\\/.test(text) || /\^/.test(text) ? wrapBareMath(text) : text;
   }

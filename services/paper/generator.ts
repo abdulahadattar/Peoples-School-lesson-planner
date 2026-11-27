@@ -1,11 +1,8 @@
 import { Part } from '@google/genai';
 import { GeneratedPaper, PaperQuestion, PaperDifficulty } from '../../types';
-import { sanitizeStringFields } from '../latexSanitizer';
-import { sanitizeSingleQuestion } from '../paperLayout';
 import { requestJsonWithRetry, downloadPdfAsPart, LogCallback } from '../geminiService';
-import { cleanAndParseJson } from '../jsonHelpers';
 import { loadSloChapter } from '../sloData';
-import { paperSchema, singleQuestionSchema } from './schema';
+import { paperSchema } from './schema';
 import {
   getGradeName,
   getSubjectName,
@@ -73,21 +70,20 @@ export async function generateExamPaper(
     if (chapter?.slos && chapter.slos.length > 0) {
       slos = chapter.slos.map((s: any, idx: number) => `${s.id || `SLO_${idx + 1}`}: ${s.text || ''}`);
     }
-    log(`Found chapter: ${chapter ? chapter.chapter_name : chapterName}, pdf_url: ${chapter?.pdf_url || 'none'}`);
+    log(`Reading chapter: ${chapter ? chapter.chapter_name : chapterName}`);
     if (chapter?.pdf_url) {
-      log(`Downloading chapter PDF: ${chapter.pdf_url}`);
       const pdfPart = await downloadPdfAsPart(chapter.pdf_url);
       if (pdfPart) {
         contextParts = [pdfPart];
-        log(`✓ PDF context loaded (${(((pdfPart.inlineData?.data?.length || 0) * 0.75) / 1024).toFixed(0)}KB) — will be sent with API request`);
+        log('Chapter textbook loaded.');
       } else {
-        log(`✗ Could not download PDF, using built-in syllabus curriculum guidance.`);
+        log('Using syllabus topics for this chapter.');
       }
     } else {
-      log(`Using built-in curriculum syllabus knowledge (no PDF required).`);
+      log('Using syllabus topics for this chapter.');
     }
   } catch (err) {
-    log(`Error loading PDF context: ${err instanceof Error ? err.message : String(err)}`);
+    console.warn('Chapter resource lookup issue:', err);
   }
 
   const counts: PaperStructureCounts = {
@@ -230,7 +226,7 @@ Set each section's "instruction" field to the marking rule for that section${sho
 
   const runChunkedGeneration = async (parts?: Part[]): Promise<GeneratedPaper> => {
     const batchCount = Math.ceil(mcqCount / MAX_MCQS_PER_PASS);
-    log(`Generating large paper in ${batchCount} MCQ batches${shortQuestionCount + longQuestionCount > 0 ? ' + subjective sections' : ''}...`);
+    log('Drafting exam paper sections...');
     const allMcqs: PaperQuestion[] = [];
     for (let b = 0; b < batchCount; b++) {
       const remaining = mcqCount - allMcqs.length;
@@ -303,11 +299,11 @@ SLOs:\n${sloText}`;
   } catch (err) {
     const errObj = err instanceof Error ? err : new Error(String(err));
     if (contextParts.length > 0 && isPdfContextRejection(errObj)) {
-      log(`Model rejected PDF context — automatically retrying using built-in syllabus knowledge...`);
+      log('Continuing using chapter syllabus topics...');
       return usedChunkedInitially ? runChunkedGeneration(undefined) : runSinglePass(undefined);
     }
     if (!usedChunkedInitially && mcqCount > 15 && !isNonRetryableInfraError(errObj)) {
-      log(`Single-pass generation hit an issue (${errObj.message}); retrying with chunked MCQ batches...`);
+      log('Retrying section-by-section...');
       return runChunkedGeneration(undefined);
     }
     throw errObj;
@@ -348,9 +344,9 @@ ${revisionPrompt}
 Please return the complete revised exam paper as a JSON object.`;
 
   return requestJsonWithRetry<GeneratedPaper>({
-    operationName: 'revising exam paper',
-    firstAttemptLog: 'Sending revision request to AI...',
-    retryLabel: 'Retrying revision',
+    operationName: 'updating exam paper',
+    firstAttemptLog: 'Updating paper...',
+    retryLabel: 'Retrying paper update',
     systemInstruction,
     userPrompt,
     schema: paperSchema,
@@ -358,67 +354,11 @@ Please return the complete revised exam paper as a JSON object.`;
     log,
     parse: (raw) => {
       const normalized = normalizeRevisedPaper(raw, currentPaper);
-      log(`Revised paper received: ${normalized.sections?.length || 0} sections (${normalized.totalMarks} marks)`);
+      log(`Updated ${normalized.sections?.length || 0} sections (${normalized.totalMarks} marks).`);
       return normalized;
     },
     failMessage: (lastError) => `Failed to revise exam paper: ${lastError.message}`,
   });
 }
 
-export async function regenerateSingleQuestion(
-  paper: GeneratedPaper,
-  targetQuestion: PaperQuestion,
-  customInstruction?: string,
-  logCallback?: LogCallback
-): Promise<PaperQuestion> {
-  const log = (msg: string) => {
-    console.log(`[paperService] ${msg}`);
-    logCallback?.(msg);
-  };
-
-  const systemInstruction = `You are an expert examination paper setter for Peoples Higher Secondary School Jamshoro (PHSSJ) under the Ziauddin University Examination Board (ZUEB) curriculum.
-Generate ONE single replacement question matching:
-- Subject: ${paper.subject}
-- Class/Grade: ${paper.gradeLevel}
-- Chapter/Topic: ${paper.chapterName || 'Standard curriculum'}
-- Question Type: ${targetQuestion.type.toUpperCase()}
-- Marks: ${targetQuestion.marks}
-
-RULES:
-1. Generate an entirely new, syllabus-accurate question.
-2. If MCQ: provide exactly 4 clear options (A, B, C, D) in the 'options' array.
-3. If Short or Long question: do NOT supply options.
-4. Use standard LaTeX delimiters ($...$ inline) ONLY for mathematical equations, powers, and scientific formulas. Never wrap plain text in dollar signs.
-5. Strictly output JSON matching the provided schema.`;
-
-  const userPrompt = `Replace this question:
-"${targetQuestion.question}"
-${targetQuestion.options && targetQuestion.options.length > 0 ? `Current options:\n${targetQuestion.options.map((o, i) => `(${String.fromCharCode(65 + i)}) ${o}`).join('\n')}` : ''}
-
-${customInstruction ? `Teacher's specific preference for the replacement: "${customInstruction}"` : 'Please generate an alternative question with appropriate cognitive depth.'}
-
-Provide only the single replacement question JSON object.`;
-
-  return requestJsonWithRetry<PaperQuestion>({
-    operationName: 'regenerating question',
-    firstAttemptLog: `Regenerating ${targetQuestion.type} question...`,
-    retryLabel: 'Retrying question regeneration',
-    systemInstruction,
-    userPrompt,
-    schema: singleQuestionSchema,
-    temperature: 0.4,
-    log,
-    parse: (raw) => {
-      const parsed = cleanAndParseJson(raw);
-      const cleaned = sanitizeSingleQuestion(sanitizeStringFields(parsed) as PaperQuestion);
-      if (!cleaned.id) {
-        cleaned.id = targetQuestion.id || `q_${Date.now()}`;
-      }
-      cleaned.type = targetQuestion.type;
-      cleaned.marks = targetQuestion.marks;
-      log(`✓ Single question regenerated successfully.`);
-      return cleaned;
-    },
-    failMessage: (lastError) => `Failed to regenerate question: ${lastError.message}`,
-  });
-}
+export { regenerateSingleQuestion } from './singleQuestionRegenerator';

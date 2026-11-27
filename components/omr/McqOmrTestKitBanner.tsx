@@ -117,7 +117,7 @@ export const McqOmrTestKitBanner: React.FC<McqOmrTestKitBannerProps> = ({
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-sm font-bold text-brand-text-primary">
-                {formatTestFrequencyLabel(extracted.testFrequency)} · Linked OMR &amp; Key
+                {extracted.isMcqOnly ? formatTestFrequencyLabel(extracted.testFrequency) : 'Section A MCQs'} · Answer Key &amp; OMR
               </h3>
               <span className="px-2 py-0.5 rounded-md font-mono text-[11px] font-bold bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300">
                 Code: {extracted.paperId}

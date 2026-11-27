@@ -17,8 +17,8 @@ export async function generateExamPaperAction(
   teacherInfo?: TeacherInfo
 ): Promise<GeneratedPaper> {
   setProgress({ current: 1, total: 4 });
-  setStatusMessage('Preparing exam questions...');
-  addLog('Step 1/4: Preparing exam questions...');
+  setStatusMessage('Reading chapter & preparing questions...');
+  addLog('Reading chapter and preparing exam questions...');
 
   const draftPaper = await generateExamPaper(
     config.gradeId,
@@ -32,15 +32,19 @@ export async function generateExamPaperAction(
     config.longAttemptCount,
     config.durationMinutes,
     config.difficulty || 'medium',
-    addLog,
+    (msg) => {
+      if (msg.startsWith('Reading chapter:') || msg.startsWith('Chapter textbook') || msg.startsWith('Using syllabus')) {
+        addLog(msg);
+      }
+    },
     config.shortMarksPerQuestion || 2,
     config.longMarksPerQuestion || 4,
-    1
+    config.mcqMarksPerQuestion || 1
   );
 
   setProgress({ current: 2, total: 4 });
-  setStatusMessage('Verifying formatting, math & answer key...');
-  addLog('Step 2/4: Verifying paper quality, layout, and answer key...');
+  setStatusMessage('Checking formulas, marks & answer key...');
+  addLog('Checking questions, formulas, and answer key...');
 
   const paper = await auditAndRefinePaper(draftPaper, {
     teacherInfo,
@@ -49,13 +53,13 @@ export async function generateExamPaperAction(
   });
 
   setProgress({ current: 3, total: 4 });
-  setStatusMessage('Formatting document & pairing OMR key...');
-  addLog('Step 3/4: Finalizing paper & answer key...');
+  setStatusMessage('Preparing printable paper & answer key...');
+  addLog('Formatting printable paper and answer key...');
 
   const isMcqOnly =
     (config.shortQuestionCount === 0 && config.longQuestionCount === 0 && config.mcqCount > 0) ||
     isMcqOnlyPaper(paper);
-  const shouldPairOmr = config.omrMeta?.enabled ?? isMcqOnly;
+  const shouldPairOmr = (config.omrMeta?.enabled ?? isMcqOnly) && config.mcqCount > 0;
 
   if (shouldPairOmr) {
     const reg = registerOmrTestFromPaper(paper, {
@@ -66,12 +70,12 @@ export async function generateExamPaperAction(
       examType: config.omrMeta?.examType,
       paperSnapshot: paper,
     });
-    addLog(`✓ Paired Classroom Test Code: ${reg.testCode} (${reg.testNumber}, ${reg.testDate})`);
+    addLog(`✓ Linked Test Code: ${reg.testCode} (${reg.testNumber})`);
   }
 
   setProgress({ current: 4, total: 4 });
-  setStatusMessage('Complete!');
-  addLog('Step 4/4: Paper ready!');
+  setStatusMessage('Question paper is ready!');
+  addLog('✓ Question paper ready to view and print.');
 
   try {
     const saved = await saveExamPaperToDb(paper, teacherInfo);

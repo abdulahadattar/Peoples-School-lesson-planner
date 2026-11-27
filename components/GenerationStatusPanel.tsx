@@ -13,7 +13,7 @@ interface GenerationStatusPanelProps {
   error?: string | null;
 }
 
-const paperSteps = ['Preparing', 'Generating', 'Verifying', 'Ready'];
+const paperSteps = ['Reading Chapter', 'Drafting', 'Checking', 'Ready'];
 const lessonSteps = ['Preparing', 'Generating', 'Exporting'];
 
 const GenerationStatusPanel: React.FC<GenerationStatusPanelProps> = ({
@@ -36,7 +36,7 @@ const GenerationStatusPanel: React.FC<GenerationStatusPanelProps> = ({
   // Paper generation reports 4 steps; lesson generation reports 1+ SLOs.
   const isPaperFlow =
     generationProgress?.total === 4 ||
-    logMessages.some((m) => /\b(exam paper|exam questions|MCQ)\b/i.test(m));
+    logMessages.some((m) => /\b(exam paper|question paper|exam questions|MCQ)\b/i.test(m));
   const steps = isPaperFlow ? paperSteps : lessonSteps;
   const progressPct = generationProgress && generationProgress.total > 0
     ? Math.round((generationProgress.current / generationProgress.total) * 100)
