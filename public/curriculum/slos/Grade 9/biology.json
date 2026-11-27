@@ -1,0 +1,330 @@
+{
+  "subject": "Biology",
+  "grade": "Grade 9",
+  "total_chapters": 9,
+  "chapters": [
+    {
+      "chapter_number": 1,
+      "chapter_name": "Introduction to Biology",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Biology/Chapter%2001%20-%20INTRODUCTION%20TO%20BIOLOGY.pdf",
+      "slos": [
+        {
+          "id": "bio9_ch1_1",
+          "text": "Define Biology and explain its meaning as the study of living organisms",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "bio9_ch1_2",
+          "text": "Describe the major divisions and branches of Biology (Morphology, Anatomy, Cell Biology, Histology, Physiology)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch1_3",
+          "text": "Explain the relationship of Biology with other sciences (Physics, Chemistry, Mathematics)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch1_4",
+          "text": "Describe the levels of organization in living organisms (molecular, cellular, tissue, organ, organism, population)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch1_5",
+          "text": "Define and differentiate between Taxonomy, Genetics, and Developmental Biology",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch1_6",
+          "text": "Explain the importance of Environmental Biology, Paleontology, and Biotechnology",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch1_7",
+          "text": "Describe career opportunities in Biology (Fisheries, Biotechnology, Medicine)",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "bio9_ch1_8",
+          "text": "Discuss the Quranic perspective on the study of life and creation",
+          "cognitive_level": "Analysis"
+        }
+      ]
+    },
+    {
+      "chapter_number": 2,
+      "chapter_name": "Solving a Biological Problem",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Biology/Chapter%2002%20-%20SOLVING%20A%20BIOLOGICAL%20PROBLEM.pdf",
+      "slos": [
+        {
+          "id": "bio9_ch2_1",
+          "text": "Explain the scientific method and its steps in solving biological problems",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch2_2",
+          "text": "Identify and formulate biological problems through observation",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "bio9_ch2_3",
+          "text": "Design experiments to test biological hypotheses",
+          "cognitive_level": "Application"
+        },
+        {
+          "id": "bio9_ch2_4",
+          "text": "Collect, analyze, and interpret biological data",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "bio9_ch2_5",
+          "text": "Draw conclusions from experimental results",
+          "cognitive_level": "Analysis"
+        }
+      ]
+    },
+    {
+      "chapter_number": 3,
+      "chapter_name": "Biodiversity",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Biology/Chapter%2003%20-%20BIODIVERSITY.pdf",
+      "slos": [
+        {
+          "id": "bio9_ch3_1",
+          "text": "Define biodiversity and explain its importance",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "bio9_ch3_2",
+          "text": "Describe the three domains of life (Bacteria, Archaea, Eukarya)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch3_3",
+          "text": "Explain the five-kingdom classification system",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch3_4",
+          "text": "Describe the characteristics of each kingdom (Monera, Protista, Fungi, Plantae, Animalia)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch3_5",
+          "text": "Explain the binomial nomenclature system for naming organisms",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch3_6",
+          "text": "Discuss the importance of conservation of biodiversity",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 4,
+      "chapter_name": "Cells and Tissues",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Biology/Chapter%2004%20-%20CELLS%20AND%20TISSUES.pdf",
+      "slos": [
+        {
+          "id": "bio9_ch4_1",
+          "text": "Describe the cell theory and its postulates",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "bio9_ch4_2",
+          "text": "Differentiate between prokaryotic and eukaryotic cells",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch4_3",
+          "text": "Identify and describe the structure and function of cell organelles (nucleus, mitochondria, ribosomes, etc.)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch4_4",
+          "text": "Compare plant and animal cells",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "bio9_ch4_5",
+          "text": "Describe the structure and function of cell membrane",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch4_6",
+          "text": "Explain the types of tissues in plants and animals",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 5,
+      "chapter_name": "Cell Cycle",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Biology/Chapter%2005%20-%20CELL%20CYCLE.pdf",
+      "slos": [
+        {
+          "id": "bio9_ch5_1",
+          "text": "Define cell cycle and explain its phases (Interphase, Mitosis, Cytokinesis)",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "bio9_ch5_2",
+          "text": "Describe the stages of mitosis (Prophase, Metaphase, Anaphase, Telophase)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch5_3",
+          "text": "Explain the significance of mitosis in growth and repair",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch5_4",
+          "text": "Compare mitosis and meiosis",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "bio9_ch5_5",
+          "text": "Describe the role of meiosis in gamete formation",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 6,
+      "chapter_name": "Enzymes",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Biology/Chapter%2006%20-%20ENZYMES.pdf",
+      "slos": [
+        {
+          "id": "bio9_ch6_1",
+          "text": "Define enzymes and explain their nature as biological catalysts",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "bio9_ch6_2",
+          "text": "Describe the mechanism of enzyme action (lock and key model)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch6_3",
+          "text": "Explain factors affecting enzyme activity (temperature, pH, substrate concentration)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch6_4",
+          "text": "Describe the specificity of enzymes",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch6_5",
+          "text": "Explain the role of enzymes in metabolic reactions",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 7,
+      "chapter_name": "Bioenergetics",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Biology/Chapter%2007%20-%20BIOENERGETICS.pdf",
+      "slos": [
+        {
+          "id": "bio9_ch7_1",
+          "text": "Define bioenergetics and explain the concept of energy in living organisms",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "bio9_ch7_2",
+          "text": "Describe the process of photosynthesis and its importance",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch7_3",
+          "text": "Explain the light-dependent and light-independent reactions of photosynthesis",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch7_4",
+          "text": "Describe cellular respiration (aerobic and anaerobic)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch7_5",
+          "text": "Compare photosynthesis and respiration",
+          "cognitive_level": "Analysis"
+        },
+        {
+          "id": "bio9_ch7_6",
+          "text": "Explain ATP as the energy currency of the cell",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    },
+    {
+      "chapter_number": 8,
+      "chapter_name": "Nutrition",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Biology/Chapter%2008%20-%20NUTRITION.pdf",
+      "slos": [
+        {
+          "id": "bio9_ch8_1",
+          "text": "Define nutrition and explain its importance for living organisms",
+          "cognitive_level": "Knowledge"
+        },
+        {
+          "id": "bio9_ch8_2",
+          "text": "Differentiate between autotrophic and heterotrophic nutrition",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch8_3",
+          "text": "Describe the components of a balanced diet (carbohydrates, proteins, lipids, vitamins, minerals)",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch8_4",
+          "text": "Explain the role of minerals and vitamins in human health",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch8_5",
+          "text": "Describe nutritional disorders and their prevention",
+          "cognitive_level": "Application"
+        }
+      ]
+    },
+    {
+      "chapter_number": 9,
+      "chapter_name": "Transport",
+      "pdf_url": "https://raw.githubusercontent.com/abdulahadattar/STBB-BOOKS/main/Grade%209/Biology/Chapter%2009%20-%20TRANSPORT.pdf",
+      "slos": [
+        {
+          "id": "bio9_ch9_1",
+          "text": "Explain the need for transport systems in living organisms",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch9_2",
+          "text": "Describe the structure and function of human circulatory system",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch9_3",
+          "text": "Explain the structure and function of heart",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch9_4",
+          "text": "Describe blood vessels (arteries, veins, capillaries) and their functions",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch9_5",
+          "text": "Explain blood composition and functions of blood cells",
+          "cognitive_level": "Understanding"
+        },
+        {
+          "id": "bio9_ch9_6",
+          "text": "Describe transport in plants (xylem and phloem)",
+          "cognitive_level": "Understanding"
+        }
+      ]
+    }
+  ]
+}

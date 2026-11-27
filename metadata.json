@@ -1,0 +1,6 @@
+{
+  "name": "PHSSJ Document Archive & Ingestion Portal",
+  "description": "School student document archive and Google Drive ingestion pipeline with client-side portrait pre-filtering, selective greyscale OCR optimization, and multi-sibling packet disambiguation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
