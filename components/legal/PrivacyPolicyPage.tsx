@@ -54,25 +54,47 @@ export const PrivacyPolicyPage: React.FC = () => {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-lg sm:text-xl font-bold text-white">2. Information We Access & Process</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-white">2. Google API Scopes & Data Access</h2>
               <p>
-                To provide seamless institutional workflows, the portal requests access only to necessary educational and verification data:
+                To provide seamless institutional administration, the portal requests access to specific Google OAuth scopes. We strictly access and process data in accordance with educational necessity:
               </p>
               <ul className="list-disc pl-6 space-y-2 text-slate-300">
                 <li>
-                  <strong>Google Sign-In Profile Data:</strong> Basic profile information (name and school email address) used strictly to verify authorized staff identity and secure administrative access.
+                  <strong>Google Sign-In Profile (<code>openid email profile</code>):</strong> Basic profile information (name and school email address) used strictly to verify authorized staff identity and secure administrative access.
                 </li>
                 <li>
-                  <strong>Google Sheets:</strong> Read and write access to school-authorized Google Sheets containing class rosters, student records, and attendance registries explicitly connected and synchronized by school administrators.
+                  <strong>Google Sheets (<code>https://www.googleapis.com/auth/spreadsheets</code>):</strong> Read and write access to school-authorized Google Sheets containing class rosters, student records, and attendance registries explicitly connected and synchronized by school administrators.
                 </li>
                 <li>
-                  <strong>Google Drive (Optional / User-Initiated):</strong> Access to specific Google Drive folders or files strictly when explicitly selected and linked by authorized staff for student document ingestion and verification.
+                  <strong>Google Drive (<code>https://www.googleapis.com/auth/drive.file</code> &amp; <code>drive.readonly</code>):</strong> Access to specific Google Drive folders or files strictly when explicitly selected and linked by authorized staff for student document ingestion and verification.
                 </li>
               </ul>
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-lg sm:text-xl font-bold text-white">3. How Information Is Used & Protected</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-white">3. Google API Services User Data Policy &amp; Limited Use</h2>
+              <p>
+                PHSSJ Portal&apos;s use and transfer to any other app of information received from Google APIs will adhere to the{' '}
+                <a
+                  href="https://developers.google.com/terms/api-services-user-data-policy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:underline"
+                >
+                  Google API Services User Data Policy
+                </a>
+                , including the <strong>Limited Use</strong> requirements. Specifically:
+              </p>
+              <ul className="list-disc pl-6 space-y-2 text-slate-300">
+                <li>We only use or transfer Google user data to provide or improve user-facing features that are prominent in the requesting app&apos;s user interface.</li>
+                <li>We do not transfer Google user data to third parties except as necessary to provide or improve these user-facing features, comply with applicable law, or as part of a merger, acquisition, or sale of assets.</li>
+                <li>We do not use or serve Google user data for serving advertisements (including personalized or interest-based advertising).</li>
+                <li>We do not allow humans to read user data unless we have obtained affirmative agreement from the user, it is necessary for security purposes, to comply with applicable law, or for internal operations with aggregated and anonymized data.</li>
+              </ul>
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-lg sm:text-xl font-bold text-white">4. Data Security &amp; Retention</h2>
               <p>
                 All data accessed through Google APIs or stored within the portal is used solely for internal educational administration at PHSSJ. We adhere to strict security protocols:
               </p>
@@ -84,16 +106,19 @@ export const PrivacyPolicyPage: React.FC = () => {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-lg sm:text-xl font-bold text-white">4. Contact & Support</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-white">5. Contact & Support</h2>
               <p>
                 If you have any questions, concerns, or requests regarding this Privacy Policy or institutional data practices, please contact the school administration or system administrator at:
               </p>
               <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-center gap-3">
                 <Mail className="w-5 h-5 text-blue-400 shrink-0" />
                 <div>
-                  <span className="text-xs text-slate-400 block">Primary Contact Email</span>
-                  <a href="mailto:abdul7762ahad@gmail.com" className="font-semibold text-white hover:underline">
+                  <span className="text-xs text-slate-400 block">Primary Contact Email &amp; Official URL</span>
+                  <a href="mailto:abdul7762ahad@gmail.com" className="font-semibold text-white hover:underline block">
                     abdul7762ahad@gmail.com
+                  </a>
+                  <a href="https://phssjamshoroportal.vercel.app" target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:underline">
+                    https://phssjamshoroportal.vercel.app
                   </a>
                 </div>
               </div>
