@@ -9,6 +9,7 @@
     "start": "tsx server.ts",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
+    "guard": "node scripts/verify-repo-guard.mjs --strict",
     "test": "node scripts/test-all.mjs",
     "test:local": "node scripts/test-local.mjs",
     "test:attendance": "node --import tsx scripts/test-attendance-integrity.mjs",

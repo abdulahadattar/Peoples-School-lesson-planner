@@ -11,3 +11,5 @@ Canonical rules live in `AGENTS.md`, architectural invariants in `AGENT_MEMORY.m
    - Use plain school words (`Student Folders`, `Documents`, `Mismatches`, `Google Drive Import`, `Skip Already Imported`, `Reset Data`, `Student Records`, `Marksheets`, `Daily Attendance`, `Lesson Plans`, `Exams & Papers`).
    - Sanitize user error toasts via `toUserErrorMessage` (`utils/userMessage.ts`).
 5. **Verify Before Finishing**: Run `npm run lint`, `npm run build`, and `npm run test:unit`.
+6. **GitHub & Multi-Account Safety**: Never push AI Studio-rewritten `firebase-applet-config.json` (`gen-lang-client-*`), `metadata.json` (`Remix ...`), `metadata-*.json`, `.env*`, `data/`, or `public/assets/aistudio/` to GitHub. Canonical project is `phssjportal`; push only tested feature changes to `alpha` (`npm run guard && npm run lint && npm run test:unit && npm run build`) and promote to `testing`/`main` via PR.
+

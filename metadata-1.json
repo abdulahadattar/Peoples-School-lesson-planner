@@ -1,8 +1,0 @@
-{
-  "name": "Remix Remix Remix Peoples-School-lesson-planner",
-  "description": "Imported from GitHub",
-  "requestFramePermissions": [],
-  "capabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
-}

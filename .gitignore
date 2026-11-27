@@ -11,6 +11,9 @@ api/*.cjs
 
 .vercel
 .env*
+!.env.example
+metadata-*.json
+public/assets/aistudio/
 
 # Runtime-generated data. timetable.json and teachers.json are tracked because
 # the app imports them; everything else here is produced at runtime and includes
@@ -31,3 +34,4 @@ data/autonoma/
 # Student Records register, so they contain real student names, GR numbers and
 # guardian names. They must never be committed.
 test-artifacts/
+

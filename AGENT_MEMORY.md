@@ -19,3 +19,10 @@
    - Always use `SelectField` / `NumberField` from `components/ui/` instead of raw `<select>`.
    - Always format dates via `getTodayDateString()` / `formatSchoolDate()` in `utils/dateHelpers.ts`.
    - Always format user error alerts via `toUserErrorMessage()` in `utils/userMessage.ts`.
+
+5. **Canonical Infrastructure & Multi-Account Guard**:
+   - Canonical Firebase project on GitHub/Vercel is `phssjportal` (`oAuthClientId: 752785162701-igum5tv22cv45k4afbh2an3unkul5b0s.apps.googleusercontent.com`).
+   - AI Studio remixes rewrite `firebase-applet-config.json` (`gen-lang-client-*`) and `metadata.json` (`Remix ...`) locally — never push those overwritten files to GitHub.
+   - `scripts/verify-repo-guard.mjs --strict` (enforced by `.github/workflows/repo-guard.yml` and `vercel.json`) blocks broken configs, remix artifacts, and token leaks.
+   - Canonical Google Sheets (`services/sheets/types.ts`, `services/marksheet/config.ts`) and Drive folder (`hooks/useDocumentArchive/driveImportState.ts`) are hardcoded; `VITE_API_KEYS` and `GOOGLE_CLIENT_SECRET` live on Vercel.
+
