@@ -4,7 +4,7 @@
 import { GeneratedPaper, PaperDifficulty, PaperQuestion, PaperSectionBlueprint } from '../../types';
 import { cleanOptionText, parseMcqAnswerKey, sanitizeSingleQuestion } from '../paperLayout';
 import { cleanAndParseJson } from '../jsonHelpers';
-import { sanitizeStringFields } from '../latexSanitizer';
+import { demoteInlineDisplayMath, sanitizeStringFields } from '../latexSanitizer';
 import { computeEffectivePaperMarks } from './paperEdits';
 
 export interface PaperStructureCounts {
@@ -54,6 +54,10 @@ export function normalizeMcqQuestion(q: PaperQuestion, idx: number, marksPerMcq:
   const rawAnswer = q.correctAnswer;
   const sanitized = sanitizeSingleQuestion({
     ...q,
+    question: demoteInlineDisplayMath(String(q.question || ''), false),
+    options: Array.isArray(q.options)
+      ? q.options.map((opt) => demoteInlineDisplayMath(String(opt || ''), true))
+      : q.options,
     type: 'mcq',
     id: q.id || `mcq_${idx + 1}`,
     marks: q.marks || marksPerMcq,
@@ -159,6 +163,7 @@ export function normalizeGeneratedPaper(
         }
         const sanitized = sanitizeSingleQuestion({
           ...q,
+          question: demoteInlineDisplayMath(String(q.question || ''), false),
           type: qType,
           id: q.id || `${qType}_${sIdx + 1}_${qIdx + 1}`,
           marks: q.marks || fallbackMarks,
@@ -273,6 +278,7 @@ export function normalizeRevisedPaper(
           }
           const sanitized = sanitizeSingleQuestion({
             ...q,
+            question: demoteInlineDisplayMath(String(q.question || ''), false),
             type: qType,
             id: q.id || `${qType}_${sIdx + 1}_${qIdx + 1}`,
             marks: qMarks,
@@ -340,5 +346,5 @@ SLOs / Syllabus scope:
 ${slos.map((s) => `- ${s}`).join('\n')}
 ${avoidList}
 
-Each MCQ must have 4 distinct options (no A)/B)/C)/D) prefix inside option text) and correctAnswer set to "A", "B", "C", or "D".`;
+Each MCQ must have 4 distinct options (no A)/B)/C)/D) prefix inside option text), correctAnswer set to "A", "B", "C", or "D", inline '$...$' math only (never '$$' in options or numbers), balanced '\\left...\\right' & braces, and zero stray non-English characters.`;
 }

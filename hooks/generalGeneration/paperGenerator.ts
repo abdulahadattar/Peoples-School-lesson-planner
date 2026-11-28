@@ -50,6 +50,11 @@ export async function generateExamPaperAction(
     teacherInfo,
     mathScale: readStoredMathScale(),
     maxPasses: 2,
+    log: (msg) => {
+      if (msg.startsWith('Checking') || msg.startsWith('Applied ')) {
+        addLog(msg);
+      }
+    },
   });
 
   setProgress({ current: 3, total: 4 });
@@ -107,6 +112,11 @@ export async function reviseExamPaperAction(
     teacherInfo,
     mathScale: readStoredMathScale(),
     maxPasses: 2,
+    log: (msg) => {
+      if (msg.startsWith('Checking') || msg.startsWith('Applied ')) {
+        addLog(msg);
+      }
+    },
   });
 
   if (currentPaper.omrMeta?.enabled || isMcqOnlyPaper(revised)) {

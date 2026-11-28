@@ -213,6 +213,7 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                       </span>
                       <KaTeXText
                         text={cleanOptionText(o.text)}
+                        inlineOnly
                         className="text-brand-text-secondary text-xs print:text-[9pt] leading-snug"
                       />
                     </div>
@@ -226,6 +227,7 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
                   <div className="flex-1 min-w-0">
                     <KaTeXText
                       text={cleanOptionText(row.options[0].text)}
+                      inlineOnly
                       className="text-brand-text-secondary text-xs print:text-[9pt] leading-snug"
                     />
                   </div>

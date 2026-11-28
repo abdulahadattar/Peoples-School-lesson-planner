@@ -9,7 +9,7 @@
  */
 
 import { isFormulaText, MATH_REGEX } from '../mathDetection';
-import { sanitizeMathText } from '../latexSanitizer';
+import { demoteInlineDisplayMath, sanitizeMathText } from '../latexSanitizer';
 import { parseChemFormula } from '../chemFormula';
 
 export interface InlineRichRun {
@@ -33,6 +33,11 @@ export interface RichParseOptions {
    * equation segments (used by DOCX where ImageRun sits inline).
    */
   mode?: 'inline-all' | 'complex-as-equation';
+  /**
+   * When false (e.g. inside MCQ options), demotes single-line $$...$$ blocks to
+   * inline runs unless a real matrix or multi-line environment requires an image block.
+   */
+  allowBlockEquations?: boolean;
 }
 
 const GREEK: Record<string, string> = {
@@ -397,7 +402,8 @@ export function parseTextToRichParts(
   options: RichParseOptions = {}
 ): RichParagraphPart[] {
   const mode = options.mode ?? 'inline-all';
-  const text = sanitizeMathText(rawText);
+  const allowBlockEquations = options.allowBlockEquations ?? true;
+  const text = demoteInlineDisplayMath(sanitizeMathText(rawText), !allowBlockEquations);
   if (!text) return [{ kind: 'runs', runs: [] }];
 
   const parts: RichParagraphPart[] = [];
@@ -427,10 +433,13 @@ export function parseTextToRichParts(
     if (!isFormulaText(latex) && /[A-Za-z]/.test(latex)) {
       pendingRuns.push(...parseMarkdownToRuns(latex));
     } else {
+      const hasMultiLineOrMatrix = BLOCK_ENV_RE.test(latex) || latex.includes('\\\\');
       const shouldUseEquationImage =
         mode === 'complex-as-equation'
           ? isComplexMathLatex(latex, isDisplay)
-          : isBlockEquationLatex(latex, isDisplay);
+          : allowBlockEquations
+            ? isBlockEquationLatex(latex, isDisplay)
+            : hasMultiLineOrMatrix;
 
       if (shouldUseEquationImage) {
         flushRuns();

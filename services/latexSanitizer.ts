@@ -127,16 +127,84 @@ export function wrapPlainMathExpressions(text: string): string {
   return modified;
 }
 
+const MULTI_LINE_OR_MATRIX_RE = /\\(?:begin|end|matrix|pmatrix|bmatrix|vmatrix|Vmatrix|cases|aligned|gathered|array)\b|\\\\/i;
+const DISPLAY_BLOCK_MATH_CMD_RE = /\\(?:frac|dfrac|tfrac|cfrac|sum|int|prod|oint|lim)\b/;
+
+/**
+ * Repair an unambiguous trailing unclosed \left delimiter inside a single math fragment
+ * (for example `\tan\theta = \left|\frac{m_1-m_2}{1+m_1m_2}` -> append `\right|`),
+ * which otherwise causes MathJax to emit a solid black merror box.
+ */
+export function balanceLatexLeftRight(latex: string): string {
+  if (!latex || !latex.includes('\\left')) return latex;
+  const lefts: string[] = [];
+  const tokenRe = /\\(left|right)\s*([|.\[\]()\{\}]|\\\{|\\\}|\\lvert|\\rvert|\\langle|\\rangle)?/g;
+  let rightCount = 0;
+  let m: RegExpExecArray | null;
+  while ((m = tokenRe.exec(latex)) !== null) {
+    if (m[1] === 'left') {
+      lefts.push(m[2] || '.');
+    } else {
+      rightCount += 1;
+    }
+  }
+  if (lefts.length === rightCount + 1) {
+    const opener = lefts[lefts.length - 1];
+    const closerMap: Record<string, string> = {
+      '|': '|',
+      '(': ')',
+      '[': ']',
+      '\\{': '\\}',
+      '{': '}',
+      '\\lvert': '\\rvert',
+      '\\langle': '\\rangle',
+      '.': '.',
+    };
+    const closer = closerMap[opener] || '.';
+    return `${latex.trimEnd()} \\right${closer}`;
+  }
+  return latex;
+}
+
+/**
+ * Demote spurious $$...$$ display math blocks into inline $...$ so numbers,
+ * units, and MCQ options flow inline instead of rendering as oversized centered blocks.
+ */
+export function demoteInlineDisplayMath(text: string, aggressiveInline: boolean = false): string {
+  if (!text || !text.includes('$$')) return text;
+  MATH_REGEX.lastIndex = 0;
+  return text.replace(MATH_REGEX, (token, _group, offset: number, full: string) => {
+    if (!token.startsWith('$$')) return token;
+    const inner = token.slice(2, -2).trim();
+    if (!inner) return '';
+    if (MULTI_LINE_OR_MATRIX_RE.test(inner)) return token;
+    if (aggressiveInline) return `$${inner}$`;
+
+    const before = full.slice(0, offset);
+    const after = full.slice(offset + token.length);
+    const lineBefore = before.split('\n').pop() || '';
+    const lineAfter = after.split('\n')[0] || '';
+    const hasInlineNeighbors = /\S/.test(lineBefore) || /\S/.test(lineAfter);
+    const isShortSimple = inner.length <= 28 && !DISPLAY_BLOCK_MATH_CMD_RE.test(inner);
+    if (hasInlineNeighbors || isShortSimple) {
+      return `$${inner}$`;
+    }
+    return token;
+  });
+}
+
 /**
  * Repair one AI-generated string:
+ *  - strip Unicode replacement characters,
  *  - wrap plain-text math formulas in delimiters,
  *  - demote prose-only $...$ fragments to plain text,
+ *  - repair unambiguous unclosed trailing \left delimiters,
  *  - wrap bare LaTeX commands / powers in delimiters,
  *  - drop stray unbalanced '$' characters.
  */
 export function sanitizeMathText(rawText: string): string {
   if (!rawText) return rawText;
-  let text = normalizeMathDelimiters(rawText);
+  let text = normalizeMathDelimiters(rawText.replace(/\uFFFD+/g, ''));
   if (!text.includes('$')) {
     text = wrapPlainMathExpressions(text);
     // No delimiters at all — only bare-command repair applies
@@ -154,11 +222,14 @@ export function sanitizeMathText(rawText: string): string {
     if (start > cursor) out.push(wrapBareMath(text.slice(cursor, start)));
 
     const display = token.startsWith('$$');
-    const inner = display ? token.slice(2, -2).trim() : token.slice(1, -1).trim();
+    const rawInner = display ? token.slice(2, -2).trim() : token.slice(1, -1).trim();
+    const inner = balanceLatexLeftRight(rawInner);
 
     if (!isFormulaText(inner) && /[A-Za-z]/.test(inner)) {
       // Prose wrongly wrapped as math — keep the words as plain text
       out.push(inner);
+    } else if (inner !== rawInner) {
+      out.push(display ? `$$${inner}$$` : `$${inner}$`);
     } else {
       out.push(token);
     }

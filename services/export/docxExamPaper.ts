@@ -174,7 +174,7 @@ export const buildExamPaperDocx = async (
           for (let rIdx = 0; rIdx < rows.length; rIdx++) {
             const opt = rows[rIdx].options[0];
             const isLast = rIdx === rows.length - 1;
-            const optRuns = await parseTextForDocx(optionLine(opt.index, opt.text), mathScale, OPTION_FONT_SIZE);
+            const optRuns = await parseTextForDocx(optionLine(opt.index, opt.text), mathScale, OPTION_FONT_SIZE, false);
             children.push(
               new Paragraph({
                 children: optRuns,
@@ -194,14 +194,16 @@ export const buildExamPaperDocx = async (
             const firstRuns = await parseTextForDocx(
               optionLine(row.options[0].index, row.options[0].text),
               mathScale,
-              OPTION_FONT_SIZE
+              OPTION_FONT_SIZE,
+              false
             );
             const rowRuns = [...firstRuns];
             if (row.options.length === 2) {
               const secondRuns = await parseTextForDocx(
                 optionLine(row.options[1].index, row.options[1].text),
                 mathScale,
-                OPTION_FONT_SIZE
+                OPTION_FONT_SIZE,
+                false
               );
               rowRuns.push(new TextRun({ children: [new Tab()], font: 'Calibri', size: OPTION_FONT_SIZE }));
               rowRuns.push(...secondRuns);

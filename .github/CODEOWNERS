@@ -1,7 +1,0 @@
-# Critical infrastructure, auth, and deployment files
-/firebase-applet-config.json @abdulahadattar
-/metadata.json @abdulahadattar
-/firestore.rules @abdulahadattar
-/vercel.json @abdulahadattar
-/.github/ @abdulahadattar
-/scripts/verify-repo-guard.mjs @abdulahadattar

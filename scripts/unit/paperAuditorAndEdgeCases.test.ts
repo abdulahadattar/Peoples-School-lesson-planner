@@ -11,15 +11,23 @@ import {
   parseMcqAnswerKey,
   shouldStackOptions,
 } from '../../services/paperLayout';
-import { latexToUnicodeText, sanitizeMathText } from '../../services/latexSanitizer';
+import {
+  balanceLatexLeftRight,
+  demoteInlineDisplayMath,
+  latexToUnicodeText,
+  sanitizeMathText,
+} from '../../services/latexSanitizer';
 import { expandChemInKatexLatex } from '../../services/chemFormula';
 import { parseTextToRichParts } from '../../services/export/inlineMathParser';
+import { computePdfEquationWidth } from '../../services/export/pdfExport';
+import { inspectPngPixelStats } from '../../services/equationRenderer';
 import {
   normalizeMcqQuestion,
   normalizeRevisedPaper,
 } from '../../services/paper/paperNormalization';
 import {
   applyPaperAuditFixes,
+  detectUnexpectedScriptBleed,
   runDeterministicPaperAudit,
 } from '../../services/paper/paperQualityRules';
 import { inspectPaperBuilds } from '../../services/paper/buildInspector';
@@ -395,6 +403,240 @@ export async function runPaperAuditorAndEdgeCasesTests(h: Harness): Promise<void
       eq(proxyHits, 1, 'Expected single fail-fast call without burning models or duplicating chunked generation');
       eq(thrown.includes('HTML page instead of JSON'), true, thrown);
       eq(thrown.includes('Unexpected token'), false, thrown);
+    } finally {
+      globalThis.fetch = origFetch;
+      (globalThis as any).localStorage = origLocalStorage;
+      (globalThis as any).sessionStorage = origSessionStorage;
+    }
+  });
+
+  describe('script bleed, LaTeX balance, display-math demotion & pixel health');
+  it('flags Arabic/script bleed in STEM subjects while allowing Urdu/Sindhi/Islamiat', () => {
+    const mathBleed = detectUnexpectedScriptBleed('$|Ax_1 + By_1 + C د/ق|$', 'Mathematics');
+    eq(Boolean(mathBleed), true, 'Expected Arabic bleed flagged in Mathematics');
+    eq(detectUnexpectedScriptBleed('درج ذیل میں سے درست جواب منتخب کریں', 'Urdu'), null);
+    eq(detectUnexpectedScriptBleed('صحيح جواب چونڊيو', 'Sindhi'), null);
+    eq(detectUnexpectedScriptBleed('قرآن مجید کی سورہ', 'Islamiat'), null);
+  });
+
+  it('auto-closes trailing \\left delimiter and flags unrepairable unclosed braces as error', () => {
+    const fixedLeft = balanceLatexLeftRight('\\tan \\theta = \\left| \\frac{m_1 - m_2}{1 + m_1 m_2}');
+    eq(fixedLeft, '\\tan \\theta = \\left| \\frac{m_1 - m_2}{1 + m_1 m_2} \\right|');
+    eq(
+      sanitizeMathText('$\\tan \\theta = \\left| \\frac{m_1 - m_2}{1 + m_1 m_2}$'),
+      '$\\tan \\theta = \\left| \\frac{m_1 - m_2}{1 + m_1 m_2} \\right|$'
+    );
+
+    const brokenPaper: GeneratedPaper = {
+      title: 'Plane Analytic Geometry',
+      gradeLevel: 'Class XII',
+      subject: 'Mathematics',
+      chapterName: 'Straight Line',
+      totalMarks: 2,
+      durationMinutes: 15,
+      sections: [
+        {
+          title: 'Section A — MCQs',
+          instruction: 'Choose the correct option.',
+          questions: [
+            {
+              id: 'q_broken_brace',
+              type: 'mcq',
+              marks: 1,
+              question: 'The angle between two lines is:',
+              options: [
+                '$\\tan \\theta = \\frac{m_1 - m_2}{1 + m_1 m_2$',
+                '$\\tan \\theta = \\frac{m_1 + m_2}{1 - m_1 m_2}$',
+                '$\\cos \\theta = \\frac{1 + m_1 m_2}{m_2 - m_1}$',
+                '$\\sin \\theta = \\frac{m_1 - m_2}{1 + m_1 m_2}$',
+              ],
+              correctAnswer: 'A',
+            },
+            {
+              id: 'q_bleed',
+              type: 'mcq',
+              marks: 1,
+              question: 'Distance formula from point $(x_1, y_1)$ to $Ax+By+C=0$:',
+              options: [
+                '$|Ax_1+By_1+C|$',
+                '$\\frac{|Ax_1+By_1+C|}{\\sqrt{A^2+B^2}}$',
+                '$A^2+B^2$',
+                '$|Ax_1 + By_1 + C د/ق$',
+              ],
+              correctAnswer: 'B',
+            },
+          ],
+        },
+      ],
+      sectionBlueprints: [{ questionCount: 2, attemptCount: 2, perQuestionMarks: 1 }],
+    };
+
+    const det = runDeterministicPaperAudit(brokenPaper);
+    eq(det.errorCount, 2, `Expected strictly 2 genuine errors (q_broken_brace + q_bleed), got ${det.errorCount}`);
+    eq(det.findings.some((f) => f.severity === 'error' && f.category === 'latex_math' && f.questionIndex === 0), true);
+    eq(det.findings.some((f) => f.severity === 'error' && f.category === 'spelling_grammar' && f.questionIndex === 1), true);
+
+    const signedMcqPaper: GeneratedPaper = {
+      title: 'Signed Intercepts Quiz',
+      gradeLevel: 'Class XII',
+      subject: 'Mathematics',
+      chapterName: 'Straight Line',
+      totalMarks: 1,
+      durationMinutes: 10,
+      sections: [
+        {
+          title: 'Section A — MCQs',
+          instruction: 'Choose the correct option.',
+          questions: [
+            {
+              id: 'q_signed',
+              type: 'mcq',
+              marks: 1,
+              question: 'The y-intercept of the line $5x - 2y = 10$ is',
+              options: ['$-5$', '$5$', '$\\frac{5}{2}$', '$-2$'],
+              correctAnswer: 'A',
+            },
+          ],
+        },
+      ],
+      sectionBlueprints: [{ questionCount: 1, attemptCount: 1, perQuestionMarks: 1 }],
+    };
+    eq(runDeterministicPaperAudit(signedMcqPaper).errorCount, 0);
+  });
+
+  it('demotes spurious $$...$$ in MCQ options/inline numbers and keeps narrow PDF glyphs proportional', () => {
+    eq(demoteInlineDisplayMath('$$3$$ and $$2$$', true), '$3$ and $2$');
+    eq(demoteInlineDisplayMath('$$3$$ and $$2$$', false), '$3$ and $2$');
+    eq(demoteInlineDisplayMath('Value is $$5$$ units', false), 'Value is $5$ units');
+    eq(demoteInlineDisplayMath('$$\\begin{pmatrix} 1 & 2 \\\\ 3 & 4 \\end{pmatrix}$$', true), '$$\\begin{pmatrix} 1 & 2 \\\\ 3 & 4 \\end{pmatrix}$$');
+
+    const normalized = normalizeMcqQuestion(
+      {
+        id: 'opt_disp',
+        type: 'mcq',
+        marks: 1,
+        question: 'The intercepts of $2x + 3y = 6$ are:',
+        options: ['$$3$$ and $$2$$', '$$5$$', '$$-2$$', '$$m_1m_2=-1$$'],
+        correctAnswer: 'A',
+      },
+      0,
+      1
+    );
+    eq(normalized.options?.[0], '$3$ and $2$');
+    eq(normalized.options?.[1], '$5$');
+    eq(normalized.options?.[2], '$-2$');
+    eq(normalized.options?.[3], '$m_1m_2=-1$');
+
+    // Single-digit glyph (10px wide, 14px tall) must scale proportionally to ~8pt instead of forced >=16pt
+    const narrowWidth = computePdfEquationWidth(10, 14, 10);
+    eq(narrowWidth < 12, true, `Expected proportional <12pt width for single digit, got ${narrowWidth}`);
+    eq(computePdfEquationWidth(120, 28, 10), 90);
+  });
+
+  it('detects solid-black and blank RGBA buffers while allowing clean ink pixels', () => {
+    const blackBuf = new Uint8ClampedArray(20 * 20 * 4);
+    for (let i = 0; i < blackBuf.length; i += 4) {
+      blackBuf[i] = 0; blackBuf[i + 1] = 0; blackBuf[i + 2] = 0; blackBuf[i + 3] = 255;
+    }
+    const blackStats = inspectPngPixelStats(blackBuf, 20, 20);
+    eq(blackStats.isSolidDark, true);
+    eq(blackStats.isBlank, false);
+
+    const whiteBuf = new Uint8ClampedArray(20 * 20 * 4).fill(255);
+    const blankStats = inspectPngPixelStats(whiteBuf, 20, 20);
+    eq(blankStats.isBlank, true);
+    eq(blankStats.isSolidDark, false);
+
+    const normalBuf = new Uint8ClampedArray(20 * 20 * 4).fill(255);
+    for (let p = 0; p < 32; p++) {
+      const idx = p * 4;
+      normalBuf[idx] = 10; normalBuf[idx + 1] = 10; normalBuf[idx + 2] = 10; normalBuf[idx + 3] = 255;
+    }
+    const normalStats = inspectPngPixelStats(normalBuf, 20, 20);
+    eq(normalStats.isSolidDark, false);
+    eq(normalStats.isBlank, false);
+  });
+
+  await itAsync('never marks unverified AI-skipped papers as verified and still repairs flawed questions offline-of-full-audit', async () => {
+    const origFetch = globalThis.fetch;
+    const origLocalStorage = (globalThis as any).localStorage;
+    const origSessionStorage = (globalThis as any).sessionStorage;
+    const store: Record<string, string> = { gemini_api_key: 'test-key' };
+    const storageMock = {
+      getItem: (k: string) => (k in store ? store[k] : null),
+      setItem: (k: string, v: string) => { store[k] = String(v); },
+      removeItem: (k: string) => { delete store[k]; },
+      clear: () => {},
+    };
+    (globalThis as any).localStorage = storageMock;
+    (globalThis as any).sessionStorage = storageMock;
+
+    let regenCalls = 0;
+    (globalThis as any).fetch = async (_url: unknown, init?: RequestInit) => {
+      const bodyStr = String(init?.body || '');
+      // Full audit call fails with 503, single-question replacement succeeds
+      if (bodyStr.includes('verifying PDF') || bodyStr.includes('quality reviewer')) {
+        return new Response('Service unavailable', { status: 503 });
+      }
+      regenCalls += 1;
+      const repairedQuestion = {
+        question: 'The distance of point $(x_1, y_1)$ from line $Ax + By + C = 0$ is:',
+        options: [
+          '$\\frac{|Ax_1 + By_1 + C|}{\\sqrt{A^2 + B^2}}$',
+          '$\\frac{Ax_1 + By_1}{A + B}$',
+          '$\\sqrt{A^2 + B^2}$',
+          '$|Ax_1 + By_1 + C|$',
+        ],
+        correctAnswer: 'A',
+      };
+      return new Response(
+        JSON.stringify({
+          text: JSON.stringify(repairedQuestion),
+          candidates: [{ content: { parts: [{ text: JSON.stringify(repairedQuestion) }] } }],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    };
+
+    try {
+      const flawedPaper: GeneratedPaper = {
+        title: 'Plane Analytic Geometry Examination',
+        gradeLevel: 'Class XII',
+        subject: 'Mathematics',
+        chapterName: 'Plane Analytic Geometry',
+        totalMarks: 1,
+        durationMinutes: 15,
+        sections: [
+          {
+            title: 'Section A — MCQs',
+            instruction: 'Each question carries 1 mark.',
+            questions: [
+              {
+                id: 'q10',
+                type: 'mcq',
+                marks: 1,
+                question: 'The distance from point $(x_1, y_1)$ to $Ax + By + C = 0$ is:',
+                options: [
+                  '$\\frac{|Ax_1 + By_1 + C|}{\\sqrt{A^2 + B^2}}$',
+                  '$\\sqrt{A^2 + B^2}$',
+                  '$|Ax_1 + By_1|$',
+                  '$|Ax_1 + By_1 + C د/ق$',
+                ],
+                correctAnswer: 'A',
+              },
+            ],
+          },
+        ],
+        sectionBlueprints: [{ questionCount: 1, attemptCount: 1, perQuestionMarks: 1 }],
+      };
+
+      const res = await auditAndRefinePaper(flawedPaper, {
+        teacherInfo: { name: 'Sir Bahadur', schoolName: 'PHSSJ' },
+        maxPasses: 1,
+      });
+      eq(regenCalls >= 1, true, 'Expected targeted question repair to run even when full audit call failed');
+      eq(res.sections[0].questions[0].options?.some((o) => o.includes('د/ق')), false, 'Expected Arabic bleed removed');
+      eq(res.auditReport?.status, 'needs_review', 'Must never report verified when full AI audit skipped');
     } finally {
       globalThis.fetch = origFetch;
       (globalThis as any).localStorage = origLocalStorage;

@@ -44,13 +44,46 @@ export function inlineRunsToPdfRuns(runs: InlineRichRun[]): any[] {
   });
 }
 
+export interface PdfRichRenderOptions {
+  allowBlockEquations?: boolean;
+  imageAlign?: 'left' | 'center';
+  imageMargin?: [number, number, number, number];
+}
+
+/**
+ * Convert CSS pixel equation dimensions to proportional PDF points (72/96 = 0.75)
+ * without inflating narrow digits/symbols (previously Math.max(16, ...) stretched
+ * single digits like "5" to ~30pt tall). Also caps tall vertical scaling.
+ */
+export function computePdfEquationWidth(
+  naturalWidth: number,
+  naturalHeight?: number,
+  fontSize: number = 10
+): number {
+  const safeW = Math.max(4, Number(naturalWidth) || 24);
+  let targetW = Math.max(4, Math.min(Math.round(safeW * 0.75), 440));
+  const safeH = Number(naturalHeight) || 0;
+  if (safeH > 0) {
+    const projectedPtHeight = (safeH / safeW) * targetW;
+    const maxAllowedHeightPt = Math.max(fontSize * 4.5, 48);
+    if (projectedPtHeight > maxAllowedHeightPt) {
+      targetW = Math.max(4, Math.round(targetW * (maxAllowedHeightPt / projectedPtHeight)));
+    }
+  }
+  return targetW;
+}
+
 export const renderPdfRichText = async (
   text: string,
   style: string = 'body',
   prefix?: string,
-  fontSize: number = 10
+  fontSize: number = 10,
+  options: PdfRichRenderOptions = {}
 ): Promise<any[]> => {
-  const parts = parseTextToRichParts(text, { mode: 'inline-all' });
+  const parts = parseTextToRichParts(text, {
+    mode: 'inline-all',
+    allowBlockEquations: options.allowBlockEquations ?? true,
+  });
   const items: any[] = [];
   let runs: any[] = [];
 
@@ -75,13 +108,12 @@ export const renderPdfRichText = async (
     if (eqSeg?.image) {
       flush();
       const base64 = dataUrlToBase64(eqSeg.image);
-      const naturalWidth = eqSeg.width || 120;
-      const targetWidth = Math.max(16, Math.min(Math.round(naturalWidth * 0.85), 440));
+      const targetWidth = computePdfEquationWidth(eqSeg.width || 120, eqSeg.height, fontSize);
       items.push({
         image: `data:image/png;base64,${base64}`,
         width: targetWidth,
-        alignment: 'center' as const,
-        margin: [0, 3, 0, 3],
+        alignment: options.imageAlign ?? ('center' as const),
+        margin: options.imageMargin ?? [0, 3, 0, 3],
         style,
       });
     } else {
@@ -198,7 +230,11 @@ export const exportMultipleLessonsAsPdf = async (lessonPlans: LessonPlan[], file
 
 async function buildCompactOptionCell(index: number, rawText: string, pdfMathFontSize: number): Promise<any> {
   const clean = cleanOptionText(rawText);
-  const optLines = await renderPdfRichText(clean, 'optionText', undefined, pdfMathFontSize);
+  const optLines = await renderPdfRichText(clean, 'optionText', undefined, pdfMathFontSize, {
+    allowBlockEquations: false,
+    imageAlign: 'left',
+    imageMargin: [0, 1, 0, 1],
+  });
   return {
     columns: [
       { width: 10, canvas: [{ type: 'ellipse', x: 4, y: 5.1, r1: 2.7, r2: 2.7, lineWidth: 0.85, lineColor: '#000000' }] },

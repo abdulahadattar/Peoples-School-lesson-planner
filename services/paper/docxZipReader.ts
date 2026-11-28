@@ -3,14 +3,22 @@
  * summary extractor for verifying built .docx exam papers before export.
  */
 
+export interface DocxMediaRef {
+  mediaPath: string;
+  widthPx?: number;
+  heightPx?: number;
+}
+
 export interface DocxParagraphSummary {
   index: number;
   text: string;
+  textWithMedia?: string;
   leftTwips?: number;
   hangingTwips?: number;
   tabStopTwips?: number;
   hasTabChar: boolean;
   imageCount: number;
+  mediaRefs: DocxMediaRef[];
   bold: boolean;
   italic: boolean;
   alignment?: string;
@@ -23,6 +31,33 @@ export interface DocxXmlInspection {
   paragraphs: DocxParagraphSummary[];
   mediaFiles: string[];
   ooxmlDump: string;
+}
+
+export function readPngDimensions(bytes: Uint8Array): { width: number; height: number } | null {
+  if (!bytes || bytes.length < 24) return null;
+  if (bytes[0] !== 0x89 || bytes[1] !== 0x50 || bytes[2] !== 0x4e || bytes[3] !== 0x47) {
+    return null;
+  }
+  const width = ((bytes[16] << 24) | (bytes[17] << 16) | (bytes[18] << 8) | bytes[19]) >>> 0;
+  const height = ((bytes[20] << 24) | (bytes[21] << 16) | (bytes[22] << 8) | bytes[23]) >>> 0;
+  return { width, height };
+}
+
+export function parseDocxRels(relsXml: string): Map<string, string> {
+  const map = new Map<string, string>();
+  if (!relsXml) return map;
+  const relRe = /<Relationship\b([^>]+)\/?>/g;
+  let m: RegExpExecArray | null;
+  while ((m = relRe.exec(relsXml)) !== null) {
+    const attrs = m[1];
+    const id = attrs.match(/\bId="([^"]+)"/)?.[1];
+    const target = attrs.match(/\bTarget="([^"]+)"/)?.[1];
+    if (id && target) {
+      const normalized = target.startsWith('/') ? target.slice(1) : target.startsWith('word/') ? target : `word/${target.replace(/^\.\//, '')}`;
+      map.set(id, normalized);
+    }
+  }
+  return map;
 }
 
 function readUint16LE(buf: Uint8Array, offset: number): number {
@@ -126,7 +161,11 @@ function decodeXmlEntities(str: string): string {
 }
 
 /** Parse word/document.xml into readable paragraphs + layout metadata. */
-export function inspectDocumentXml(documentXml: string, mediaFiles: string[] = []): DocxXmlInspection {
+export function inspectDocumentXml(
+  documentXml: string,
+  mediaFiles: string[] = [],
+  relsMap?: Map<string, string>
+): DocxXmlInspection {
   const pgSzMatch = documentXml.match(/<w:pgSz\b[^>]*w:w="(\d+)"[^>]*w:h="(\d+)"/);
   const pgMarMatch = documentXml.match(/<w:pgMar\b([^>]*)\/>/);
   const margins: DocxXmlInspection['margins'] = {};
@@ -161,15 +200,28 @@ export function inspectDocumentXml(documentXml: string, mediaFiles: string[] = [
     const tabMatch = block.match(/<w:tab\b[^>]*w:pos="(\d+)"/);
     const alignMatch = block.match(/<w:jc\b[^>]*w:val="([^"]+)"/);
 
-    // Walk inline <w:t> and <w:tab/> tokens in document order
-    const tokenRe = /<w:tab\/>|<w:t\b[^>]*>([\s\S]*?)<\/w:t>/g;
+    // Walk inline <w:t>, <w:tab/>, and <w:drawing> tokens in document order
+    const tokenRe = /<w:tab\/>|<w:t\b[^>]*>([\s\S]*?)<\/w:t>|<w:drawing\b[\s\S]*?<\/w:drawing>/g;
     let tm: RegExpExecArray | null;
     let text = '';
     let hasTabChar = false;
+    const mediaRefs: DocxMediaRef[] = [];
     while ((tm = tokenRe.exec(block)) !== null) {
       if (tm[0] === '<w:tab/>') {
         hasTabChar = true;
         text += '   [TAB]   ';
+      } else if (tm[0].startsWith('<w:drawing')) {
+        const embedId = tm[0].match(/<a:blip\b[^>]*r:embed="([^"]+)"/)?.[1];
+        const extentMatch = tm[0].match(/<wp:extent\b[^>]*cx="(\d+)"[^>]*cy="(\d+)"/);
+        const mediaPath = embedId ? relsMap?.get(embedId) || '' : '';
+        if (mediaPath) {
+          mediaRefs.push({
+            mediaPath,
+            widthPx: extentMatch ? Math.max(1, Math.round(Number(extentMatch[1]) / 9525)) : undefined,
+            heightPx: extentMatch ? Math.max(1, Math.round(Number(extentMatch[2]) / 9525)) : undefined,
+          });
+          text += ` [[IMG:${mediaRefs.length - 1}]] `;
+        }
       } else if (tm[1] !== undefined) {
         text += decodeXmlEntities(tm[1]);
       }
@@ -178,16 +230,19 @@ export function inspectDocumentXml(documentXml: string, mediaFiles: string[] = [
     const imageCount = (block.match(/<w:drawing\b/g) || []).length;
     const bold = /<w:b(?:\s|\/|>)/.test(block);
     const italic = /<w:i(?:\s|\/|>)/.test(block);
-    const cleanLine = text.replace(/[ \t]+/g, ' ').trim();
-    if (cleanLine || imageCount > 0) {
+    const cleanText = text.replace(/\[\[IMG:\d+\]\]/g, '').replace(/[ \t]+/g, ' ').trim();
+    const textWithMedia = text.replace(/[ \t]+/g, ' ').trim();
+    if (cleanText || imageCount > 0) {
       paragraphs.push({
         index: pIdx++,
-        text: cleanLine,
+        text: cleanText,
+        textWithMedia,
         leftTwips,
         hangingTwips,
         tabStopTwips: tabMatch ? Number(tabMatch[1]) : undefined,
         hasTabChar,
         imageCount,
+        mediaRefs,
         bold,
         italic,
         alignment: alignMatch?.[1],

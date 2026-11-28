@@ -35,11 +35,12 @@ export const parseMarkdownRuns = (text: string, fontSizeHalfPt: number = 22): Te
 export const parseTextForDocx = async (
   text: string,
   mathScale: number = 100,
-  fontSizeHalfPt: number = 22
+  fontSizeHalfPt: number = 22,
+  allowBlockEquations: boolean = true
 ): Promise<(TextRun | ImageRun)[]> => {
   const runs: (TextRun | ImageRun)[] = [];
   const baseFontSize = Math.round(14 * (mathScale / 100));
-  const parts = parseTextToRichParts(text, { mode: 'complex-as-equation' });
+  const parts = parseTextToRichParts(text, { mode: 'complex-as-equation', allowBlockEquations });
 
   for (const part of parts) {
     if (part.kind === 'runs') {

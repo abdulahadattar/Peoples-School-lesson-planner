@@ -15,7 +15,7 @@ import {
   sanitizeSingleQuestion,
 } from '../paperLayout';
 import { isFormulaText, MATH_REGEX } from '../mathDetection';
-import { sanitizeMathText, sanitizeStringFields } from '../latexSanitizer';
+import { demoteInlineDisplayMath, sanitizeMathText, sanitizeStringFields } from '../latexSanitizer';
 import { computeEffectivePaperMarks } from './paperEdits';
 import { normalizeQuestionKey } from './paperNormalization';
 
@@ -60,46 +60,161 @@ const RAW_LATEX_LEAK_RE = /\\(?:frac|dfrac|tfrac|sqrt|ce|alpha|beta|gamma|theta|
 const RAW_HTML_ENTITY_RE = /(?:&amp;|&lt;|&gt;|&nbsp;|<\/?(?:p|div|br|b|i|span|strong|em)\b[^>]*>)/i;
 const GARBAGE_TOKEN_RE = /\b(?:undefined|NaN|null)\b|\[object Object\]/i;
 const TRUNCATED_ENDING_RE = /(?:\.\.\.|,\s*$|\b(?:the|an?|of|to|in|on|at|for|with|and|or|but|from|into|by|is|are|was|were|which|that)\s*)$/i;
+const MCQ_TRUNCATED_ENDING_RE = /(?:\.\.\.|,\s*$|\b(?:the|an?|and|or|but|which|that)\s*)$/i;
+const LANGUAGE_SCRIPT_SUBJECT_RE = /\b(urdu|sindhi|islamiat|islamic\s+studies|arabic|persian|nazra)\b/i;
+const ARABIC_SCRIPT_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+const FOREIGN_SCRIPT_OR_MOJIBAKE_RE = /[\u0400-\u04FF\u0590-\u05FF\u0900-\u097F\u3040-\u30FF\u4E00-\u9FFF\uAC00-\uD7AF\uFFFD\u2580-\u259F]/;
 
-/** Check a single rendered string (prose or math) for leaked LaTeX/HTML/delimiters/truncation. */
-export function scanTextForArtifacts(text: string): string[] {
-  const issues: string[] = [];
+export interface TextArtifactFinding {
+  message: string;
+  category: PaperAuditIssueCategory;
+  severity: 'error' | 'warning';
+  autoFixable: boolean;
+}
+
+export function isScriptAllowedForSubject(subject?: string): boolean {
+  return Boolean(subject && LANGUAGE_SCRIPT_SUBJECT_RE.test(subject));
+}
+
+export function detectUnexpectedScriptBleed(text: string, subject?: string): string | null {
+  if (!text) return null;
+  if (FOREIGN_SCRIPT_OR_MOJIBAKE_RE.test(text)) {
+    const match = text.match(FOREIGN_SCRIPT_OR_MOJIBAKE_RE)?.[0] || '';
+    return `Contains corrupted or foreign characters ("${match}").`;
+  }
+  if (!isScriptAllowedForSubject(subject) && ARABIC_SCRIPT_RE.test(text)) {
+    const sample = text.match(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+/)?.[0] || '';
+    return `Contains unexpected non-English script characters ("${sample}").`;
+  }
+  return null;
+}
+
+function detectBrokenLatexSyntax(latex: string): string | null {
+  let curly = 0;
+  for (let i = 0; i < latex.length; i++) {
+    const ch = latex[i];
+    if (ch === '\\') {
+      i += 1;
+      continue;
+    }
+    if (ch === '{') curly += 1;
+    else if (ch === '}') curly -= 1;
+    if (curly < 0) return 'Math formula has an extra closing brace "}".';
+  }
+  if (curly !== 0) return 'Math formula has an unclosed "{" brace.';
+
+  let lrDepth = 0;
+  const lrRe = /\\(left|right)(?![A-Za-z])/g;
+  let lrMatch: RegExpExecArray | null;
+  while ((lrMatch = lrRe.exec(latex)) !== null) {
+    lrDepth += lrMatch[1] === 'left' ? 1 : -1;
+    if (lrDepth < 0) return 'Math formula has a misplaced \\right delimiter.';
+  }
+  if (lrDepth !== 0) return 'Math formula has an unclosed \\left delimiter.';
+
+  if (/[_^]\s*$/.test(latex)) return 'Math formula ends with an incomplete superscript/subscript.';
+  return null;
+}
+
+/** Check a single rendered string (prose or math) with severity & repair classification. */
+export function scanTextQuality(text: string, subject?: string): TextArtifactFinding[] {
+  const issues: TextArtifactFinding[] = [];
   if (!text || !text.trim()) return issues;
 
+  const bleed = detectUnexpectedScriptBleed(text, subject);
+  if (bleed) {
+    issues.push({
+      message: bleed,
+      category: 'spelling_grammar',
+      severity: 'error',
+      autoFixable: false,
+    });
+  }
+
   if (GARBAGE_TOKEN_RE.test(text)) {
-    issues.push('Contains an invalid placeholder word (undefined/NaN/null).');
+    issues.push({
+      message: 'Contains an invalid placeholder word (undefined/NaN/null).',
+      category: 'spelling_grammar',
+      severity: 'error',
+      autoFixable: false,
+    });
   }
   if (RAW_HTML_ENTITY_RE.test(text)) {
-    issues.push('Contains raw HTML tags or escaped entities.');
+    issues.push({
+      message: 'Contains raw HTML tags or escaped entities.',
+      category: 'formatting_layout',
+      severity: 'error',
+      autoFixable: false,
+    });
   }
-  if (/\\\(|\\\[|\\ce\{/.test(text)) {
-    issues.push('Contains unconverted LaTeX delimiters or chemistry notation.');
+  if (/\\\(|\\\[/.test(text)) {
+    issues.push({
+      message: 'Contains unconverted LaTeX delimiters.',
+      category: 'latex_math',
+      severity: 'error',
+      autoFixable: true,
+    });
   }
 
   let prose = text;
   MATH_REGEX.lastIndex = 0;
   prose = prose.replace(MATH_REGEX, (tok) => {
-    const inner = tok.startsWith('$$') ? tok.slice(2, -2) : tok.slice(1, -1);
+    const inner = tok.startsWith('$$') ? tok.slice(2, -2).trim() : tok.slice(1, -1).trim();
     if (!isFormulaText(inner) && /[A-Za-z]/.test(inner)) {
-      issues.push(`Plain word wrapped in math delimiters: "${inner}"`);
+      issues.push({
+        message: `Plain word wrapped in math delimiters: "${inner}"`,
+        category: 'latex_math',
+        severity: 'warning',
+        autoFixable: true,
+      });
+    } else {
+      const broken = detectBrokenLatexSyntax(inner);
+      if (broken) {
+        issues.push({
+          message: broken,
+          category: 'latex_math',
+          severity: 'error',
+          autoFixable: false,
+        });
+      }
     }
     return ' [MATH] ';
   });
 
   if (prose.includes('$')) {
-    issues.push('Has an unmatched "$" math symbol.');
+    issues.push({
+      message: 'Has an unmatched "$" math symbol.',
+      category: 'latex_math',
+      severity: 'error',
+      autoFixable: true,
+    });
   }
   if (RAW_LATEX_LEAK_RE.test(prose)) {
-    issues.push('Has unformatted math command outside delimiters.');
+    issues.push({
+      message: 'Has unformatted math command outside delimiters.',
+      category: 'latex_math',
+      severity: 'error',
+      autoFixable: true,
+    });
   }
   return issues;
+}
+
+/** Check a single rendered string (prose or math) for leaked LaTeX/HTML/delimiters/truncation. */
+export function scanTextForArtifacts(text: string, subject?: string): string[] {
+  return scanTextQuality(text, subject).map((i) => i.message);
 }
 
 function hasUnbalancedDelimiters(text: string): boolean {
   let round = 0;
   let square = 0;
   let curly = 0;
-  for (const ch of text) {
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '\\') {
+      i += 1;
+      continue;
+    }
     if (ch === '(') round += 1;
     else if (ch === ')') round -= 1;
     else if (ch === '[') square += 1;
@@ -193,7 +308,8 @@ export function runDeterministicPaperAudit(paper: GeneratedPaper): Deterministic
             autoFixable: true,
           });
         }
-        if (TRUNCATED_ENDING_RE.test(stem) && !stem.endsWith('?') && !stem.endsWith('.')) {
+        const truncRe = q.type === 'mcq' ? MCQ_TRUNCATED_ENDING_RE : TRUNCATED_ENDING_RE;
+        if (truncRe.test(stem) && !stem.endsWith('?') && !stem.endsWith('.') && !stem.endsWith(':')) {
           findings.push({
             category: 'spelling_grammar',
             severity: 'error',
@@ -217,15 +333,15 @@ export function runDeterministicPaperAudit(paper: GeneratedPaper): Deterministic
         }
       }
 
-      for (const art of scanTextForArtifacts(stem)) {
+      for (const art of scanTextQuality(stem, paper.subject)) {
         findings.push({
-          category: 'latex_math',
-          severity: 'warning',
+          category: art.category,
+          severity: art.severity,
           location: loc,
           sectionIndex: sIdx,
           questionIndex: qIdx,
-          message: art,
-          autoFixable: true,
+          message: art.message,
+          autoFixable: art.autoFixable,
         });
       }
 
@@ -286,7 +402,12 @@ export function runDeterministicPaperAudit(paper: GeneratedPaper): Deterministic
                 autoFixable: true,
               });
             }
-            const optKey = normalizeQuestionKey(clean) || clean.toLowerCase();
+            const optKey = clean
+              .toLowerCase()
+              .replace(/\$+/g, '')
+              .replace(/\\(?:left|right)\s*/g, '')
+              .replace(/\s+/g, '')
+              .trim();
             if (optSeen.has(optKey)) {
               findings.push({
                 category: 'duplicate',
@@ -299,15 +420,15 @@ export function runDeterministicPaperAudit(paper: GeneratedPaper): Deterministic
               });
             }
             optSeen.add(optKey);
-            for (const art of scanTextForArtifacts(clean)) {
+            for (const art of scanTextQuality(clean, paper.subject)) {
               findings.push({
-                category: 'latex_math',
-                severity: 'warning',
+                category: art.category,
+                severity: art.severity,
                 location: `${loc} (${String.fromCharCode(97 + oIdx)})`,
                 sectionIndex: sIdx,
                 questionIndex: qIdx,
-                message: art,
-                autoFixable: true,
+                message: art.message,
+                autoFixable: art.autoFixable,
               });
             }
           }
@@ -353,6 +474,10 @@ export function applyDeterministicCleanup(paper: GeneratedPaper): {
     const questions = (sec.questions || []).map((q, qIdx) => {
       const beforeJson = JSON.stringify(q);
       const mathClean = sanitizeStringFields(q) as PaperQuestion;
+      mathClean.question = demoteInlineDisplayMath(mathClean.question || '', false);
+      if (Array.isArray(mathClean.options)) {
+        mathClean.options = mathClean.options.map((opt) => demoteInlineDisplayMath(String(opt || ''), true));
+      }
       const singleClean = sanitizeSingleQuestion(mathClean);
 
       if (singleClean.type === 'mcq' && Array.isArray(singleClean.options)) {

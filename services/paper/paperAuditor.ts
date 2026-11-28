@@ -83,7 +83,7 @@ function buildAuditorPrompt(
   return `Perform a thorough academic & visual layout audit of this exam paper and its built PDF and Word (.docx) files.
 
 ATTACHMENTS PROVIDED:
-- Visual attachments active: ${hasVisualAttachments ? 'Yes (check the attached PDF binary and rendered Word pages directly for visual layout, alignment, spacing, symbols, equation clipping, or awkward wraps).' : 'Text/XML build inspection only.'}
+- Visual attachments active: ${hasVisualAttachments ? 'Yes (inspect the attached PDF binary and rendered Word pages directly for black/broken equation boxes, oversized numbers, overlapping text, foreign characters, alignment, and wraps).' : 'Text/XML build inspection only.'}
 - Word archive stats: ${build.docxBuilt ? `${build.docxParagraphCount} paragraphs, ${build.docxMediaCount} embedded equation images, ${build.docxBytesLength} bytes` : 'Word build failed'}
 - PDF build stats: ${build.pdfBuilt ? (build.pdfBase64 ? 'Full binary PDF attached' : 'PDF layout structure inspected') : 'PDF build failed'}
 
@@ -105,8 +105,10 @@ ${pdfExcerpt || '(unavailable)'}
 AUDIT CHECKLIST (check EVERY point):
 1. MCQ ANSWER KEYS & ACCURACY (CRITICAL): Re-solve EVERY MCQ independently using ${paper.subject} (${paper.gradeLevel}) knowledge. If 'KEY=' points to the wrong option, is scientifically/mathematically false, or if options are ambiguous/duplicate/none-correct, put the question in 'questionFixes' with corrected 'fixedCorrectAnswer' (and/or 'fixedOptions' / 'fixedQuestion').
 2. CHAPTER & MARKS SCHEME ALIGNMENT: Verify every question belongs to chapter "${paper.chapterName || paper.subject}" and fits its section's marks scheme and depth (MCQs, Short questions, Long questions). If a question is off-chapter or duplicates another item, replace it via 'questionFixes'.
-3. SPELLING, GRAMMAR & FACTS: Fix typos, garbled words, truncated stems, nonsensical distractors, or factual errors in any question/option.
-4. MATH & CHEMISTRY FORMATTING IN PDF & WORD: Look for raw '$', unrendered '\\frac', '\\ce', '\\alpha', lost subscripts/superscripts (e.g. 'H2O' where subscript broke or '\\left.' dot leaked), prose wrapped in '$...$', or garbled equations in the rendered PDF & Word views. Express inline math properly using '$...$' and chemistry with '$\\ce{...}$' or standard '$H_2O$' / '$SO_4^{2-}$'.
+3. SPELLING, GRAMMAR & STRAY SCRIPTS: Fix typos, garbled words, truncated stems, nonsensical distractors, factual errors, or ANY unexpected non-English/Arabic/garbled characters inside ${paper.subject} questions or options.
+4. MATH & CHEMISTRY FORMATTING IN PDF & WORD:
+   - Inspect rendered equations for broken/black-box errors, raw '$', unrendered '\\frac', '\\ce', '\\alpha', lost subscripts/superscripts, unclosed '{' braces, or unclosed '\\left' without '\\right' (e.g. '\\left|...\\right|').
+   - NEVER use '$$' around simple numbers, values, or MCQ choices (use '$3$ and $2$', not '$$3$$ and $$2$$'; MCQ options must ONLY use single '$...$' inline math so digits do not blow up onto separate lines).
 5. QUESTION/OPTION HYGIENE & VISUAL LAYOUT: Ensure NO question starts with leftover numbering ('1.', 'Q1:'), NO option has leftover 'A)'/'a)' prefix, and long options or column layouts do not collide in PDF or Word.
 6. Do NOT change the number of questions or marks. Only include entries in 'questionFixes' that actually need fixing. If everything is clean and verified, set passed=true and questionFixes=[].`;
 }
@@ -132,12 +134,15 @@ function buildPlainAuditSummary(
 ): string {
   const formats = checkedPdf && checkedDocx ? 'PDF and Word' : checkedDocx ? 'Word' : checkedPdf ? 'PDF' : 'paper';
   if (status === 'verified') {
-    return aiCompleted
-      ? `Verified across ${formats} builds: spelling, layout, math, and MCQ answer key are ready to print.`
-      : `Checked ${formats} build formatting; automated content review could not connect offline.`;
+    return `Verified across ${formats} builds: spelling, layout, math, and MCQ answer key are ready to print.`;
   }
   if (status === 'fixed') {
     return `Checked ${formats} builds and automatically fixed ${fixesCount} ${fixesCount === 1 ? 'issue' : 'issues'}.`;
+  }
+  if (!aiCompleted && remainingWarnings === 0) {
+    return fixesCount > 0
+      ? `Formatted ${formats} builds (${fixesCount} auto-fixed); quick teacher review of answers recommended.`
+      : `Formatted ${formats} builds; automated answer check was skipped, so quick teacher review is recommended.`;
   }
   return `Checked ${formats} builds (${fixesCount} auto-fixed, ${remainingWarnings} ${remainingWarnings === 1 ? 'item' : 'items'} flagged for quick review).`;
 }
@@ -171,6 +176,7 @@ export async function auditAndRefinePaper(
   let currentPaper: GeneratedPaper = JSON.parse(JSON.stringify(initialPaper));
   const allFixes: PaperAuditFixRecord[] = [];
   let lastWarnings: string[] = [];
+  let lastBuild: PaperBuildInspection | null = null;
   let checkedPdf = false;
   let checkedDocx = false;
   let aiCompletedAnyPass = false;
@@ -187,6 +193,7 @@ export async function auditAndRefinePaper(
 
     const detAudit = runDeterministicPaperAudit(currentPaper);
     const build = await inspectPaperBuilds(currentPaper, options.teacherInfo, options.mathScale ?? 85);
+    lastBuild = build;
     checkedPdf = checkedPdf || build.pdfBuilt;
     checkedDocx = checkedDocx || build.docxBuilt;
 
@@ -194,7 +201,7 @@ export async function auditAndRefinePaper(
     if (build.pdfBase64) {
       contextParts.push({ inlineData: { mimeType: 'application/pdf', data: build.pdfBase64 } });
     }
-    for (const imgBase64 of build.docxPageImagesBase64.slice(0, 2)) {
+    for (const imgBase64 of build.docxPageImagesBase64.slice(0, 4)) {
       contextParts.push({ inlineData: { mimeType: 'image/jpeg', data: imgBase64 } });
     }
 
@@ -228,21 +235,21 @@ export async function auditAndRefinePaper(
           aiPayload = await runAuditCall(undefined);
           aiCompletedAnyPass = true;
         } catch (fallbackErr) {
-          log(`Automated visual verification skipped: ${fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)}`);
+          log(`Automated visual check skipped: ${fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)}`);
         }
       } else {
-        log(`Automated verification skipped: ${errObj.message}`);
+        log(`Automated content check skipped: ${errObj.message}`);
       }
     }
 
     if (!aiPayload) {
       lastWarnings = Array.from(
         new Set([
-          ...detAudit.findings.filter((f) => !f.autoFixable).map((f) => `${f.location}: ${f.message}`),
+          ...detAudit.findings.filter((f) => f.severity === 'error' || !f.autoFixable).map((f) => `${f.location}: ${f.message}`),
           ...build.buildFindings,
         ])
       );
-      lastPassClean = detAudit.errorCount === 0 && build.buildFindings.length === 0;
+      lastPassClean = false;
       break;
     }
 
@@ -254,7 +261,7 @@ export async function auditAndRefinePaper(
     lastWarnings = Array.from(
       new Set([
         ...(aiPayload.layoutWarnings || []),
-        ...postDet.findings.filter((f) => !f.autoFixable).map((f) => `${f.location}: ${f.message}`),
+        ...postDet.findings.filter((f) => f.severity === 'error' || !f.autoFixable).map((f) => `${f.location}: ${f.message}`),
         ...(appliedFixes.length === 0 ? build.buildFindings : []),
       ])
     );
@@ -268,46 +275,55 @@ export async function auditAndRefinePaper(
       break;
     }
 
-    if (pass === maxPasses && appliedFixes.length === 0 && postDet.errorCount === 0) {
+    if (pass === maxPasses && appliedFixes.length === 0 && build.buildFindings.length === 0 && postDet.errorCount === 0) {
       lastPassClean = true;
     }
   }
 
   let finalDet = runDeterministicPaperAudit(currentPaper);
   const flawedPositions = new Map<string, { sIdx: number; qIdx: number; reasons: string[]; category: DeterministicFinding['category'] }>();
-  for (const f of finalDet.findings) {
-    if (f.severity !== 'error' || f.sectionIndex === undefined || f.questionIndex === undefined) continue;
-    const key = `${f.sectionIndex}:${f.questionIndex}`;
+  const addFlawedTarget = (
+    sIdx: number | undefined,
+    qIdx: number | undefined,
+    reason: string,
+    category: DeterministicFinding['category']
+  ) => {
+    if (sIdx === undefined || qIdx === undefined) return;
+    const key = `${sIdx}:${qIdx}`;
     const existing = flawedPositions.get(key);
     if (existing) {
-      existing.reasons.push(f.message);
+      if (!existing.reasons.includes(reason)) existing.reasons.push(reason);
     } else {
-      flawedPositions.set(key, {
-        sIdx: f.sectionIndex,
-        qIdx: f.questionIndex,
-        reasons: [f.message],
-        category: f.category,
-      });
+      flawedPositions.set(key, { sIdx, qIdx, reasons: [reason], category });
+    }
+  };
+
+  for (const f of finalDet.findings) {
+    if (f.severity === 'error') {
+      addFlawedTarget(f.sectionIndex, f.questionIndex, f.message, f.category);
     }
   }
+  for (const target of lastBuild?.failedQuestionTargets || []) {
+    addFlawedTarget(target.sectionIndex, target.questionIndex, target.reason, 'latex_math');
+  }
 
-  if (flawedPositions.size > 0 && aiCompletedAnyPass) {
-    let repairedCount = 0;
-    for (const target of Array.from(flawedPositions.values()).slice(0, 5)) {
+  let repairedCount = 0;
+  if (flawedPositions.size > 0) {
+    for (const target of Array.from(flawedPositions.values()).slice(0, 6)) {
       const targetQ = currentPaper.sections?.[target.sIdx]?.questions?.[target.qIdx];
       if (!targetQ) continue;
       try {
         const replacement = await regenerateSingleQuestion(
           currentPaper,
           targetQ,
-          `Fix quality issue(s): ${target.reasons.join('; ')}. Keep strictly aligned with chapter "${currentPaper.chapterName || currentPaper.subject}" and ensure accurate options and answer key.`
+          `Fix quality issue(s): ${target.reasons.join('; ')}. Keep strictly aligned with chapter "${currentPaper.chapterName || currentPaper.subject}", use clean English text with paired math delimiters ($...$), and ensure accurate options and answer key.`
         );
         currentPaper.sections[target.sIdx].questions[target.qIdx] = replacement;
         allFixes.push({
           sectionIndex: target.sIdx,
           questionNumber: target.qIdx + 1,
           category: target.category,
-          reason: `Section ${target.sIdx + 1} Q${target.qIdx + 1}: Automatically replaced flawed question.`,
+          reason: `Section ${target.sIdx + 1} Q${target.qIdx + 1}: Replaced question to fix formatting or formula error.`,
           applied: true,
         });
         repairedCount += 1;
@@ -323,13 +339,15 @@ export async function auditAndRefinePaper(
     }
   }
 
-  if (allFixes.length > 0 && lastWarnings.length === 0 && !lastPassClean) {
+  // Always rebuild & re-verify PDF + Word whenever targeted repairs or final-pass edits ran
+  if (repairedCount > 0 || (allFixes.length > 0 && !lastPassClean)) {
     const finalBuild = await inspectPaperBuilds(currentPaper, options.teacherInfo, options.mathScale ?? 85);
+    lastBuild = finalBuild;
     checkedPdf = checkedPdf || finalBuild.pdfBuilt;
     checkedDocx = checkedDocx || finalBuild.docxBuilt;
     lastWarnings = Array.from(
       new Set([
-        ...finalDet.findings.filter((f) => !f.autoFixable).map((f) => `${f.location}: ${f.message}`),
+        ...finalDet.findings.filter((f) => f.severity === 'error' || !f.autoFixable).map((f) => `${f.location}: ${f.message}`),
         ...finalBuild.buildFindings,
       ])
     );
@@ -347,7 +365,7 @@ export async function auditAndRefinePaper(
   );
 
   let status: PaperAuditReport['status'];
-  if (lastWarnings.length > 0 || finalDet.errorCount > 0) {
+  if (lastWarnings.length > 0 || finalDet.errorCount > 0 || !aiCompletedAnyPass) {
     status = 'needs_review';
   } else if (dedupedFixes.length > 0) {
     status = 'fixed';

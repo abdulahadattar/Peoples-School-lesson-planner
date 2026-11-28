@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { isFormulaText, MATH_REGEX } from '../services/mathDetection';
-import { sanitizeMathText } from '../services/latexSanitizer';
+import { demoteInlineDisplayMath, sanitizeMathText } from '../services/latexSanitizer';
 import { expandChemInKatexLatex } from '../services/chemFormula';
 import { ensureKatexLoaded } from '../services/export/externalLibs';
 
@@ -17,13 +17,14 @@ interface KaTeXTextProps {
   className?: string;
   as?: 'p' | 'span' | 'div' | 'li';
   mathScale?: number;
+  inlineOnly?: boolean;
 }
 
 /**
  * Renders text with inline KaTeX equation support.
  * Supports dynamic manual font scaling for equations.
  */
-const KaTeXText: React.FC<KaTeXTextProps> = ({ text, className = '', as: Tag = 'span', mathScale }) => {
+const KaTeXText: React.FC<KaTeXTextProps> = ({ text, className = '', as: Tag = 'span', mathScale, inlineOnly = false }) => {
   const ref = useRef<HTMLElement>(null);
   const [scale, setScale] = useState<number>(() => {
     if (mathScale !== undefined) return mathScale;
@@ -55,7 +56,8 @@ const KaTeXText: React.FC<KaTeXTextProps> = ({ text, className = '', as: Tag = '
     let cancelled = false;
 
     const draw = (): boolean => {
-      const normalizedText = sanitizeMathText(text);
+      const sanitized = sanitizeMathText(text);
+      const normalizedText = inlineOnly ? demoteInlineDisplayMath(sanitized, true) : sanitized;
       el.textContent = '';
       const frag = document.createDocumentFragment();
       let last = 0;
@@ -123,7 +125,7 @@ const KaTeXText: React.FC<KaTeXTextProps> = ({ text, className = '', as: Tag = '
     return () => {
       cancelled = true;
     };
-  }, [text, scale]);
+  }, [text, scale, inlineOnly]);
 
   return <Tag ref={ref as any} className={className} />;
 };

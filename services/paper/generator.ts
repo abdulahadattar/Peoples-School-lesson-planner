@@ -130,7 +130,7 @@ export async function generateExamPaper(
 7.  **Clean MCQ Options:** For MCQs, the 'options' array MUST contain exactly 4 clean choice texts WITHOUT prefixes (do NOT write "A)", "(A)", "a.", "○ A)").
 8.  **MCQ Answer Key ('correctAnswer'):** For every MCQ, set 'correctAnswer' to "A", "B", "C", or "D" matching the 1st, 2nd, 3rd, or 4th entry in 'options'. Omit for Short/Long questions.
 9.  **MANDATORY JSON OUTPUT:** Output ONLY valid JSON matching the schema. No extra markdown or commentary.
-10. **EQUATIONS — ONLY for real math, NEVER for text:** Wrap mathematical expressions in LaTeX ($...$ inline, $$...$$ display) and keep ordinary words as plain text.`;
+10. **CLEAN MATH & SCRIPT:** Use inline '$...$' (NOT '$$...$$') for equations inside questions, numbers/values (write '$3$ and $2$', never '$$3$$'), and ALL MCQ options; reserve '$$...$$' strictly for multi-line display/matrices. Close every '{}' brace and every '\\left' with matching '\\right' (e.g. '\\left| x \\right|'). Write exclusively in standard English for non-language subjects — never emit foreign/Arabic characters or half-finished symbols.`;
 
   const difficultyText = buildDifficultyDescription(difficulty);
   const sloText = slos.length > 0 ? slos.map((s) => `- ${s}`).join('\n') : buildNoPdfSyllabusGuidance(gradeId, subjectId, chapterId, subjectName, chapterName);
@@ -329,7 +329,7 @@ export async function reviseExamPaper(
 2. Maintain proper question numbering across all sections.
 3. Keep the total marks consistent (or update if the teacher changes the structure).
 4. Ensure questions are properly formatted with MCQ options where applicable.
-5. **EQUATIONS — ONLY for real math, NEVER for text:** Wrap mathematical equations in LaTeX delimiters ($...$ inline, $$...$$ display). Ordinary words, names and emphasis must NEVER be wrapped in dollar signs — only genuine formulas, expressions, powers and units like $g/cm^3$.
+5. **CLEAN MATH & SCRIPT:** Wrap genuine mathematical equations/units in inline '$...$' (never '$$...$$' for simple numbers, short expressions, or MCQ options). Pair every '{}' and '\\left...\\right', keep ordinary prose outside '$...$', and never include stray non-English characters.
 6. **MANDATORY JSON OUTPUT:** Output ONLY valid JSON matching the schema. No extra text or markdown.`;
 
   const userPrompt = `Here is the current exam paper:

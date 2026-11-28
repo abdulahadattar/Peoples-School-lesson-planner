@@ -38,6 +38,109 @@ const RENDER_WATCHDOG_MS = 3000;
 // Prose words that signal "this is a sentence, not a formula" when '=' appears
 const PROSE_WORDS = /\b(the|and|that|with|from|word|words|is|are|was|were|this|which|where|these|those|between|using|water|oxygen|hydrogen|cell|cells|every|into|about|such|has|have|can|could|will|would|their|there)\b/i;
 
+export interface EquationRenderFailure {
+  latex: string;
+  reason: string;
+}
+
+const equationRenderFailures: EquationRenderFailure[] = [];
+
+export function clearEquationRenderFailures(): void {
+  equationRenderFailures.length = 0;
+}
+
+export function getEquationRenderFailures(): EquationRenderFailure[] {
+  return [...equationRenderFailures];
+}
+
+function recordEquationFailure(latex: string, reason: string): void {
+  if (equationRenderFailures.length < 40) {
+    equationRenderFailures.push({ latex, reason });
+  }
+}
+
+export interface PngPixelHealth {
+  darkRatio: number;
+  whiteRatio: number;
+  isSolidDark: boolean;
+  isBlank: boolean;
+}
+
+/**
+ * Pure RGBA buffer health check so corrupted solid-black rectangles (such as
+ * unstyled MathJax merror <rect data-background="true">) or blank images are
+ * rejected deterministically before entering Word or PDF documents.
+ */
+export function inspectPngPixelStats(
+  rgba: Uint8ClampedArray | Uint8Array,
+  width: number,
+  height: number
+): PngPixelHealth {
+  const totalPixels = Math.max(1, Math.floor(rgba.length / 4));
+  let dark = 0;
+  let white = 0;
+  for (let i = 0; i + 3 < rgba.length; i += 4) {
+    const r = rgba[i];
+    const g = rgba[i + 1];
+    const b = rgba[i + 2];
+    const a = rgba[i + 3];
+    if (a < 20 || (r > 242 && g > 242 && b > 242)) {
+      white += 1;
+    } else if (r < 55 && g < 55 && b < 55) {
+      dark += 1;
+    }
+  }
+  const darkRatio = dark / totalPixels;
+  const whiteRatio = white / totalPixels;
+  const area = width * height;
+  const isSolidDark = area >= 64 && darkRatio >= 0.42;
+  const isBlank = darkRatio < 0.001 && whiteRatio > 0.995;
+  return { darkRatio, whiteRatio, isSolidDark, isBlank };
+}
+
+/**
+ * Inspect an already-encoded PNG data URL or base64 string in the browser
+ * to verify it did not degrade into a solid dark rectangle or empty canvas.
+ */
+export async function inspectPngDataUrlHealth(
+  pngDataUrlOrBase64: string
+): Promise<{ width: number; height: number; health: PngPixelHealth } | null> {
+  if (typeof document === 'undefined' || !pngDataUrlOrBase64) return null;
+  const src = pngDataUrlOrBase64.startsWith('data:')
+    ? pngDataUrlOrBase64
+    : `data:image/png;base64,${pngDataUrlOrBase64}`;
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (val: { width: number; height: number; health: PngPixelHealth } | null) => {
+      if (settled) return;
+      settled = true;
+      resolve(val);
+    };
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const w = Math.max(1, img.naturalWidth || img.width || 1);
+        const h = Math.max(1, img.naturalHeight || img.height || 1);
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return done(null);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        const data = ctx.getImageData(0, 0, w, h).data;
+        done({ width: w, height: h, health: inspectPngPixelStats(data, w, h) });
+      } catch {
+        done(null);
+      }
+    };
+    img.onerror = () => done(null);
+    img.src = src;
+    setTimeout(() => done(null), RENDER_WATCHDOG_MS);
+  });
+}
+
 function loadMathJax(): Promise<boolean> {
   return ensureMathJaxLoaded();
 }
@@ -54,36 +157,63 @@ export function isMathRendererAvailable(): boolean {
 
 /**
  * Render a LaTeX string to a self-contained SVG via MathJax and measure it.
- * Returns { svg, width, height } in CSS pixels, or null on any failure.
+ * Returns { svg, width, height } in CSS pixels, or null on any failure or TeX error.
  */
 async function renderLatexToSvg(
   latex: string,
   display: boolean,
   fontSize: number
 ): Promise<{ svg: string; width: number; height: number } | null> {
-  if (!latex || latex.length > MAX_EQUATION_CHARS) return null;
+  if (!latex || latex.length > MAX_EQUATION_CHARS) {
+    if (latex) recordEquationFailure(latex, 'Formula exceeded safe rendering length.');
+    return null;
+  }
   if (!(await loadMathJax()) || !window.MathJax?.tex2svg) return null;
 
   let container: HTMLElement;
   try {
     container = window.MathJax.tex2svg(latex, { display, em: Math.round(fontSize) });
-  } catch {
+  } catch (err) {
+    recordEquationFailure(latex, `Formula syntax error (${err instanceof Error ? err.message : 'render failed'}).`);
+    return null;
+  }
+
+  const merrorEl = container.querySelector('[data-mml-node="merror"], [data-mjx-error], mjx-merror');
+  if (merrorEl) {
+    const errText = merrorEl.getAttribute('data-mjx-error') || 'Malformed LaTeX expression';
+    recordEquationFailure(latex, `Malformed formula syntax: ${errText}`);
     return null;
   }
 
   const svgEl = container.querySelector('svg');
-  if (!svgEl) return null;
+  if (!svgEl) {
+    recordEquationFailure(latex, 'Formula did not produce vector geometry.');
+    return null;
+  }
 
   // Measure with MathJax's CSS applied (ex units -> px), then force px dims
   const holder = document.createElement('div');
   holder.style.cssText = 'position:absolute;left:-9999px;top:-9999px;width:0;height:0;overflow:hidden;';
   const clone = svgEl.cloneNode(true) as SVGElement;
+
+  // Defense-in-depth: never let an unstyled background <rect> inherit fill="currentColor" (#000)
+  clone.querySelectorAll('rect[data-background="true"]').forEach((rect) => {
+    rect.setAttribute('fill', '#ffffff');
+    rect.setAttribute('stroke', 'none');
+  });
+
   holder.appendChild(clone);
   document.body.appendChild(holder);
   try {
     const rect = clone.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0) return null;
-    if (rect.width > MAX_RENDER_WIDTH || rect.height > MAX_RENDER_HEIGHT) return null;
+    if (rect.width <= 0 || rect.height <= 0) {
+      recordEquationFailure(latex, 'Formula rendered with zero dimensions.');
+      return null;
+    }
+    if (rect.width > MAX_RENDER_WIDTH || rect.height > MAX_RENDER_HEIGHT) {
+      recordEquationFailure(latex, 'Formula exceeded maximum page bounds.');
+      return null;
+    }
     const width = Math.round(rect.width);
     const height = Math.round(rect.height);
     clone.setAttribute('width', `${width}`);
@@ -99,6 +229,7 @@ async function renderLatexToSvg(
     const svg = new XMLSerializer().serializeToString(clone);
     return { svg, width, height };
   } catch {
+    recordEquationFailure(latex, 'Failed to serialize formula SVG.');
     return null;
   } finally {
     document.body.removeChild(holder);
@@ -108,9 +239,14 @@ async function renderLatexToSvg(
 /**
  * Rasterize a self-contained SVG string to a PNG data URL via <img> + canvas.
  * Pure SVGs (no foreignObject / external resources) do not taint the canvas,
- * so toDataURL is safe here. Never rejects: returns null on failure.
+ * so toDataURL is safe here. Rejects solid-black or blank images cleanly.
  */
-async function svgToPngDataUrl(svg: string, width: number, height: number): Promise<string | null> {
+async function svgToPngDataUrl(
+  svg: string,
+  width: number,
+  height: number,
+  latexForDiagnostics: string = ''
+): Promise<string | null> {
   if (typeof document === 'undefined') return null;
   const scale = 2; // 2x for sharp output in print
   let url: string | null = null;
@@ -139,6 +275,21 @@ async function svgToPngDataUrl(svg: string, width: number, height: number): Prom
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+          const health = inspectPngPixelStats(imgData, canvas.width, canvas.height);
+          if (health.isSolidDark || health.isBlank) {
+            if (latexForDiagnostics) {
+              recordEquationFailure(
+                latexForDiagnostics,
+                health.isSolidDark
+                  ? 'Formula rendered as a solid black block.'
+                  : 'Formula rendered as a blank image.'
+              );
+            }
+            return finish(null);
+          }
+
           finish(canvas.toDataURL('image/png'));
         } catch {
           finish(null);
@@ -208,15 +359,19 @@ export async function parseTextWithEquations(
 
     const rendered = await renderLatexToSvg(latex, isDisplay, fontSize);
     if (rendered) {
-      const image = await svgToPngDataUrl(rendered.svg, rendered.width, rendered.height);
-      segments.push({
-        type: 'equation',
-        value: latex,
-        image: image || undefined,
-        display: isDisplay,
-        width: rendered.width,
-        height: rendered.height,
-      });
+      const image = await svgToPngDataUrl(rendered.svg, rendered.width, rendered.height, latex);
+      if (image) {
+        segments.push({
+          type: 'equation',
+          value: latex,
+          image,
+          display: isDisplay,
+          width: rendered.width,
+          height: rendered.height,
+        });
+      } else {
+        segments.push({ type: 'text', value: latex });
+      }
     } else {
       // MathJax unavailable or rendering failed — keep the content as text
       segments.push({ type: 'text', value: latex });

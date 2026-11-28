@@ -159,7 +159,7 @@ CRITICAL RULES:
 3. Never include question numbers ("1.", "Q1:") or mark labels inside 'question'.
 4. If MCQ: provide exactly 4 distinct options without A)/B)/C)/D) prefixes, and set 'correctAnswer' strictly to "A", "B", "C", or "D" matching the factually and mathematically accurate option.
 5. If Short or Long question: omit 'options' and 'correctAnswer'.
-6. Use standard LaTeX delimiters ($...$ inline) ONLY for real math/chemistry formulas and units. Never wrap plain prose words in dollar signs.
+6. Use inline '$...$' (NEVER '$$...$$' in MCQ options or short numbers/values) ONLY for real math/chemistry formulas and units. Pair every '{}' brace and '\\left' with '\\right', never wrap plain prose words in dollar signs, and never output foreign/garbled script characters.
 7. Strictly output valid JSON matching the single question structure.`;
 
   const buildPrompt = (extraNote?: string) => {
