@@ -19,8 +19,10 @@ const MODULES = [
   'services/latexSanitizer.ts',
   'services/jsonHelpers.ts',
   'services/paperLayout.ts',
+  'services/paper/paperQualityRules.ts',
   'services/curriculumHelpers.ts',
   'services/tierHelpers.ts',
+  'services/identityNormalization.ts',
   'services/teacherRoster.ts',
   'services/timetable.ts',
   'services/timetableConflictEngine.ts',
@@ -33,18 +35,21 @@ const MODULES = [
   'utils/payloadOptimizer.ts',
 ];
 
+const unitDir = path.join(ROOT, 'scripts/unit');
+const discoveredUnitTests = fs.existsSync(unitDir)
+  ? fs
+      .readdirSync(unitDir)
+      .filter((f) => f.endsWith('.test.ts'))
+      .sort()
+      .map((f) => `scripts/unit/${f}`)
+  : [];
+
 const TEST_FILES = [
   'scripts/unit-tests.ts',
-  'scripts/unit/localFirst.test.ts',
-  'scripts/unit/extractedNameGuard.test.ts',
-  'scripts/unit/teacherRoster.test.ts',
-  'scripts/unit/availability.test.ts',
-  'scripts/unit/selectors.test.ts',
-  'scripts/unit/rendering.test.ts',
-  'scripts/unit/timetableSync.test.ts',
-  'scripts/unit/sheetPullSchedule.test.ts',
-  'scripts/unit/recordBatch.test.ts',
-  'scripts/unit/sharedEdits.test.ts',
+  ...discoveredUnitTests,
+  'services/export/paperExportLayout.test.ts',
+  'scripts/test-cross-module-sync.mjs',
+  'scripts/test-storage-adapter.mjs',
   // compressImage needs a canvas, so it is asserted in the browser suite
   // rather than a Node unit suite. Including it here keeps the inventory honest.
   'scripts/e2e-smoke.mjs',

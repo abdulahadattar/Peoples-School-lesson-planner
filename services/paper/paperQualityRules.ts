@@ -58,7 +58,7 @@ export interface PaperAuditModelPayload {
 
 const RAW_LATEX_LEAK_RE = /\\(?:frac|dfrac|tfrac|sqrt|ce|alpha|beta|gamma|theta|pi|rho|sigma|omega|Delta|Sigma|sum|int|times|div|rightarrow|leftarrow|rightleftharpoons|implies|iff|text|mathrm)\b/;
 const RAW_HTML_ENTITY_RE = /(?:&amp;|&lt;|&gt;|&nbsp;|<\/?(?:p|div|br|b|i|span|strong|em)\b[^>]*>)/i;
-const GARBAGE_TOKEN_RE = /\b(?:undefined|NaN|null)\b|\[object Object\]/i;
+const GARBAGE_TOKEN_RE = /\b(?:undefined|NaN)\b|\[object Object\]|\bnull\b(?!\s+(?:set|vector|space|matrix|hypothesis|point|pointer))/i;
 const TRUNCATED_ENDING_RE = /(?:\.\.\.|,\s*$|\b(?:the|an?|of|to|in|on|at|for|with|and|or|but|from|into|by|is|are|was|were|which|that)\s*)$/i;
 const MCQ_TRUNCATED_ENDING_RE = /(?:\.\.\.|,\s*$|\b(?:the|an?|and|or|but|which|that)\s*)$/i;
 const LANGUAGE_SCRIPT_SUBJECT_RE = /\b(urdu|sindhi|islamiat|islamic\s+studies|arabic|persian|nazra)\b/i;

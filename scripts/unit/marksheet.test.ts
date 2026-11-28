@@ -26,12 +26,21 @@ function getXlsxLib(): typeof XLSX {
   return mod?.default?.utils ? mod.default : XLSX;
 }
 
-test('imports the attached SEF Mid-Term Grade IX-XII CSV configuration faithfully', () => {
-  const csvPath = path.resolve(
-    process.cwd(),
-    'public/assets/aistudio/SEF_Mid_Term_Grade_IX-_XII_Marksheet_26-27___10___1__b79974da'
-  );
-  const rawCsv = fs.readFileSync(csvPath, 'utf-8');
+test('imports the SEF Mid-Term Grade IX-XII CSV configuration faithfully', () => {
+  const rawCsv = [
+    ',IX,Abdul Ahad',
+    ',X,Rajab,,,,,,,Total Working Days:,244',
+    ',XI,Bahadur',
+    ',XII,Kamran',
+    ',School Name:,People\'s Higher Secondary School Jamshoro',
+    ',Academic Year:,2026-27,,,Principal Name:,Arsala Mewati',
+    'Selected Grading System:,ZUEB',
+    ',,,,,,,,,,,,Mid-Term Marks',
+    ',,,,,,,,,,,,Grade IX,,Grade X,,Grade XI,,Grade XII',
+    ',,,,,,,,,,,,English,50,English,50,English,25,English,25',
+    ',,,,,,,,,,,,Pre Board Marks',
+    ',,,,,,,,,,,,Chemistry,100,Chemistry,100,Chemistry,100,Chemistry,100',
+  ].join('\n');
   const res = importMarksheetWorkbook(rawCsv, 'midterm');
 
   assert.ok(res.configPatch, 'Expected attached settings CSV to produce a configPatch');
@@ -514,6 +523,7 @@ test('marksheetsRouter validates IDs, detects HTML auth redirects, and serves pa
   const originalFetch = globalThis.fetch;
   t.after(async () => {
     globalThis.fetch = originalFetch;
+    server.closeAllConnections?.();
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
 
@@ -657,6 +667,7 @@ test('marksheetsRouter returns deterministic contentHash and unchanged:true when
   const originalFetch = globalThis.fetch;
   t.after(async () => {
     globalThis.fetch = originalFetch;
+    server.closeAllConnections?.();
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
 
@@ -706,7 +717,7 @@ test('applyPendingEditsToEntries overlays teacher subject edits and optional sel
   const {
     applyPendingEditsToEntries,
     makePendingEditDocId,
-  } = await import('../../services/marksheet/pendingEditsRepository');
+  } = await import('../../services/marksheet/pendingEditsHelpers');
 
   assert.equal(makePendingEditDocId('midterm', 'GR-145'), 'midterm__GR-145');
 

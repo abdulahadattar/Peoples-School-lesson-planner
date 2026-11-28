@@ -28,7 +28,10 @@ import {
 import {
   applyPaperAuditFixes,
   detectUnexpectedScriptBleed,
+  isScriptAllowedForSubject,
   runDeterministicPaperAudit,
+  scanTextForArtifacts,
+  scanTextQuality,
 } from '../../services/paper/paperQualityRules';
 import { inspectPaperBuilds } from '../../services/paper/buildInspector';
 import { auditAndRefinePaper } from '../../services/paper/paperAuditor';
@@ -417,6 +420,11 @@ export async function runPaperAuditorAndEdgeCasesTests(h: Harness): Promise<void
     eq(detectUnexpectedScriptBleed('درج ذیل میں سے درست جواب منتخب کریں', 'Urdu'), null);
     eq(detectUnexpectedScriptBleed('صحيح جواب چونڊيو', 'Sindhi'), null);
     eq(detectUnexpectedScriptBleed('قرآن مجید کی سورہ', 'Islamiat'), null);
+
+    eq(isScriptAllowedForSubject('Urdu'), true);
+    eq(isScriptAllowedForSubject('Mathematics'), false);
+    eq(scanTextQuality('A null set has no elements.', 'Mathematics').length, 0);
+    eq(scanTextForArtifacts('Value is undefined here', 'Physics').length > 0, true);
   });
 
   it('auto-closes trailing \\left delimiter and flags unrepairable unclosed braces as error', () => {

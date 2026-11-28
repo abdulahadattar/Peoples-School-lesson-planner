@@ -21,7 +21,17 @@
  * inline inside a sentence.
  */
 
-import { isFormulaText, LATEX_COMMANDS, MATH_REGEX } from './mathDetection';
+import {
+  isFormulaText,
+  LATEX_COMMANDS,
+  LATEX_GREEK_MAP,
+  LATEX_NAMED_FUNCS,
+  LATEX_SIMPLE_CMD_MAP,
+  LatexCursor,
+  MATH_REGEX,
+  readLatexBraceContent,
+  readLatexToken,
+} from './mathDetection';
 import { chemToUnicode } from './chemFormula';
 
 export { isFormulaText };
@@ -266,15 +276,6 @@ export function sanitizeStringFields(value: unknown): unknown {
 /*  latexToUnicodeText — LaTeX fragment -> readable text for PDF       */
 /* ------------------------------------------------------------------ */
 
-/** Greek letters LaTeX -> unicode. */
-const GREEK: Record<string, string> = {
-  alpha: 'α', beta: 'β', gamma: 'γ', delta: 'δ', epsilon: 'ε', zeta: 'ζ', eta: 'η',
-  theta: 'θ', iota: 'ι', kappa: 'κ', lambda: 'λ', mu: 'μ', nu: 'ν', xi: 'ξ',
-  omicron: 'ο', pi: 'π', rho: 'ρ', sigma: 'σ', tau: 'τ', upsilon: 'υ', phi: 'φ',
-  chi: 'χ', psi: 'ψ', omega: 'ω', Gamma: 'Γ', Delta: 'Δ', Theta: 'Θ', Lambda: 'Λ',
-  Xi: 'Ξ', Pi: 'Π', Sigma: 'Σ', Phi: 'Φ', Psi: 'Ψ', Omega: 'Ω',
-};
-
 /** Superscript digits / signs that the PDF font (Roboto) contains. */
 const SUP_MAP: Record<string, string> = {
   '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵',
@@ -286,21 +287,6 @@ const SUB_MAP: Record<string, string> = {
   '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', '5': '₅',
   '6': '₆', '7': '₇', '8': '₈', '9': '₉',
 };
-
-const SIMPLE_CMDS: Record<string, string> = {
-  times: '×', div: '÷', cdot: '·', pm: '±', mp: '∓', approx: '≈', neq: '≠', leq: '≤',
-  geq: '≥', infty: '∞', rightarrow: '→', leftarrow: '←', to: '→', mid: '|',
-  Rightarrow: '⇒', Leftarrow: '⇐', leftrightarrow: '↔', Leftrightarrow: '⇔',
-  implies: '⇒', iff: '⇔', rightleftharpoons: '⇌', uparrow: '↑', downarrow: '↓',
-  ldots: '...', cdots: '...', vdots: '⋮', ddots: '⋱', simeq: '≈', partial: '∂',
-  circ: '°', degree: '°', celsius: '°C', angstrom: 'Å', micro: 'µ', ohm: 'Ω',
-  nabla: '∇', hbar: 'ℏ', ell: 'ℓ', prime: '′',
-  propto: '∝', equiv: '≡', perp: '⊥', parallel: '∥', angle: '∠', triangle: '△',
-  therefore: '∴', because: '∵', forall: '∀', exists: '∃',
-  in: '∈', notin: '∉', subset: '⊂', subseteq: '⊆', cup: '∪', cap: '∩',
-};
-
-const NAMED_FUNCS = new Set(['sin', 'cos', 'tan', 'log', 'ln', 'exp', 'lim', 'max', 'min']);
 
 /**
  * Superscript for a token: characters the font has superscript glyphs for are
@@ -329,41 +315,8 @@ function toSubscript(token: string): string {
   return mapped === token ? `_(${token})` : mapped;
 }
 
-interface Cursor {
-  s: string;
-  i: number;
-}
-
-/** Read letters/digits forming one token (stops at spaces/braces/operators). */
-function readToken(c: Cursor): string {
-  const s = c.s;
-  const start = c.i;
-  while (c.i < s.length && !/[\s{}^_\\]/.test(s[c.i])) c.i += 1;
-  return s.slice(start, c.i);
-}
-
-/** Read raw braced content until matching '}' without transforming ^/_ scripts (used by \ce{...}). */
-function convertBlockRawBraceContent(c: Cursor): string {
-  const s = c.s;
-  let depth = 0;
-  const start = c.i;
-  while (c.i < s.length) {
-    if (s[c.i] === '{') depth += 1;
-    else if (s[c.i] === '}') {
-      if (depth === 0) {
-        const content = s.slice(start, c.i);
-        c.i += 1;
-        return content;
-      }
-      depth -= 1;
-    }
-    c.i += 1;
-  }
-  return s.slice(start);
-}
-
 /** Convert until the matching '}' is consumed (or end of string). */
-function convertBlock(c: Cursor): string {
+function convertBlock(c: LatexCursor): string {
   const s = c.s;
   let out = '';
   while (c.i < s.length) {
@@ -394,7 +347,7 @@ function convertBlock(c: Cursor): string {
       if (name === 'begin' || name === 'end') {
         while (c.i < s.length && s[c.i] === ' ') c.i += 1;
         let env = '';
-        if (s[c.i] === '{') { c.i += 1; env = convertBlock(c); } else env = readToken(c);
+        if (s[c.i] === '{') { c.i += 1; env = convertBlock(c); } else env = readLatexToken(c);
         if (name === 'begin') {
           if (env === 'pmatrix') out += '( ';
           else if (env === 'vmatrix') out += '| ';
@@ -415,10 +368,10 @@ function convertBlock(c: Cursor): string {
       if (name === 'frac' || name === 'dfrac' || name === 'tfrac') {
         while (c.i < s.length && s[c.i] === ' ') c.i += 1;
         let num = '';
-        if (s[c.i] === '{') { c.i += 1; num = convertBlock(c); } else num = readToken(c);
+        if (s[c.i] === '{') { c.i += 1; num = convertBlock(c); } else num = readLatexToken(c);
         while (c.i < s.length && s[c.i] === ' ') c.i += 1;
         let den = '';
-        if (s[c.i] === '{') { c.i += 1; den = convertBlock(c); } else den = readToken(c);
+        if (s[c.i] === '{') { c.i += 1; den = convertBlock(c); } else den = readLatexToken(c);
         const simpleNum = num.length > 0 && num.length <= 2 && /^[0-9A-Za-z]+$/.test(num);
         const simpleDen = den.length > 0 && den.length <= 2 && /^[0-9A-Za-z]+$/.test(den);
         out += simpleNum && simpleDen ? `${num}/${den}` : `(${num})/(${den})`;
@@ -427,13 +380,13 @@ function convertBlock(c: Cursor): string {
       if (name === 'sqrt') {
         while (c.i < s.length && s[c.i] === ' ') c.i += 1;
         if (s[c.i] === '{') { c.i += 1; out += `√(${convertBlock(c)})`; }
-        else out += `√${readToken(c)}`;
+        else out += `√${readLatexToken(c)}`;
         continue;
       }
       if (name === 'overline' || name === 'bar' || name === 'underline') {
         while (c.i < s.length && s[c.i] === ' ') c.i += 1;
         if (s[c.i] === '{') { c.i += 1; out += `mean(${convertBlock(c)})`; }
-        else out += `mean(${readToken(c)})`;
+        else out += `mean(${readLatexToken(c)})`;
         continue;
       }
       if (name === 'text' || name === 'mathrm' || name === 'textbf' || name === 'textit' || name === 'mathbf' || name === 'mathit') {
@@ -444,23 +397,22 @@ function convertBlock(c: Cursor): string {
       if (name === 'hat' || name === 'vec' || name === 'dot') {
         while (c.i < s.length && s[c.i] === ' ') c.i += 1;
         if (s[c.i] === '{') { c.i += 1; out += convertBlock(c); }
-        else { out += readToken(c); }
+        else { out += readLatexToken(c); }
         continue;
       }
       if (name === 'ce') {
         while (c.i < s.length && s[c.i] === ' ') c.i += 1;
-        if (s[c.i] === '{') { c.i += 1; out += chemToUnicode(convertBlockRawBraceContent(c)); }
-        else out += chemToUnicode(readToken(c));
+        out += chemToUnicode(readLatexBraceContent(c));
         continue;
       }
       if (name === 'textsubscript') {
         while (c.i < s.length && s[c.i] === ' ') c.i += 1;
-        out += toSubscript(s[c.i] === '{' ? (c.i += 1, convertBlock(c)) : readToken(c));
+        out += toSubscript(s[c.i] === '{' ? (c.i += 1, convertBlock(c)) : readLatexToken(c));
         continue;
       }
       if (name === 'textsuperscript') {
         while (c.i < s.length && s[c.i] === ' ') c.i += 1;
-        out += toSuperscript(s[c.i] === '{' ? (c.i += 1, convertBlock(c)) : readToken(c));
+        out += toSuperscript(s[c.i] === '{' ? (c.i += 1, convertBlock(c)) : readLatexToken(c));
         continue;
       }
       if (name === 'xrightarrow' || name === 'xleftarrow') {
@@ -484,22 +436,22 @@ function convertBlock(c: Cursor): string {
       if (name === 'sum') { out += 'Σ'; continue; }
       if (name === 'int') { out += '∫'; continue; }
       if (name === 'quad' || name === 'qquad') { out += '  '; continue; }
-      if (NAMED_FUNCS.has(name)) { out += `${name} `; continue; }
-      if (GREEK[name]) { out += GREEK[name]; continue; }
-      if (SIMPLE_CMDS[name]) { out += SIMPLE_CMDS[name]; continue; }
+      if (LATEX_NAMED_FUNCS.has(name)) { out += `${name} `; continue; }
+      if (LATEX_GREEK_MAP[name]) { out += LATEX_GREEK_MAP[name]; continue; }
+      if (LATEX_SIMPLE_CMD_MAP[name]) { out += LATEX_SIMPLE_CMD_MAP[name]; continue; }
       // displaystyle/style spacing + unknown commands: keep content only
       continue;
     }
     if (ch === '^') {
       c.i += 1;
       if (s[c.i] === '{') { c.i += 1; out += toSuperscript(convertBlock(c)); }
-      else { out += toSuperscript(readToken(c)); }
+      else { out += toSuperscript(readLatexToken(c)); }
       continue;
     }
     if (ch === '_') {
       c.i += 1;
       if (s[c.i] === '{') { c.i += 1; out += toSubscript(convertBlock(c)); }
-      else { out += toSubscript(readToken(c)); }
+      else { out += toSubscript(readLatexToken(c)); }
       continue;
     }
     out += ch;
@@ -515,6 +467,6 @@ function convertBlock(c: Cursor): string {
  */
 export function latexToUnicodeText(latex: string): string {
   if (!latex) return '';
-  const cursor: Cursor = { s: latex.replace(/^[\s]+|[\s]+$/g, ''), i: 0 };
+  const cursor: LatexCursor = { s: latex.replace(/^[\s]+|[\s]+$/g, ''), i: 0 };
   return convertBlock(cursor).replace(/\s{2,}/g, ' ').trim();
 }

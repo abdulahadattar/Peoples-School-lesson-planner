@@ -10,15 +10,18 @@
  */
 import assert from 'node:assert/strict';
 import { isFormulaText, splitMathSegments, MATH_REGEX } from '../services/mathDetection';
-import { sanitizeMathText, sanitizeStringFields, latexToUnicodeText } from '../services/latexSanitizer';
+import {
+  sanitizeMathText, sanitizeStringFields, latexToUnicodeText, normalizeMathDelimiters, wrapPlainMathExpressions,
+} from '../services/latexSanitizer';
 import { getClassTier, getTeacherTiers, getTeacherTierHint } from '../services/tierHelpers';
 import { cleanAndParseJson, fixJsonControlChars } from '../services/jsonHelpers';
 import {
-  getGradeNumber, getGradeName, sortClassesByGrade, findClass, findSubject,
+  getGradeNumber, getGradeName, sortClassesByGrade, findClass, findSubject, formatAssignedClassLabel,
 } from '../services/curriculumHelpers';
 import {
   questionNumber, optionLetter, optionPrefix, cleanQuestionText, cleanOptionText,
   layoutOptions, sectionMarkingNote, sectionAttemptMarks, hasOptions,
+  OPTION_COLUMN_BUDGET, isComplexOption, optionRenderedText, optionRenderedLength,
 } from '../services/paperLayout';
 import { estimatePayloadSize, formatByteSize } from '../utils/payloadOptimizer';
 import {
@@ -172,6 +175,14 @@ it('returns empty string for empty input', () => {
   eq(latexToUnicodeText(''), '');
 });
 
+describe('latexSanitizer.normalizeMathDelimiters & wrapPlainMathExpressions');
+it('converts backslash delimiters and wraps plain math expressions safely', () => {
+  eq(normalizeMathDelimiters('Solve \\( x^2 \\) and \\[ y = 2 \\]'), 'Solve $x^2$ and $$y = 2$$');
+  eq(wrapPlainMathExpressions('sqrt(x + 1)'), '$\\sqrt{x + 1}$');
+  eq(wrapPlainMathExpressions('F = ma'), '$F = ma$');
+  eq(wrapPlainMathExpressions('Already $x^2$'), 'Already $x^2$');
+});
+
 /* ── tierHelpers ──────────────────────────────────────────────── */
 
 describe('tierHelpers.getClassTier');
@@ -254,6 +265,11 @@ it('finds classes and subjects', () => {
   eq(findSubject(classes, 'class9', 'physics')?.name, 'Physics');
   eq(findSubject(classes, 'class9', 'math'), undefined);
 });
+it('formats assigned class ids cleanly', () => {
+  eq(formatAssignedClassLabel('class9'), 'Class 9');
+  eq(formatAssignedClassLabel('class10-a'), 'Class 10-A');
+  eq(formatAssignedClassLabel('Class XII'), 'Class XII');
+});
 
 /* ── paperLayout ──────────────────────────────────────────────── */
 
@@ -314,6 +330,14 @@ it('stacks all options when an option exceeds 22 chars or uses complex math', ()
 });
 it('returns no rows for no options', () => {
   eq(layoutOptions([]), []);
+});
+it('measures option complexity and rendered length against column budget', () => {
+  eq(OPTION_COLUMN_BUDGET, 22);
+  eq(isComplexOption('$\\frac{a}{b}$'), true);
+  eq(isComplexOption('$10\\text{ m/s}$'), false);
+  eq(optionRenderedText('A) **10 m**'), '10 m');
+  eq(optionRenderedText('A) $10\\text{ m}$'), '10 m');
+  eq(optionRenderedLength('A) $10\\text{ m}$'), 4);
 });
 
 describe('paperLayout.sectionMarkingNote / sectionAttemptMarks');
@@ -689,6 +713,9 @@ await runPerformanceAndAccessibilityTests({ describe, it, itAsync, eq });
 
 const { runPortalWarmupTests } = await import('./unit/portalWarmup.test');
 await runPortalWarmupTests({ describe, it, itAsync, eq });
+
+const { runIdentityNormalizationTests } = await import('./unit/identityNormalization.test');
+runIdentityNormalizationTests({ describe, it, eq });
 
 /* ── summary ─────────────────────────────────────────────────── */
 

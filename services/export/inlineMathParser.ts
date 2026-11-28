@@ -8,7 +8,16 @@
  * the running sentence flow and format consistently across PDF and .docx.
  */
 
-import { isFormulaText, MATH_REGEX } from '../mathDetection';
+import {
+  isFormulaText,
+  LATEX_GREEK_MAP,
+  LATEX_NAMED_FUNCS,
+  LATEX_SIMPLE_CMD_MAP,
+  LatexCursor,
+  MATH_REGEX,
+  readLatexBraceContent,
+  readLatexToken,
+} from '../mathDetection';
 import { demoteInlineDisplayMath, sanitizeMathText } from '../latexSanitizer';
 import { parseChemFormula } from '../chemFormula';
 
@@ -39,29 +48,6 @@ export interface RichParseOptions {
    */
   allowBlockEquations?: boolean;
 }
-
-const GREEK: Record<string, string> = {
-  alpha: 'α', beta: 'β', gamma: 'γ', delta: 'δ', epsilon: 'ε', zeta: 'ζ', eta: 'η',
-  theta: 'θ', iota: 'ι', kappa: 'κ', lambda: 'λ', mu: 'μ', nu: 'ν', xi: 'ξ',
-  omicron: 'ο', pi: 'π', rho: 'ρ', sigma: 'σ', tau: 'τ', upsilon: 'υ', phi: 'φ',
-  chi: 'χ', psi: 'ψ', omega: 'ω', Gamma: 'Γ', Delta: 'Δ', Theta: 'Θ', Lambda: 'Λ',
-  Xi: 'Ξ', Pi: 'Π', Sigma: 'Σ', Phi: 'Φ', Psi: 'Ψ', Omega: 'Ω',
-};
-
-const SIMPLE_CMDS: Record<string, string> = {
-  times: '×', div: '÷', cdot: '·', pm: '±', mp: '∓', approx: '≈', neq: '≠', leq: '≤',
-  geq: '≥', infty: '∞', rightarrow: '→', leftarrow: '←', to: '→', mid: '|',
-  Rightarrow: '⇒', Leftarrow: '⇐', leftrightarrow: '↔', Leftrightarrow: '⇔',
-  implies: '⇒', iff: '⇔', rightleftharpoons: '⇌', uparrow: '↑', downarrow: '↓',
-  ldots: '...', cdots: '...', vdots: '⋮', ddots: '⋱', simeq: '≈', partial: '∂',
-  circ: '°', degree: '°', celsius: '°C', angstrom: 'Å', micro: 'µ', ohm: 'Ω',
-  nabla: '∇', hbar: 'ℏ', ell: 'ℓ', prime: '′',
-  propto: '∝', equiv: '≡', perp: '⊥', parallel: '∥', angle: '∠', triangle: '△',
-  therefore: '∴', because: '∵', forall: '∀', exists: '∃',
-  in: '∈', notin: '∉', subset: '⊂', subseteq: '⊆', cup: '∪', cap: '∩',
-};
-
-const NAMED_FUNCS = new Set(['sin', 'cos', 'tan', 'cot', 'sec', 'csc', 'log', 'ln', 'exp', 'lim', 'max', 'min']);
 
 const BLOCK_ENV_RE = /\\(?:begin|matrix|pmatrix|bmatrix|vmatrix|Vmatrix|array|aligned|cases|gathered)\b/i;
 const COMPLEX_INLINE_RE = /\\(?:frac|dfrac|tfrac|cfrac|binom|sqrt|sum|int|prod|oint|overline|underline)\b/i;
@@ -126,41 +112,8 @@ export function parseMarkdownToRuns(text: string): InlineRichRun[] {
   return compactRuns(runs);
 }
 
-interface Cursor {
-  s: string;
-  i: number;
-}
-
-function readToken(c: Cursor): string {
-  const s = c.s;
-  const start = c.i;
-  while (c.i < s.length && !/[\s{}^_\\]/.test(s[c.i])) c.i += 1;
-  return s.slice(start, c.i);
-}
-
-function readRawBraceContent(c: Cursor): string {
-  const s = c.s;
-  if (s[c.i] !== '{') return readToken(c);
-  c.i += 1;
-  let depth = 0;
-  const start = c.i;
-  while (c.i < s.length) {
-    if (s[c.i] === '{') depth += 1;
-    else if (s[c.i] === '}') {
-      if (depth === 0) {
-        const content = s.slice(start, c.i);
-        c.i += 1;
-        return content;
-      }
-      depth -= 1;
-    }
-    c.i += 1;
-  }
-  return s.slice(start);
-}
-
 /** Read the single atom after an unbraced ^ or _ (e.g. "2", "-3", "23", "i", or "\circ"). */
-function readScriptAtom(c: Cursor, script: 'sup' | 'sub'): InlineRichRun[] {
+function readScriptAtom(c: LatexCursor, script: 'sup' | 'sub'): InlineRichRun[] {
   const s = c.s;
   while (c.i < s.length && s[c.i] === ' ') c.i += 1;
   if (c.i >= s.length) return [];
@@ -178,7 +131,7 @@ function readScriptAtom(c: Cursor, script: 'sup' | 'sub'): InlineRichRun[] {
     while (c.i < s.length && /[A-Za-z]/.test(s[c.i])) c.i += 1;
     const name = s.slice(nameStart, c.i);
     if (name === 'circ' || name === 'degree') return [{ text: '°' }];
-    const sym = GREEK[name] ?? SIMPLE_CMDS[name] ?? name;
+    const sym = LATEX_GREEK_MAP[name] ?? LATEX_SIMPLE_CMD_MAP[name] ?? name;
     return sym ? [{ text: sym, [script]: true }] : [];
   }
 
@@ -199,7 +152,7 @@ function runsToPlainString(runs: InlineRichRun[]): string {
   return runs.map((r) => r.text).join('');
 }
 
-function convertBlockToRuns(c: Cursor, activeScript?: 'sup' | 'sub'): InlineRichRun[] {
+function convertBlockToRuns(c: LatexCursor, activeScript?: 'sup' | 'sub'): InlineRichRun[] {
   const s = c.s;
   const runs: InlineRichRun[] = [];
   const pushText = (text: string, script: 'sup' | 'sub' | undefined = activeScript) => {
@@ -238,7 +191,7 @@ function convertBlockToRuns(c: Cursor, activeScript?: 'sup' | 'sub'): InlineRich
 
       if (name === 'begin' || name === 'end') {
         while (c.i < s.length && s[c.i] === ' ') c.i += 1;
-        const env = s[c.i] === '{' ? (c.i += 1, runsToPlainString(convertBlockToRuns(c))) : readToken(c);
+        const env = s[c.i] === '{' ? (c.i += 1, runsToPlainString(convertBlockToRuns(c))) : readLatexToken(c);
         if (name === 'begin') {
           pushText(env === 'pmatrix' ? '( ' : env === 'vmatrix' ? '| ' : env === 'Vmatrix' ? '|| ' : '[ ');
         } else {
@@ -249,9 +202,9 @@ function convertBlockToRuns(c: Cursor, activeScript?: 'sup' | 'sub'): InlineRich
       if (name === 'det') { pushText('det '); continue; }
       if (name === 'frac' || name === 'dfrac' || name === 'tfrac' || name === 'cfrac') {
         while (c.i < s.length && s[c.i] === ' ') c.i += 1;
-        const numRuns = s[c.i] === '{' ? (c.i += 1, convertBlockToRuns(c, activeScript)) : [{ text: readToken(c), ...(activeScript ? { [activeScript]: true } : {}) }];
+        const numRuns = s[c.i] === '{' ? (c.i += 1, convertBlockToRuns(c, activeScript)) : [{ text: readLatexToken(c), ...(activeScript ? { [activeScript]: true } : {}) }];
         while (c.i < s.length && s[c.i] === ' ') c.i += 1;
-        const denRuns = s[c.i] === '{' ? (c.i += 1, convertBlockToRuns(c, activeScript)) : [{ text: readToken(c), ...(activeScript ? { [activeScript]: true } : {}) }];
+        const denRuns = s[c.i] === '{' ? (c.i += 1, convertBlockToRuns(c, activeScript)) : [{ text: readLatexToken(c), ...(activeScript ? { [activeScript]: true } : {}) }];
         const numPlain = runsToPlainString(numRuns);
         const denPlain = runsToPlainString(denRuns);
         const simpleNum = numPlain.length > 0 && numPlain.length <= 3 && /^[0-9A-Za-z]+$/.test(numPlain);
@@ -275,7 +228,7 @@ function convertBlockToRuns(c: Cursor, activeScript?: 'sup' | 'sub'): InlineRich
           runs.push(...convertBlockToRuns(c, activeScript));
           pushText(')');
         } else {
-          pushText(`√${readToken(c)}`);
+          pushText(`√${readLatexToken(c)}`);
         }
         continue;
       }
@@ -285,7 +238,7 @@ function convertBlockToRuns(c: Cursor, activeScript?: 'sup' | 'sub'): InlineRich
           c.i += 1;
           runs.push(...convertBlockToRuns(c, activeScript));
         } else {
-          pushText(readToken(c));
+          pushText(readLatexToken(c));
         }
         continue;
       }
@@ -310,13 +263,13 @@ function convertBlockToRuns(c: Cursor, activeScript?: 'sup' | 'sub'): InlineRich
           c.i += 1;
           runs.push(...convertBlockToRuns(c, activeScript));
         } else {
-          pushText(readToken(c));
+          pushText(readLatexToken(c));
         }
         continue;
       }
       if (name === 'ce') {
         while (c.i < s.length && s[c.i] === ' ') c.i += 1;
-        const chemRaw = readRawBraceContent(c);
+        const chemRaw = readLatexBraceContent(c);
         for (const tok of parseChemFormula(chemRaw)) {
           const script = tok.script ?? activeScript;
           runs.push(script ? { text: tok.text, [script]: true } : { text: tok.text });
@@ -330,7 +283,7 @@ function convertBlockToRuns(c: Cursor, activeScript?: 'sup' | 'sub'): InlineRich
           c.i += 1;
           runs.push(...convertBlockToRuns(c, script));
         } else {
-          runs.push({ text: readToken(c), [script]: true });
+          runs.push({ text: readLatexToken(c), [script]: true });
         }
         continue;
       }
@@ -355,9 +308,9 @@ function convertBlockToRuns(c: Cursor, activeScript?: 'sup' | 'sub'): InlineRich
       if (name === 'int' || name === 'oint') { pushText('∫'); continue; }
       if (name === 'prod') { pushText('Π'); continue; }
       if (name === 'quad' || name === 'qquad') { pushText('  '); continue; }
-      if (NAMED_FUNCS.has(name)) { pushText(`${name} `); continue; }
-      if (GREEK[name]) { pushText(GREEK[name]); continue; }
-      if (SIMPLE_CMDS[name]) { pushText(SIMPLE_CMDS[name]); continue; }
+      if (LATEX_NAMED_FUNCS.has(name)) { pushText(`${name} `); continue; }
+      if (LATEX_GREEK_MAP[name]) { pushText(LATEX_GREEK_MAP[name]); continue; }
+      if (LATEX_SIMPLE_CMD_MAP[name]) { pushText(LATEX_SIMPLE_CMD_MAP[name]); continue; }
       continue;
     }
 

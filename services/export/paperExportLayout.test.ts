@@ -113,10 +113,22 @@ test('inlineMathParser keeps all inline units, angles, symbols, and sub/superscr
   assert.ok(parts[0].runs.some((r) => r.sup && r.text === '-3'));
   assert.ok(parts[0].runs.some((r) => r.sub && r.text === '0'));
 
-  // Only display $$...$$ or environments become block equations
-  const displayParts = parseTextToRichParts('Compute $$\\frac{a}{b}$$ then continue.');
+  // Mid-sentence single-line $$...$$ is demoted inline in default mode; multi-line blocks, matrices, or complex-as-equation mode emit equations
+  const demotedInlineParts = parseTextToRichParts('Compute $$\\frac{a}{b}$$ then continue.');
+  assert.equal(demotedInlineParts.length, 1);
+  assert.equal(demotedInlineParts[0].kind, 'runs');
+
+  const displayParts = parseTextToRichParts('Compute:\n$$\n\\frac{a}{b}\n$$\nthen continue.');
   assert.equal(displayParts.length, 3);
   assert.equal(displayParts[1].kind, 'equation');
+
+  const matrixParts = parseTextToRichParts('Compute $$\\begin{pmatrix} 1 & 2 \\\\ 3 & 4 \\end{pmatrix}$$ then continue.');
+  assert.equal(matrixParts.length, 3);
+  assert.equal(matrixParts[1].kind, 'equation');
+
+  const complexDocxParts = parseTextToRichParts('Compute $\\frac{a}{b}$ then continue.', { mode: 'complex-as-equation' });
+  assert.equal(complexDocxParts.length, 3);
+  assert.equal(complexDocxParts[1].kind, 'equation');
 
   assert.deepEqual(latexToInlineRuns('45^\\circ'), [{ text: '45°' }]);
 });

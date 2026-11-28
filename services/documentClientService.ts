@@ -26,7 +26,6 @@ import {
 
 // Backward compatibility aliases
 export const fetchDossierByGr = fetchStudentDossier;
-export const auditAllDossiers = fetchDiscrepancyFlags;
 export const auditDossier = async (grNo: string, sheetRecord?: any) => {
   const flags = await fetchDiscrepancyFlags(sheetRecord ? [sheetRecord] : []);
   return flags[grNo] || [];
@@ -42,13 +41,6 @@ export const rescanDocument = rescanDocumentScan;
 export const applyDiscrepancyCorrectionClient = applyCorrectionToRecord;
 export const batchApplyDiscrepancyCorrectionsClient = batchApplyCorrections;
 export const getExportZipUrl = (targetClass?: string) => `/api/documents/export-zip?class=${encodeURIComponent(targetClass || 'ALL')}`;
-export const retryFailedJob = async (jobId: string) => {
-  const res = await fetch(`/api/documents/jobs/${encodeURIComponent(jobId)}/retry`, { method: 'POST' });
-  if (!res.ok) return null;
-  const data = await res.json();
-  invalidateDocumentClientCache();
-  return data.job;
-};
 export const assignDocumentToStudent = async (docId: string, grNo: string, studentRecord?: any) => {
   const res = await fetch('/api/documents/assign', {
     method: 'POST',
@@ -59,7 +51,4 @@ export const assignDocumentToStudent = async (docId: string, grNo: string, stude
   const data = await res.json();
   invalidateDocumentClientCache();
   return data.document;
-};
-export const queryCandidateMatches = async (_profile: any) => {
-  return [];
 };

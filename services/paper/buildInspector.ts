@@ -24,7 +24,7 @@ import {
   parseDocxRels,
   readPngDimensions,
 } from './docxZipReader';
-import { detectUnexpectedScriptBleed } from './paperQualityRules';
+import { scanTextQuality } from './paperQualityRules';
 
 declare const pdfMake: any;
 
@@ -48,18 +48,17 @@ export interface PaperBuildInspection {
   failedQuestionTargets: BuildQuestionFailureTarget[];
 }
 
-const LEAKED_RENDER_TOKEN_RE = /(?:\$|\\frac\b|\\sqrt\b|\\ce\b|\\alpha\b|\\beta\b|\\times\b|\\rightarrow\b|\\implies\b|\bundefined\b|\bNaN\b|\[object Object\]|&amp;|&lt;|&gt;)/;
 const DOUBLE_Q_NUM_RE = /^Q\d+\.\s*(?:Q\.?\s*\d+[:.)]\s*|\d+\s*(?:\.\s+|\)\s+|:\s+))/i;
 const DOUBLE_OPT_PREFIX_RE = /○\s*[a-d]\)\s*(?:[a-dA-D1-4]\s*\)|[a-dA-D1-4]\s*[:.]\s+|\([a-dA-D1-4]\)|○)/i;
 
 function scanRenderedLine(label: string, text: string, subject: string | undefined, out: string[]): void {
   if (!text) return;
-  if (LEAKED_RENDER_TOKEN_RE.test(text)) {
-    out.push(`${label}: Unconverted symbol or raw token detected ("${text.slice(0, 75)}").`);
+  const qualityIssues = scanTextQuality(text, subject);
+  for (const issue of qualityIssues) {
+    out.push(`${label}: ${issue.message}`);
   }
-  const bleed = detectUnexpectedScriptBleed(text, subject);
-  if (bleed) {
-    out.push(`${label}: ${bleed}`);
+  if (text.includes('$') && !qualityIssues.some((i) => i.message.includes('"$"'))) {
+    out.push(`${label}: Unconverted math delimiter detected ("${text.slice(0, 75)}").`);
   }
   if (DOUBLE_Q_NUM_RE.test(text)) {
     out.push(`${label}: Duplicate question numbering ("${text.slice(0, 50)}").`);

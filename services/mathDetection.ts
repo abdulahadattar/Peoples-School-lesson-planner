@@ -98,3 +98,66 @@ export function splitMathSegments(text: string): MathSegment[] {
   if (last < text.length) segments.push({ text: text.slice(last), math: '', display: false });
   return segments;
 }
+
+/** Greek letter commands -> Unicode symbols (shared by PDF Unicode & DOCX/inline run converters). */
+export const LATEX_GREEK_MAP: Record<string, string> = {
+  alpha: 'α', beta: 'β', gamma: 'γ', delta: 'δ', epsilon: 'ε', zeta: 'ζ', eta: 'η',
+  theta: 'θ', iota: 'ι', kappa: 'κ', lambda: 'λ', mu: 'μ', nu: 'ν', xi: 'ξ',
+  omicron: 'ο', pi: 'π', rho: 'ρ', sigma: 'σ', tau: 'τ', upsilon: 'υ', phi: 'φ',
+  chi: 'χ', psi: 'ψ', omega: 'ω', Gamma: 'Γ', Delta: 'Δ', Theta: 'Θ', Lambda: 'Λ',
+  Xi: 'Ξ', Pi: 'Π', Sigma: 'Σ', Phi: 'Φ', Psi: 'Ψ', Omega: 'Ω',
+};
+
+/** Direct symbol LaTeX commands -> Unicode glyphs. */
+export const LATEX_SIMPLE_CMD_MAP: Record<string, string> = {
+  times: '×', div: '÷', cdot: '·', pm: '±', mp: '∓', approx: '≈', neq: '≠', leq: '≤',
+  geq: '≥', infty: '∞', rightarrow: '→', leftarrow: '←', to: '→', mid: '|',
+  Rightarrow: '⇒', Leftarrow: '⇐', leftrightarrow: '↔', Leftrightarrow: '⇔',
+  implies: '⇒', iff: '⇔', rightleftharpoons: '⇌', uparrow: '↑', downarrow: '↓',
+  ldots: '...', cdots: '...', vdots: '⋮', ddots: '⋱', simeq: '≈', partial: '∂',
+  circ: '°', degree: '°', celsius: '°C', angstrom: 'Å', micro: 'µ', ohm: 'Ω',
+  nabla: '∇', hbar: 'ℏ', ell: 'ℓ', prime: '′',
+  propto: '∝', equiv: '≡', perp: '⊥', parallel: '∥', angle: '∠', triangle: '△',
+  therefore: '∴', because: '∵', forall: '∀', exists: '∃',
+  in: '∈', notin: '∉', subset: '⊂', subseteq: '⊆', cup: '∪', cap: '∩',
+};
+
+/** Standard trigonometric and algebraic operator names formatted with trailing space. */
+export const LATEX_NAMED_FUNCS = new Set([
+  'sin', 'cos', 'tan', 'cot', 'sec', 'csc', 'log', 'ln', 'exp', 'lim', 'max', 'min',
+]);
+
+export interface LatexCursor {
+  s: string;
+  i: number;
+}
+
+/** Read characters forming a single unbraced LaTeX atom/token (stops at whitespace/braces/scripts). */
+export function readLatexToken(c: LatexCursor): string {
+  const s = c.s;
+  const start = c.i;
+  while (c.i < s.length && !/[\s{}^_\\]/.test(s[c.i])) c.i += 1;
+  return s.slice(start, c.i);
+}
+
+/** Read raw `{...}` brace content (or single fallback token) without transforming nested scripts. */
+export function readLatexBraceContent(c: LatexCursor): string {
+  const s = c.s;
+  if (s[c.i] !== '{') return readLatexToken(c);
+  c.i += 1;
+  let depth = 0;
+  const start = c.i;
+  while (c.i < s.length) {
+    if (s[c.i] === '{') depth += 1;
+    else if (s[c.i] === '}') {
+      if (depth === 0) {
+        const content = s.slice(start, c.i);
+        c.i += 1;
+        return content;
+      }
+      depth -= 1;
+    }
+    c.i += 1;
+  }
+  return s.slice(start);
+}

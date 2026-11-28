@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { spawn } from 'node:child_process';
+import { resolveChromiumExecutable } from './lib/browser.mjs';
 
 const c = {
   g: (s) => `\x1b[32m${s}\x1b[0m`,
@@ -41,16 +42,7 @@ const rootDir = process.cwd();
 const distDir = path.join(rootDir, 'dist');
 
 async function findChromePath() {
-  const candidates = [
-    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-    'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'
-  ];
-  for (const cand of candidates) {
-    if (fs.existsSync(cand)) return cand;
-  }
-  return null;
+  return resolveChromiumExecutable();
 }
 
 function startStaticServer(port) {
@@ -284,7 +276,7 @@ async function runVerification() {
     const tabs = await cdpClient.evaluate(`
       (() => {
         const btns = Array.from(document.querySelectorAll('button'));
-        const expected = ['Home', 'Student Records', 'Document Archive', 'Daily Attendance', 'Lesson Plans', 'Exam Papers'];
+        const expected = ['Home', 'Student Records', 'Student Documents', 'Daily Attendance', 'Lesson Plans', 'Exams & Papers'];
         return expected.filter(tab => btns.some(b => b.textContent.includes(tab)));
       })()
     `);
@@ -317,11 +309,11 @@ async function runVerification() {
       fail('Daily Attendance tab view did not render expected content');
     }
 
-    // Switch tab to Document Archive
+    // Switch tab to Student Documents
     await cdpClient.evaluate(`
       (() => {
         const btns = Array.from(document.querySelectorAll('button'));
-        const arch = btns.find(b => b.textContent.includes('Document Archive'));
+        const arch = btns.find(b => b.textContent.includes('Student Documents'));
         if (arch) arch.click();
       })()
     `);
@@ -330,13 +322,13 @@ async function runVerification() {
     const hasArchiveView = await cdpClient.evaluate(`
       (() => {
         const body = document.body.textContent || '';
-        return body.includes('Document') || body.includes('Archive') || body.includes('Upload');
+        return body.includes('Document') || body.includes('Folders') || body.includes('Upload');
       })()
     `);
     if (hasArchiveView) {
-      pass('Switched to Document Archive tab and rendered view');
+      pass('Switched to Student Documents tab and rendered view');
     } else {
-      fail('Document Archive view did not render expected content');
+      fail('Student Documents view did not render expected content');
     }
 
   } catch (err) {

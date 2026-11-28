@@ -49,11 +49,11 @@ const hdr = t => log(`\n${c.b(c.cy(`── ${t} ──`))}`);
 /** Every navigable view, with a marker proving the view actually mounted. */
 const VIEWS = [
   { id: 'records', label: 'Student Records', marker: /Student|Records|Sign in|Register/i },
-  { id: 'archive', label: 'Document Archive', marker: /Archive|Document|Dossier|Upload|Scan/i },
+  { id: 'archive', label: 'Student Documents', marker: /Folders|Document|Upload|Scan/i },
   { id: 'attendance', label: 'Daily Attendance', marker: /Attendance|Present|Absent/i },
   { id: 'marksheets', label: 'Marksheets', marker: /Marksheet|GR No|Subjects/i },
   { id: 'lesson', label: 'Lesson Plans', marker: /Class|Subject|Chapter|Lesson/i },
-  { id: 'paper', label: 'Exam Papers', marker: /Paper|Marks|MCQ|Generat/i },
+  { id: 'paper', label: 'Exams & Papers', marker: /Paper|Marks|MCQ|Generat/i },
   { id: 'live', label: 'Live Monitor', marker: /Live|Period|Staff|Teacher/i },
   { id: 'history', label: 'History Archive', marker: /History|Archive|Saved|No /i },
   { id: 'settings', label: 'School Admin', marker: /Settings|Teacher|Class|Timetable|Admin/i },
@@ -83,7 +83,7 @@ async function main() {
     const title = await page.title();
     title.includes('PHSSJ') ? pass('Document title', title) : fail('Document title', title);
 
-    const gateCount = await page.getByText('Continue as Guest').count();
+    const gateCount = await page.locator('#guest-access-animated-btn, #login-explore-guest-top-btn').count();
     gateCount === 0
       ? pass('Guest mode bypasses login gate')
       : fail('Guest mode bypasses login gate', 'login gate still visible');

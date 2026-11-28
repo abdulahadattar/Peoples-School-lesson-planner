@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import {
   normalizeGrKey,
   normalizeNadraNumber,
@@ -9,57 +10,67 @@ import {
   validateNadraNumber,
 } from '../../services/identityNormalization';
 
+export function runIdentityNormalizationTests(t: {
+  describe: (name: string) => void;
+  it: (name: string, fn: () => void) => void;
+  eq: (actual: unknown, expected: unknown, msg?: string) => void;
+}) {
+  const { describe, it, eq } = t;
 
-function assert(condition: boolean, msg: string) {
-  if (!condition) throw new Error(`Assertion failed: ${msg}`);
+  describe('identityNormalization');
+
+  it('normalizes GR keys across padding, decimals, prefixes, and nulls', () => {
+    eq(normalizeGrKey('56'), '56');
+    eq(normalizeGrKey(' 056 '), '56');
+    eq(normalizeGrKey('56.0'), '56');
+    eq(normalizeGrKey('GR-123'), '123');
+    eq(normalizeGrKey('unassigned'), 'UNASSIGNED');
+    eq(normalizeGrKey(''), '');
+    eq(normalizeGrKey(null), '');
+  });
+
+  it('normalizes and validates NADRA / CNIC numbers and formats CNIC & phones', () => {
+    eq(normalizeNadraNumber('41506-0504781-7'), '4150605047817');
+    eq(normalizeNadraNumber('41506 0504781 7'), '4150605047817');
+
+    eq(formatCnicDisplay('4150605047817'), '41506-0504781-7');
+    eq(formatCnicDisplay('41506-0504781-7'), '41506-0504781-7');
+    eq(formatCnicDisplay('123'), '123');
+
+    eq(formatPhoneDisplay('03001234567'), '0300-1234567');
+    eq(formatPhoneDisplay('+923001234567'), '0300-1234567');
+
+    const validSindh = validateNadraNumber('41506-0504781-7');
+    eq(validSindh.isValid, true);
+    eq(validSindh.provinceCode, 4);
+    eq(validSindh.provinceName, 'Sindh');
+    eq(validSindh.digits, '4150605047817');
+
+    const invalidShort = validateNadraNumber('41506');
+    eq(invalidShort.isValid, false);
+  });
+
+  it('derives initials, deterministic avatar gradients, and Pakistani name normalization', () => {
+    eq(getInitials('Abdul Ahad'), 'AA');
+    eq(getInitials('Muhammad'), 'MU');
+    eq(getInitials(''), 'S');
+
+    eq(typeof getAvatarGradient('123'), 'string');
+    eq(getAvatarGradient('123'), getAvatarGradient('123'));
+
+    eq(normalizePakistaniName('Syed Muhammad Ahmad Brohi'), 'muhamad ahmed brohi');
+    eq(normalizePakistaniName('Mohd. Aly Solangy'), 'muhamad ali solangi');
+    eq(normalizePakistaniName(''), '');
+  });
 }
 
-console.log('── identityNormalization.normalizeGrKey ──');
-assert(normalizeGrKey('56') === '56', 'plain digits');
-assert(normalizeGrKey(' 056 ') === '56', 'leading zero and whitespace');
-assert(normalizeGrKey('56.0') === '56', 'decimal suffix');
-assert(normalizeGrKey('GR-123') === '123', 'alphanumeric prefix');
-assert(normalizeGrKey('unassigned') === 'UNASSIGNED', 'pure text falls back to uppercase');
-assert(normalizeGrKey('') === '', 'empty string');
-assert(normalizeGrKey(null) === '', 'null input');
-
-console.log('── identityNormalization.normalizeNadraNumber ──');
-assert(normalizeNadraNumber('41506-0504781-7') === '4150605047817', 'strips hyphens');
-assert(normalizeNadraNumber('41506 0504781 7') === '4150605047817', 'strips spaces');
-
-console.log('── identityNormalization.formatCnicDisplay ──');
-assert(formatCnicDisplay('4150605047817') === '41506-0504781-7', 'formats 13 digits');
-assert(formatCnicDisplay('41506-0504781-7') === '41506-0504781-7', 'preserves already formatted');
-assert(formatCnicDisplay('123') === '123', 'leaves short text');
-
-console.log('── identityNormalization.formatPhoneDisplay ──');
-assert(formatPhoneDisplay('03001234567') === '0300-1234567', 'formats 11 digit mobile');
-assert(formatPhoneDisplay('+923001234567') === '0300-1234567', 'normalizes +92 prefix');
-
-console.log('── identityNormalization.getInitials ──');
-assert(getInitials('Abdul Ahad') === 'AA', 'two words');
-assert(getInitials('Muhammad') === 'MU', 'single word');
-assert(getInitials('') === 'S', 'empty defaults to S');
-
-console.log('── identityNormalization.getAvatarGradient ──');
-assert(typeof getAvatarGradient('123') === 'string', 'returns class string');
-assert(getAvatarGradient('123') === getAvatarGradient('123'), 'deterministic');
-
-console.log('── identityNormalization.normalizePakistaniName ──');
-assert(normalizePakistaniName('Syed Muhammad Ahmad Brohi') === 'muhamad ahmed brohi', 'normalizes honorific, prefix, surname');
-assert(normalizePakistaniName('Mohd. Aly Solangy') === 'muhamad ali solangi', 'standardizes abbreviations and terminal y');
-assert(normalizePakistaniName('') === '', 'handles empty string');
-
-
-console.log('── identityNormalization.validateNadraNumber ──');
-const validSindh = validateNadraNumber('41506-0504781-7');
-assert(validSindh.isValid === true, 'valid Sindh CNIC is accepted');
-assert(validSindh.provinceCode === 4, 'identifies province code 4');
-assert(validSindh.provinceName === 'Sindh', 'identifies Sindh province name');
-assert(validSindh.digits === '4150605047817', 'extracts clean 13 digits');
-
-const invalidShort = validateNadraNumber('41506');
-assert(invalidShort.isValid === false, 'rejects short number');
-
-console.log('All identityNormalization tests passed!');
-
+if (process.argv[1]?.endsWith('identityNormalization.test.ts')) {
+  runIdentityNormalizationTests({
+    describe: (name) => console.log(`── ${name} ──`),
+    it: (name, fn) => {
+      fn();
+      console.log(`  ✅ ${name}`);
+    },
+    eq: (actual, expected, msg) => assert.deepStrictEqual(actual, expected, msg),
+  });
+}
