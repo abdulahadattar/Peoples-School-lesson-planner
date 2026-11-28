@@ -1,0 +1,10 @@
+# PHSSJ Portal — Cursor Rules (see AGENTS.md, AGENT_MEMORY.md, docs/VERIFIED_STACK.md)
+
+1. Verify First: Read source files before editing; never guess package versions or Gemini model IDs.
+2. Modular & Anti-Bloat: Target 200-350 LOC max per file; reuse components/ui/, hooks, and shared services; keep comments brief.
+3. Complete Wiring & Edge Cases: Wire features end-to-end into app state, auth, and sync queues; handle empty data, timeouts, 429/quotas, expired/cancelled auth, permissions, duplicates, and partial batch failures.
+4. UI Copy - Zero Jargon: Never display technical/AI terms (ingestion, batching, key rotation, OCR pipeline, tokens, dossier, discrepancy audit, A2UI, inference, payload, schema, compiler, telemetry, IndexedDB, Cloud Firestore) in UI copy or toasts.
+5. UI Copy - Concise & Plain: Use 1-4 word titles without verbose subtitles; use plain school terms (Student Folders, Documents, Mismatches, Google Drive Import, Skip Already Imported, Reset Data, Student Records, Marksheets, Daily Attendance, Lesson Plans, Exams & Papers).
+6. Clean Errors: Pass user-facing error alerts through utils/userMessage.ts (toUserErrorMessage).
+7. GitHub & Multi-Account Guard: Keep GitHub's canonical firebase-applet-config.json (projectId: "phssjportal") and metadata.json untouched — never push AI Studio remix files (gen-lang-client-*, Remix metadata, metadata-*.json, data/, public/assets/aistudio/) to GitHub. Push tested code only to alpha after running npm run guard && npm run lint && npm run test:unit && npm run build.
+
