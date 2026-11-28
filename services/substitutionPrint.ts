@@ -2,14 +2,17 @@ import { DayKey, DAY_LABELS } from './timetable';
 import { SubstitutionAssignment } from './substitutionService';
 import { AffectedSlot } from '../components/substitution/SubstitutionTodayBoard';
 import { printHtml } from '../utils/printHelper';
+import { getCachedSchoolConfig } from './schoolConfig/store';
 
 export function printSubstitutionSlip(
   todayKey: string,
   day: DayKey,
   affectedSlots: AffectedSlot[],
   assignments: SubstitutionAssignment[],
-  absentTeacherNames: string[]
+  absentTeacherNames: string[],
+  schoolName?: string
 ): void {
+  const resolvedSchoolName = schoolName || getCachedSchoolConfig().schoolName;
   const html = `
     <!DOCTYPE html>
     <html>
@@ -31,7 +34,7 @@ export function printSubstitutionSlip(
     </head>
     <body>
       <div class="header">
-        <h1>Peoples Higher Secondary School Jamshoro</h1>
+        <h1>${resolvedSchoolName}</h1>
         <h2>Daily Faculty Substitution & Proxy Roster</h2>
       </div>
       <div class="meta">

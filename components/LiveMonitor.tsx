@@ -4,8 +4,6 @@ import {
   TimetableData,
   DAY_KEYS,
   DAY_LABELS,
-  loadTimetable,
-  peekCachedTimetable,
   computeStaff,
 } from '../services/timetable';
 import {
@@ -14,22 +12,19 @@ import {
   peekStoredSubstitutions,
 } from '../services/storageService';
 import { ClassTier, getClassTier } from '../services/tierHelpers';
+import { buildMasterTimetableClasses } from '../services/schoolConfigService';
 import { useSchoolConfig } from '../hooks/useSchoolConfig';
 import { SubstitutionManager } from './SubstitutionManager';
 import { BreakDutiesPanel } from './BreakDutiesPanel';
 import { LiveClassCard } from './live/LiveClassCard';
 import { StaffRoomPanel } from './live/StaffRoomPanel';
 import { LiveMonitorHeader } from './live/LiveMonitorHeader';
-import { syncClassesWithConfig } from './live/liveTimetableSync';
 import { useLiveScheduleClock } from './live/useLiveScheduleClock';
-import { toUserErrorMessage } from '../utils/userMessage';
 
 export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers = [] }) => {
   const todayKey = new Date().toISOString().split('T')[0];
   const cachedSubstitutions = peekStoredSubstitutions(todayKey);
 
-  const [timetable, setTimetable] = useState<TimetableData | null>(() => peekCachedTimetable());
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [monitorMode, setMonitorMode] = useState<'classes' | 'duties' | 'substitutions'>('classes');
   const [substitutions, setSubstitutions] = useState<SubstitutionAssignment[]>(
     () => cachedSubstitutions?.assignments || []
@@ -39,13 +34,6 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers = [] }
   );
   const [classFilter, setClassFilter] = useState<'all' | ClassTier>('all');
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Ensure timetable stays synchronized
-  useEffect(() => {
-    loadTimetable()
-      .then(setTimetable)
-      .catch(err => setLoadError(toUserErrorMessage(err, 'Unable to load the timetable.')));
-  }, []);
 
   // Load substitutions for today
   useEffect(() => {
@@ -57,7 +45,7 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers = [] }
       .catch(console.error);
   }, [todayKey]);
 
-  // Retrieve School Admin settings
+  // Retrieve unified School Admin settings
   const { config: schoolConfig } = useSchoolConfig();
 
   // Active faculty roster: prefer live centralized config if available
@@ -68,19 +56,21 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers = [] }
     return teachers;
   }, [schoolConfig?.teachers, teachers]);
 
-  // Merge live School Admin config with timetable classes
+  // Derive master timetable directly from unified SchoolConfig state
   const syncedClasses = useMemo(
-    () => syncClassesWithConfig(timetable, schoolConfig),
-    [timetable, schoolConfig]
+    () => buildMasterTimetableClasses(schoolConfig),
+    [schoolConfig]
   );
 
-  const syncedTimetable = useMemo(() => {
-    if (!timetable) return null;
-    return {
-      ...timetable,
+  const syncedTimetable = useMemo<TimetableData>(
+    () => ({
+      generatedAt: schoolConfig?.updatedAt
+        ? new Date(schoolConfig.updatedAt).toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0],
       classes: syncedClasses,
-    };
-  }, [timetable, syncedClasses]);
+    }),
+    [schoolConfig?.updatedAt, syncedClasses]
+  );
 
   const {
     clockDate,
@@ -102,41 +92,19 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers = [] }
 
   // Compute staff busy & free for currently displayed period
   const staff = useMemo(() => {
-    if (!syncedTimetable) return null;
     return computeStaff(syncedTimetable.classes, activeTeachers, effectiveDay, effectiveCardPeriodIndex);
   }, [syncedTimetable, activeTeachers, effectiveDay, effectiveCardPeriodIndex]);
 
   // Filter classes by tier group
   const filteredClasses = useMemo(() => {
-    if (!syncedTimetable) return [];
     return syncedClasses.filter(c => {
       const tier = getClassTier(c.label);
       if (classFilter !== 'all' && tier !== classFilter) return false;
       return true;
     });
-  }, [syncedTimetable, syncedClasses, classFilter]);
+  }, [syncedClasses, classFilter]);
 
-  if (loadError) {
-    return (
-      <div className="max-w-md mx-auto px-4 py-16 text-center animate-fadeInUp">
-        <h2 className="text-lg font-bold text-brand-text-primary mb-2">Couldn't load the timetable</h2>
-        <p className="text-sm text-brand-text-secondary">{loadError}</p>
-      </div>
-    );
-  }
-
-  if (!timetable) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-10 space-y-4 animate-pulse">
-        <div className="h-24 glass-card rounded-2xl" />
-        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-40 glass-card rounded-2xl" />
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const timetable = syncedTimetable;
 
   const formattedTime = clockDate.toLocaleTimeString(undefined, {
     hour: '2-digit',

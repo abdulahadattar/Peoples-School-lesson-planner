@@ -45,8 +45,8 @@ export const MarksheetA4Preview: React.FC<MarksheetA4PreviewProps> = ({ markshee
           {/* Official Dual-Crest Header */}
           <header className="flex items-center sm:items-start justify-between gap-2 sm:gap-4">
             <img
-              src="/logos/phssj.png"
-              alt="PHSSJ Crest"
+              src={config.schoolLogoUrl || '/logos/phssj.png'}
+              alt={`${config.schoolName} Crest`}
               width={112}
               height={112}
               referrerPolicy="no-referrer"
@@ -64,8 +64,8 @@ export const MarksheetA4Preview: React.FC<MarksheetA4PreviewProps> = ({ markshee
             </div>
 
             <img
-              src="/logos/ziauddin-university.png"
-              alt="Ziauddin University"
+              src={config.affiliationLogoUrl || '/logos/ziauddin-university.png'}
+              alt={config.boardName || 'Examination Board'}
               width={240}
               height={73}
               referrerPolicy="no-referrer"
@@ -239,7 +239,7 @@ export const MarksheetA4Preview: React.FC<MarksheetA4PreviewProps> = ({ markshee
           <div className="text-center">
             <div className="h-10 sm:h-12 flex items-end justify-center pb-1">
               <img
-                src="/logos/principal-signature.png"
+                src={config.principalSignatureUrl || '/logos/principal-signature.png'}
                 alt="Principal Signature"
                 width={131}
                 height={117}

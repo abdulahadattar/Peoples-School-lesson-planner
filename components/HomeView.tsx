@@ -13,10 +13,12 @@ import {
 } from 'lucide-react';
 import { PhssjLogo, ZiauddinLogo } from './Logo';
 import { View } from '../types';
+import { getCachedSchoolConfig, type SchoolConfig } from '../services/schoolConfigService';
 
 interface HomeViewProps {
   onNavigate?: (view: View) => void;
   onPrefetchView?: (view: View) => void;
+  schoolConfig?: SchoolConfig | null;
 }
 
 interface FeatureItem {
@@ -117,7 +119,10 @@ const FEATURE_SECTIONS: FeatureSection[] = [
   },
 ];
 
-const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onPrefetchView }) => {
+const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onPrefetchView, schoolConfig }) => {
+  const effectiveConfig = schoolConfig || getCachedSchoolConfig();
+  const affiliationText = (effectiveConfig.affiliation || '').replace(/^Affiliated with\s+/i, '').trim();
+
   return (
     <div className="relative min-h-full w-full flex flex-col justify-between py-6 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
       <div className="relative z-10 w-full">
@@ -125,7 +130,11 @@ const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onPrefetchView }) => {
         <div className="text-center pt-3 pb-7 sm:pb-9">
           <div className="mx-auto mb-3.5 w-fit">
             <div className="w-18 h-18 sm:w-22 sm:h-22 rounded-full bg-white dark:bg-slate-900 shadow-md border-2 border-slate-200/80 dark:border-white/10 flex items-center justify-center p-1 ring-4 ring-blue-500/10">
-              <PhssjLogo className="w-full h-full rounded-full" />
+              <PhssjLogo
+                className="w-full h-full rounded-full"
+                alt={effectiveConfig.schoolName}
+                src={effectiveConfig.schoolLogoUrl}
+              />
             </div>
           </div>
 
@@ -133,7 +142,7 @@ const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onPrefetchView }) => {
             className="text-2xl sm:text-3xl font-bold tracking-tight text-brand-text-primary text-balance"
             style={{ textWrap: 'balance' }}
           >
-            Peoples Higher Secondary School Jamshoro
+            {effectiveConfig.schoolName}
           </h1>
         </div>
 
@@ -192,10 +201,14 @@ const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onPrefetchView }) => {
       <div className="relative z-10 flex items-center justify-center gap-2 pt-8 pb-2 text-xs text-brand-text-secondary">
         <span className="text-[11px]">Affiliated with</span>
         <div className="h-4 flex items-center">
-          <ZiauddinLogo className="h-4 w-auto" />
+          <ZiauddinLogo
+            className="h-4 w-auto"
+            alt={affiliationText || 'Affiliation Board'}
+            src={effectiveConfig.affiliationLogoUrl}
+          />
         </div>
         <span className="font-semibold text-brand-text-primary text-[11px]">
-          Ziauddin University
+          {affiliationText || 'Ziauddin University Examination Board'}
         </span>
       </div>
     </div>

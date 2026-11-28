@@ -1,4 +1,5 @@
 import { DEFAULT_CLASS_TEACHERS, DEFAULT_SCHOOL_CONFIG } from './defaults';
+import { hydrateClassConfigMetadata, lookupClassTeacherSeed } from './classStructure';
 import type { ClassTeacherConfig, SchoolConfig } from './types';
 import type { ClassEnrollment } from '../attendance/types';
 import type { MarksheetConfig, MarksheetGradeLevel } from '../marksheet/types';
@@ -18,6 +19,13 @@ function baseGradeForKey(raw: string): MarksheetGradeLevel | null {
   return (MARKSHEET_GRADES as string[]).includes(stripped)
     ? (stripped as MarksheetGradeLevel)
     : null;
+}
+
+function stripAffiliationPrefix(raw: string): string {
+  return String(raw || '')
+    .trim()
+    .replace(/^Affiliated with\s+/i, '')
+    .trim();
 }
 
 /**
@@ -106,6 +114,7 @@ export function enrollmentsFromSchoolConfig(
 
 /**
  * Propagates edits from Attendance's EnrollmentEditorModal back into `SchoolConfig.classes`.
+ * Preserves gradeLevel, sections, roomNumber, and capacity metadata on matched classes.
  */
 export function syncSchoolConfigEnrollments(
   classes: ClassTeacherConfig[],
@@ -139,22 +148,24 @@ export function syncSchoolConfigEnrollments(
     if (!keyNorm || seen.has(keyNorm)) continue;
     const boys = Math.max(0, Number(enr.enrolledBoys) || 0);
     const girls = Math.max(0, Number(enr.enrolledGirls) || 0);
-    nextClasses.push({
-      classKey: enr.classKey,
-      romanName: enr.romanName || enr.classKey,
-      displayName: enr.displayName || `Class ${enr.romanName || enr.classKey}`,
-      classTeacher: DEFAULT_CLASS_TEACHERS[enr.classKey] || 'Unassigned',
-      enrolledBoys: boys,
-      enrolledGirls: girls,
-      totalEnrollment: Math.max(Number(enr.totalEnrollment) || 0, boys + girls),
-    });
+    nextClasses.push(
+      hydrateClassConfigMetadata({
+        classKey: enr.classKey,
+        romanName: enr.romanName || enr.classKey,
+        displayName: enr.displayName || `Class ${enr.romanName || enr.classKey}`,
+        classTeacher: DEFAULT_CLASS_TEACHERS[enr.classKey] || lookupClassTeacherSeed(enr.classKey, enr.romanName),
+        enrolledBoys: boys,
+        enrolledGirls: girls,
+        totalEnrollment: Math.max(Number(enr.totalEnrollment) || 0, boys + girls),
+      })
+    );
   }
 
   return nextClasses;
 }
 
 /**
- * Overlays customized Admin institutional metadata & Grade IX–XII class teachers onto MarksheetConfig.
+ * Overlays customized Admin institutional metadata, branding assets, and Grade IX–XII class teachers onto MarksheetConfig.
  * Leaves spreadsheet-synced metadata intact when Admin settings are still at system baseline.
  */
 export function applySchoolConfigToMarksheetConfig(
@@ -178,8 +189,14 @@ export function applySchoolConfigToMarksheetConfig(
     if (!grade) continue;
     const teacher = String(cls.classTeacher || '').trim();
     if (!teacher || teacher.toLowerCase() === 'unassigned') continue;
+    const defaultClassEntry = DEFAULT_SCHOOL_CONFIG.classes.find(
+      (d) => normalizeKey(d.classKey) === normalizeKey(cls.classKey) || normalizeKey(d.classKey) === grade
+    );
     const baselineTeacher =
-      DEFAULT_CLASS_TEACHERS[cls.classKey] || DEFAULT_CLASS_TEACHERS[grade] || '';
+      defaultClassEntry?.classTeacher ||
+      DEFAULT_CLASS_TEACHERS[cls.classKey] ||
+      DEFAULT_CLASS_TEACHERS[grade] ||
+      '';
     if (teacher !== baselineTeacher) {
       nextClassTeachers[grade] = teacher;
     }
@@ -193,12 +210,24 @@ export function applySchoolConfigToMarksheetConfig(
     schoolAddress: isCustomized(schoolConfig.schoolAddress, DEFAULT_SCHOOL_CONFIG.schoolAddress)
       ? schoolConfig.schoolAddress!.trim()
       : baseConfig.schoolAddress,
+    boardName: isCustomized(schoolConfig.affiliation, DEFAULT_SCHOOL_CONFIG.affiliation)
+      ? stripAffiliationPrefix(schoolConfig.affiliation)
+      : baseConfig.boardName,
     academicYear: isCustomized(schoolConfig.academicSession, DEFAULT_SCHOOL_CONFIG.academicSession)
       ? schoolConfig.academicSession.trim()
       : baseConfig.academicYear,
     principalName: isCustomized(schoolConfig.principalName, DEFAULT_SCHOOL_CONFIG.principalName)
       ? schoolConfig.principalName.trim()
       : baseConfig.principalName,
+    schoolLogoUrl: isCustomized(schoolConfig.schoolLogoUrl, DEFAULT_SCHOOL_CONFIG.schoolLogoUrl)
+      ? schoolConfig.schoolLogoUrl!.trim()
+      : baseConfig.schoolLogoUrl || DEFAULT_SCHOOL_CONFIG.schoolLogoUrl,
+    affiliationLogoUrl: isCustomized(schoolConfig.affiliationLogoUrl, DEFAULT_SCHOOL_CONFIG.affiliationLogoUrl)
+      ? schoolConfig.affiliationLogoUrl!.trim()
+      : baseConfig.affiliationLogoUrl || DEFAULT_SCHOOL_CONFIG.affiliationLogoUrl,
+    principalSignatureUrl: isCustomized(schoolConfig.principalSignatureUrl, DEFAULT_SCHOOL_CONFIG.principalSignatureUrl)
+      ? schoolConfig.principalSignatureUrl!.trim()
+      : baseConfig.principalSignatureUrl || DEFAULT_SCHOOL_CONFIG.principalSignatureUrl,
     classTeachers: nextClassTeachers,
   };
 }

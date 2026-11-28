@@ -9,6 +9,7 @@ import { ClassChartsKpiCards } from './analytics/ClassChartsKpiCards';
 import { ClassBarChart } from './analytics/ClassBarChart';
 import { EnrollmentStatusPieChart } from './analytics/EnrollmentStatusPieChart';
 import { CLASS_ORDER } from './types';
+import { getCachedSchoolConfig } from '../../services/schoolConfigService';
 
 export { CLASS_ORDER };
 
@@ -200,7 +201,7 @@ export const ClassAnalyticsCharts: React.FC<ClassAnalyticsChartsProps> = ({
           </div>
 
           <div className="flex items-center justify-between text-[11px] text-brand-text-secondary pt-2 border-t border-brand-border/60">
-            <span>Showing student distribution for Peoples Higher Secondary School Jamshoro</span>
+            <span>Showing student distribution for {getCachedSchoolConfig().schoolName}</span>
             <span className="hidden sm:inline-block">Click any bar to filter student register below</span>
           </div>
         </div>

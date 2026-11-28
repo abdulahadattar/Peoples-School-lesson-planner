@@ -3,6 +3,7 @@ import { triggerPdfDownload } from '../marksheet/pdfGenerator';
 import { A4_HEIGHT_MM, A4_WIDTH_MM, a4MmToPdfPoint, mmToPt } from './layoutGeometry';
 import { sanitizePdfText } from './pdfText';
 import { normalizeAnswerKeyString } from './types';
+import { getCachedSchoolConfig } from '../schoolConfig/store';
 
 export interface AnswerKeyPdfOptions {
   schoolName?: string;
@@ -31,7 +32,7 @@ export async function generateAnswerKeyPdf(options: AnswerKeyPdfOptions): Promis
 
   const page = pdfDoc.addPage([mmToPt(A4_WIDTH_MM), mmToPt(A4_HEIGHT_MM)]);
   const school = sanitizePdfText(
-    options.schoolName || 'Peoples Higher Secondary School Jamshoro'
+    options.schoolName || getCachedSchoolConfig().schoolName
   );
   const count = Math.max(1, Math.min(100, Math.round(options.questionCount)));
   const normalizedKey = normalizeAnswerKeyString(options.answerKey, count);
@@ -186,7 +187,7 @@ export function triggerAnswerKeyPdfDownload(bytes: Uint8Array, testCode: string)
 
 export function formatAnswerKeyCsv(options: AnswerKeyPdfOptions): string {
   const lines = [
-    `# School,${options.schoolName || 'Peoples Higher Secondary School Jamshoro'}`,
+    `# School,${options.schoolName || getCachedSchoolConfig().schoolName}`,
     `# Subject,${options.subject}`,
     `# Class,${options.classLevel}`,
     `# Test Number,${options.testNumber}`,

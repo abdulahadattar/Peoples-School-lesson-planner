@@ -1,5 +1,6 @@
 import { ClassAttendanceRow, SchoolAttendanceSummary, cleanAttendanceInCharge } from './attendanceService';
 import { printHtml } from '../utils/printHelper';
+import { getCachedSchoolConfig } from './schoolConfig/store';
 
 /**
  * Generates and prints the official Daily Student Attendance Slip HTML.
@@ -8,8 +9,10 @@ export function printAttendanceSlip(
   selectedDate: string,
   rows: ClassAttendanceRow[],
   summary: SchoolAttendanceSummary,
-  recordedBy: string
+  recordedBy: string,
+  schoolName?: string
 ): void {
+  const resolvedSchoolName = schoolName || getCachedSchoolConfig().schoolName;
   const formattedDate = new Date(selectedDate).toLocaleDateString('en-GB', {
     weekday: 'long',
     day: 'numeric',
@@ -67,7 +70,7 @@ export function printAttendanceSlip(
     </head>
     <body>
       <div class="header">
-        <h1>Peoples Higher Secondary School Jamshoro</h1>
+        <h1>${resolvedSchoolName}</h1>
         <h2>Daily Student Attendance Register (ECCE to Grade 12)</h2>
       </div>
 

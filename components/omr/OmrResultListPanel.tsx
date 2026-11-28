@@ -25,6 +25,7 @@ import {
   ScannedStudentResultRow,
 } from '../../services/omr/scanResultsStore';
 import SelectField from '../ui/SelectField';
+import { getCachedSchoolConfig } from '../../services/schoolConfigService';
 
 export interface OmrResultListPanelProps {
   summary: PrintableClassResultSummary;
@@ -45,7 +46,7 @@ export interface OmrResultListPanelProps {
 export const OmrResultListPanel: React.FC<OmrResultListPanelProps> = ({
   summary,
   rosterRecords,
-  schoolName = 'Peoples Higher Secondary School Jamshoro',
+  schoolName,
   availableTestCodes,
   targetExamType = 'midterm',
   onPushAllToMarksheet,
@@ -53,6 +54,7 @@ export const OmrResultListPanel: React.FC<OmrResultListPanelProps> = ({
   onRemoveRow,
   onClearTestResults,
 }) => {
+  const resolvedSchoolName = schoolName || getCachedSchoolConfig().schoolName;
   const [viewMode, setViewMode] = useState<'ranked' | 'roster'>('ranked');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
@@ -99,7 +101,7 @@ export const OmrResultListPanel: React.FC<OmrResultListPanelProps> = ({
   const handleDownloadPdf = async () => {
     setIsGeneratingPdf(true);
     try {
-      const bytes = await generateTestResultListPdf(summary, schoolName);
+      const bytes = await generateTestResultListPdf(summary, resolvedSchoolName);
       triggerResultListPdfDownload(bytes, summary.testCode);
     } finally {
       setIsGeneratingPdf(false);
@@ -128,7 +130,7 @@ export const OmrResultListPanel: React.FC<OmrResultListPanelProps> = ({
     >
       {/* Print-Only Formal School Header */}
       <div className="hidden print:block text-center pb-2 border-b border-slate-300">
-        <p className="text-sm font-bold uppercase tracking-wide text-slate-900">{schoolName}</p>
+        <p className="text-sm font-bold uppercase tracking-wide text-slate-900">{resolvedSchoolName}</p>
         <p className="text-base font-bold text-slate-900">CLASS TEST RESULT ANNOUNCEMENT</p>
       </div>
 

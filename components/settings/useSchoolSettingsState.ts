@@ -1,17 +1,28 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import {
   SchoolConfig,
   ClassTeacherConfig,
   PeriodTiming,
+  buildMasterTimetableClasses,
+  getSectionIdentifiers,
 } from '../../services/schoolConfigService';
 import {
   DEFAULT_GRADE_ENROLLMENTS,
   saveClassEnrollments,
 } from '../../services/attendanceService';
 import { enrollmentsFromSchoolConfig } from '../../services/schoolConfig/propagation';
+import { auditFullTimetable } from '../../services/timetableConflictEngine';
+import type { DayKey } from '../../services/timetable';
 import { Teacher } from '../../types';
-import { SettingsTab } from './SettingsTabsNav';
 import { toUserErrorMessage } from '../../utils/userMessage';
+import {
+  SettingsTab,
+  getPillarForTab,
+  getTabMeta,
+  hasUnsavedConfigChanges,
+  serializeEditableConfig,
+} from './adminNavigation';
+import { toClassMap } from './timetable/timetableEditorHelpers';
 
 export interface ConfirmDialogState {
   isOpen: boolean;
@@ -22,6 +33,13 @@ export interface ConfirmDialogState {
   onConfirm: () => void;
 }
 
+export interface TimetableJumpTarget {
+  dayKey: DayKey;
+  periodIndex: number;
+  classLabel: string;
+  token: number;
+}
+
 export function useSchoolSettingsState(
   config: SchoolConfig,
   saveConfig: (cfg: SchoolConfig) => Promise<void>,
@@ -29,7 +47,8 @@ export function useSchoolSettingsState(
   showToast: (msg: string, type: 'success' | 'error') => void
 ) {
   const [workingConfig, setWorkingConfig] = useState<SchoolConfig>(config);
-  const [activeTab, setActiveTab] = useState<SettingsTab>('classes');
+  const lastSyncedSignatureRef = useRef<string>(serializeEditableConfig(config));
+  const [activeTab, setActiveTab] = useState<SettingsTab>('identity');
   const [searchQuery, setSearchQuery] = useState('');
 
   const [editingClass, setEditingClass] = useState<ClassTeacherConfig | null>(null);
@@ -38,10 +57,26 @@ export function useSchoolSettingsState(
   const [isTeacherModalOpen, setIsTeacherModalOpen] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null);
+  const [timetableJumpTarget, setTimetableJumpTarget] = useState<TimetableJumpTarget | null>(null);
 
   useEffect(() => {
-    setWorkingConfig(config);
+    const nextSig = serializeEditableConfig(config);
+    const workingSig = serializeEditableConfig(workingConfig);
+    const hasLocalEdits = workingSig !== lastSyncedSignatureRef.current;
+
+    if (!hasLocalEdits || config.updatedBy?.includes('(Reset)')) {
+      setWorkingConfig(config);
+    }
+    lastSyncedSignatureRef.current = nextSig;
   }, [config]);
+
+  const hasUnsavedChanges = useMemo(
+    () => hasUnsavedConfigChanges(workingConfig, config),
+    [workingConfig, config]
+  );
+
+  const activePillar = useMemo(() => getPillarForTab(activeTab), [activeTab]);
+  const activeTabMeta = useMemo(() => getTabMeta(activeTab), [activeTab]);
 
   const classTotals = useMemo(() => {
     let boys = 0;
@@ -52,7 +87,7 @@ export function useSchoolSettingsState(
       const g = c.enrolledGirls || 0;
       boys += b;
       girls += g;
-      total += c.totalEnrollment && c.totalEnrollment > 0 ? c.totalEnrollment : (b + g);
+      total += c.totalEnrollment && c.totalEnrollment > 0 ? c.totalEnrollment : b + g;
     });
     return {
       classesCount: workingConfig.classes.length,
@@ -63,7 +98,7 @@ export function useSchoolSettingsState(
   }, [workingConfig.classes]);
 
   const availableClassKeys = useMemo(() => {
-    return workingConfig.classes.map((c) => c.romanName || c.classKey);
+    return getSectionIdentifiers(workingConfig.classes);
   }, [workingConfig.classes]);
 
   const filteredClasses = useMemo(() => {
@@ -74,7 +109,8 @@ export function useSchoolSettingsState(
         c.displayName.toLowerCase().includes(q) ||
         c.romanName.toLowerCase().includes(q) ||
         c.classTeacher.toLowerCase().includes(q) ||
-        c.classKey.toLowerCase().includes(q)
+        c.classKey.toLowerCase().includes(q) ||
+        (c.roomNumber || '').toLowerCase().includes(q)
     );
   }, [workingConfig.classes, searchQuery]);
 
@@ -88,6 +124,11 @@ export function useSchoolSettingsState(
         t.subjects.some((s) => s.name.toLowerCase().includes(q))
     );
   }, [workingConfig.teachers, searchQuery]);
+
+  const auditReport = useMemo(() => {
+    const masterClasses = buildMasterTimetableClasses(workingConfig);
+    return auditFullTimetable(toClassMap(masterClasses), workingConfig.teachers);
+  }, [workingConfig]);
 
   const handleSaveClass = (updatedClass: ClassTeacherConfig) => {
     setWorkingConfig((prev) => {
@@ -150,7 +191,7 @@ export function useSchoolSettingsState(
     });
   };
 
-  const handlePeriodChange = (index: number, field: keyof PeriodTiming, value: any) => {
+  const handlePeriodChange = (index: number, field: keyof PeriodTiming, value: string | number | boolean) => {
     setWorkingConfig((prev) => {
       const copy = [...prev.periods];
       copy[index] = { ...copy[index], [field]: value };
@@ -160,7 +201,8 @@ export function useSchoolSettingsState(
 
   const handleAddPeriod = () => {
     setWorkingConfig((prev) => {
-      const nextNo = prev.periods.length + 1;
+      const teachingCount = prev.periods.filter((p) => !p.isBreak && p.no > 0).length;
+      const nextNo = teachingCount + 1;
       const newPeriod: PeriodTiming = {
         no: nextNo,
         name: `Period ${nextNo}`,
@@ -177,6 +219,21 @@ export function useSchoolSettingsState(
       ...prev,
       periods: prev.periods.filter((_, i) => i !== index),
     }));
+  };
+
+  const handleDiscardEdits = () => {
+    setWorkingConfig(config);
+    showToast('Unsaved edits discarded.', 'success');
+  };
+
+  const handleResolveAuditorClash = (dayKey: DayKey, periodIndex: number, classLabel: string) => {
+    setTimetableJumpTarget({
+      dayKey,
+      periodIndex,
+      classLabel,
+      token: Date.now(),
+    });
+    setActiveTab('timetable');
   };
 
   const handleSaveAll = async () => {
@@ -208,6 +265,9 @@ export function useSchoolSettingsState(
     setWorkingConfig,
     activeTab,
     setActiveTab,
+    activePillar,
+    activeTabMeta,
+    hasUnsavedChanges,
     searchQuery,
     setSearchQuery,
     editingClass,
@@ -222,10 +282,13 @@ export function useSchoolSettingsState(
     setShowResetConfirm,
     confirmDialog,
     setConfirmDialog,
+    timetableJumpTarget,
+    clearTimetableJumpTarget: () => setTimetableJumpTarget(null),
     classTotals,
     availableClassKeys,
     filteredClasses,
     filteredTeachers,
+    auditReport,
     handleSaveClass,
     handleDeleteClass,
     handleSaveTeacher,
@@ -233,6 +296,8 @@ export function useSchoolSettingsState(
     handlePeriodChange,
     handleAddPeriod,
     handleRemovePeriod,
+    handleDiscardEdits,
+    handleResolveAuditorClash,
     handleSaveAll,
     handleExecuteReset,
   };

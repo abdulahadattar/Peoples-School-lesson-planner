@@ -12,7 +12,8 @@ Runtime topology for the PHSSJ Portal (`alpha` branch).
 - **Offline Sheet Sync (`docs/OFFLINE_SYNC.md`)**: Shared Firestore `student_record_edits` (`services/sharedRecordEdits.ts`), atomic Sheets batch writes (`RECORD_BATCH_SIZE = 50`), 12h read gate (`services/sheetPullSchedule.ts`), and attendance queue (`services/sheetSyncQueue.ts`).
 - **Student Documents (`services/documentArchive/`, `services/documentClient/`)**: Client upload/Drive import -> OCR classification & matching -> Firestore or local/tmp store (`constants.ts`, `firestoreStore.ts`).
 - **OMR & Marksheets (`services/omr/`, `services/marksheet/`)**: Shared A4 layout geometry -> PDF generation -> homography & bubble grading -> conflict-checked commit to marksheets (`marksheetBridge.ts`).
-- **Timetable & Substitutions (`services/timetable*`, `services/substitutionService.ts`)**: `Asia/Karachi` live period resolution, clash audit, and proxy equity tracking.
+- **School Configuration (`services/schoolConfig/`, `hooks/useSchoolConfig.ts`, `components/settings/`)**: Shared reactive `SchoolConfig` store (`store.ts`), class/section/room structure (`classStructure.ts`), bell/timetable seed resolver (`timetableSeed.ts`), cross-module propagation (`propagation.ts`), and 3-pillar School Admin workspace (`adminNavigation.ts`, letterhead preview, elevated clash auditor, backup/restore) backing all portal views and exports.
+- **Timetable & Substitutions (`services/timetable*`, `services/substitutionService.ts`)**: `Asia/Karachi` live period resolution from unified `SchoolConfig`, clash audit, and proxy equity tracking.
 
 ## 3. Active Risks
 1. **Firestore Rules**: `daily_attendance`, `attendanceRecords`, and `substitutions` still allow unauthenticated regex-matched writes pending auth tightening.

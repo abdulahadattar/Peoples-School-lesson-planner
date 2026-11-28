@@ -34,6 +34,9 @@ export interface MarksheetConfig {
   reopenDate: string;
   totalWorkingDays: number;
   principalName: string;
+  schoolLogoUrl?: string;
+  affiliationLogoUrl?: string;
+  principalSignatureUrl?: string;
   activeGradingSystem: GradingSystemType;
   classTeachers: Record<MarksheetGradeLevel, string>;
   subjectMaxMarks: Record<

@@ -28,6 +28,7 @@ export interface SchoolSettingsModalsProps {
   onSaveTeacher: (teacher: Teacher) => void;
   editingTeacher: Teacher | null;
   availableClassKeys: string[];
+  schoolName?: string;
 }
 
 export const SchoolSettingsModals: React.FC<SchoolSettingsModalsProps> = ({
@@ -46,6 +47,7 @@ export const SchoolSettingsModals: React.FC<SchoolSettingsModalsProps> = ({
   onSaveTeacher,
   editingTeacher,
   availableClassKeys,
+  schoolName,
 }) => {
   return (
     <>
@@ -85,6 +87,7 @@ export const SchoolSettingsModals: React.FC<SchoolSettingsModalsProps> = ({
         onSave={onSaveTeacher}
         initialData={editingTeacher}
         availableClassKeys={availableClassKeys}
+        schoolName={schoolName}
       />
     </>
   );

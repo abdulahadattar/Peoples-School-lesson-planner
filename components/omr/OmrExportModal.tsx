@@ -29,6 +29,7 @@ import {
 } from '../../services/omr/types';
 import { OmrExportFormFields } from './OmrExportFormFields';
 import { toUserErrorMessage } from '../../utils/userMessage';
+import { getCachedSchoolConfig } from '../../services/schoolConfigService';
 
 export interface OmrExportModalProps {
   isOpen: boolean;
@@ -52,9 +53,10 @@ export const OmrExportModal: React.FC<OmrExportModalProps> = ({
   defaultSubject = 'Physics',
   defaultTitle = 'Weekly Classroom Test',
   defaultMcqCount = 30,
-  schoolName = 'Peoples Higher Secondary School Jamshoro',
+  schoolName,
   onSavedTest,
 }) => {
+  const resolvedSchoolName = schoolName || getCachedSchoolConfig().schoolName;
   const extracted = useMemo(() => (paper ? extractPaperOmrData(paper) : null), [paper]);
 
   const [savedTests, setSavedTests] = useState<OmrTestRecord[]>([]);
@@ -230,7 +232,7 @@ export const OmrExportModal: React.FC<OmrExportModalProps> = ({
         testFrequency,
         testNumber: testNumber.trim() || 'Test #01',
         testDate: testDate || todayIsoDate(),
-        schoolName,
+        schoolName: resolvedSchoolName,
         mode: effectiveMode,
         students: effectiveMode === 'batch' ? roster : undefined,
       });
@@ -255,7 +257,7 @@ export const OmrExportModal: React.FC<OmrExportModalProps> = ({
     try {
       persistRegistry();
       const keyBytes = await generateAnswerKeyPdf({
-        schoolName,
+        schoolName: resolvedSchoolName,
         subject,
         classLevel,
         title,

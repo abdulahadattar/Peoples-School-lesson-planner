@@ -21,6 +21,12 @@ export interface ClassTeacherConfig {
   enrolledGirls: number;
   totalEnrollment?: number;
   subjects?: string[];
+  gradeLevel?: string;
+  section?: string;
+  sections?: string[];
+  sectionTeachers?: Record<string, string>;
+  roomNumber?: string;
+  capacity?: number;
 }
 
 export interface SchoolConfig {
@@ -33,6 +39,9 @@ export interface SchoolConfig {
   coordinatorName?: string;
   schoolAddress?: string;
   contactEmail?: string;
+  schoolLogoUrl?: string;
+  affiliationLogoUrl?: string;
+  principalSignatureUrl?: string;
 
   // Attendance & Enrollment Mode
   enrollmentMode: 'manual' | 'google_sheet';

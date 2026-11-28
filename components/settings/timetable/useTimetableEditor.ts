@@ -1,11 +1,14 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { Teacher } from '../../../types';
-import { SchoolConfig, DEFAULT_CLASS_SUBJECTS } from '../../../services/schoolConfigService';
 import {
-  TimetableClassEntry,
-  TimetablePeriod,
-} from '../../../services/timetable';
-import rawTimetableData from '../../../data/timetable.json';
+  SchoolConfig,
+  buildMasterTimetableClasses,
+  compareClassLabels,
+  extractTeachingPeriods,
+  lookupClassSubjectsSeed,
+  resolveClassConfigForLabel,
+} from '../../../services/schoolConfigService';
+import { TimetableClassEntry } from '../../../services/timetable';
 import {
   auditFullTimetable,
   buildTeacherMasterSchedule,
@@ -62,95 +65,41 @@ export function useTimetableEditor(
     };
   }, [exportMenuOpen]);
 
-  const [timetableMap, setTimetableMap] = useState<Record<string, TimetableClassEntry>>(() => {
-    const map: Record<string, TimetableClassEntry> = {};
-    const defaultClasses = (rawTimetableData as { classes: TimetableClassEntry[] }).classes || [];
-    defaultClasses.forEach((c) => {
-      const cleanTeacher = /^miss\s+ftaima$/i.test((c.classTeacher || '').trim())
-        ? 'Miss Fatima Qureshi'
-        : c.classTeacher;
-      map[c.label] = { ...JSON.parse(JSON.stringify(c)), classTeacher: cleanTeacher };
-    });
+  const [timetableMap, setTimetableMap] = useState<Record<string, TimetableClassEntry>>(() =>
+    toClassMap(buildMasterTimetableClasses(config))
+  );
 
-    const existingLabels = Object.keys(map);
-    const hasCoveredLabel = (scKey: string, scRoman: string) => {
-      const norm = (s: string) => {
-        const clean = s.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-        return clean === 'ECCE' ? 'ECE' : clean;
-      };
-      const n1 = norm(scKey);
-      const n2 = norm(scRoman);
-      return existingLabels.some((lbl) => {
-        const cn = norm(lbl);
-        return (
-          cn === n1 ||
-          cn === n2 ||
-          cn === `${n1}A` ||
-          cn === `${n1}B` ||
-          cn === `${n2}A` ||
-          cn === `${n2}B`
-        );
-      });
-    };
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const configTimetableSig = useMemo(
+    () =>
+      JSON.stringify({
+        periods: config.periods,
+        classes: config.classes,
+        customTimetable: config.customTimetable,
+      }),
+    [config.periods, config.classes, config.customTimetable]
+  );
+  const prevConfigSigRef = useRef<string>(configTimetableSig);
 
-    config.classes.forEach((sc) => {
-      const label = sc.romanName || sc.displayName || sc.classKey;
-      if (!hasCoveredLabel(sc.classKey, label)) {
-        const subjects = sc.subjects && sc.subjects.length > 0 ? sc.subjects : DEFAULT_CLASS_SUBJECTS[sc.classKey] || ['General Studies'];
-        const validTeacher = sc.classTeacher && sc.classTeacher !== 'Unassigned' ? sc.classTeacher : '';
-        const synthPeriods: TimetablePeriod[] = DEFAULT_BASE_PERIODS.map((bp, pIdx) => ({
-          no: bp.no,
-          start: bp.start,
-          end: bp.end,
-          friStart: bp.friStart,
-          friEnd: bp.friEnd,
-          mon: subjects[pIdx % subjects.length] || 'General Studies',
-          tue: subjects[pIdx % subjects.length] || 'General Studies',
-          wed: subjects[pIdx % subjects.length] || 'General Studies',
-          thu: subjects[pIdx % subjects.length] || 'General Studies',
-          fri: pIdx < 5 ? subjects[pIdx % subjects.length] || 'General Studies' : '—',
-          sat: '—',
-        }));
-        map[label] = { label, classTeacher: validTeacher || 'Unassigned', periods: synthPeriods };
-      }
-    });
-
-    if (config.customTimetable && config.customTimetable.length > 0) {
-      config.customTimetable.forEach((ct) => {
-        if (!hasCoveredLabel(ct.label, ct.label) || map[ct.label]) {
-          map[ct.label] = JSON.parse(JSON.stringify(ct));
-        }
-      });
+  useEffect(() => {
+    if (configTimetableSig === prevConfigSigRef.current) return;
+    prevConfigSigRef.current = configTimetableSig;
+    if (!hasUnsavedChanges) {
+      setTimetableMap(toClassMap(buildMasterTimetableClasses(config)));
     }
-
-    return map;
-  });
+  }, [configTimetableSig, config, hasUnsavedChanges]);
 
   const classList = useMemo(() => {
-    const CLASS_ORDER = ['ECCE', 'ECE', 'I', 'II', 'III', 'IV-A', 'IV-B', 'V', 'VI-A', 'VI-B', 'VII', 'VIII', 'IX', 'X-A', 'X-B', 'XI', 'XII'];
     const entries = (Object.values(timetableMap) as TimetableClassEntry[]).map((entry) => {
-      const baseGrade = entry.label.split('-')[0];
-      const scMatch = config.classes.find(
-        (c) =>
-          c.classKey.toUpperCase() === entry.label.toUpperCase() ||
-          c.romanName.toUpperCase() === entry.label.toUpperCase() ||
-          c.classKey.toUpperCase() === baseGrade.toUpperCase()
-      );
+      const scMatch = resolveClassConfigForLabel(config.classes, entry.label);
       return {
         key: entry.label,
         label: entry.label,
         classTeacher: entry.classTeacher && entry.classTeacher !== 'Unassigned' ? entry.classTeacher : '',
-        subjects: scMatch?.subjects || DEFAULT_CLASS_SUBJECTS[entry.label] || DEFAULT_CLASS_SUBJECTS[baseGrade] || [],
+        subjects: scMatch?.subjects || lookupClassSubjectsSeed(entry.label),
       };
     });
-    return entries.sort((a, b) => {
-      const ia = CLASS_ORDER.indexOf(a.label);
-      const ib = CLASS_ORDER.indexOf(b.label);
-      if (ia !== -1 && ib !== -1) return ia - ib;
-      if (ia !== -1) return -1;
-      if (ib !== -1) return 1;
-      return a.label.localeCompare(b.label);
-    });
+    return entries.sort((a, b) => compareClassLabels(a.label, b.label));
   }, [timetableMap, config.classes]);
 
   const filteredClasses = useMemo(() => {
@@ -161,10 +110,11 @@ export function useTimetableEditor(
     );
   }, [classList, classFilter]);
 
-  const [selectedClassLabel, setSelectedClassLabel] = useState<string>(() => classList.find((c) => c.label === 'IV-A')?.label || classList[0]?.label || 'IV-A');
+  const [selectedClassLabel, setSelectedClassLabel] = useState<string>(
+    () => classList.find((c) => c.label === 'IV-A')?.label || classList[0]?.label || 'IV-A'
+  );
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>(teachers[0]?.id || '');
 
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const sheetSync = useTimetableSheetSync();
   const [pushPreview, setPushPreview] = useState<TimetablePushResult | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -205,10 +155,15 @@ export function useTimetableEditor(
     setHasUnsavedChanges
   );
 
+  const activeBellPeriods = useMemo(() => {
+    const bells = extractTeachingPeriods(config.periods);
+    return bells.length > 0 ? bells : DEFAULT_BASE_PERIODS;
+  }, [config.periods]);
+
   const currentEntry = timetableMap[selectedClassLabel] || {
     label: selectedClassLabel,
     classTeacher: 'Unassigned',
-    periods: DEFAULT_BASE_PERIODS.map((p) => ({
+    periods: activeBellPeriods.map((p) => ({
       ...p,
       mon: '—',
       tue: '—',

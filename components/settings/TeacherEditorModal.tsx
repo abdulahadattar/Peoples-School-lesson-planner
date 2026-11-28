@@ -3,6 +3,11 @@ import { Check, User, Briefcase, BookOpen, Plus, Trash2 } from 'lucide-react';
 import { Teacher, TeacherSubject } from '../../types';
 import { BaseModal } from '../ui/BaseModal';
 import SelectField from '../ui/SelectField';
+import {
+  DEFAULT_SCHOOL_CONFIG,
+  getCachedSchoolConfig,
+  getSectionIdentifiers,
+} from '../../services/schoolConfigService';
 
 export interface TeacherEditorModalProps {
   isOpen: boolean;
@@ -11,12 +16,10 @@ export interface TeacherEditorModalProps {
   initialData?: Teacher | null;
   availableClasses?: string[];
   availableClassKeys?: string[];
+  schoolName?: string;
 }
 
-const DEFAULT_FALLBACK_CLASSES = [
-  'ECE', 'I-A', 'I-B', 'II', 'III-A', 'III-B', 'IV-A', 'IV-B',
-  'V', 'VI-A', 'VI-B', 'VII', 'VIII', 'IX', 'X-A', 'X-B', 'XI', 'XII'
-];
+const DEFAULT_FALLBACK_CLASSES = getSectionIdentifiers(DEFAULT_SCHOOL_CONFIG.classes);
 
 export const TeacherEditorModal: React.FC<TeacherEditorModalProps> = ({
   isOpen,
@@ -25,11 +28,15 @@ export const TeacherEditorModal: React.FC<TeacherEditorModalProps> = ({
   initialData,
   availableClasses,
   availableClassKeys,
+  schoolName,
 }) => {
-  const activeClassList = availableClasses || availableClassKeys || DEFAULT_FALLBACK_CLASSES;
+  const activeClassList =
+    (availableClasses && availableClasses.length > 0 ? availableClasses : null) ||
+    (availableClassKeys && availableClassKeys.length > 0 ? availableClassKeys : null) ||
+    DEFAULT_FALLBACK_CLASSES;
+  const resolvedSchoolName = schoolName || getCachedSchoolConfig().schoolName;
   const [name, setName] = useState(initialData?.name || '');
   const [designation, setDesignation] = useState(initialData?.designation || 'Subject Specialist');
-  const [schoolName] = useState('Peoples Higher Secondary School Jamshoro');
   const [subjects, setSubjects] = useState<TeacherSubject[]>(
     initialData?.subjects || [{ name: 'English', sections: ['IX', 'X-A'] }]
   );
@@ -87,7 +94,7 @@ export const TeacherEditorModal: React.FC<TeacherEditorModalProps> = ({
       id: initialData?.id || `teacher-${Date.now()}`,
       name: name.trim(),
       designation: designation.trim(),
-      schoolName,
+      schoolName: resolvedSchoolName,
       subjects: filteredSubjects,
     });
     onClose();
@@ -110,14 +117,14 @@ export const TeacherEditorModal: React.FC<TeacherEditorModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="px-4 py-2 min-h-[40px] rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={handleSubmit}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-primary hover:bg-primary/90 shadow-soft active:scale-95 transition-[color,background-color,border-color,transform] cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[40px] rounded-xl text-xs font-semibold text-white bg-primary hover:bg-primary/90 shadow-soft active:scale-95 transition-[color,background-color,border-color,transform] cursor-pointer"
           >
             <Check className="w-3.5 h-3.5" />
             <span>{initialData ? 'Update Teacher' : 'Save Teacher'}</span>
@@ -212,7 +219,7 @@ export const TeacherEditorModal: React.FC<TeacherEditorModalProps> = ({
                 <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 block mb-1">
                   Assigned Class Sections:
                 </span>
-                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto custom-scrollbar p-1">
+                <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto custom-scrollbar p-1">
                   {activeClassList.map((cls) => {
                     const isAssigned = (sub.sections || []).includes(cls);
                     return (
@@ -220,7 +227,7 @@ export const TeacherEditorModal: React.FC<TeacherEditorModalProps> = ({
                         key={cls}
                         type="button"
                         onClick={() => handleToggleSection(idx, cls)}
-                        className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition-[color,background-color,border-color,box-shadow] cursor-pointer ${
+                        className={`px-2.5 py-1.5 min-h-[34px] rounded-lg text-[11px] font-semibold transition-[color,background-color,border-color,box-shadow] cursor-pointer ${
                           isAssigned
                             ? 'bg-primary text-white shadow-xs'
                             : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'

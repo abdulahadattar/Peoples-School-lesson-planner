@@ -63,7 +63,7 @@ export function auditFullTimetable(
     for (let pIdx = 0; pIdx < maxPeriods; pIdx++) {
       const teacherPresence = new Map<
         string,
-        { teacher: Teacher; classes: string[]; subjects: string[] }
+        { teacher: Teacher; classSubjects: Map<string, string> }
       >();
 
       for (const entry of classes) {
@@ -93,18 +93,19 @@ export function auditFullTimetable(
         for (const t of parsed.teachers) {
           const record = teacherPresence.get(t.id) ?? {
             teacher: t,
-            classes: [],
-            subjects: [],
+            classSubjects: new Map<string, string>(),
           };
-          record.classes.push(entry.label);
-          record.subjects.push(parsed.label);
+          if (!record.classSubjects.has(entry.label)) {
+            record.classSubjects.set(entry.label, parsed.label);
+          }
           teacherPresence.set(t.id, record);
         }
       }
 
       for (const [_, record] of teacherPresence) {
-        const uniqueClasses = Array.from(new Set(record.classes));
-        if (uniqueClasses.length > 1) {
+        if (record.classSubjects.size > 1) {
+          const uniqueClasses = Array.from(record.classSubjects.keys());
+          const alignedSubjects = Array.from(record.classSubjects.values());
           clashes.push({
             id: `${day}_p${pIdx}_${record.teacher.id}`,
             dayKey: day,
@@ -113,7 +114,7 @@ export function auditFullTimetable(
             periodNo: pIdx + 1,
             teacher: record.teacher,
             classes: uniqueClasses,
-            subjects: Array.from(new Set(record.subjects)),
+            subjects: alignedSubjects,
           });
           uniqueClasses.forEach(c => classesWithClash.add(c));
         }

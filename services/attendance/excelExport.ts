@@ -1,17 +1,20 @@
 import * as XLSX from 'xlsx';
 import { ClassAttendanceRow, SchoolAttendanceSummary } from './types';
+import { getCachedSchoolConfig } from '../schoolConfig/store';
 
 export function buildAttendanceWorkbook(
   date: string,
   rows: ClassAttendanceRow[],
   summary: SchoolAttendanceSummary,
   recordedBy?: string,
-  notes?: string
+  notes?: string,
+  schoolName?: string
 ): XLSX.WorkBook {
+  const resolvedSchoolName = schoolName || getCachedSchoolConfig().schoolName;
   const wb = XLSX.utils.book_new();
 
   const summarySheetData: Array<Array<string | number>> = [
-    ['Peoples Higher Secondary School Jamshoro (PHSSJ)'],
+    [resolvedSchoolName],
     ['Daily Student Attendance Summary'],
     ['Date', date],
     ['In-Charge / Recorded By', recordedBy || 'Unassigned'],

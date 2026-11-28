@@ -1,7 +1,18 @@
 import { Teacher } from '../../types';
 import teachersData from '../../data/teachers.json';
-import { DEFAULT_GRADE_ENROLLMENTS } from '../attendance/types';
 import { PeriodTiming, ClassTeacherConfig, SchoolConfig } from './types';
+import {
+  DEFAULT_CLASS_TEACHERS,
+  DEFAULT_CLASS_SUBJECTS,
+  buildDefaultClassConfigs,
+  hydrateClassConfigMetadata,
+  lookupClassSubjectsSeed,
+  lookupClassTeacherSeed,
+  normalizeTeacherDisplayName,
+} from './classStructure';
+import { getSeedBaselineTimetableClasses } from './timetableSeed';
+
+export { DEFAULT_CLASS_TEACHERS, DEFAULT_CLASS_SUBJECTS };
 
 export const DEFAULT_PERIOD_TIMINGS: PeriodTiming[] = [
   { no: 0, name: 'Morning Assembly', start: '07:45 AM', end: '08:15 AM', friStart: '07:45 AM', friEnd: '08:15 AM', durationMinutes: 30 },
@@ -15,85 +26,15 @@ export const DEFAULT_PERIOD_TIMINGS: PeriodTiming[] = [
   { no: 7, name: 'Period 7', start: '12:40 PM', end: '01:20 PM', friStart: '—', friEnd: '—', durationMinutes: 40 },
 ];
 
-export const DEFAULT_CLASS_TEACHERS: Record<string, string> = {
-  ECCE: 'Unassigned',
-  IA: 'Unassigned',
-  'I-A': 'Unassigned',
-  IB: 'Unassigned',
-  'I-B': 'Unassigned',
-  II: 'Unassigned',
-  IIIA: 'Unassigned',
-  'III-A': 'Unassigned',
-  IIIB: 'Unassigned',
-  'III-B': 'Unassigned',
-  IVA: 'Miss Daniya',
-  'IV-A': 'Miss Daniya',
-  IVB: 'Miss Fatima Qureshi',
-  'IV-B': 'Miss Fatima Qureshi',
-  V: 'Sir Hashim',
-  VIA: 'Miss Aneela',
-  'VI-A': 'Miss Aneela',
-  VIB: 'Sir Shuhban',
-  'VI-B': 'Sir Shuhban',
-  VII: 'Sir Atta Muhammad Joyo',
-  VIII: 'Miss Madiha',
-  IX: 'Sir Abdul Ahad',
-  XA: 'Miss Asra',
-  'X-A': 'Miss Asra',
-  XB: 'Sir Muhammad Rajab',
-  'X-B': 'Sir Muhammad Rajab',
-  XI: 'Sir Bahadur',
-  XII: 'Sir Kamran',
-};
+export const DEFAULT_CLASS_CONFIGS: ClassTeacherConfig[] = buildDefaultClassConfigs();
 
-export const DEFAULT_CLASS_SUBJECTS: Record<string, string[]> = {
-  ECCE: ['Early Childhood Care & Education', 'English Phonics', 'Urdu Haroof', 'Basic Mathematics', 'General Knowledge', 'Rhymes & Arts'],
-  'I-A': ['English', 'Urdu', 'Sindhi', 'Mathematics', 'General Science', 'Islamiat', 'Arts & Drawing'],
-  IA: ['English', 'Urdu', 'Sindhi', 'Mathematics', 'General Science', 'Islamiat', 'Arts & Drawing'],
-  'I-B': ['English', 'Urdu', 'Sindhi', 'Mathematics', 'General Science', 'Islamiat', 'Arts & Drawing'],
-  IB: ['English', 'Urdu', 'Sindhi', 'Mathematics', 'General Science', 'Islamiat', 'Arts & Drawing'],
-  II: ['English', 'Urdu', 'Sindhi', 'Mathematics', 'General Science', 'Islamiat', 'Social Studies', 'Arts & Drawing'],
-  'III-A': ['English', 'Urdu', 'Sindhi', 'Mathematics', 'General Science', 'Islamiat', 'Social Studies', 'Computer', 'Arts & Drawing'],
-  IIIA: ['English', 'Urdu', 'Sindhi', 'Mathematics', 'General Science', 'Islamiat', 'Social Studies', 'Computer', 'Arts & Drawing'],
-  'III-B': ['English', 'Urdu', 'Sindhi', 'Mathematics', 'General Science', 'Islamiat', 'Social Studies', 'Computer', 'Arts & Drawing'],
-  IIIB: ['English', 'Urdu', 'Sindhi', 'Mathematics', 'General Science', 'Islamiat', 'Social Studies', 'Computer', 'Arts & Drawing'],
-  'IV-A': ['English', 'Urdu', 'Sindhi', 'Mathematics', 'Science', 'Islamiat', 'Social Studies', 'ICT', 'Art', 'Library', 'P.E'],
-  IVA: ['English', 'Urdu', 'Sindhi', 'Mathematics', 'Science', 'Islamiat', 'Social Studies', 'ICT', 'Art', 'Library', 'P.E'],
-  'IV-B': ['English', 'Urdu', 'Sindhi', 'Mathematics', 'Science', 'Islamiat', 'Social Studies', 'ICT', 'Art', 'Library', 'P.E'],
-  IVB: ['English', 'Urdu', 'Sindhi', 'Mathematics', 'Science', 'Islamiat', 'Social Studies', 'ICT', 'Art', 'Library', 'P.E'],
-  V: ['English', 'Urdu', 'Sindhi', 'Mathematics', 'Science', 'Islamiat', 'Social Studies', 'ICT', 'Art', 'Library', 'P.E'],
-  'VI-A': ['English', 'Urdu', 'Sindhi', 'Mathematics', 'Science', 'Islamiat', 'Social Studies', 'ICT', 'Art', 'Library', 'P.E'],
-  VIA: ['English', 'Urdu', 'Sindhi', 'Mathematics', 'Science', 'Islamiat', 'Social Studies', 'ICT', 'Art', 'Library', 'P.E'],
-  'VI-B': ['English', 'Urdu', 'Sindhi', 'Mathematics', 'Science', 'Islamiat', 'Social Studies', 'ICT', 'Art', 'Library', 'P.E'],
-  VIB: ['English', 'Urdu', 'Sindhi', 'Mathematics', 'Science', 'Islamiat', 'Social Studies', 'ICT', 'Art', 'Library', 'P.E'],
-  VII: ['English', 'Urdu', 'Sindhi', 'Mathematics', 'Science', 'Islamiat', 'Social Studies', 'ICT', 'Art', 'Library', 'P.E'],
-  VIII: ['English', 'Urdu', 'Sindhi', 'Mathematics', 'Science', 'Islamiat', 'Social Studies', 'ICT', 'Art', 'Library', 'P.E'],
-  IX: ['English', 'Urdu', 'Sindhi', 'Mathematics', 'Physics', 'Chemistry', 'Biology', 'Islamiat', 'ICT'],
-  'X-A': ['English', 'Sindhi', 'Asan Urdu', 'Mathematics', 'Physics', 'Chemistry', 'Biology', 'Pak Studies', 'ICT', 'Art', 'P.E'],
-  XA: ['English', 'Sindhi', 'Asan Urdu', 'Mathematics', 'Physics', 'Chemistry', 'Biology', 'Pak Studies', 'ICT', 'Art', 'P.E'],
-  'X-B': ['English', 'Urdu', 'Sindhi', 'Mathematics', 'Physics', 'Chemistry', 'Biology', 'Pak Studies', 'ICT', 'Art', 'P.E'],
-  XB: ['English', 'Urdu', 'Sindhi', 'Mathematics', 'Physics', 'Chemistry', 'Biology', 'Pak Studies', 'ICT', 'Art', 'P.E'],
-  XI: ['English', 'Urdu', 'Sindhi', 'Asan Urdu', 'Mathematics', 'Physics', 'Chemistry', 'Biology', 'Islamiat', 'ICT', 'Art', 'P.E'],
-  XII: ['English', 'Urdu', 'Sindhi', 'Mathematics', 'Physics', 'Chemistry', 'Biology', 'Pak Studies', 'P.E'],
-};
-
-export const DEFAULT_CLASS_CONFIGS: ClassTeacherConfig[] = DEFAULT_GRADE_ENROLLMENTS.map((g) => ({
-  classKey: g.classKey,
-  romanName: g.romanName,
-  displayName: `Class ${g.romanName}`,
-  classTeacher: DEFAULT_CLASS_TEACHERS[g.classKey] || 'Unassigned',
-  enrolledBoys: g.enrolledBoys,
-  enrolledGirls: g.enrolledGirls,
-  totalEnrollment: g.totalEnrollment || (g.enrolledBoys + g.enrolledGirls),
-  subjects: DEFAULT_CLASS_SUBJECTS[g.classKey] || DEFAULT_CLASS_SUBJECTS[g.romanName] || [
-    'English',
-    'Urdu',
-    'Sindhi',
-    'Mathematics',
-    'Science',
-    'Islamiat',
-  ],
-}));
+export function getSeedBaselineTeachers(): Teacher[] {
+  const raw = (teachersData as { teachers: Teacher[] }).teachers || [];
+  return raw.map((t) => ({
+    ...t,
+    subjects: (t.subjects || []).map((s) => ({ ...s, sections: [...(s.sections || [])] })),
+  }));
+}
 
 export const DEFAULT_SCHOOL_CONFIG: SchoolConfig = {
   schoolName: 'Peoples Higher Secondary School Jamshoro',
@@ -104,12 +45,16 @@ export const DEFAULT_SCHOOL_CONFIG: SchoolConfig = {
   coordinatorName: 'Sir Abdul Razzaq / Miss Narjis',
   schoolAddress: 'Peoples Higher Secondary School, University Road, Jamshoro, Sindh',
   contactEmail: 'abdul7762ahad@gmail.com',
+  schoolLogoUrl: '/logos/phssj.png',
+  affiliationLogoUrl: '/logos/ziauddin-university.png',
+  principalSignatureUrl: '/logos/principal-signature.png',
   enrollmentMode: 'manual',
   sheetEditingEnabled: true,
   sheetEditingLockedMessage: 'Google Sheet student editing is temporarily locked by School Administration. Contact Admin (abdul7762ahad@gmail.com) to request record modifications.',
   classes: DEFAULT_CLASS_CONFIGS,
-  teachers: (teachersData as { teachers: Teacher[] }).teachers || [],
+  teachers: getSeedBaselineTeachers(),
   periods: DEFAULT_PERIOD_TIMINGS,
+  customTimetable: getSeedBaselineTimetableClasses(),
   timetableNote: 'Regular Schedule: Mon-Thu 7 Periods (08:15 AM - 01:20 PM), Friday 5 Periods (08:15 AM - 11:50 AM)',
   updatedAt: Date.now(),
   updatedBy: 'System Baseline',
@@ -121,17 +66,18 @@ export function sanitizeSchoolConfig(raw: Partial<SchoolConfig>): SchoolConfig {
   const base: SchoolConfig = {
     ...DEFAULT_SCHOOL_CONFIG,
     ...raw,
+    schoolLogoUrl: raw.schoolLogoUrl !== undefined ? raw.schoolLogoUrl : DEFAULT_SCHOOL_CONFIG.schoolLogoUrl,
+    affiliationLogoUrl: raw.affiliationLogoUrl !== undefined ? raw.affiliationLogoUrl : DEFAULT_SCHOOL_CONFIG.affiliationLogoUrl,
+    principalSignatureUrl: raw.principalSignatureUrl !== undefined ? raw.principalSignatureUrl : DEFAULT_SCHOOL_CONFIG.principalSignatureUrl,
   };
 
-  if (Array.isArray(base.classes)) {
-    base.classes = base.classes.map((cls) => {
+  if (Array.isArray(raw.classes)) {
+    base.classes = raw.classes.map((cls) => {
       let teacher = cls.classTeacher || 'Unassigned';
       if (PLACEHOLDER_NAMES_REGEX.test(teacher.trim())) {
-        teacher = DEFAULT_CLASS_TEACHERS[cls.classKey] || 'Unassigned';
+        teacher = lookupClassTeacherSeed(cls.classKey, cls.romanName);
       }
-      if (teacher.toLowerCase() === 'miss ftaima') {
-        teacher = 'Miss Fatima Qureshi';
-      }
+      teacher = normalizeTeacherDisplayName(teacher);
 
       const isGeneric = !cls.subjects || cls.subjects.length === 0 || (
         cls.subjects.length === 7 &&
@@ -142,29 +88,35 @@ export function sanitizeSchoolConfig(raw: Partial<SchoolConfig>): SchoolConfig {
       );
 
       const subjects = isGeneric
-        ? (DEFAULT_CLASS_SUBJECTS[cls.classKey] || DEFAULT_CLASS_SUBJECTS[cls.romanName] || cls.subjects)
+        ? [...lookupClassSubjectsSeed(cls.classKey, cls.romanName)]
         : cls.subjects;
 
-      return {
+      return hydrateClassConfigMetadata({
         ...cls,
         classTeacher: teacher,
         subjects,
-      };
+      });
     });
   } else {
-    base.classes = DEFAULT_CLASS_CONFIGS;
+    base.classes = buildDefaultClassConfigs();
   }
 
-  if (!Array.isArray(base.periods) || base.periods.length === 0) {
+  if (!Array.isArray(raw.periods) || raw.periods.length === 0) {
     base.periods = DEFAULT_PERIOD_TIMINGS;
   }
 
-  if (!Array.isArray(base.teachers) || base.teachers.length === 0) {
-    base.teachers = (teachersData as { teachers: Teacher[] }).teachers || [];
+  // Keep Admin roster edits intact (even customized/reduced lists); only seed when missing.
+  if (Array.isArray(raw.teachers) && (raw.teachers.length > 0 || Boolean(raw.updatedBy && raw.updatedBy !== 'System Baseline'))) {
+    base.teachers = raw.teachers;
+  } else {
+    base.teachers = getSeedBaselineTeachers();
   }
 
-  if (Array.isArray(base.customTimetable) && base.customTimetable.length > 0) {
-    base.customTimetable = base.customTimetable;
+  // Keep Admin timetable edits intact; only seed from bundled JSON when absent.
+  if (Array.isArray(raw.customTimetable) && (raw.customTimetable.length > 0 || Boolean(raw.updatedBy && raw.updatedBy !== 'System Baseline'))) {
+    base.customTimetable = raw.customTimetable;
+  } else {
+    base.customTimetable = getSeedBaselineTimetableClasses();
   }
 
   return base;

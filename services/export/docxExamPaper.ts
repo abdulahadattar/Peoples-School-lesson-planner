@@ -26,6 +26,7 @@ import {
   A4_PAGE_HEIGHT,
   DOCX_PAGE_MARGINS,
 } from './docxHelpers';
+import { getCachedSchoolConfig } from '../schoolConfig/store';
 
 /** Exact OOXML geometry constants (in twips: 1440 twips = 1 inch). */
 export const EXAM_DOCX_LAYOUT = {
@@ -49,7 +50,7 @@ export const buildExamPaperDocx = async (
   teacherInfo?: TeacherInfo,
   mathScale: number = 85
 ): Promise<Document> => {
-  const schoolName = teacherInfo?.schoolName || 'Peoples Higher Secondary School Jamshoro';
+  const schoolName = teacherInfo?.schoolName || getCachedSchoolConfig().schoolName;
   const children: Paragraph[] = [];
 
   children.push(

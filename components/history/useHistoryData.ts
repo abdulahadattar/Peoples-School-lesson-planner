@@ -9,6 +9,7 @@ import {
   SavedLessonPlanItem,
   SavedExamPaperItem,
 } from '../../services/storageService';
+import { getCachedSchoolConfig } from '../../services/schoolConfigService';
 
 export interface ConfirmDialogState {
   isOpen: boolean;
@@ -115,7 +116,8 @@ export function useHistoryData(
     e.stopPropagation();
     return runExport(item.id, async () => {
       const { exportPaperAsDocx } = await import('../../services/exportService');
-      await exportPaperAsDocx(item.paper, item.teacherInfo || { name: '', schoolName: 'PHSSJ' });
+      const fallbackSchool = getCachedSchoolConfig().schoolName;
+      await exportPaperAsDocx(item.paper, item.teacherInfo || { name: '', schoolName: fallbackSchool });
     });
   };
 
@@ -123,7 +125,8 @@ export function useHistoryData(
     e.stopPropagation();
     return runExport(item.id, async () => {
       const { exportPaperAsPdf } = await import('../../services/exportService');
-      await exportPaperAsPdf(item.paper, item.teacherInfo || { name: '', schoolName: 'PHSSJ' });
+      const fallbackSchool = getCachedSchoolConfig().schoolName;
+      await exportPaperAsPdf(item.paper, item.teacherInfo || { name: '', schoolName: fallbackSchool });
     });
   };
 
@@ -131,7 +134,8 @@ export function useHistoryData(
     e.stopPropagation();
     return runExport(item.id, async () => {
       const { exportAsDocx } = await import('../../services/exportService');
-      await exportAsDocx(item.plan, item.sloId, item.teacherInfo || { name: '', schoolName: 'PHSSJ' });
+      const fallbackSchool = getCachedSchoolConfig().schoolName;
+      await exportAsDocx(item.plan, item.sloId, item.teacherInfo || { name: '', schoolName: fallbackSchool });
     });
   };
 

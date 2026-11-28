@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { FileSpreadsheet, X } from 'lucide-react';
 import { Teacher } from '../../types';
 import { SchoolConfig } from '../../services/schoolConfigService';
 import {
@@ -22,12 +23,15 @@ import {
   useTimetableBatchActions,
   ConfirmDialogState,
 } from './timetable/useTimetableBatchActions';
+import type { TimetableJumpTarget } from './useSchoolSettingsState';
 
 export interface TimetableEditorTabProps {
   config: SchoolConfig;
   teachers: Teacher[];
   onUpdateCustomTimetable: (updatedCustomTimetable: TimetableClassEntry[]) => void;
   isSaving?: boolean;
+  jumpTarget?: TimetableJumpTarget | null;
+  onClearJumpTarget?: () => void;
 }
 
 export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
@@ -35,6 +39,8 @@ export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
   teachers,
   onUpdateCustomTimetable,
   isSaving,
+  jumpTarget,
+  onClearJumpTarget,
 }) => {
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null);
 
@@ -95,6 +101,14 @@ export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
     handleReconnectSheets,
   } = useTimetableEditor(config, teachers, onUpdateCustomTimetable);
 
+  useEffect(() => {
+    if (!jumpTarget) return;
+    setSelectedClassLabel(jumpTarget.classLabel);
+    setViewMode('class');
+    handleOpenCellEditor(jumpTarget.dayKey, jumpTarget.periodIndex, jumpTarget.classLabel);
+    onClearJumpTarget?.();
+  }, [jumpTarget?.token]);
+
   const {
     handleCopyDayToWeekdays,
     handleAutoFillEmptySlots,
@@ -106,24 +120,28 @@ export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
     setTimetableMap,
     setHasUnsavedChanges,
     showNotice,
-    setConfirmDialog
+    setConfirmDialog,
+    config.periods
   );
+
+  const schoolTitle = config.schoolName || 'School Portal';
 
   return (
     <div className="space-y-6">
       {exportNotice &&
         createPortal(
-          <div className="fixed top-5 right-5 z-[130] px-4 py-3 rounded-2xl bg-brand-surface border border-brand-primary text-brand-text-primary shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-200">
-            <div className="w-8 h-8 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center font-bold text-base">
-              📊
+          <div className="fixed top-5 right-5 z-[130] px-4 py-3 rounded-2xl bg-brand-surface border border-brand-primary text-brand-text-primary shadow-2xl flex items-center gap-3 animate-scaleIn">
+            <div className="w-8 h-8 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center">
+              <FileSpreadsheet className="w-4 h-4" aria-hidden="true" />
             </div>
             <div className="text-xs font-semibold">{exportNotice}</div>
             <button
               type="button"
               onClick={() => setExportNotice(null)}
-              className="text-brand-text-secondary hover:text-brand-text-primary font-bold ml-2 cursor-pointer"
+              aria-label="Dismiss notification"
+              className="text-brand-text-secondary hover:text-brand-text-primary ml-2 cursor-pointer p-1 rounded-lg"
             >
-              ✕
+              <X className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>,
           document.body
@@ -140,19 +158,19 @@ export const TimetableEditorTab: React.FC<TimetableEditorTabProps> = ({
         isSaving={isSaving}
         onSaveToCloud={handleSaveToCloud}
         onExportAllClassesExcel={() => {
-          const file = exportClassWiseTimetableToExcel(timetableMap, teachers, 'Peoples Secondary School');
+          const file = exportClassWiseTimetableToExcel(timetableMap, teachers, schoolTitle);
           showNotice(`Downloaded Class-Wise Excel Workbook: ${file}`);
         }}
         onExportAllTeachersExcel={() => {
-          const file = exportTeacherWiseTimetableToExcel(timetableMap, teachers, 'Peoples Secondary School');
+          const file = exportTeacherWiseTimetableToExcel(timetableMap, teachers, schoolTitle);
           showNotice(`Downloaded Teacher-Wise Master Excel Workbook: ${file}`);
         }}
         onExportSingleClassExcel={() => {
-          const file = exportSingleClassToExcel(currentEntry, teachers, 'Peoples Secondary School');
+          const file = exportSingleClassToExcel(currentEntry, teachers, schoolTitle);
           showNotice(`Downloaded Excel Timetable for Class ${selectedClassLabel}: ${file}`);
         }}
         onExportSingleTeacherExcel={() => {
-          const file = exportSingleTeacherToExcel(selectedTeacherId, timetableMap, teachers, 'Peoples Secondary School');
+          const file = exportSingleTeacherToExcel(selectedTeacherId, timetableMap, teachers, schoolTitle);
           const teacherName = teachers.find((t) => t.id === selectedTeacherId)?.name || 'Teacher';
           showNotice(`Downloaded Excel Schedule for ${teacherName}: ${file}`);
         }}

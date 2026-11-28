@@ -112,11 +112,15 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
           <div className="flex items-center gap-3 mb-6 px-1">
             <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 border border-black/[0.06] dark:border-white/[0.08] flex items-center justify-center shrink-0 p-1">
-              <PhssjLogo className="w-full h-full object-contain" />
+              <PhssjLogo
+                className="w-full h-full object-contain"
+                alt={schoolConfig?.schoolName || 'PHSSJ'}
+                src={schoolConfig?.schoolLogoUrl}
+              />
             </div>
             <div className="leading-tight truncate">
               <p className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">PHSSJ Portal</p>
-              <p className="text-[11px] text-slate-600 dark:text-slate-300 truncate">{schoolConfig?.schoolName || 'Peoples Higher Secondary School'}</p>
+              <p className="text-[11px] text-slate-600 dark:text-slate-300 truncate">{schoolConfig?.schoolName || 'Peoples Higher Secondary School Jamshoro'}</p>
             </div>
           </div>
 
@@ -176,12 +180,18 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
           <div className="mt-auto pt-4 border-t border-black/[0.04] dark:border-white/[0.06] space-y-3">
             <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-black/[0.04] dark:border-white/[0.06]">
               <div className="shrink-0 bg-white rounded-md p-1 border border-slate-200/80 flex items-center justify-center">
-                <ZiauddinLogo className="h-5 w-auto" />
+                <ZiauddinLogo
+                  className="h-5 w-auto"
+                  alt={(schoolConfig?.affiliation || '').replace(/^Affiliated with\s+/i, '').trim() || 'Ziauddin University'}
+                  src={schoolConfig?.affiliationLogoUrl}
+                />
               </div>
-              <p className="text-[10px] leading-snug text-slate-600 dark:text-slate-300">
+              <p className="text-[10px] leading-snug text-slate-600 dark:text-slate-300 min-w-0">
                 Affiliated with
                 <br />
-                <span className="font-semibold text-slate-800 dark:text-slate-100">Ziauddin University</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-100 block truncate">
+                  {(schoolConfig?.affiliation || '').replace(/^Affiliated with\s+/i, '').trim() || 'Ziauddin University'}
+                </span>
               </p>
             </div>
             <div className="px-3 text-[10px] text-slate-600 dark:text-slate-300 space-y-1.5 tabular-nums">

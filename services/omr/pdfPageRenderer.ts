@@ -19,6 +19,7 @@ import {
 } from './types';
 import { formatTestFrequencyBadge } from './classroomRanking';
 import { rgb } from 'pdf-lib';
+import { getCachedSchoolConfig } from '../schoolConfig/store';
 
 const BLACK = rgb(0, 0, 0);
 const WHITE = rgb(1, 1, 1);
@@ -213,7 +214,7 @@ export function drawOmrPage(
 
   // 2. Institutional Header & Classroom Test Info
   const schoolTitle = sanitizePdfText(
-    options.schoolName || 'Peoples Higher Secondary School Jamshoro'
+    options.schoolName || getCachedSchoolConfig().schoolName
   );
   const examLabel = options.testFrequency
     ? formatTestFrequencyBadge(options.testFrequency)

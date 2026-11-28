@@ -16,11 +16,11 @@
 │   ├── paper/                # Exam paper configuration & sections
 │   ├── records/              # Student records, analytics & document tab
 │   ├── results/              # Plan & paper preview/export
-│   ├── settings/             # School Admin tabs & master timetable editor
+│   ├── settings/             # 3-pillar School Admin (adminNavigation, Identity, Classes, Faculty, Bell/Timetable/Auditor, Access & Backup)
 │   ├── substitution/         # Teacher substitutions & proxy summary
 │   └── ui/                   # Shared primitives (SelectField, NumberField, BaseModal, etc.)
 ├── curriculum/               # STBB curriculum & SLO modules (Grades IX–XII)
-├── data/                     # Baseline teachers & timetable JSON
+├── data/                     # Initial baseline seed JSONs (teachers & timetable)
 ├── docs/                     # Architecture, offline sync & verified stack docs
 ├── hooks/                    # Shared React hooks
 ├── public/                   # Static assets, curriculum SLO JSONs, logos
@@ -33,6 +33,7 @@
 │   ├── marksheet/            # Marksheet parser, calculations, PDF & sync
 │   ├── omr/                  # Geometry, homography, vision engine & marksheet bridge
 │   ├── paper/                # Exam paper generation
+│   ├── schoolConfig/         # Unified SchoolConfig store, defaults, class structure, timetable seed & propagation
 │   ├── sheets/               # Google Sheets batch writer & error classifier
 │   └── timetable*/           # Timetable conflict audit & Sheet sync
 ├── types/                    # TypeScript type definitions

@@ -717,6 +717,12 @@ await runPortalWarmupTests({ describe, it, itAsync, eq });
 const { runIdentityNormalizationTests } = await import('./unit/identityNormalization.test');
 runIdentityNormalizationTests({ describe, it, eq });
 
+const { runSchoolConfigSingleSourceTests } = await import('./unit/schoolConfigSingleSource.test');
+await runSchoolConfigSingleSourceTests({ describe, it, itAsync, eq });
+
+const { runSchoolAdminNavigationTests } = await import('./unit/schoolAdminNavigation.test');
+await runSchoolAdminNavigationTests({ describe, it, eq });
+
 /* ── summary ─────────────────────────────────────────────────── */
 
 log(`\n${c.b(c.cy('══════════════════════════════════'))}`);

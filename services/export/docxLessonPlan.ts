@@ -22,10 +22,11 @@ import {
   A4_PAGE_HEIGHT,
   DOCX_PAGE_MARGINS,
 } from './docxHelpers';
+import { getCachedSchoolConfig } from '../schoolConfig/store';
 
 export const createDocxContentForPlan = async (lessonPlan: LessonPlan, teacherInfo?: TeacherInfo): Promise<(Paragraph | Table)[]> => {
   const teacherName = teacherInfo?.name || "Abdul Ahad";
-  const schoolPlaceholder = teacherInfo?.schoolName || "Peoples Higher Secondary School Jamshoro";
+  const schoolPlaceholder = teacherInfo?.schoolName || getCachedSchoolConfig().schoolName;
   const dateTimeline = '____________________';
   const period = '1';
   const gradeShort = lessonPlan.gradeLevel.replace('Grade ', '').split(' ')[0];

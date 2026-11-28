@@ -123,20 +123,16 @@ export function useMarksheetsState(
 
   useEffect(() => {
     let active = true;
-    Promise.all([
-      fetchSheetData()
-        .then((res) => {
-          if (active) setSheetRecords(res.records || []);
-        })
-        .catch((err) => {
-          console.warn('[marksheets] Failed to fetch student register:', err);
-        }),
-      fetchMarksheetLogoAssets().then((assets) => {
-        if (active) setLogos(assets);
-      }),
-    ]).finally(() => {
-      if (active) setIsLoadingRoster(false);
-    });
+    fetchSheetData()
+      .then((res) => {
+        if (active) setSheetRecords(res.records || []);
+      })
+      .catch((err) => {
+        console.warn('[marksheets] Failed to fetch student register:', err);
+      })
+      .finally(() => {
+        if (active) setIsLoadingRoster(false);
+      });
 
     return () => {
       active = false;
@@ -274,6 +270,24 @@ export function useMarksheetsState(
     () => applySchoolConfigToMarksheetConfig(config, liveSync.schoolConfig),
     [config, liveSync.schoolConfig]
   );
+
+  useEffect(() => {
+    let active = true;
+    fetchMarksheetLogoAssets({
+      schoolLogoUrl: effectiveConfig.schoolLogoUrl,
+      affiliationLogoUrl: effectiveConfig.affiliationLogoUrl,
+      principalSignatureUrl: effectiveConfig.principalSignatureUrl,
+    }).then((assets) => {
+      if (active) setLogos(assets);
+    });
+    return () => {
+      active = false;
+    };
+  }, [
+    effectiveConfig.schoolLogoUrl,
+    effectiveConfig.affiliationLogoUrl,
+    effectiveConfig.principalSignatureUrl,
+  ]);
 
   const activeEntry = activeStudent
     ? examEntriesByGr[activeStudent.grNo] || examEntriesByGr[normalizeGrKey(activeStudent.grNo)]

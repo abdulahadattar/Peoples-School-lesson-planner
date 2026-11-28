@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Check, BookOpen, Users } from 'lucide-react';
-import { ClassTeacherConfig } from '../../services/schoolConfigService';
+import { ClassTeacherConfig, hydrateClassConfigMetadata } from '../../services/schoolConfigService';
 import { Teacher } from '../../types';
 import { BaseModal } from '../ui/BaseModal';
 import SelectField from '../ui/SelectField';
@@ -23,6 +23,12 @@ export const ClassEditorModal: React.FC<ClassEditorModalProps> = ({
   const [classKey, setClassKey] = useState(initialData?.classKey || '');
   const [romanName, setRomanName] = useState(initialData?.romanName || '');
   const [displayName, setDisplayName] = useState(initialData?.displayName || '');
+  const [gradeLevel, setGradeLevel] = useState(initialData?.gradeLevel || initialData?.romanName || '');
+  const [sectionsStr, setSectionsStr] = useState(
+    initialData?.sections?.join(', ') || initialData?.section || initialData?.romanName || ''
+  );
+  const [roomNumber, setRoomNumber] = useState(initialData?.roomNumber || '');
+  const [capacity, setCapacity] = useState<number>(initialData?.capacity || 40);
   const [classTeacher, setClassTeacher] = useState(initialData?.classTeacher || '');
   const [enrolledBoys, setEnrolledBoys] = useState<number>(initialData?.enrolledBoys || 0);
   const [enrolledGirls, setEnrolledGirls] = useState<number>(initialData?.enrolledGirls || 0);
@@ -36,6 +42,15 @@ export const ClassEditorModal: React.FC<ClassEditorModalProps> = ({
       setClassKey(initialData?.classKey || '');
       setRomanName(initialData?.romanName || '');
       setDisplayName(initialData?.displayName || '');
+      setGradeLevel(initialData?.gradeLevel || initialData?.romanName || '');
+      setSectionsStr(
+        initialData?.sections?.join(', ') || initialData?.section || initialData?.romanName || ''
+      );
+      setRoomNumber(initialData?.roomNumber || '');
+      setCapacity(
+        initialData?.capacity ||
+          Math.max((initialData?.enrolledBoys || 0) + (initialData?.enrolledGirls || 0), 40)
+      );
       setClassTeacher(initialData?.classTeacher || '');
       setEnrolledBoys(initialData?.enrolledBoys || 0);
       setEnrolledGirls(initialData?.enrolledGirls || 0);
@@ -49,11 +64,11 @@ export const ClassEditorModal: React.FC<ClassEditorModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!classKey.trim()) {
-      setError('Class identifier (key) is required.');
+      setError('Class identifier is required.');
       return;
     }
     if (!romanName.trim()) {
-      setError('Roman name / short code is required.');
+      setError('Short class code is required.');
       return;
     }
 
@@ -62,16 +77,42 @@ export const ClassEditorModal: React.FC<ClassEditorModalProps> = ({
       .map((s) => s.trim())
       .filter(Boolean);
 
-    onSave({
-      classKey: classKey.trim().toUpperCase().replace(/\s+/g, '-'),
-      romanName: romanName.trim(),
-      displayName: displayName.trim() || `Class ${romanName.trim()}`,
-      classTeacher: classTeacher.trim() || 'Unassigned',
-      enrolledBoys: Math.max(0, enrolledBoys),
-      enrolledGirls: Math.max(0, enrolledGirls),
-      totalEnrollment: Math.max(0, enrolledBoys) + Math.max(0, enrolledGirls),
-      subjects: cleanSubjects,
-    });
+    const parsedSections = sectionsStr
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const effectiveSections = parsedSections.length > 0 ? parsedSections : [romanName.trim()];
+    const cleanTeacher = classTeacher.trim() || 'Unassigned';
+
+    // Keep per-section advisor mapping aligned if user keeps existing sections or defines a single section.
+    let nextSectionTeachers = initialData?.sectionTeachers
+      ? { ...initialData.sectionTeachers }
+      : undefined;
+    if (effectiveSections.length === 1 && cleanTeacher !== 'Unassigned') {
+      nextSectionTeachers = { [effectiveSections[0]]: cleanTeacher };
+    }
+
+    const boys = Math.max(0, enrolledBoys);
+    const girls = Math.max(0, enrolledGirls);
+
+    onSave(
+      hydrateClassConfigMetadata({
+        classKey: classKey.trim().toUpperCase().replace(/\s+/g, '-'),
+        romanName: romanName.trim(),
+        displayName: displayName.trim() || `Class ${romanName.trim()}`,
+        gradeLevel: gradeLevel.trim() || romanName.trim(),
+        section: effectiveSections.length > 1 ? effectiveSections.join(', ') : effectiveSections[0],
+        sections: effectiveSections,
+        sectionTeachers: nextSectionTeachers,
+        roomNumber: roomNumber.trim() || undefined,
+        capacity: Math.max(0, capacity) || undefined,
+        classTeacher: cleanTeacher,
+        enrolledBoys: boys,
+        enrolledGirls: girls,
+        totalEnrollment: boys + girls,
+        subjects: cleanSubjects,
+      })
+    );
     onClose();
   };
 
@@ -80,7 +121,7 @@ export const ClassEditorModal: React.FC<ClassEditorModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={initialData ? `Edit Class ${initialData.romanName}` : 'Add New Class Section'}
-      subtitle="Configure grade name, in-charge teacher, and baseline enrollment"
+      subtitle="Configure grade structure, rooms, capacity, in-charge teacher, and enrollment"
       icon={
         <div className="p-2 rounded-xl bg-primary/10 text-primary">
           <BookOpen className="w-5 h-5" />
@@ -92,14 +133,14 @@ export const ClassEditorModal: React.FC<ClassEditorModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="px-4 py-2 min-h-[40px] rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={handleSubmit}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-primary hover:bg-primary/90 shadow-soft active:scale-95 transition-[color,background-color,border-color,transform] cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[40px] rounded-xl text-xs font-semibold text-white bg-primary hover:bg-primary/90 shadow-soft active:scale-95 transition-[color,background-color,border-color,transform] cursor-pointer"
           >
             <Check className="w-3.5 h-3.5" />
             <span>{initialData ? 'Update Class' : 'Save Class'}</span>
@@ -114,10 +155,10 @@ export const ClassEditorModal: React.FC<ClassEditorModalProps> = ({
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-              Class Key (ID) *
+              Class Code *
             </label>
             <input
               type="text"
@@ -127,42 +168,85 @@ export const ClassEditorModal: React.FC<ClassEditorModalProps> = ({
                 if (!romanName) setRomanName(e.target.value);
                 if (!displayName) setDisplayName(`Class ${e.target.value}`);
               }}
-              placeholder="e.g. IX-Sci, VIA, ECCE"
+              placeholder="e.g. IX, IV, ECE"
               required
               className="w-full px-3 py-2 rounded-xl text-xs font-mono bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-              Roman / Short Name *
+              Short Label *
             </label>
             <input
               type="text"
               value={romanName}
               onChange={(e) => setRomanName(e.target.value)}
-              placeholder="e.g. IX-Sci, IV-A"
+              placeholder="e.g. IX, IV, X-A"
               required
               className="w-full px-3 py-2 rounded-xl text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary"
             />
           </div>
         </div>
 
-        <div>
-          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-            Display Name
-          </label>
-          <input
-            type="text"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="e.g. Class IX Science"
-            className="w-full px-3 py-2 rounded-xl text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary"
-          />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+              Display Name
+            </label>
+            <input
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="e.g. Class IX"
+              className="w-full px-3 py-2 rounded-xl text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+              Sections (comma separated)
+            </label>
+            <input
+              type="text"
+              value={sectionsStr}
+              onChange={(e) => setSectionsStr(e.target.value)}
+              placeholder="e.g. IV-A, IV-B"
+              className="w-full px-3 py-2 rounded-xl text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+              Room Allocation
+            </label>
+            <input
+              type="text"
+              value={roomNumber}
+              onChange={(e) => setRoomNumber(e.target.value)}
+              placeholder="e.g. Room F-05 or Rooms G-04 / G-05"
+              className="w-full px-3 py-2 rounded-xl text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+              Student Capacity
+            </label>
+            <input
+              type="number"
+              inputMode="numeric"
+              min="0"
+              value={capacity}
+              onChange={(e) => setCapacity(parseInt(e.target.value, 10) || 0)}
+              placeholder="40"
+              className="w-full px-3 py-2 rounded-xl text-xs font-mono bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            />
+          </div>
         </div>
 
         <div>
           <SelectField
-            label="Class Teacher In-Charge"
+            label="Class Advisor / Teacher In-Charge"
             value={classTeacher}
             onChange={(e) => setClassTeacher(e.target.value)}
             options={[

@@ -20,6 +20,8 @@ import {
   teachesClass,
   teacherOptions,
 } from '../services/teacherRoster';
+import { DEFAULT_SCHOOL_CONFIG } from '../services/schoolConfig/defaults';
+import { getCachedSchoolConfig } from '../services/schoolConfig/store';
 
 export interface SelectionApi {
   // state
@@ -57,29 +59,36 @@ interface UseSelectionOptions {
   onChapterChange?: (chapterId: string) => void;
 }
 
-const FALLBACK_SCHOOL_NAME = 'Peoples Higher Secondary School Jamshoro';
-
 export function useSelection({
   teachers,
-  defaultSchoolName = FALLBACK_SCHOOL_NAME,
+  defaultSchoolName,
   onChapterChange,
 }: UseSelectionOptions): SelectionApi {
+  const effectiveDefaultSchoolName = defaultSchoolName || getCachedSchoolConfig().schoolName;
   const [classId, setClassId] = useState('');
   const [subjectId, setSubjectId] = useState('');
   const [chapterId, setChapterId] = useState('');
   const [teacherId, setTeacherId] = useState('');
   const [teacherName, setTeacherName] = useState('');
-  const [schoolName, setSchoolName] = useState(defaultSchoolName);
+  const [schoolName, setSchoolName] = useState(effectiveDefaultSchoolName);
 
   const classes = useMemo(() => sortClassesByGrade(curriculumData.classes), []);
   const teacher = useMemo(() => teachers.find(t => t.id === teacherId) || null, [teachers, teacherId]);
 
-  // Keep institutional school name synced with Admin SchoolConfig when no teacher overrides it
-  useEffect(() => {
-    if (!teacher) {
-      setSchoolName(defaultSchoolName);
+  const resolveInstitutionalSchoolName = (candidateTeacher: Teacher | null): string => {
+    const teacherCampus = (candidateTeacher?.schoolName || '').trim();
+    const isBaselineTeacherCampus =
+      !teacherCampus || teacherCampus === DEFAULT_SCHOOL_CONFIG.schoolName;
+    if (effectiveDefaultSchoolName !== DEFAULT_SCHOOL_CONFIG.schoolName || isBaselineTeacherCampus) {
+      return effectiveDefaultSchoolName;
     }
-  }, [defaultSchoolName, teacher]);
+    return teacherCampus;
+  };
+
+  // Keep institutional school name synced with live Admin SchoolConfig
+  useEffect(() => {
+    setSchoolName(resolveInstitutionalSchoolName(teacher));
+  }, [effectiveDefaultSchoolName, teacher]);
 
   // Full roster (matching class/subject listed first) so the teacher can
   // always be switched without clearing the class and subject first.
@@ -113,13 +122,13 @@ export function useSelection({
     const first = teachers[0];
     setTeacherId(first.id);
     setTeacherName(first.name);
-    setSchoolName(first.schoolName || defaultSchoolName);
-  }, [teachers, defaultSchoolName]);
+    setSchoolName(resolveInstitutionalSchoolName(first));
+  }, [teachers, effectiveDefaultSchoolName]);
 
   const deselectTeacher = () => {
     setTeacherId('');
     setTeacherName('');
-    setSchoolName(defaultSchoolName);
+    setSchoolName(effectiveDefaultSchoolName);
   };
 
   const handleClassChange = (newClassId: string) => {
@@ -176,7 +185,7 @@ export function useSelection({
     const nextTeacher = teachers.find(t => t.id === newTeacherId);
     if (!nextTeacher) {
       setTeacherName('');
-      setSchoolName(defaultSchoolName);
+      setSchoolName(effectiveDefaultSchoolName);
       setChapterId('');
       setSubjectId('');
       onChapterChange?.('');
@@ -184,7 +193,7 @@ export function useSelection({
     }
 
     setTeacherName(nextTeacher.name);
-    setSchoolName(nextTeacher.schoolName || defaultSchoolName);
+    setSchoolName(resolveInstitutionalSchoolName(nextTeacher));
 
     setChapterId('');
     onChapterChange?.('');

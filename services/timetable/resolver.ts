@@ -1,5 +1,7 @@
-import timetableData from '../../data/timetable.json';
 import { Teacher } from '../../types';
+import { SchoolConfig } from '../schoolConfig/types';
+import { getCachedSchoolConfig } from '../schoolConfig/store';
+import { buildMasterTimetableClasses } from '../schoolConfig/timetableSeed';
 import {
   DayKey,
   TimetableClassEntry,
@@ -9,17 +11,21 @@ import {
 } from './types';
 import { parseTimetableCell } from '../timetableConflictEngine';
 
-let cache: TimetableData | null = null;
+export function peekCachedTimetable(schoolConfig?: SchoolConfig | null): TimetableData {
+  const activeConfig = schoolConfig ?? getCachedSchoolConfig();
+  const classes = buildMasterTimetableClasses(activeConfig);
+  const generatedAt = activeConfig.updatedAt
+    ? new Date(activeConfig.updatedAt).toISOString().split('T')[0]
+    : new Date().toISOString().split('T')[0];
 
-export function peekCachedTimetable(): TimetableData {
-  if (!cache) {
-    cache = timetableData as TimetableData;
-  }
-  return cache;
+  return {
+    generatedAt,
+    classes,
+  };
 }
 
-export async function loadTimetable(): Promise<TimetableData> {
-  return peekCachedTimetable();
+export async function loadTimetable(schoolConfig?: SchoolConfig | null): Promise<TimetableData> {
+  return peekCachedTimetable(schoolConfig);
 }
 
 export function resolveSlot(

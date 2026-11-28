@@ -441,7 +441,11 @@ async function embedOptionalLogos(
     try {
       return await pdfDoc.embedPng(bytes);
     } catch {
-      return undefined;
+      try {
+        return await pdfDoc.embedJpg(bytes);
+      } catch {
+        return undefined;
+      }
     }
   };
   const [phssjImg, zuebImg, sigImg] = await Promise.all([

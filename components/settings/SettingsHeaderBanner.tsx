@@ -1,20 +1,24 @@
 import React from 'react';
 import {
-  Settings,
-  ShieldCheck,
-  ShieldAlert,
-  CheckCircle2,
+  ChevronRight,
   LogIn,
   RotateCcw,
   Save,
+  CheckCircle2,
+  ShieldCheck,
+  ShieldAlert,
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 
 export interface SettingsHeaderBannerProps {
+  pillarLabel: string;
+  sectionLabel: string;
+  sectionDescription: string;
   isAdmin: boolean;
   currentUser: User | null;
   saveSuccess: boolean;
   isSaving: boolean;
+  hasUnsavedChanges: boolean;
   onOpenLoginGate?: () => void;
   onGoogleSignIn: () => void;
   onResetBaseline: () => void;
@@ -22,46 +26,64 @@ export interface SettingsHeaderBannerProps {
 }
 
 export const SettingsHeaderBanner: React.FC<SettingsHeaderBannerProps> = ({
+  pillarLabel,
+  sectionLabel,
+  sectionDescription,
   isAdmin,
   currentUser,
   saveSuccess,
   isSaving,
+  hasUnsavedChanges,
   onOpenLoginGate,
   onGoogleSignIn,
   onResetBaseline,
   onSaveAll,
 }) => {
   return (
-    <div className="rounded-2xl glass-card p-5 sm:p-6 border border-brand-border shadow-card flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-      <div className="space-y-1.5">
-        <div className="flex items-center gap-2 flex-wrap">
+    <header className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3.5 sm:gap-4 pb-4 sm:pb-5 border-b border-brand-border">
+      <div className="space-y-1 sm:space-y-1.5 min-w-0">
+        <nav
+          aria-label="School Admin breadcrumb"
+          className="flex flex-wrap items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs text-brand-text-secondary"
+        >
+          <span className="font-medium text-brand-text-primary">School Admin</span>
+          <ChevronRight className="w-3.5 h-3.5 text-brand-text-tertiary shrink-0" aria-hidden="true" />
+          <span className="truncate">{pillarLabel}</span>
+          <ChevronRight className="w-3.5 h-3.5 text-brand-text-tertiary shrink-0" aria-hidden="true" />
+          <span className="font-semibold text-brand-primary truncate">{sectionLabel}</span>
+        </nav>
+
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-brand-text-primary">
+          {sectionLabel}
+        </h1>
+
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-brand-text-secondary">
+          <span className="hidden sm:inline">{sectionDescription}</span>
+          <span aria-hidden="true" className="hidden sm:inline text-brand-border">·</span>
           {isAdmin ? (
-            <span className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-xs font-bold border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Admin: {currentUser?.email}</span>
+            <span className="inline-flex items-center gap-1 font-medium text-emerald-700 dark:text-emerald-300 truncate max-w-full">
+              <ShieldCheck className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+              <span className="truncate">Admin · {currentUser?.email}</span>
             </span>
           ) : (
-            <span className="px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 text-xs font-bold border border-amber-200 dark:border-amber-800 flex items-center gap-1.5">
-              <ShieldAlert className="w-3.5 h-3.5" />
-              <span>View-Only • Sign in as Admin to Save</span>
+            <span className="inline-flex items-center gap-1 font-medium text-amber-700 dark:text-amber-300">
+              <ShieldAlert className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+              <span>View-only · Sign in as Admin to save</span>
             </span>
           )}
-
           {saveSuccess && (
-            <span className="px-2.5 py-1 rounded-lg bg-emerald-500 text-white text-xs font-bold flex items-center gap-1 animate-fadeIn">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Changes Saved</span>
-            </span>
+            <>
+              <span aria-hidden="true" className="text-brand-border">·</span>
+              <span className="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400 animate-fadeIn">
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                <span>Saved</span>
+              </span>
+            </>
           )}
         </div>
-
-        <h1 className="text-xl sm:text-2xl font-extrabold text-brand-text-primary tracking-tight flex items-center gap-2">
-          <Settings className="w-5 h-5 text-brand-primary shrink-0" />
-          <span>School Admin</span>
-        </h1>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2.5">
+      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-2.5 w-full lg:w-auto shrink-0">
         {!isAdmin && (
           <button
             type="button"
@@ -69,9 +91,9 @@ export const SettingsHeaderBanner: React.FC<SettingsHeaderBannerProps> = ({
               if (onOpenLoginGate) onOpenLoginGate();
               else onGoogleSignIn();
             }}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-soft active:scale-95 transition-[color,background-color,border-color,transform] cursor-pointer"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 min-h-[44px] sm:min-h-[40px] rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-soft active:scale-[0.98] transition-[background-color,transform] cursor-pointer whitespace-nowrap shrink-0"
           >
-            <LogIn className="w-3.5 h-3.5" />
+            <LogIn className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Sign In as Admin</span>
           </button>
         )}
@@ -80,9 +102,11 @@ export const SettingsHeaderBanner: React.FC<SettingsHeaderBannerProps> = ({
           type="button"
           onClick={onResetBaseline}
           disabled={!isAdmin || isSaving}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-brand-surface border border-brand-border text-brand-text-secondary hover:text-rose-600 hover:border-rose-200 shadow-soft active:scale-95 transition-[color,background-color,border-color,transform] disabled:opacity-40 cursor-pointer"
+          className={`${
+            !isAdmin ? 'hidden sm:inline-flex' : 'flex-1 sm:flex-none inline-flex'
+          } items-center justify-center gap-1.5 px-3.5 py-2 min-h-[44px] sm:min-h-[40px] rounded-xl text-xs font-semibold bg-brand-surface border border-brand-border text-brand-text-secondary hover:text-rose-600 hover:border-rose-300 dark:hover:border-rose-800 active:scale-[0.98] transition-[color,border-color,transform] disabled:opacity-40 cursor-pointer whitespace-nowrap shrink-0`}
         >
-          <RotateCcw className="w-3.5 h-3.5" />
+          <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
           <span>Reset Baseline</span>
         </button>
 
@@ -90,12 +114,18 @@ export const SettingsHeaderBanner: React.FC<SettingsHeaderBannerProps> = ({
           type="button"
           onClick={onSaveAll}
           disabled={!isAdmin || isSaving}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 shadow-soft active:scale-95 transition-[color,background-color,border-color,transform] disabled:opacity-40 cursor-pointer"
+          className={`${
+            !isAdmin ? 'hidden sm:inline-flex' : 'flex-1 sm:flex-none inline-flex'
+          } items-center justify-center gap-2 px-4 py-2 min-h-[44px] sm:min-h-[40px] rounded-xl text-xs font-semibold text-white transition-[background-color,transform,box-shadow] active:scale-[0.98] disabled:opacity-40 cursor-pointer whitespace-nowrap shrink-0 ${
+            hasUnsavedChanges && isAdmin
+              ? 'bg-brand-primary hover:bg-brand-primary-hover shadow-card'
+              : 'bg-brand-primary hover:bg-brand-primary-hover'
+          }`}
         >
-          <Save className="w-3.5 h-3.5" />
+          <Save className="w-3.5 h-3.5" aria-hidden="true" />
           <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
         </button>
       </div>
-    </div>
+    </header>
   );
 };

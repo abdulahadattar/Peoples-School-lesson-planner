@@ -26,7 +26,7 @@ export const SpreadsheetExportMenu: React.FC<SpreadsheetExportMenuProps> = ({
       <button
         type="button"
         onClick={() => setExportMenuOpen((prev) => !prev)}
-        className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-brand-bg hover:bg-brand-surface border border-brand-border text-brand-text-primary transition-colors cursor-pointer"
+        className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] sm:min-h-0 text-xs font-semibold rounded-xl bg-brand-bg hover:bg-brand-surface border border-brand-border text-brand-text-primary transition-colors cursor-pointer"
         aria-haspopup="true"
         aria-expanded={exportMenuOpen}
       >
@@ -47,7 +47,7 @@ export const SpreadsheetExportMenu: React.FC<SpreadsheetExportMenuProps> = ({
       {exportMenuOpen && (
         <div
           role="menu"
-          className="absolute right-0 mt-1 w-64 p-1.5 bg-brand-surface rounded-2xl border border-brand-border shadow-2xl z-40 space-y-1 text-xs animate-scaleIn origin-top-right"
+          className="absolute left-0 sm:left-auto sm:right-0 mt-1.5 w-64 max-w-[calc(100vw-2rem)] p-1.5 bg-brand-surface rounded-2xl border border-brand-border shadow-2xl z-40 space-y-1 text-xs animate-scaleIn origin-top-left sm:origin-top-right"
         >
           <div className="px-2.5 py-1 text-[10px] uppercase font-bold text-brand-text-secondary">
             Spreadsheet Exports (.xlsx)
@@ -59,13 +59,13 @@ export const SpreadsheetExportMenu: React.FC<SpreadsheetExportMenuProps> = ({
               setExportMenuOpen(false);
               onExportAllClassesExcel();
             }}
-            className="w-full text-left px-2.5 py-2 rounded-xl hover:bg-emerald-50 active:bg-emerald-100 dark:hover:bg-emerald-950/40 dark:active:bg-emerald-950/60 text-brand-text-primary flex items-center justify-between transition-colors cursor-pointer"
+            className="w-full text-left px-2.5 py-2.5 min-h-[44px] rounded-xl hover:bg-emerald-50 active:bg-emerald-100 dark:hover:bg-emerald-950/40 dark:active:bg-emerald-950/60 text-brand-text-primary flex items-center justify-between transition-colors cursor-pointer"
           >
             <div>
               <div className="font-bold">Class-Wise Timetable</div>
               <div className="text-[10px] text-brand-text-secondary">Master overview + all classes</div>
             </div>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold">
+            <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-300 font-bold">
               .xlsx
             </span>
           </button>
@@ -77,13 +77,13 @@ export const SpreadsheetExportMenu: React.FC<SpreadsheetExportMenuProps> = ({
               setExportMenuOpen(false);
               onExportAllTeachersExcel();
             }}
-            className="w-full text-left px-2.5 py-2 rounded-xl hover:bg-emerald-50 active:bg-emerald-100 dark:hover:bg-emerald-950/40 dark:active:bg-emerald-950/60 text-brand-text-primary flex items-center justify-between transition-colors cursor-pointer"
+            className="w-full text-left px-2.5 py-2.5 min-h-[44px] rounded-xl hover:bg-emerald-50 active:bg-emerald-100 dark:hover:bg-emerald-950/40 dark:active:bg-emerald-950/60 text-brand-text-primary flex items-center justify-between transition-colors cursor-pointer"
           >
             <div>
               <div className="font-bold">Teacher-Wise Timetable</div>
               <div className="text-[10px] text-brand-text-secondary">Workload summary + all faculty</div>
             </div>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold">
+            <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-300 font-bold">
               .xlsx
             </span>
           </button>
@@ -97,7 +97,7 @@ export const SpreadsheetExportMenu: React.FC<SpreadsheetExportMenuProps> = ({
               setExportMenuOpen(false);
               onExportSingleClassExcel();
             }}
-            className="w-full text-left px-2.5 py-2 rounded-xl hover:bg-brand-bg active:bg-brand-primary/10 text-brand-text-secondary hover:text-brand-text-primary transition-colors text-[11px] cursor-pointer"
+            className="w-full text-left px-2.5 py-2.5 min-h-[40px] rounded-xl hover:bg-brand-bg active:bg-brand-primary/10 text-brand-text-secondary hover:text-brand-text-primary transition-colors text-[11px] cursor-pointer"
           >
             Export Class {selectedClassLabel} Only
           </button>
@@ -109,7 +109,7 @@ export const SpreadsheetExportMenu: React.FC<SpreadsheetExportMenuProps> = ({
               setExportMenuOpen(false);
               onExportSingleTeacherExcel();
             }}
-            className="w-full text-left px-2.5 py-2 rounded-xl hover:bg-brand-bg active:bg-brand-primary/10 text-brand-text-secondary hover:text-brand-text-primary transition-colors text-[11px] cursor-pointer"
+            className="w-full text-left px-2.5 py-2.5 min-h-[40px] rounded-xl hover:bg-brand-bg active:bg-brand-primary/10 text-brand-text-secondary hover:text-brand-text-primary transition-colors text-[11px] cursor-pointer"
           >
             Export Selected Teacher Only
           </button>

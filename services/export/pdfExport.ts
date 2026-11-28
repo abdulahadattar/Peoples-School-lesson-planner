@@ -14,6 +14,7 @@ import {
 import { formatFileName, PDF_A4_WIDTH, PDF_A4_HEIGHT, PDF_PAGE_MARGINS } from './docxHelpers';
 import { InlineRichRun, latexToInlineRuns, parseTextToRichParts } from './inlineMathParser';
 import { ensurePdfMakeLoaded, registerPdfMakeLayouts } from './externalLibs';
+import { getCachedSchoolConfig } from '../schoolConfig/store';
 
 declare const pdfMake: any;
 
@@ -127,7 +128,7 @@ export const renderPdfRichText = async (
 
 export const createPdfContentForPlan = async (lessonPlan: LessonPlan, teacherInfo?: TeacherInfo): Promise<any[]> => {
   const teacherName = teacherInfo?.name || 'Abdul Ahad';
-  const schoolPlaceholder = teacherInfo?.schoolName || 'Peoples Higher Secondary School Jamshoro';
+  const schoolPlaceholder = teacherInfo?.schoolName || getCachedSchoolConfig().schoolName;
   const dateTimeline = '____________________';
   const period = '1';
   const gradeShort = lessonPlan.gradeLevel.replace('Grade ', '').split(' ')[0];
@@ -250,7 +251,7 @@ export const createPaperPdfContent = async (
   teacherInfo?: TeacherInfo,
   mathScale: number = 85
 ): Promise<any[]> => {
-  const schoolName = teacherInfo?.schoolName || 'Peoples Higher Secondary School Jamshoro';
+  const schoolName = teacherInfo?.schoolName || getCachedSchoolConfig().schoolName;
   const teacherName = teacherInfo?.name || '';
 
   const headerContent = [

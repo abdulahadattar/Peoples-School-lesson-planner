@@ -26,6 +26,7 @@ import { OmrOverridePanel } from './OmrOverridePanel';
 import { OmrResultListPanel } from './OmrResultListPanel';
 import { OmrScannerCanvas } from './OmrScannerCanvas';
 import { useOmrScanner } from './useOmrScanner';
+import { getCachedSchoolConfig } from '../../services/schoolConfigService';
 
 export interface OmrScannerViewProps {
   initialFilter?: {
@@ -37,9 +38,10 @@ export interface OmrScannerViewProps {
 
 export const OmrScannerView: React.FC<OmrScannerViewProps> = ({
   initialFilter,
-  schoolName = 'Peoples Higher Secondary School Jamshoro',
+  schoolName,
   onBackToPaper,
 }) => {
+  const resolvedSchoolName = schoolName || getCachedSchoolConfig().schoolName;
   const { showToast, ToastComponent } = useToast(4500);
   const scanner = useOmrScanner({ initialFilter, showToast });
   const [showOmrSheetModal, setShowOmrSheetModal] = useState(false);
@@ -51,7 +53,7 @@ export const OmrScannerView: React.FC<OmrScannerViewProps> = ({
     const keyStr = reg?.answerKey || qr?.key || '';
     const count = reg?.questionCount || qr?.n || 30;
     const bytes = await generateAnswerKeyPdf({
-      schoolName,
+      schoolName: resolvedSchoolName,
       subject: reg?.subject || qr?.sub || scanner.resultSummary.subject,
       classLevel: reg?.classLevel || qr?.cls || scanner.resultSummary.classLevel,
       title: reg?.title || qr?.ttl || scanner.resultSummary.title,
@@ -91,7 +93,7 @@ export const OmrScannerView: React.FC<OmrScannerViewProps> = ({
         defaultSubject={scanner.resultSummary.subject}
         defaultTitle={scanner.resultSummary.title}
         defaultMcqCount={scanner.resultSummary.totalMarks}
-        schoolName={schoolName}
+        schoolName={resolvedSchoolName}
         onSavedTest={(saved) => {
           scanner.refreshRegisteredTests();
           scanner.setActiveTestCode(saved.testCode);
@@ -297,7 +299,7 @@ export const OmrScannerView: React.FC<OmrScannerViewProps> = ({
       <OmrResultListPanel
         summary={scanner.resultSummary}
         rosterRecords={scanner.roster}
-        schoolName={schoolName}
+        schoolName={resolvedSchoolName}
         availableTestCodes={scanner.availableTestCodes}
         targetExamType={scanner.targetExamType}
         onPushAllToMarksheet={() => scanner.handlePushBatchToMarksheet(false)}

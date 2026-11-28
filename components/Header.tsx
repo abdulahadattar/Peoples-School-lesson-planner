@@ -8,6 +8,7 @@ import { ShieldCheck, LogIn, LogOut, AlertTriangle, Clock, Menu, Moon, Sun } fro
 import { googleSignIn, loginWithGoogle, logoutUser, GOOGLE_TOKEN_EVENT } from '../services/googleAuth';
 import { IconButton } from './ui/Touch';
 import { motion } from 'motion/react';
+import { getCachedSchoolConfig } from '../services/schoolConfigService';
 
 type Theme = 'light' | 'dark';
 
@@ -18,6 +19,7 @@ interface HeaderProps {
   activeView?: View;
   currentUser?: User | null;
   schoolName?: string;
+  schoolLogoUrl?: string;
   onOpenLoginGate?: () => void;
   isAuthResolving?: boolean;
 }
@@ -43,10 +45,12 @@ const Header: React.FC<HeaderProps> = ({
   onOpenSidebar,
   activeView,
   currentUser: controlledUser,
-  schoolName = 'Peoples Higher Secondary School Jamshoro',
+  schoolName,
+  schoolLogoUrl,
   onOpenLoginGate,
   isAuthResolving = false,
 }) => {
+  const resolvedSchoolName = schoolName || getCachedSchoolConfig().schoolName;
   const [fallbackUser, setFallbackUser] = useState<User | null>(null);
   const currentUser = controlledUser !== undefined ? controlledUser : fallbackUser;
   const [sheetsMinutesLeft, setSheetsMinutesLeft] = useState<number | null>(null);
@@ -111,7 +115,7 @@ const Header: React.FC<HeaderProps> = ({
 
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white dark:bg-slate-900 border border-brand-border flex items-center justify-center p-0.5 shrink-0 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
-            <PhssjLogo className="w-full h-full rounded-full" />
+            <PhssjLogo className="w-full h-full rounded-full" alt={resolvedSchoolName} src={schoolLogoUrl} />
           </div>
 
           <div className="leading-tight">
@@ -126,7 +130,7 @@ const Header: React.FC<HeaderProps> = ({
               )}
             </div>
             <p className="text-[10px] text-slate-500 dark:text-slate-400 hidden md:block">
-              {schoolName}
+              {resolvedSchoolName}
             </p>
           </div>
         </div>

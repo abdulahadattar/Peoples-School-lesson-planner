@@ -295,6 +295,7 @@ it('surfaces the known Miss Aneela Friday period 4 Sindhi clash in IV-B and VI-B
     c.teacher.name === 'Miss Aneela' && c.dayKey === 'fri' && c.periodIndex === 3);
   if (!hit) return; // data corrected: nothing to pin any more
   eq(hit.classes.sort(), ['IV-B', 'VI-B'], 'the clash must name both classes');
+  eq(hit.subjects.length, hit.classes.length, 'each clashed class must retain a matching subject label');
   eq(hit.subjects.every((s: string) => s === 'Sindhi'), true, 'both sides teach Sindhi');
 });
 it('is deterministic: auditing twice gives the same answer', () => {

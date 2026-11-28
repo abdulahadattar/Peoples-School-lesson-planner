@@ -4,6 +4,7 @@ import { computeCompetitionRanks, formatTestFrequencyLabel } from './classroomRa
 import { A4_HEIGHT_MM, A4_WIDTH_MM, a4MmToPdfPoint, mmToPt } from './layoutGeometry';
 import { sanitizePdfText } from './pdfText';
 import type { PrintableClassResultSummary } from './scanResultsStore';
+import { getCachedSchoolConfig } from '../schoolConfig/store';
 
 const DARK_NAVY = rgb(0.11, 0.24, 0.45);
 const INK = rgb(0.1, 0.12, 0.16);
@@ -53,8 +54,9 @@ export function formatResultListCsv(summary: PrintableClassResultSummary): strin
 
 export async function generateTestResultListPdf(
   summary: PrintableClassResultSummary,
-  schoolName = 'Peoples Higher Secondary School Jamshoro'
+  schoolName?: string
 ): Promise<Uint8Array> {
+  const resolvedSchoolName = schoolName || getCachedSchoolConfig().schoolName;
   const pdfDoc = await PDFDocument.create();
   const sansBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const sansRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -78,7 +80,7 @@ export async function generateTestResultListPdf(
     const slice = rankedRows.slice(pIdx * rowsPerPage, (pIdx + 1) * rowsPerPage);
 
     // Notice Board Header
-    page.drawText(sanitizePdfText(schoolName), {
+    page.drawText(sanitizePdfText(resolvedSchoolName), {
       ...a4MmToPdfPoint(14, 16),
       size: 13,
       font: sansBold,

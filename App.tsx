@@ -8,7 +8,6 @@ import { useToast } from './hooks/useToast';
 import { useGeneralGeneration, GenerationMode } from './hooks/useGeneralGeneration';
 import { useSelection } from './hooks/useSelection';
 import { loadSloChapter } from './services/sloData';
-import teachersData from './data/teachers.json';
 import { useSchoolConfig } from './hooks/useSchoolConfig';
 import { MotionConfig } from 'motion/react';
 import { AppSidebar } from './components/navigation/AppSidebar';
@@ -73,13 +72,12 @@ const MainPortalApp: React.FC<MainPortalAppProps> = ({
   const [omrInitialFilter, setOmrInitialFilter] = useState<{ testCode?: string } | null>(null);
   const { showToast, ToastComponent } = useToast(4500);
 
+  const { config: schoolConfig } = useSchoolConfig();
   const [selectedSloIds, setSelectedSloIds] = useState<string[]>([]);
   const [exportFormat, setExportFormat] = useState<'docx' | 'pdf' | 'both'>('both');
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const teachers: Teacher[] = schoolConfig.teachers || [];
   const [chapterSlos, setChapterSlos] = useState<any[]>([]);
   const [isLoadingSlos, setIsLoadingSlos] = useState(false);
-
-  const { config: schoolConfig } = useSchoolConfig();
 
   const selection = useSelection({
     teachers,
@@ -106,14 +104,6 @@ const MainPortalApp: React.FC<MainPortalAppProps> = ({
     stopGeneration,
     clearResults,
   } = useGeneralGeneration();
-
-  useEffect(() => {
-    if (schoolConfig?.teachers && schoolConfig.teachers.length > 0) {
-      setTeachers(schoolConfig.teachers);
-    } else {
-      setTeachers((teachersData as { teachers: Teacher[] }).teachers || []);
-    }
-  }, [schoolConfig?.teachers]);
 
   useEffect(() => {
     if (selection.classId && selection.subjectId && selection.chapterId) {
@@ -334,6 +324,7 @@ const MainPortalApp: React.FC<MainPortalAppProps> = ({
             activeView={view}
             currentUser={currentUser}
             schoolName={schoolConfig.schoolName}
+            schoolLogoUrl={schoolConfig.schoolLogoUrl}
             isAuthResolving={!authResolved && !isGuestMode && !currentUser}
             onToggleTheme={toggleTheme}
             onOpenSidebar={() => setIsSidebarOpen(true)}
@@ -402,6 +393,7 @@ const MainPortalApp: React.FC<MainPortalAppProps> = ({
                 onExportPlan={handleExportPlan}
                 revisePaper={revisePaper}
                 teachers={teachers}
+                schoolConfig={schoolConfig}
                 onOpenLoginGate={() => {
                   sessionStorage.removeItem('phssj_guest_mode');
                   setShowLoginGate(true);

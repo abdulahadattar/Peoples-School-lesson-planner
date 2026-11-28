@@ -1,5 +1,6 @@
 import { StudentRecord } from '../googleSheetsService';
-import timetableData from '../../data/timetable.json';
+import { getCachedSchoolConfig } from '../schoolConfig/store';
+import { resolveClassTeacherForSection } from '../schoolConfig/classStructure';
 import {
   ClassEnrollment,
   ClassAttendanceRow,
@@ -69,6 +70,8 @@ export function buildAttendanceRows(
   inputs: Record<string, { presentBoys: number | ''; presentGirls: number | ''; classTeacher?: string }>,
   classTeachersMap: Record<string, string> = {}
 ): ClassAttendanceRow[] {
+  const schoolClasses = getCachedSchoolConfig().classes;
+
   return enrollments.map((enr) => {
     const input = inputs[enr.classKey] || { presentBoys: '', presentGirls: '' };
     const totalEnrolled = enr.totalEnrollment || (enr.enrolledBoys + enr.enrolledGirls);
@@ -87,17 +90,8 @@ export function buildAttendanceRows(
 
     let defaultTeacher = classTeachersMap[enr.classKey] || '';
     if (!defaultTeacher) {
-      const matchingClasses = timetableData.classes.filter(
-        (c) =>
-          c.label.toLowerCase() === enr.classKey.toLowerCase() ||
-          c.label.toLowerCase().startsWith(enr.classKey.toLowerCase() + ' ')
-      );
-      if (matchingClasses.length > 0) {
-        const teachers = Array.from(new Set(matchingClasses.map((c) => c.classTeacher).filter(Boolean)));
-        defaultTeacher = teachers.join(' / ');
-      } else {
-        defaultTeacher = '';
-      }
+      const resolved = resolveClassTeacherForSection(schoolClasses, enr.classKey, '');
+      defaultTeacher = resolved === 'Unassigned' ? '' : resolved;
     }
 
     return {

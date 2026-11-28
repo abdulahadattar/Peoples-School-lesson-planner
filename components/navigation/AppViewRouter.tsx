@@ -1,6 +1,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { Archive } from 'lucide-react';
 import { View, PaperConfig, Teacher, LessonPlan, GeneratedPaper } from '../../types';
+import type { SchoolConfig } from '../../services/schoolConfigService';
 import HomeView from '../HomeView';
 import type { MarksheetInitialTarget } from '../marksheets/useMarksheetsState';
 import { SegmentedControl } from '../ui/SegmentedControl';
@@ -118,6 +119,7 @@ export interface AppViewRouterProps {
   revisePaper: (revised: any) => Promise<any>;
   // Environment state
   teachers: Teacher[];
+  schoolConfig?: SchoolConfig | null;
   onOpenLoginGate: () => void;
   omrInitialFilter?: {
     testCode?: string;
@@ -157,6 +159,7 @@ export const AppViewRouter: React.FC<AppViewRouterProps> = ({
   onExportPlan,
   revisePaper,
   teachers,
+  schoolConfig,
   onOpenLoginGate,
   omrInitialFilter,
   onScanSheetsForPaper,
@@ -212,6 +215,7 @@ export const AppViewRouter: React.FC<AppViewRouterProps> = ({
       case 'home':
         return (
           <HomeView
+            schoolConfig={schoolConfig}
             onPrefetchView={prefetchViewChunk}
             onNavigate={(target) => {
               if (target === 'lesson') onNavigateLesson();
@@ -349,7 +353,7 @@ export const AppViewRouter: React.FC<AppViewRouterProps> = ({
                   {tabKey === 'scan' ? (
                     <OmrScannerView
                       initialFilter={omrInitialFilter}
-                      schoolName={selection.schoolName}
+                      schoolName={schoolConfig?.schoolName || selection.schoolName}
                       onBackToPaper={
                         generatedPapers.length > 0 ? () => onNavigate('results') : undefined
                       }
@@ -450,7 +454,7 @@ export const AppViewRouter: React.FC<AppViewRouterProps> = ({
               papers={generatedPapers}
               onBack={onBackToHome}
               teacherName={selection.teacherName}
-              schoolName={selection.schoolName}
+              schoolName={schoolConfig?.schoolName || selection.schoolName}
               onExportPlan={onExportPlan}
               exportFormat={exportFormat}
               onRevisePaper={revisePaper}

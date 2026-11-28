@@ -2,6 +2,11 @@ import { db } from '../firebase';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { SchoolConfig } from './types';
 import { DEFAULT_SCHOOL_CONFIG, sanitizeSchoolConfig } from './defaults';
+import {
+  SCHOOL_CONFIG_STORAGE_KEY,
+  getCachedSchoolConfig,
+  setCachedSchoolConfig,
+} from './store';
 
 const SETTINGS_DOC_PATH = 'settings';
 const SETTINGS_DOC_ID = 'school_config';
@@ -20,17 +25,19 @@ function isOfflineError(err: unknown): boolean {
 }
 
 export async function getSchoolConfig(): Promise<SchoolConfig> {
-  let localFallback: SchoolConfig = DEFAULT_SCHOOL_CONFIG;
+  const localFallback = getCachedSchoolConfig();
   try {
-    const local = localStorage.getItem('phssj_school_config');
-    if (local) {
-      const parsed = JSON.parse(local);
-      if (parsed && parsed.schoolName) {
-        localFallback = sanitizeSchoolConfig(parsed);
+    if (typeof localStorage !== 'undefined') {
+      const local = localStorage.getItem(SCHOOL_CONFIG_STORAGE_KEY);
+      if (local) {
+        const parsed = JSON.parse(local);
+        if (parsed && parsed.schoolName) {
+          setCachedSchoolConfig(parsed, { persistLocal: false });
+        }
       }
     }
   } catch {
-    // fallback
+    // keep cached fallback
   }
 
   try {
@@ -39,9 +46,7 @@ export async function getSchoolConfig(): Promise<SchoolConfig> {
     if (snap.exists()) {
       const data = snap.data() as Partial<SchoolConfig>;
       if (data && data.schoolName) {
-        const merged = sanitizeSchoolConfig(data);
-        localStorage.setItem('phssj_school_config', JSON.stringify(merged));
-        return merged;
+        return setCachedSchoolConfig(data);
       }
     }
   } catch (error) {
@@ -50,12 +55,12 @@ export async function getSchoolConfig(): Promise<SchoolConfig> {
     }
   }
 
-  return localFallback;
+  return getCachedSchoolConfig() || localFallback;
 }
 
-export async function saveSchoolConfig(config: Partial<SchoolConfig>, updatedBy: string = 'Admin'): Promise<void> {
-  const current = await getSchoolConfig();
-  const updated: SchoolConfig = sanitizeSchoolConfig({
+export async function saveSchoolConfig(config: Partial<SchoolConfig>, updatedBy: string = 'Admin'): Promise<SchoolConfig> {
+  const current = getCachedSchoolConfig();
+  const updated: SchoolConfig = setCachedSchoolConfig({
     ...current,
     ...config,
     updatedAt: Date.now(),
@@ -71,15 +76,17 @@ export async function saveSchoolConfig(config: Partial<SchoolConfig>, updatedBy:
     }
   }
 
-  localStorage.setItem('phssj_school_config', JSON.stringify(updated));
+  return updated;
 }
 
 export async function resetSchoolConfigToDefaults(updatedBy: string = 'Admin'): Promise<SchoolConfig> {
-  const resetConfig: SchoolConfig = {
-    ...DEFAULT_SCHOOL_CONFIG,
-    updatedAt: Date.now(),
-    updatedBy: `${updatedBy} (Reset)`,
-  };
+  const resetConfig: SchoolConfig = setCachedSchoolConfig(
+    sanitizeSchoolConfig({
+      ...DEFAULT_SCHOOL_CONFIG,
+      updatedAt: Date.now(),
+      updatedBy: `${updatedBy} (Reset)`,
+    })
+  );
 
   try {
     const docRef = doc(db, SETTINGS_DOC_PATH, SETTINGS_DOC_ID);
@@ -90,7 +97,6 @@ export async function resetSchoolConfigToDefaults(updatedBy: string = 'Admin'): 
     }
   }
 
-  localStorage.setItem('phssj_school_config', JSON.stringify(resetConfig));
   return resetConfig;
 }
 
@@ -106,8 +112,7 @@ export function subscribeSchoolConfig(
         if (snap.exists()) {
           const data = snap.data() as Partial<SchoolConfig>;
           if (data && data.schoolName) {
-            const sanitized = sanitizeSchoolConfig(data);
-            localStorage.setItem('phssj_school_config', JSON.stringify(sanitized));
+            const sanitized = setCachedSchoolConfig(data);
             onUpdate(sanitized);
           }
         }

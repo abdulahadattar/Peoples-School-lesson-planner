@@ -6,7 +6,10 @@
    - Attendance offline edits queue in `services/sheetSyncQueue.ts` and sync alongside Firestore (`services/attendanceService.ts`).
    - Non-admin record writes are blocked when `sheetEditingEnabled` is `false` in `SchoolConfig`.
 
-2. **Timetable & Substitutions**:
+2. **School Configuration, Timetable & Substitutions**:
+   - `services/schoolConfig/` (`store.ts`, `defaults.ts`, `classStructure.ts`, `timetableSeed.ts`, `propagation.ts`) + `hooks/useSchoolConfig.ts` form the single source of truth for school identity, logos/signatures, classes/sections/rooms/capacities, faculty roster, bell periods, and master timetable.
+   - `components/settings/` organizes School Admin (`SchoolSettingsView.tsx` + `adminNavigation.ts`) into 3 pillars (**Institution & Academics**, **Schedule & Operations**, **Integrations & Governance**) with live letterhead preview, elevated `TimetableAuditorView` clash resolution, contextual `UnsavedChangesBar`, and validated config backup/restore.
+   - `/data/teachers.json` and `/data/timetable.json` are initial baseline seeds only; live views, auditors, OMR, marksheets, and exports read from the unified `SchoolConfig` state.
    - Standard day: 8 periods Mon–Thu, 5 periods Fri (`Asia/Karachi`).
    - `locatePeriod()`, `computeStaff()`, and `computeTeacherProxyStats()` drive live tracking and proxy equity.
 

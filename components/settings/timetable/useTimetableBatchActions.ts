@@ -6,7 +6,10 @@ import {
   DAY_KEYS,
   DAY_LABELS,
 } from '../../../services/timetable';
-import rawTimetableData from '../../../data/timetable.json';
+import {
+  PeriodTiming,
+  getBaselineTimetableClass,
+} from '../../../services/schoolConfigService';
 import {
   getQualifiedTeachersForSubject,
   checkTeacherAvailability,
@@ -28,7 +31,8 @@ export function useTimetableBatchActions(
   setTimetableMap: React.Dispatch<React.SetStateAction<Record<string, TimetableClassEntry>>>,
   setHasUnsavedChanges: (val: boolean) => void,
   showNotice: (msg: string) => void,
-  setConfirmDialog: (dialog: ConfirmDialogState | null) => void
+  setConfirmDialog: (dialog: ConfirmDialogState | null) => void,
+  periods?: PeriodTiming[]
 ) {
   const handleCopyDayToWeekdays = (sourceDay: DayKey) => {
     setConfirmDialog({
@@ -110,8 +114,7 @@ export function useTimetableBatchActions(
       confirmLabel: 'Reset to Defaults',
       onConfirm: () => {
         setConfirmDialog(null);
-        const defaultClasses = (rawTimetableData as { classes: TimetableClassEntry[] }).classes || [];
-        const found = defaultClasses.find((c) => c.label === selectedClassLabel);
+        const found = getBaselineTimetableClass(selectedClassLabel, periods);
         if (found) {
           setTimetableMap((prev) => ({ ...prev, [selectedClassLabel]: JSON.parse(JSON.stringify(found)) }));
         }

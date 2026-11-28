@@ -38,44 +38,49 @@ export const TimetableSheetSyncStrip: React.FC<TimetableSheetSyncStripProps> = (
   onConfirmPushToSheet,
 }) => {
   return (
-    <div className="bg-brand-surface border border-brand-border rounded-xl px-3.5 py-2.5 shadow-xs space-y-2">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] text-brand-text-secondary">
-        <span className="inline-flex items-center gap-1.5 font-bold text-brand-text-primary">
-          <span
-            className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-              sheetSync.unreachable
-                ? 'bg-rose-500'
-                : sheetSync.error || sheetSync.needsReconnect
-                ? 'bg-amber-500'
-                : 'bg-emerald-500'
-            }`}
-          />
-          Timetable Sheet
-        </span>
-
-        <span title="Last successful read of the timetable sheet">{lastSyncedLabel}</span>
-        <span className="text-brand-border">·</span>
-        <span>
-          {sheetSync.nextRefreshLabel
-            ? `next refresh in ${sheetSync.nextRefreshLabel}`
-            : 'automatic refresh paused'}
-        </span>
-
-        {sheetSync.sheetChangesCount > 0 && (
-          <span
-            className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 font-bold"
-            title="Cells where the app and the Google Sheet currently disagree."
-          >
-            {sheetSync.sheetChangesCount} difference{sheetSync.sheetChangesCount === 1 ? '' : 's'}
+    <div className="bg-brand-surface border border-brand-border rounded-xl px-3.5 py-3 shadow-xs space-y-2.5">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2.5 sm:gap-x-3 text-[11px] text-brand-text-secondary">
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+          <span className="inline-flex items-center gap-1.5 font-bold text-brand-text-primary">
+            <span
+              className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                sheetSync.unreachable
+                  ? 'bg-rose-500'
+                  : sheetSync.error || sheetSync.needsReconnect
+                  ? 'bg-amber-500'
+                  : 'bg-emerald-500'
+              }`}
+            />
+            Timetable Sheet
           </span>
-        )}
 
-        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <span title="Last successful read of the timetable sheet">{lastSyncedLabel}</span>
+          <span className="text-brand-border" aria-hidden="true">·</span>
+          <span>
+            {sheetSync.nextRefreshLabel
+              ? `next refresh in ${sheetSync.nextRefreshLabel}`
+              : 'automatic refresh paused'}
+          </span>
+
+          {sheetSync.sheetChangesCount > 0 && (
+            <>
+              <span className="text-brand-border" aria-hidden="true">·</span>
+              <span
+                className="font-semibold text-amber-700 dark:text-amber-300"
+                title="Cells where the app and the Google Sheet currently disagree."
+              >
+                {sheetSync.sheetChangesCount} difference{sheetSync.sheetChangesCount === 1 ? '' : 's'}
+              </span>
+            </>
+          )}
+        </div>
+
+        <div className="sm:ml-auto grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto">
           <button
             type="button"
             onClick={onRefreshFromSheet}
             disabled={syncing}
-            className="px-3 py-1.5 rounded-xl bg-brand-bg hover:bg-brand-border text-brand-text-primary border border-brand-border text-[11px] font-semibold transition-colors disabled:opacity-50 cursor-pointer"
+            className="px-3 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 rounded-xl bg-brand-bg hover:bg-brand-border text-brand-text-primary border border-brand-border text-[11px] font-semibold transition-colors disabled:opacity-50 cursor-pointer text-center whitespace-nowrap"
             title="Re-read Google Sheet now"
           >
             {sheetSync.refreshing ? 'Refreshing...' : 'Refresh from sheet'}
@@ -84,7 +89,7 @@ export const TimetableSheetSyncStrip: React.FC<TimetableSheetSyncStripProps> = (
             type="button"
             onClick={onSyncToSheet}
             disabled={syncing || sheetSync.needsReconnect}
-            className="px-3 py-1.5 rounded-xl bg-brand-primary/10 hover:bg-brand-primary/20 text-brand-primary border border-brand-primary/30 text-[11px] font-semibold transition-colors disabled:opacity-50 cursor-pointer"
+            className="px-3 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 rounded-xl bg-brand-primary/10 hover:bg-brand-primary/20 text-brand-primary border border-brand-primary/30 text-[11px] font-semibold transition-colors disabled:opacity-50 cursor-pointer text-center whitespace-nowrap"
             title="Preview cells that would change in Google Sheets"
           >
             {syncing && !sheetSync.refreshing ? 'Working...' : 'Sync to Google Sheets'}

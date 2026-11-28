@@ -1,8 +1,8 @@
 {
   "version": "1.0.0-alpha.24",
-  "branch": "alpha",
+  "branch": "HEAD",
   "environment": "testing",
-  "buildDate": "2026-11-28T10:37:08.622Z",
+  "buildDate": "2026-11-28T13:00:09.291Z",
   "deployUrl": "https://phssjamshoroportalalpha.vercel.app",
   "description": "Testing branch for new features",
   "branches": {
