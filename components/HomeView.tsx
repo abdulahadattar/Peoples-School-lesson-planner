@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import { PhssjLogo, ZiauddinLogo } from './Logo';
 import { View } from '../types';
-import { motion } from 'motion/react';
 
 interface HomeViewProps {
   onNavigate?: (view: View) => void;
@@ -122,12 +121,7 @@ const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
     <div className="relative min-h-full w-full flex flex-col justify-between py-6 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
       <div className="relative z-10 w-full">
         {/* Hero */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          className="text-center pt-3 pb-7 sm:pb-9"
-        >
+        <div className="text-center pt-3 pb-7 sm:pb-9">
           <div className="mx-auto mb-3.5 w-fit">
             <div className="w-18 h-18 sm:w-22 sm:h-22 rounded-full bg-white dark:bg-slate-900 shadow-md border-2 border-slate-200/80 dark:border-white/10 flex items-center justify-center p-1 ring-4 ring-blue-500/10">
               <PhssjLogo className="w-full h-full rounded-full" />
@@ -140,44 +134,35 @@ const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
           >
             Peoples Higher Secondary School Jamshoro
           </h1>
-        </motion.div>
+        </div>
 
         {/* Feature Grid by Categories */}
         <div className="space-y-6">
-          {FEATURE_SECTIONS.map((section, sIdx) => (
+          {FEATURE_SECTIONS.map((section) => (
             <div key={section.title} className="space-y-2.5">
               <div className="px-1">
-                <span className="text-[11px] font-semibold tracking-wider uppercase text-brand-text-tertiary">
+                <h2 className="text-[11px] font-semibold tracking-wider uppercase text-slate-600 dark:text-slate-300">
                   {section.title}
-                </span>
+                </h2>
               </div>
 
               <div className={`grid ${section.columnsClass} gap-3.5`}>
-                {section.items.map((feature, i) => (
-                  <motion.button
+                {section.items.map((feature) => (
+                  <button
                     key={feature.view}
                     type="button"
                     onClick={() => onNavigate?.(feature.view)}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{
-                      duration: 0.25,
-                      delay: 0.025 * (sIdx * 3 + i),
-                      ease: [0.16, 1, 0.3, 1],
-                    }}
-                    whileHover={{ y: -2 }}
-                    whileTap={{ scale: 0.985 }}
-                    className="group relative flex flex-col justify-between p-4 sm:p-5 rounded-2xl bg-white dark:bg-brand-surface border border-brand-border/80 dark:border-white/[0.08] shadow-soft hover:shadow-card-hover transition-shadow duration-200 text-left cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
+                    className="group relative flex flex-col justify-between p-4 sm:p-5 rounded-2xl bg-white dark:bg-brand-surface border border-brand-border/80 dark:border-white/[0.08] shadow-soft hover:shadow-card-hover hover:-translate-y-0.5 active:scale-[0.985] transition-[box-shadow,transform] duration-200 text-left cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
                   >
                     <div>
                       <div className="flex items-center justify-between mb-3">
                         <div
                           className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105 ${feature.accentColor}`}
                         >
-                          <feature.icon className="w-5 h-5" />
+                          <feature.icon className="w-5 h-5" aria-hidden="true" />
                         </div>
-                        <span className="w-7 h-7 rounded-full flex items-center justify-center text-slate-400 group-hover:text-brand-primary group-hover:bg-brand-primary/10 transition-colors">
-                          <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                        <span className="w-7 h-7 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-300 group-hover:text-brand-primary group-hover:bg-brand-primary/10 transition-colors">
+                          <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
                         </span>
                       </div>
 
@@ -188,7 +173,7 @@ const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
                         {feature.description}
                       </p>
                     </div>
-                  </motion.button>
+                  </button>
                 ))}
               </div>
             </div>

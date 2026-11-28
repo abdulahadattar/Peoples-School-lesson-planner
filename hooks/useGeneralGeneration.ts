@@ -1,21 +1,11 @@
 import { useState, useCallback, useRef } from 'react';
 import { LessonPlan, GeneratedPaper, PaperConfig, TeacherInfo, ExportOption, SLO } from '../types';
-import { generateLessonPlan as generateGeminiLessonPlan } from '../services/geminiService';
-import { saveLessonPlanToDb } from '../services/storageService';
 import {
   GenerationMode,
   UiExportFormat,
   GenerationOptions,
   withTimeout,
 } from './generalGeneration/types';
-import {
-  resolveSlosToGenerate,
-  loadChapterPdf,
-} from './generalGeneration/planGenerator';
-import {
-  generateExamPaperAction,
-  reviseExamPaperAction,
-} from './generalGeneration/paperGenerator';
 import { toUserErrorMessage } from '../utils/userMessage';
 
 export type { GenerationMode, UiExportFormat, GenerationOptions };
@@ -78,6 +68,13 @@ export const useGeneralGeneration = () => {
       addLog('Starting lesson plan generation...');
 
       try {
+        const [{ resolveSlosToGenerate, loadChapterPdf }, { generateLessonPlan: generateGeminiLessonPlan }, { saveLessonPlanToDb }] =
+          await Promise.all([
+            import('./generalGeneration/planGenerator'),
+            import('../services/geminiService'),
+            import('../services/storageService'),
+          ]);
+
         const { slosToGenerate, chapterName, clsName, subjectName } = await resolveSlosToGenerate(
           classId,
           subjectId,
@@ -215,6 +212,7 @@ export const useGeneralGeneration = () => {
       addLog('Starting exam paper generation...');
 
       try {
+        const { generateExamPaperAction } = await import('./generalGeneration/paperGenerator');
         const paper = await generateExamPaperAction(
           config,
           addLog,
@@ -301,6 +299,7 @@ export const useGeneralGeneration = () => {
       addLog('Starting paper revision...');
 
       try {
+        const { reviseExamPaperAction } = await import('./generalGeneration/paperGenerator');
         const revised = await reviseExamPaperAction(currentPaper, revisionPrompt, addLog, teacherInfo);
         setGeneratedPapers([revised]);
         setIsLoading(false);

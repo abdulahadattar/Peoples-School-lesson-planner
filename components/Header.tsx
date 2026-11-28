@@ -138,6 +138,8 @@ const Header: React.FC<HeaderProps> = ({
               <img
                 src={currentUser.photoURL}
                 alt={currentUser.displayName || 'User'}
+                width={24}
+                height={24}
                 className="w-6 h-6 rounded-full object-cover ring-1 ring-black/10 dark:ring-white/10"
               />
             ) : (

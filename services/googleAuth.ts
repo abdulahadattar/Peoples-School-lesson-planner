@@ -116,6 +116,11 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
       notifyTokenChanged();
     }
     currentUser = result.user;
+    try {
+      localStorage.setItem('phssj_has_session', '1');
+    } catch {
+      // Ignore storage failures
+    }
     return { user: result.user, accessToken: cachedAccessToken };
   } catch (error: any) {
     // User deliberately closed the popup or cancelled the prompt - normal interaction, not an app error
@@ -372,6 +377,11 @@ export const logout = async (): Promise<void> => {
   cachedAccessToken = null;
   localStorage.removeItem('google_access_token');
   localStorage.removeItem('google_token_expiry');
+  try {
+    localStorage.removeItem('phssj_has_session');
+  } catch {
+    // Ignore storage failures
+  }
   currentUser = null;
   notifyTokenChanged();
 };

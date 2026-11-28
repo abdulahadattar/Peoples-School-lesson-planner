@@ -58,6 +58,8 @@ export const StudentAvatar: React.FC<StudentAvatarProps> = React.memo(({
   const initials = useMemo(() => getInitials(name), [name]);
   const gradientClass = useMemo(() => getAvatarGradient(grNo || name), [grNo, name]);
 
+  const sizePx = { sm: 28, md: 32, lg: 44, xl: 56 }[size];
+
   if (activeUrl) {
     return (
       <div
@@ -70,6 +72,8 @@ export const StudentAvatar: React.FC<StudentAvatarProps> = React.memo(({
         <img
           src={activeUrl}
           alt={name}
+          width={sizePx}
+          height={sizePx}
           className="w-full h-full object-cover"
           onError={() => setCandidateIndex((i) => i + 1)}
           loading="lazy"

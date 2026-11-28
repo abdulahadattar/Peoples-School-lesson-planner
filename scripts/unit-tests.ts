@@ -681,6 +681,12 @@ await runPaperAuditorAndEdgeCasesTests({ describe, it, itAsync, eq });
 const { runPaperFormatAndRegenTests } = await import('./unit/paperFormatAndRegen.test');
 await runPaperFormatAndRegenTests({ describe, it, itAsync, eq });
 
+const { runPortalNavigationTests } = await import('./unit/portalNavigation.test');
+runPortalNavigationTests({ describe, it, eq });
+
+const { runPerformanceAndAccessibilityTests } = await import('./unit/performanceAndAccessibility.test');
+await runPerformanceAndAccessibilityTests({ describe, it, itAsync, eq });
+
 /* ── summary ─────────────────────────────────────────────────── */
 
 log(`\n${c.b(c.cy('══════════════════════════════════'))}`);

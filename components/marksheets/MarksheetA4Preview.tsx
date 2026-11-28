@@ -47,6 +47,8 @@ export const MarksheetA4Preview: React.FC<MarksheetA4PreviewProps> = ({ markshee
             <img
               src="/logos/phssj.png"
               alt="PHSSJ Crest"
+              width={112}
+              height={112}
               referrerPolicy="no-referrer"
               className="w-11 h-11 sm:w-20 sm:h-20 object-contain shrink-0"
             />
@@ -64,6 +66,8 @@ export const MarksheetA4Preview: React.FC<MarksheetA4PreviewProps> = ({ markshee
             <img
               src="/logos/ziauddin-university.png"
               alt="Ziauddin University"
+              width={240}
+              height={73}
               referrerPolicy="no-referrer"
               className="w-16 h-10 sm:w-32 sm:h-16 object-contain shrink-0"
             />
@@ -237,8 +241,10 @@ export const MarksheetA4Preview: React.FC<MarksheetA4PreviewProps> = ({ markshee
               <img
                 src="/logos/principal-signature.png"
                 alt="Principal Signature"
+                width={131}
+                height={117}
                 referrerPolicy="no-referrer"
-                className="h-9 sm:h-11 object-contain"
+                className="h-9 sm:h-11 w-auto object-contain"
               />
             </div>
             <div className="border-t border-black pt-1.5 font-bold">Principal</div>

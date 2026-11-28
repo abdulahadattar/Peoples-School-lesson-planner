@@ -71,6 +71,7 @@ export interface AppSidebarProps {
   onNavigateLesson: () => void;
   onNavigatePaper: () => void;
   onBackToHome: () => void;
+  onNavigatePath?: (path: string) => void;
 }
 
 export const AppSidebar: React.FC<AppSidebarProps> = ({
@@ -82,6 +83,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   onNavigateLesson,
   onNavigatePaper,
   onBackToHome,
+  onNavigatePath,
 }) => {
   return (
     <>
@@ -111,8 +113,8 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               <PhssjLogo className="w-full h-full object-contain" />
             </div>
             <div className="leading-tight truncate">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">PHSSJ Portal</h3>
-              <p className="text-[11px] text-slate-500 truncate">{schoolConfig?.schoolName || 'Peoples Higher Secondary School'}</p>
+              <p className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">PHSSJ Portal</p>
+              <p className="text-[11px] text-slate-600 dark:text-slate-300 truncate">{schoolConfig?.schoolName || 'Peoples Higher Secondary School'}</p>
             </div>
           </div>
 
@@ -120,7 +122,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             {NAV_SECTIONS.map((section, sIdx) => (
               <div key={section.title || `section-${sIdx}`} className="space-y-1">
                 {section.title && (
-                  <div className="px-2.5 pt-1 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  <div className="px-2.5 pt-1 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
                     {section.title}
                   </div>
                 )}
@@ -172,20 +174,44 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               <div className="shrink-0 bg-white rounded-md p-1 border border-slate-200/80 flex items-center justify-center">
                 <ZiauddinLogo className="h-5 w-auto" />
               </div>
-              <p className="text-[10px] leading-snug text-slate-500 dark:text-slate-400">
+              <p className="text-[10px] leading-snug text-slate-600 dark:text-slate-300">
                 Affiliated with
                 <br />
-                <span className="font-semibold text-slate-800 dark:text-slate-200">Ziauddin University</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-100">Ziauddin University</span>
               </p>
             </div>
-            <div className="px-3 text-[10px] text-slate-500 dark:text-slate-400 space-y-1.5 tabular-nums">
-              <p className="font-semibold text-slate-700 dark:text-slate-300">
+            <div className="px-3 text-[10px] text-slate-600 dark:text-slate-300 space-y-1.5 tabular-nums">
+              <p className="font-semibold text-slate-700 dark:text-slate-200">
                 v{versionConfig.version} · {versionConfig.branch}
               </p>
               <div className="flex items-center gap-2 text-[11px] font-medium">
-                <a href="/privacy" className="text-blue-600 dark:text-blue-400 hover:underline">Privacy Policy</a>
+                <a
+                  href="/privacy"
+                  onClick={(e) => {
+                    if (onNavigatePath && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) {
+                      e.preventDefault();
+                      onNavigatePath('/privacy');
+                      onCloseSidebar();
+                    }
+                  }}
+                  className="text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  Privacy Policy
+                </a>
                 <span className="text-slate-400">&bull;</span>
-                <a href="/terms" className="text-blue-600 dark:text-blue-400 hover:underline">Terms of Service</a>
+                <a
+                  href="/terms"
+                  onClick={(e) => {
+                    if (onNavigatePath && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) {
+                      e.preventDefault();
+                      onNavigatePath('/terms');
+                      onCloseSidebar();
+                    }
+                  }}
+                  className="text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  Terms of Service
+                </a>
               </div>
             </div>
           </div>

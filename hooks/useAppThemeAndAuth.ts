@@ -3,33 +3,51 @@ import { Theme } from '../types';
 import { auth } from '../services/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 
+const SESSION_HINT_KEY = 'phssj_has_session';
+
+function readInitialAuthFlags() {
+  if (typeof window === 'undefined') {
+    return { isGuest: false, hasSessionHint: false };
+  }
+  const isGuest = sessionStorage.getItem('phssj_guest_mode') === 'true';
+  const hasSessionHint = localStorage.getItem(SESSION_HINT_KEY) === '1';
+  return { isGuest, hasSessionHint };
+}
+
 export function useAppThemeAndAuth() {
-  const [theme, setTheme] = useState<Theme>('light');
+  const [{ isGuest, hasSessionHint }] = useState(readInitialAuthFlags);
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === 'undefined') return 'light';
+    const savedTheme = localStorage.getItem('theme') as Theme | null;
+    if (savedTheme === 'light' || savedTheme === 'dark') return savedTheme;
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authResolved, setAuthResolved] = useState<boolean>(false);
-  const [showLoginGate, setShowLoginGate] = useState<boolean>(false);
+  const [showLoginGate, setShowLoginGate] = useState<boolean>(() => !isGuest && !hasSessionHint);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       setAuthResolved(true);
       if (user) {
+        try {
+          localStorage.setItem(SESSION_HINT_KEY, '1');
+        } catch {
+          // Ignore storage quota/privacy mode failures
+        }
         setShowLoginGate(false);
       } else {
-        const isGuest = sessionStorage.getItem('phssj_guest_mode') === 'true';
-        setShowLoginGate(!isGuest);
+        try {
+          localStorage.removeItem(SESSION_HINT_KEY);
+        } catch {
+          // Ignore storage quota/privacy mode failures
+        }
+        const guestActive = sessionStorage.getItem('phssj_guest_mode') === 'true';
+        setShowLoginGate(!guestActive);
       }
     });
     return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as Theme;
-    if (savedTheme) {
-      setTheme(savedTheme);
-    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setTheme('dark');
-    }
   }, []);
 
   useEffect(() => {

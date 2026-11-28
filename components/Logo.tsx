@@ -24,6 +24,8 @@ export const PhssjLogo: React.FC<LogoProps> = ({ className = 'w-10 h-10', alt = 
     <img
       src="/logos/phssj.png"
       alt={alt}
+      width={112}
+      height={112}
       onError={() => setHasError(true)}
       className={`${className} aspect-square object-contain rounded-full select-none shrink-0`}
       draggable={false}
@@ -53,6 +55,8 @@ export const ZiauddinLogo: React.FC<LogoProps> = ({
     <img
       src="/logos/ziauddin-university.png"
       alt={alt}
+      width={240}
+      height={73}
       onError={() => setHasError(true)}
       className={`${className} object-contain select-none shrink-0`}
       draggable={false}
@@ -70,9 +74,9 @@ export const SchoolBrandBadge: React.FC<{
       <PhssjLogo className="w-full h-full rounded-full" />
     </div>
     <div className="leading-tight min-w-0">
-      <h3 className={`${compact ? 'text-xs sm:text-sm' : 'text-sm sm:text-base'} font-bold text-brand-text-primary tracking-tight truncate`}>
+      <p className={`${compact ? 'text-xs sm:text-sm' : 'text-sm sm:text-base'} font-bold text-brand-text-primary tracking-tight truncate`}>
         PHSSJ Portal
-      </h3>
+      </p>
       {showAffiliation && (
         <p className="text-[10px] text-brand-text-secondary truncate">
           Peoples Higher Secondary School Jamshoro

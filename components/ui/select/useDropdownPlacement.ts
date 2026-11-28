@@ -79,10 +79,18 @@ export function useDropdownPlacement(
 
   useEffect(() => {
     if (!isOpen) return;
-    const handleReposition = () => updatePlacement();
-    window.addEventListener('resize', handleReposition);
+    let rafId: number | null = null;
+    const handleReposition = () => {
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        updatePlacement();
+      });
+    };
+    window.addEventListener('resize', handleReposition, { passive: true });
     window.addEventListener('scroll', handleReposition, true);
     return () => {
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
       window.removeEventListener('resize', handleReposition);
       window.removeEventListener('scroll', handleReposition, true);
     };

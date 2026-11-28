@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, Suspense } from 'react';
 import {
   Users,
   RefreshCw,
@@ -10,8 +10,11 @@ import { logoutUser } from '../../services/googleAuth';
 import { RecordsModals } from './RecordsModals';
 import { useRecordModals } from './useRecordModals';
 import { RecordsNotificationBanner } from './RecordsNotificationBanner';
-import { ClassAnalyticsCharts } from './ClassAnalyticsCharts';
 import { RecordsStatsStrip } from './RecordsStatsStrip';
+
+const ClassAnalyticsCharts = React.lazy(() =>
+  import('./ClassAnalyticsCharts').then((m) => ({ default: m.ClassAnalyticsCharts }))
+);
 import { RecordsFilterToolbar } from './RecordsFilterToolbar';
 import { StudentCardGrid } from './StudentCardGrid';
 import { Pagination } from '../ui/Pagination';
@@ -169,11 +172,17 @@ export const StudentRecordsView: React.FC = () => {
 
       <RecordsStatsStrip stats={stats} />
 
-      <ClassAnalyticsCharts
-        records={records}
-        selectedClass={selectedClass}
-        onSelectClass={setSelectedClass}
-      />
+      <Suspense
+        fallback={
+          <div className="h-44 rounded-2xl bg-white dark:bg-brand-surface border border-brand-border animate-pulse" />
+        }
+      >
+        <ClassAnalyticsCharts
+          records={records}
+          selectedClass={selectedClass}
+          onSelectClass={setSelectedClass}
+        />
+      </Suspense>
 
       <RecordsFilterToolbar
         searchQuery={searchQuery}

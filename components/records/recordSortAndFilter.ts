@@ -1,6 +1,5 @@
 import { StudentRecord } from '../../services/googleSheetsService';
-import { CLASS_ORDER } from './ClassAnalyticsCharts';
-import { SortField, SortDirection } from './types';
+import { CLASS_ORDER, SortField, SortDirection } from './types';
 
 export interface StudentFilterCriteria {
   searchQuery: string;

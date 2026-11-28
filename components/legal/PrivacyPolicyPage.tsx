@@ -2,7 +2,11 @@ import React from 'react';
 import { PhssjLogo } from '../Logo';
 import { Shield, ArrowLeft, Mail, School } from 'lucide-react';
 
-export const PrivacyPolicyPage: React.FC = () => {
+interface PrivacyPolicyPageProps {
+  onNavigatePath?: (path: string) => void;
+}
+
+export const PrivacyPolicyPage: React.FC<PrivacyPolicyPageProps> = ({ onNavigatePath }) => {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-blue-600 selection:text-white">
       {/* Header */}
@@ -18,6 +22,12 @@ export const PrivacyPolicyPage: React.FC = () => {
         </div>
         <a
           href="/"
+          onClick={(e) => {
+            if (onNavigatePath && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) {
+              e.preventDefault();
+              onNavigatePath('/');
+            }
+          }}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-semibold text-white transition-colors active:scale-95"
         >
           <ArrowLeft className="w-4 h-4" />

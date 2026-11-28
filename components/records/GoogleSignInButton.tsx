@@ -21,6 +21,8 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
           <img
             src={user.photoURL}
             alt={user.displayName || 'Google Account'}
+            width={24}
+            height={24}
             referrerPolicy="no-referrer"
             className="w-6 h-6 rounded-full border border-brand-border object-cover"
           />

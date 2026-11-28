@@ -152,21 +152,23 @@ export const SelectField: React.FC<SelectFieldProps> = ({
   }, [isOpen, searchQuery, filteredOptions.length]);
 
   useEffect(() => {
-    if (isOpen && highlightedIndex >= 0 && listRef.current) {
+    if (!isOpen || highlightedIndex < 0 || !listRef.current) return;
+    const rafId = window.requestAnimationFrame(() => {
       const container = listRef.current;
+      if (!container) return;
       const items = container.querySelectorAll('[data-dropdown-item]');
       const activeEl = items[highlightedIndex] as HTMLElement | undefined;
-      if (activeEl) {
-        // Scroll only within the dropdown listbox so ancestor containers never shift.
-        const itemTop = activeEl.offsetTop;
-        const itemBottom = itemTop + activeEl.offsetHeight;
-        if (itemTop < container.scrollTop) {
-          container.scrollTop = itemTop;
-        } else if (itemBottom > container.scrollTop + container.clientHeight) {
-          container.scrollTop = itemBottom - container.clientHeight;
-        }
+      if (!activeEl) return;
+      // Scroll only within the dropdown listbox without forcing synchronous layout mid-commit.
+      const itemTop = activeEl.offsetTop;
+      const itemBottom = itemTop + activeEl.offsetHeight;
+      if (itemTop < container.scrollTop) {
+        container.scrollTop = itemTop;
+      } else if (itemBottom > container.scrollTop + container.clientHeight) {
+        container.scrollTop = itemBottom - container.clientHeight;
       }
-    }
+    });
+    return () => window.cancelAnimationFrame(rafId);
   }, [highlightedIndex, isOpen]);
 
   const selectValue = (val: string) => {

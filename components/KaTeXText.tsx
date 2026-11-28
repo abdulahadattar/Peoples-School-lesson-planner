@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { isFormulaText, MATH_REGEX } from '../services/mathDetection';
 import { sanitizeMathText } from '../services/latexSanitizer';
 import { expandChemInKatexLatex } from '../services/chemFormula';
+import { ensureKatexLoaded } from '../services/export/externalLibs';
 
 declare global {
   interface Window {
@@ -51,14 +52,14 @@ const KaTeXText: React.FC<KaTeXTextProps> = ({ text, className = '', as: Tag = '
     const el = ref.current;
     if (!el) return;
 
-    let timer: number | undefined;
-    let attempts = 0;
+    let cancelled = false;
 
-    const draw = () => {
+    const draw = (): boolean => {
       const normalizedText = sanitizeMathText(text);
       el.textContent = '';
       const frag = document.createDocumentFragment();
       let last = 0;
+      let hasFormula = false;
       MATH_REGEX.lastIndex = 0;
       let m: RegExpExecArray | null;
       while ((m = MATH_REGEX.exec(normalizedText)) !== null) {
@@ -74,6 +75,8 @@ const KaTeXText: React.FC<KaTeXTextProps> = ({ text, className = '', as: Tag = '
           last = m.index + token.length;
           continue;
         }
+
+        hasFormula = true;
 
         if (window.katex?.renderToString) {
           const katexLatex = expandChemInKatexLatex(latex);
@@ -98,27 +101,27 @@ const KaTeXText: React.FC<KaTeXTextProps> = ({ text, className = '', as: Tag = '
           }
           frag.appendChild(span);
         } else {
-          // KaTeX unavailable — readable fallback instead of raw delimiters
+          // Readable fallback while KaTeX loads on demand
           frag.appendChild(document.createTextNode(latex));
         }
         last = m.index + token.length;
       }
       if (last < normalizedText.length) frag.appendChild(document.createTextNode(normalizedText.slice(last)));
       el.appendChild(frag);
+      return hasFormula;
     };
 
-    const tryDraw = () => {
-      draw();
-      // KaTeX loads async from the CDN; retry for a few seconds if it is late
-      if (!window.katex?.renderToString && attempts < 24) {
-        attempts += 1;
-        timer = window.setTimeout(tryDraw, 250);
-      }
-    };
+    const hasFormula = draw();
+    if (hasFormula && !window.katex?.renderToString) {
+      ensureKatexLoaded().then((loaded) => {
+        if (!cancelled && loaded) {
+          draw();
+        }
+      });
+    }
 
-    tryDraw();
     return () => {
-      if (timer !== undefined) window.clearTimeout(timer);
+      cancelled = true;
     };
   }, [text, scale]);
 

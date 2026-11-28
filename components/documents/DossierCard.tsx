@@ -35,6 +35,8 @@ export const DossierCard: React.FC<DossierCardProps> = React.memo(({ dossier, on
                 <img
                   src={dossier.avatarUrl}
                   alt={dossier.studentName}
+                  width={48}
+                  height={48}
                   className="w-full h-full object-cover"
                 />
               ) : (

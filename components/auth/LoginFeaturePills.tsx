@@ -50,76 +50,65 @@ export const LoginFeaturePills: React.FC<LoginFeaturePillsProps> = ({
 }) => {
   return (
     <div className="w-full flex flex-col space-y-6">
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-        className="space-y-3"
-      >
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-400/30 text-blue-300 text-xs font-medium backdrop-blur-md">
-          <GraduationCap className="w-3.5 h-3.5 text-blue-400" />
+      <div className="space-y-3">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/15 border border-blue-400/30 text-blue-200 text-xs font-medium backdrop-blur-md">
+          <GraduationCap className="w-3.5 h-3.5 text-blue-300" aria-hidden="true" />
           <span>School Portal</span>
         </div>
 
         <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-white leading-[1.15]">
           Peoples Higher Secondary School
-          <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-teal-300 to-emerald-400">
+          <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-teal-300 to-emerald-300">
             Jamshoro
           </span>
         </h1>
 
-        <p className="text-sm sm:text-base text-slate-300/90 leading-relaxed font-normal max-w-lg">
+        <p className="text-sm sm:text-base text-slate-200 leading-relaxed font-normal max-w-lg">
           Sign in to manage lesson plans, exam papers, student records and attendance.
         </p>
-      </motion.div>
+      </div>
 
-      {/* iOS Fluid Interactive Feature Pills */}
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-        className="space-y-2.5 pt-2"
-      >
+      {/* Interactive Feature Pills */}
+      <div className="space-y-2.5 pt-2">
         {HIGHLIGHT_MODULES.map((item, idx) => {
           const isActive = activeTab === idx;
           const Icon = item.icon;
           return (
-            <motion.div
+            <button
               key={item.title}
+              type="button"
               onClick={() => setActiveTab(idx)}
-              whileHover={{ scale: 1.015 }}
-              whileTap={{ scale: 0.985 }}
-              className={`cursor-pointer relative p-3.5 rounded-2xl border transition-[color,background-color,border-color,box-shadow] duration-300 ${
+              className={`w-full text-left cursor-pointer relative p-3.5 rounded-2xl border transition-[color,background-color,border-color,box-shadow,transform] duration-200 active:scale-[0.99] ${
                 isActive
                   ? 'bg-white/10 border-blue-400/40 shadow-lg shadow-blue-500/10 backdrop-blur-xl'
-                  : 'bg-white/[0.03] border-white/5 hover:bg-white/[0.06] hover:border-white/10'
+                  : 'bg-white/[0.04] border-white/10 hover:bg-white/[0.07] hover:border-white/15'
               }`}
             >
               <div className="flex items-start gap-3.5">
                 <div
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 ${
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-200 ${
                     isActive
                       ? `bg-gradient-to-br ${item.color} text-white shadow-md scale-105`
-                      : 'bg-white/5 text-slate-400'
+                      : 'bg-white/10 text-slate-200'
                   }`}
                 >
-                  <Icon className="w-4.5 h-4.5" />
+                  <Icon className="w-4.5 h-4.5" aria-hidden="true" />
                 </div>
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <span
                       className={`text-xs sm:text-sm font-semibold truncate ${
-                        isActive ? 'text-white' : 'text-slate-300'
+                        isActive ? 'text-white' : 'text-slate-100'
                       }`}
                     >
                       {item.title}
                     </span>
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white/10 text-slate-300 border border-white/10 whitespace-nowrap">
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white/10 text-slate-200 border border-white/15 whitespace-nowrap">
                       {item.badge}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">
+                  <p className="text-[11px] text-slate-300 mt-0.5 line-clamp-1">
                     {item.desc}
                   </p>
                 </div>
@@ -132,10 +121,10 @@ export const LoginFeaturePills: React.FC<LoginFeaturePillsProps> = ({
                   transition={{ type: 'spring', stiffness: 350, damping: 30 }}
                 />
               )}
-            </motion.div>
+            </button>
           );
         })}
-      </motion.div>
+      </div>
     </div>
   );
 };

@@ -8,6 +8,7 @@ import { Packer } from 'docx';
 import { GeneratedPaper, TeacherInfo } from '../../types';
 import { buildExamPaperDocx, EXAM_DOCX_LAYOUT } from '../export/docxExamPaper';
 import { buildExamPaperPdfDefinition } from '../export/pdfExport';
+import { ensurePdfMakeLoaded } from '../export/externalLibs';
 import {
   decodeBase64ToUint8Array,
   DocxParagraphSummary,
@@ -229,6 +230,7 @@ function renderDocxPreviewPages(paragraphs: DocxParagraphSummary[]): string[] {
 }
 
 async function generatePdfBase64InBrowser(docDefinition: any): Promise<string | null> {
+  await ensurePdfMakeLoaded();
   if (typeof pdfMake === 'undefined' || typeof pdfMake.createPdf !== 'function') {
     return null;
   }

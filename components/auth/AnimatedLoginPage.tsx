@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
 import { PhssjLogo, ZiauddinLogo } from '../Logo';
 import { loginWithGoogle, getCurrentUser } from '../../services/googleAuth';
 import { User } from 'firebase/auth';
@@ -15,11 +14,13 @@ import { toUserErrorMessage } from '../../utils/userMessage';
 interface AnimatedLoginPageProps {
   onLoginSuccess: (user: User) => void;
   onContinueAsGuest: () => void;
+  onNavigatePath?: (path: string) => void;
 }
 
 export const AnimatedLoginPage: React.FC<AnimatedLoginPageProps> = ({
   onLoginSuccess,
   onContinueAsGuest,
+  onNavigatePath,
 }) => {
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -59,12 +60,7 @@ export const AnimatedLoginPage: React.FC<AnimatedLoginPageProps> = ({
 
       {/* ── Top Floating Navigation Pill ────────────────────────────────────── */}
       <header className="relative z-10 w-full max-w-6xl px-4 sm:px-8 pt-6 flex items-center justify-between">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="flex items-center gap-3 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-xl shadow-xl"
-        >
+        <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-xl shadow-xl">
           <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center p-0.5 shadow-md">
             <PhssjLogo className="w-full h-full rounded-full" />
           </div>
@@ -72,29 +68,25 @@ export const AnimatedLoginPage: React.FC<AnimatedLoginPageProps> = ({
             <span className="text-xs font-bold tracking-tight text-white">
               PHSSJ Portal
             </span>
-            <span className="text-[10px] text-slate-400">Peoples Higher Secondary School</span>
+            <span className="text-[10px] text-slate-300">Peoples Higher Secondary School</span>
           </div>
-        </motion.div>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-          className="flex items-center gap-3"
-        >
-          <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-slate-300 backdrop-blur-md">
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-slate-200 backdrop-blur-md">
             <ZiauddinLogo className="h-4 w-auto brightness-200" />
-            <span className="text-[11px] text-slate-400">Affiliated with Ziauddin Univ</span>
+            <span className="text-[11px] text-slate-300">Affiliated with Ziauddin Univ</span>
           </div>
 
           <button
+            type="button"
             onClick={onContinueAsGuest}
             id="login-explore-guest-top-btn"
-            className="text-xs font-medium text-slate-300 hover:text-white px-3.5 py-1.5 rounded-full hover:bg-white/10 transition-[color,background-color,border-color,transform] border border-transparent hover:border-white/10 active:scale-95"
+            className="text-xs font-medium text-slate-200 hover:text-white px-3.5 py-1.5 rounded-full hover:bg-white/10 transition-[color,background-color,border-color,transform] border border-transparent hover:border-white/10 active:scale-95 cursor-pointer"
           >
             Explore as Guest
           </button>
-        </motion.div>
+        </div>
       </header>
 
       {/* ── Main Dynamic Stage ──────────────────────────────────────────────── */}
@@ -113,22 +105,44 @@ export const AnimatedLoginPage: React.FC<AnimatedLoginPageProps> = ({
       </main>
 
       {/* ── Footer ──────────────────────────────────────────────────────────── */}
-      <footer className="relative z-10 w-full max-w-6xl px-4 sm:px-8 py-5 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-500 border-t border-white/5">
+      <footer className="relative z-10 w-full max-w-6xl px-4 sm:px-8 py-5 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-300 border-t border-white/10">
         <div className="flex flex-wrap items-center gap-3">
           <span>&copy; {new Date().getFullYear()} Peoples Higher Secondary School Jamshoro</span>
-          <span className="hidden sm:inline text-slate-600">&bull;</span>
-          <a href="/privacy" className="text-slate-400 hover:text-white transition-colors underline underline-offset-2">Privacy Policy</a>
-          <span className="text-slate-600">&bull;</span>
-          <a href="/terms" className="text-slate-400 hover:text-white transition-colors underline underline-offset-2">Terms of Service</a>
+          <span className="hidden sm:inline text-slate-400">&bull;</span>
+          <a
+            href="/privacy"
+            onClick={(e) => {
+              if (onNavigatePath && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) {
+                e.preventDefault();
+                onNavigatePath('/privacy');
+              }
+            }}
+            className="text-slate-200 hover:text-white transition-colors underline underline-offset-2"
+          >
+            Privacy Policy
+          </a>
+          <span className="text-slate-400">&bull;</span>
+          <a
+            href="/terms"
+            onClick={(e) => {
+              if (onNavigatePath && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) {
+                e.preventDefault();
+                onNavigatePath('/terms');
+              }
+            }}
+            className="text-slate-200 hover:text-white transition-colors underline underline-offset-2"
+          >
+            Terms of Service
+          </a>
         </div>
-        <div className="flex items-center gap-4 text-slate-400">
+        <div className="flex items-center gap-4 text-slate-200">
           <span className="inline-flex items-center gap-1">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" />
             <span>Sindh Board Compliant</span>
           </span>
           <span>&bull;</span>
           <span className="inline-flex items-center gap-1">
-            <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+            <ShieldCheck className="w-3.5 h-3.5 text-blue-300" aria-hidden="true" />
             <span>School Account Sign-In</span>
           </span>
         </div>

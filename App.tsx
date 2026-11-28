@@ -17,16 +17,38 @@ import { useAppThemeAndAuth } from './hooks/useAppThemeAndAuth';
 import { buildFallbackCurriculumSlos } from './services/paper/curriculumFallback';
 import { isUserAdmin } from './services/adminService';
 import { toUserErrorMessage } from './utils/userMessage';
-import { PrivacyPolicyPage } from './components/legal/PrivacyPolicyPage';
-import { TermsOfServicePage } from './components/legal/TermsOfServicePage';
+import Spinner from './components/ui/Spinner';
+import { usePortalHistory } from './hooks/usePortalHistory';
+import {
+  extractRouteFromPopState,
+  shouldRequireLoginGateOnRoute,
+} from './services/portalNavigation';
 
-function normalizeRoutePath(pathname: string): string {
-  const cleaned = pathname.replace(/\/+$/, '');
-  return cleaned || '/';
+const PrivacyPolicyPage = React.lazy(() =>
+  import('./components/legal/PrivacyPolicyPage').then((m) => ({ default: m.PrivacyPolicyPage }))
+);
+const TermsOfServicePage = React.lazy(() =>
+  import('./components/legal/TermsOfServicePage').then((m) => ({ default: m.TermsOfServicePage }))
+);
+
+interface MainPortalAppProps {
+  view: View;
+  navigateToView: (
+    targetView: View,
+    options?: {
+      paperSubView?: 'create' | 'scan';
+      lessonSubView?: 'create' | 'saved';
+      replace?: boolean;
+    }
+  ) => void;
+  navigateToPath: (path: string) => void;
 }
 
-const MainPortalApp: React.FC = () => {
-  const [view, setView] = useState<View>('home');
+const MainPortalApp: React.FC<MainPortalAppProps> = ({
+  view,
+  navigateToView,
+  navigateToPath,
+}) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const {
     theme,
@@ -41,7 +63,9 @@ const MainPortalApp: React.FC = () => {
   const [generationMode, setGenerationMode] = useState<GenerationMode>('topic');
   const [topicInput, setTopicInput] = useState('');
   const [lessonSubView, setLessonSubView] = useState<'create' | 'saved'>('create');
-  const [paperSubView, setPaperSubView] = useState<'create' | 'scan'>('create');
+  const [paperSubView, setPaperSubView] = useState<'create' | 'scan'>(() =>
+    view === 'omr-scanner' ? 'scan' : 'create'
+  );
   const [omrInitialFilter, setOmrInitialFilter] = useState<{ testCode?: string } | null>(null);
   const { showToast, ToastComponent } = useToast(4500);
 
@@ -131,14 +155,52 @@ const MainPortalApp: React.FC = () => {
     }
   }, [selection.classId, selection.subjectId, selection.chapterId]);
 
+  useEffect(() => {
+    const handlePortalPopState = (event: PopStateEvent) => {
+      const extracted = extractRouteFromPopState(window.location.pathname, event.state);
+      if (extracted.kind !== 'portal') return;
+
+      setIsSidebarOpen(false);
+      if (extracted.paperSubView) {
+        setPaperSubView(extracted.paperSubView);
+      } else if (extracted.view === 'paper') {
+        setPaperSubView('create');
+      }
+      if (extracted.lessonSubView) {
+        setLessonSubView(extracted.lessonSubView);
+      }
+
+      const isGuest = sessionStorage.getItem('phssj_guest_mode') === 'true';
+      if (
+        shouldRequireLoginGateOnRoute({
+          authResolved,
+          hasUser: Boolean(currentUser),
+          isGuestMode: isGuest,
+          view: extracted.view,
+        })
+      ) {
+        setShowLoginGate(true);
+      }
+    };
+
+    window.addEventListener('popstate', handlePortalPopState);
+    return () => window.removeEventListener('popstate', handlePortalPopState);
+  }, [authResolved, currentUser, setShowLoginGate]);
+
   const navigate = (target: View) => {
-    setView(target);
+    navigateToView(target);
     setIsSidebarOpen(false);
   };
 
   const handleNavigate = (target: 'lesson' | 'paper') => {
-    const isSwitching = view !== 'home' && view !== target;
-    setView(target);
+    const isSwitching =
+      view !== 'home' &&
+      view !== target &&
+      !(target === 'paper' && view === 'omr-scanner');
+    navigateToView(
+      target,
+      target === 'paper' ? { paperSubView: 'create' } : { lessonSubView }
+    );
     setIsSidebarOpen(false);
     if (target === 'paper' && view !== 'paper') {
       setPaperSubView('create');
@@ -151,7 +213,7 @@ const MainPortalApp: React.FC = () => {
   };
 
   const handleBackToHome = () => {
-    setView('home');
+    navigateToView('home');
     clearResults();
   };
 
@@ -178,7 +240,7 @@ const MainPortalApp: React.FC = () => {
     );
 
     if (plans && plans.length > 0) {
-      setView('results');
+      navigateToView('results');
       setShowStatusPanel(false);
     }
   };
@@ -189,7 +251,7 @@ const MainPortalApp: React.FC = () => {
       schoolName: selection.schoolName,
     });
     if (paper) {
-      setView('results');
+      navigateToView('results');
       setShowStatusPanel(false);
     }
   };
@@ -202,32 +264,34 @@ const MainPortalApp: React.FC = () => {
     }
   };
 
+  const isGuestMode =
+    typeof sessionStorage !== 'undefined' && sessionStorage.getItem('phssj_guest_mode') === 'true';
+  const showLoginOverlay = showLoginGate && !currentUser;
+  const canRenderPortalContent = authResolved || isGuestMode || Boolean(currentUser);
+
+  if (showLoginOverlay) {
+    return (
+      <>
+        <div className="min-h-[100dvh] bg-[#070b14]">
+          <AnimatedLoginPage
+            onLoginSuccess={(user) => {
+              setCurrentUser(user);
+              setShowLoginGate(false);
+            }}
+            onContinueAsGuest={() => {
+              sessionStorage.setItem('phssj_guest_mode', 'true');
+              setShowLoginGate(false);
+            }}
+            onNavigatePath={navigateToPath}
+          />
+        </div>
+        {ToastComponent}
+      </>
+    );
+  }
+
   return (
     <div className="flex h-[100dvh] bg-brand-bg text-brand-text-primary font-sans selection:bg-brand-primary selection:text-white antialiased overflow-hidden print:h-auto print:overflow-visible print:bg-white">
-      <AnimatePresence>
-        {authResolved && showLoginGate && !currentUser && (
-          <motion.div
-            key="login-gate-overlay"
-            initial={{ opacity: 0, scale: 1.02 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.98 }}
-            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed inset-0 z-[200] overflow-y-auto bg-[#070b14]"
-          >
-            <AnimatedLoginPage
-              onLoginSuccess={(user) => {
-                setCurrentUser(user);
-                setShowLoginGate(false);
-              }}
-              onContinueAsGuest={() => {
-                sessionStorage.setItem('phssj_guest_mode', 'true');
-                setShowLoginGate(false);
-              }}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <AppSidebar
         currentView={view}
         isSidebarOpen={isSidebarOpen}
@@ -237,6 +301,7 @@ const MainPortalApp: React.FC = () => {
         onNavigateLesson={() => handleNavigate('lesson')}
         onNavigatePaper={() => handleNavigate('paper')}
         onBackToHome={handleBackToHome}
+        onNavigatePath={navigateToPath}
       />
 
       <main className="flex-1 flex flex-col h-full overflow-hidden relative print:h-auto print:overflow-visible">
@@ -257,58 +322,70 @@ const MainPortalApp: React.FC = () => {
           <PendingSyncBanner className="shrink-0 mx-3.5 mt-2 sm:mx-6 print:hidden" />
         )}
 
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={view}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className={`flex-1 min-h-0 relative pb-6 print:pb-0 print:overflow-visible ${
-              view === 'results' ? 'overflow-hidden flex flex-col' : 'overflow-y-auto overflow-x-hidden custom-scrollbar'
-            }`}
-          >
-            <AppViewRouter
-              view={view}
-              onNavigate={navigate}
-              onNavigateLesson={() => handleNavigate('lesson')}
-              onNavigatePaper={() => handleNavigate('paper')}
-              onBackToHome={handleBackToHome}
-              lessonSubView={lessonSubView}
-              setLessonSubView={setLessonSubView}
-              selection={selection}
-              generationMode={generationMode}
-              setGenerationMode={setGenerationMode}
-              topicInput={topicInput}
-              setTopicInput={setTopicInput}
-              selectedSloIds={selectedSloIds}
-              setSelectedSloIds={setSelectedSloIds}
-              exportFormat={exportFormat}
-              setExportFormat={setExportFormat}
-              chapterSlos={chapterSlos}
-              isLoadingSlos={isLoadingSlos}
-              onGenerateLesson={handleGenerateLesson}
-              isGenerating={isLoading}
-              paperSubView={paperSubView}
-              setPaperSubView={setPaperSubView}
-              onGeneratePaper={handleGeneratePaper}
-              omrInitialFilter={omrInitialFilter}
-              onScanSheetsForPaper={(testCode) => {
-                setOmrInitialFilter({ testCode });
-                setPaperSubView('scan');
-                setView('paper');
-              }}
-              generatedPlans={generatedPlans}
-              generatedPapers={generatedPapers}
-              setGeneratedPlans={setGeneratedPlans}
-              setGeneratedPapers={setGeneratedPapers}
-              onExportPlan={handleExportPlan}
-              revisePaper={revisePaper}
-              teachers={teachers}
-              onOpenLoginGate={() => setShowLoginGate(true)}
-            />
-          </motion.div>
-        </AnimatePresence>
+        {!canRenderPortalContent ? (
+          <div className="flex-1 flex items-center justify-center p-6">
+            <div className="flex flex-col items-center gap-3 text-brand-text-secondary">
+              <Spinner className="w-6 h-6 text-brand-primary" label="Loading portal" />
+              <span className="text-xs font-medium">Loading...</span>
+            </div>
+          </div>
+        ) : (
+          <AnimatePresence initial={false} mode="wait">
+            <motion.div
+              key={view}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className={`flex-1 min-h-0 relative pb-6 print:pb-0 print:overflow-visible ${
+                view === 'results' ? 'overflow-hidden flex flex-col' : 'overflow-y-auto overflow-x-hidden custom-scrollbar'
+              }`}
+            >
+              <AppViewRouter
+                view={view}
+                onNavigate={navigate}
+                onNavigateLesson={() => handleNavigate('lesson')}
+                onNavigatePaper={() => handleNavigate('paper')}
+                onBackToHome={handleBackToHome}
+                lessonSubView={lessonSubView}
+                setLessonSubView={setLessonSubView}
+                selection={selection}
+                generationMode={generationMode}
+                setGenerationMode={setGenerationMode}
+                topicInput={topicInput}
+                setTopicInput={setTopicInput}
+                selectedSloIds={selectedSloIds}
+                setSelectedSloIds={setSelectedSloIds}
+                exportFormat={exportFormat}
+                setExportFormat={setExportFormat}
+                chapterSlos={chapterSlos}
+                isLoadingSlos={isLoadingSlos}
+                onGenerateLesson={handleGenerateLesson}
+                isGenerating={isLoading}
+                paperSubView={paperSubView}
+                setPaperSubView={setPaperSubView}
+                onGeneratePaper={handleGeneratePaper}
+                omrInitialFilter={omrInitialFilter}
+                onScanSheetsForPaper={(testCode) => {
+                  setOmrInitialFilter({ testCode });
+                  setPaperSubView('scan');
+                  navigateToView('omr-scanner', { paperSubView: 'scan' });
+                }}
+                generatedPlans={generatedPlans}
+                generatedPapers={generatedPapers}
+                setGeneratedPlans={setGeneratedPlans}
+                setGeneratedPapers={setGeneratedPapers}
+                onExportPlan={handleExportPlan}
+                revisePaper={revisePaper}
+                teachers={teachers}
+                onOpenLoginGate={() => {
+                  sessionStorage.removeItem('phssj_guest_mode');
+                  setShowLoginGate(true);
+                }}
+              />
+            </motion.div>
+          </AnimatePresence>
+        )}
 
         {showStatusPanel && (
           <GenerationStatusPanel
@@ -320,11 +397,11 @@ const MainPortalApp: React.FC = () => {
             onClose={() => {
               setShowStatusPanel(false);
               if (generatedPlans.length > 0 || generatedPapers.length > 0) {
-                setView('results');
+                navigateToView('results');
               }
             }}
             onStop={stopGeneration}
-            onViewResults={() => { setShowStatusPanel(false); setView('results'); }}
+            onViewResults={() => { setShowStatusPanel(false); navigateToView('results'); }}
             error={error}
           />
         )}
@@ -336,14 +413,30 @@ const MainPortalApp: React.FC = () => {
 };
 
 const App: React.FC = () => {
-  const pathname = typeof window !== 'undefined' ? normalizeRoutePath(window.location.pathname) : '/';
-  if (pathname === '/privacy') {
-    return <PrivacyPolicyPage />;
+  const { topRoute, view, navigateToView, navigateToPath } = usePortalHistory();
+
+  if (topRoute.kind === 'public' && topRoute.page === 'privacy') {
+    return (
+      <React.Suspense fallback={<div className="min-h-screen bg-slate-950" />}>
+        <PrivacyPolicyPage onNavigatePath={navigateToPath} />
+      </React.Suspense>
+    );
   }
-  if (pathname === '/terms') {
-    return <TermsOfServicePage />;
+  if (topRoute.kind === 'public' && topRoute.page === 'terms') {
+    return (
+      <React.Suspense fallback={<div className="min-h-screen bg-slate-950" />}>
+        <TermsOfServicePage onNavigatePath={navigateToPath} />
+      </React.Suspense>
+    );
   }
-  return <MainPortalApp />;
+
+  return (
+    <MainPortalApp
+      view={view}
+      navigateToView={navigateToView}
+      navigateToPath={navigateToPath}
+    />
+  );
 };
 
 export default App;

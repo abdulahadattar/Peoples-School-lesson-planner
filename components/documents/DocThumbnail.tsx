@@ -32,6 +32,8 @@ export const DocThumbnail: React.FC<DocThumbnailProps> = React.memo(({
     <img
       src={url}
       alt={filename}
+      width={96}
+      height={96}
       className={className}
       onError={() => setHasError(true)}
       loading="lazy"

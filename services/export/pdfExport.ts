@@ -13,6 +13,7 @@ import {
 } from '../paperLayout';
 import { formatFileName, PDF_A4_WIDTH, PDF_A4_HEIGHT, PDF_PAGE_MARGINS } from './docxHelpers';
 import { InlineRichRun, latexToInlineRuns, parseTextToRichParts } from './inlineMathParser';
+import { ensurePdfMakeLoaded, registerPdfMakeLayouts } from './externalLibs';
 
 declare const pdfMake: any;
 
@@ -30,26 +31,6 @@ export const EXAM_PDF_LAYOUT = {
   /** Compact stacked option gap (~56 twips = 2.8 pt). */
   STACKED_AFTER_PT: 2.8,
 } as const;
-
-if (typeof pdfMake !== 'undefined' && pdfMake.tableLayouts) {
-  pdfMake.tableLayouts.lessonPlanHeader = {
-    hLineWidth: function (i: number, node: any) {
-      if (i === 0 || i === node.table.body.length) return 1.5;
-      if (i === 1) return 1.5;
-      return 1;
-    },
-    vLineWidth: function (i: number, node: any) {
-      if (i === 0 || i === node.table.widths.length) return 1.5;
-      return 1;
-    },
-    hLineColor: function () { return '#000000'; },
-    vLineColor: function () { return '#000000'; },
-    paddingLeft: function () { return 5; },
-    paddingRight: function () { return 5; },
-    paddingTop: function () { return 4; },
-    paddingBottom: function () { return 4; },
-  };
-}
 
 export function inlineRunsToPdfRuns(runs: InlineRichRun[]): any[] {
   return runs.map((r) => {
@@ -162,6 +143,8 @@ export const createPdfContentForPlan = async (lessonPlan: LessonPlan, teacherInf
 };
 
 export const exportAsPdf = async (lessonPlan: LessonPlan, sloId?: string, teacherInfo?: TeacherInfo): Promise<void> => {
+  await ensurePdfMakeLoaded();
+  registerPdfMakeLayouts();
   const fileName = `${formatFileName(lessonPlan.title, sloId)}.pdf`;
   const content = await createPdfContentForPlan(lessonPlan, teacherInfo);
   const docDefinition: any = {
@@ -180,11 +163,13 @@ export const exportAsPdf = async (lessonPlan: LessonPlan, sloId?: string, teache
   if (typeof pdfMake !== 'undefined' && typeof pdfMake.createPdf === 'function') {
     pdfMake.createPdf(docDefinition).download(fileName);
   } else {
-    throw new Error('PDF export is unavailable: pdfMake library has not loaded yet. Please try again in a moment.');
+    throw new Error('PDF export is unavailable right now. Please try again in a moment.');
   }
 };
 
 export const exportMultipleLessonsAsPdf = async (lessonPlans: LessonPlan[], fileName: string, teacherInfo?: TeacherInfo): Promise<void> => {
+  await ensurePdfMakeLoaded();
+  registerPdfMakeLayouts();
   const allContent: any[] = [];
   for (let index = 0; index < lessonPlans.length; index++) {
     const content = await createPdfContentForPlan(lessonPlans[index], teacherInfo);
@@ -207,7 +192,7 @@ export const exportMultipleLessonsAsPdf = async (lessonPlans: LessonPlan[], file
   if (typeof pdfMake !== 'undefined' && typeof pdfMake.createPdf === 'function') {
     pdfMake.createPdf(docDefinition).download(`${fileName}.pdf`);
   } else {
-    throw new Error('PDF export is unavailable: pdfMake library has not loaded yet. Please try again in a moment.');
+    throw new Error('PDF export is unavailable right now. Please try again in a moment.');
   }
 };
 
@@ -373,11 +358,13 @@ export const buildExamPaperPdfDefinition = async (
 };
 
 export const exportPaperAsPdf = async (paper: GeneratedPaper, teacherInfo?: TeacherInfo, mathScale: number = 85): Promise<void> => {
+  await ensurePdfMakeLoaded();
+  registerPdfMakeLayouts();
   const fileName = `${formatFileName(paper.title)}.pdf`;
   const docDefinition = await buildExamPaperPdfDefinition(paper, teacherInfo, mathScale);
   if (typeof pdfMake !== 'undefined' && typeof pdfMake.createPdf === 'function') {
     pdfMake.createPdf(docDefinition).download(fileName);
   } else {
-    throw new Error('PDF export is unavailable: pdfMake library has not loaded yet. Please try again in a moment.');
+    throw new Error('PDF export is unavailable right now. Please try again in a moment.');
   }
 };

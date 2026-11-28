@@ -112,6 +112,8 @@ export const RecordsModals: React.FC<RecordsModalsProps> = ({
               <img
                 src={avatarPreviewUrl.url}
                 alt={avatarPreviewUrl.name}
+                width={480}
+                height={480}
                 className="w-full h-full object-cover"
               />
             </div>

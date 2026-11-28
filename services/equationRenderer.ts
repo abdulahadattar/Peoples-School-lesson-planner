@@ -26,6 +26,7 @@ declare global {
 }
 
 import { isFormulaText, MATH_REGEX } from './mathDetection';
+import { ensureMathJaxLoaded } from './export/externalLibs';
 
 // Guardrails so one equation can never stall an export or blow up memory.
 const MAX_EQUATION_CHARS = 400;
@@ -37,28 +38,8 @@ const RENDER_WATCHDOG_MS = 3000;
 // Prose words that signal "this is a sentence, not a formula" when '=' appears
 const PROSE_WORDS = /\b(the|and|that|with|from|word|words|is|are|was|were|this|which|where|these|those|between|using|water|oxygen|hydrogen|cell|cells|every|into|about|such|has|have|can|could|will|would|their|there)\b/i;
 
-let mathJaxPromise: Promise<boolean> | null = null;
-
-/**
- * Lazily load MathJax (tex-svg) from the CDN, exactly once.
- * Resolves false when MathJax cannot be made available (no browser, offline).
- */
 function loadMathJax(): Promise<boolean> {
-  if (typeof document === 'undefined') return Promise.resolve(false);
-  if (window.MathJax?.tex2svg) return Promise.resolve(true);
-  if (!mathJaxPromise) {
-    mathJaxPromise = new Promise<boolean>((resolve) => {
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js';
-      script.async = true;
-      script.onload = () => resolve(!!window.MathJax?.tex2svg);
-      script.onerror = () => resolve(false);
-      document.head.appendChild(script);
-      // Never wait longer than ~8s for the CDN
-      setTimeout(() => resolve(!!window.MathJax?.tex2svg), 8000);
-    });
-  }
-  return mathJaxPromise;
+  return ensureMathJaxLoaded();
 }
 
 /** Check whether the web-page KaTeX renderer is loaded (used by the web UI). */
