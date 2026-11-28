@@ -11,10 +11,15 @@ import { parseTimetableCell } from '../timetableConflictEngine';
 
 let cache: TimetableData | null = null;
 
-export async function loadTimetable(): Promise<TimetableData> {
-  if (cache) return cache;
-  cache = timetableData as TimetableData;
+export function peekCachedTimetable(): TimetableData {
+  if (!cache) {
+    cache = timetableData as TimetableData;
+  }
   return cache;
+}
+
+export async function loadTimetable(): Promise<TimetableData> {
+  return peekCachedTimetable();
 }
 
 export function resolveSlot(

@@ -6,12 +6,19 @@ export const LoginBackground: React.FC = () => {
       {/* Deep Indigo Mesh Gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950" />
 
-      {/* Static radial glows (compositor-friendly, zero ongoing main-thread work) */}
+      {/* Compositor-only floating ambient radial glows */}
       <div
-        className="absolute inset-0"
+        className="absolute -inset-12 animate-orb-float-a"
         style={{
           backgroundImage:
-            'radial-gradient(600px circle at 12% 10%, rgba(37, 99, 235, 0.22), transparent 70%), radial-gradient(550px circle at 92% 58%, rgba(16, 185, 129, 0.16), transparent 70%), radial-gradient(500px circle at 45% 95%, rgba(79, 70, 229, 0.2), transparent 70%)',
+            'radial-gradient(620px circle at 16% 16%, rgba(37, 99, 235, 0.24), transparent 68%), radial-gradient(520px circle at 48% 92%, rgba(79, 70, 229, 0.22), transparent 68%)',
+        }}
+      />
+      <div
+        className="absolute -inset-12 animate-orb-float-b"
+        style={{
+          backgroundImage:
+            'radial-gradient(560px circle at 88% 58%, rgba(16, 185, 129, 0.17), transparent 68%)',
         }}
       />
 

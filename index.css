@@ -171,6 +171,22 @@ summary::-webkit-details-marker {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
+@keyframes pageEnter {
+  from { opacity: 0; transform: translate3d(0, 8px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes softSettle {
+  from { transform: translate3d(0, 10px, 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+@keyframes orbFloatA {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(28px, -18px, 0) scale(1.06); }
+}
+@keyframes orbFloatB {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(-24px, 20px, 0) scale(1.05); }
+}
 @keyframes scaleIn {
   from { opacity: 0; transform: scale(0.97); }
   to { opacity: 1; transform: scale(1); }
@@ -184,9 +200,13 @@ summary::-webkit-details-marker {
   100% { background-position: 24px 0; }
 }
 
-.animate-fadeIn { animation: fadeIn 0.3s var(--ease-spring) both; }
-.animate-fadeInUp { animation: fadeInUp 0.35s var(--ease-spring) both; }
-.animate-scaleIn { animation: scaleIn 0.25s var(--ease-spring) both; }
+.animate-fadeIn { animation: fadeIn 0.24s var(--ease-spring) both; }
+.animate-fadeInUp { animation: fadeInUp 0.3s var(--ease-spring) both; }
+.animate-pageEnter { animation: pageEnter 0.22s var(--ease-spring) both; will-change: transform, opacity; }
+.animate-softSettle { animation: softSettle 0.28s var(--ease-spring) both; will-change: transform; }
+.animate-orb-float-a { animation: orbFloatA 18s ease-in-out infinite; will-change: transform; }
+.animate-orb-float-b { animation: orbFloatB 22s ease-in-out infinite; will-change: transform; }
+.animate-scaleIn { animation: scaleIn 0.22s var(--ease-spring) both; }
 
 /* ── Apple-Grade Glass Surfaces ─────────────────────────────────── */
 .glass-card {

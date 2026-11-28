@@ -5,8 +5,9 @@ import {
   DEFAULT_SPREADSHEET_ID,
   DEFAULT_GID,
   fetchSheetData,
+  peekCachedSheetData,
 } from '../../services/googleSheetsService';
-import { fetchAllDossiers } from '../../services/documentClientService';
+import { fetchAllDossiers, peekCachedDossiers } from '../../services/documentClientService';
 import {
   subscribeSharedEdits,
   applySharedEdits,
@@ -34,13 +35,19 @@ import { toUserErrorMessage } from '../../utils/userMessage';
 export function useStudentRecords(
   showNotification: (message: string, type?: 'success' | 'error' | 'info') => void
 ) {
-  const [records, setRecords] = useState<StudentRecord[]>([]);
-  const sheetRecordsRef = useRef<StudentRecord[]>([]);
+  const initialSheet = peekCachedSheetData(
+    DEFAULT_SPREADSHEET_ID,
+    DEFAULT_GID,
+    null,
+    SHEET_PULL_INTERVAL_MS
+  );
+  const [records, setRecords] = useState<StudentRecord[]>(() => initialSheet?.records || []);
+  const sheetRecordsRef = useRef<StudentRecord[]>(initialSheet?.records || []);
   const sharedEditsRef = useRef<SharedRecordEdit[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(() => !initialSheet);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastSynced, setLastSynced] = useState<Date | null>(null);
+  const [lastSynced, setLastSynced] = useState<Date | null>(() => initialSheet?.lastSynced || null);
 
   // Google Auth state
   const {
@@ -67,7 +74,17 @@ export function useStudentRecords(
   const [pageSize, setPageSize] = useState<number>(50);
 
   // Document Dossier state
-  const [dossiersByGr, setDossiersByGr] = useState<Record<string, StudentDossier>>({});
+  const [dossiersByGr, setDossiersByGr] = useState<Record<string, StudentDossier>>(() => {
+    const cachedDossiers = peekCachedDossiers();
+    if (!cachedDossiers) return {};
+    const dMap: Record<string, StudentDossier> = {};
+    for (const d of cachedDossiers) {
+      if (d.grNo) {
+        dMap[normalizeGrKey(String(d.grNo))] = d;
+      }
+    }
+    return dMap;
+  });
   const [viewMode, setViewMode] = useState<'auto' | 'table' | 'cards'>('auto');
 
   const handleSort = (field: SortField) => {
@@ -102,7 +119,7 @@ export function useStudentRecords(
 
   const loadRecords = async (isManualRefresh = false, silent = false) => {
     if (isManualRefresh && !silent) setIsRefreshing(true);
-    else if (!isManualRefresh) setIsLoading(true);
+    else if (!isManualRefresh && sheetRecordsRef.current.length === 0) setIsLoading(true);
     setError(null);
 
     try {
@@ -151,13 +168,14 @@ export function useStudentRecords(
   };
 
   useEffect(() => {
-    void loadRecords(shouldPullSheet());
+    const forceScheduledPull = shouldPullSheet();
+    void loadRecords(forceScheduledPull, sheetRecordsRef.current.length > 0 && forceScheduledPull);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     const id = window.setInterval(() => {
-      if (shouldPullSheet()) void loadRecords(true);
+      if (shouldPullSheet()) void loadRecords(true, true);
     }, SHEET_PULL_CHECK_MS);
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps

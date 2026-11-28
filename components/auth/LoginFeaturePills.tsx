@@ -78,7 +78,8 @@ export const LoginFeaturePills: React.FC<LoginFeaturePillsProps> = ({
               key={item.title}
               type="button"
               onClick={() => setActiveTab(idx)}
-              className={`w-full text-left cursor-pointer relative p-3.5 rounded-2xl border transition-[color,background-color,border-color,box-shadow,transform] duration-200 active:scale-[0.99] ${
+              style={{ animationDelay: `${idx * 45}ms` }}
+              className={`animate-softSettle w-full text-left cursor-pointer relative p-3.5 rounded-2xl border transition-[color,background-color,border-color,box-shadow,transform] duration-200 active:scale-[0.99] ${
                 isActive
                   ? 'bg-white/10 border-blue-400/40 shadow-lg shadow-blue-500/10 backdrop-blur-xl'
                   : 'bg-white/[0.04] border-white/10 hover:bg-white/[0.07] hover:border-white/15'

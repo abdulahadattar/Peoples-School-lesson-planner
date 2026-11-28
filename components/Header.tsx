@@ -19,6 +19,7 @@ interface HeaderProps {
   currentUser?: User | null;
   schoolName?: string;
   onOpenLoginGate?: () => void;
+  isAuthResolving?: boolean;
 }
 
 const VIEW_LABELS: Record<string, string> = {
@@ -44,6 +45,7 @@ const Header: React.FC<HeaderProps> = ({
   currentUser: controlledUser,
   schoolName = 'Peoples Higher Secondary School Jamshoro',
   onOpenLoginGate,
+  isAuthResolving = false,
 }) => {
   const [fallbackUser, setFallbackUser] = useState<User | null>(null);
   const currentUser = controlledUser !== undefined ? controlledUser : fallbackUser;
@@ -96,7 +98,7 @@ const Header: React.FC<HeaderProps> = ({
   const isAdmin = isUserAdmin(currentUser?.email);
 
   return (
-    <header className="h-14 sm:h-16 px-4 sm:px-6 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border-b border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between sticky top-0 z-30 transition-colors print:hidden">
+    <header className="h-14 sm:h-16 px-4 sm:px-6 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md transform-gpu border-b border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between shrink-0 z-30 transition-colors print:hidden">
       {/* Zone 1: Navigation Trigger & Single Wordmark / Breadcrumb */}
       <div className="flex items-center gap-3">
         <IconButton
@@ -195,6 +197,11 @@ const Header: React.FC<HeaderProps> = ({
               <span className="hidden lg:inline text-[11px] font-medium">Sign Out</span>
             </button>
           </div>
+        ) : isAuthResolving ? (
+          <div
+            aria-hidden="true"
+            className="w-24 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse"
+          />
         ) : (
           <motion.button
             whileHover={{ scale: 1.01 }}

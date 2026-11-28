@@ -4,6 +4,7 @@ import {
   DocumentDiscrepancy,
 } from '../../types/documentArchive';
 import { formatApiErrorMessage } from './clientUpload.js';
+import { invalidateDocumentClientCache } from './clientQueries.js';
 
 export async function fetchDiscrepancyFlags(records?: any[]): Promise<Record<string, DocumentDiscrepancy[]>> {
   const res = await fetch('/api/documents/audit-all', {
@@ -22,6 +23,7 @@ export async function dismissDiscrepancyFlag(flagId: string): Promise<boolean> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ flagId }),
   });
+  if (res.ok) invalidateDocumentClientCache();
   return res.ok;
 }
 
@@ -31,6 +33,7 @@ export async function undismissDiscrepancyFlag(flagId: string): Promise<boolean>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ flagId }),
   });
+  if (res.ok) invalidateDocumentClientCache();
   return res.ok;
 }
 
@@ -53,6 +56,7 @@ export async function applyCorrectionToRecord(
     body: JSON.stringify({ grNo, flagId, correction, accessToken }),
   });
   if (!res.ok) throw new Error(formatApiErrorMessage(res.status, await res.text()));
+  invalidateDocumentClientCache();
   return res.json();
 }
 
@@ -66,6 +70,7 @@ export async function batchApplyCorrections(
     body: JSON.stringify({ corrections, accessToken }),
   });
   if (!res.ok) throw new Error(formatApiErrorMessage(res.status, await res.text()));
+  invalidateDocumentClientCache();
   return res.json();
 }
 
@@ -82,6 +87,7 @@ export async function autoLinkDocumentsWithSheet(records: any[]): Promise<{
     body: JSON.stringify({ records }),
   });
   if (!res.ok) throw new Error(formatApiErrorMessage(res.status, await res.text()));
+  invalidateDocumentClientCache();
   return res.json();
 }
 
@@ -106,5 +112,6 @@ export async function selectChildRecordForDoc(docId: string, entryNoOrIndex: num
   });
   if (!res.ok) throw new Error(formatApiErrorMessage(res.status, await res.text()));
   const data = await res.json();
+  invalidateDocumentClientCache();
   return data.document;
 }

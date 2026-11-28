@@ -76,14 +76,54 @@ export async function clearCachedStudentRecords(cacheKeySuffix: string = 'defaul
   }
 }
 
-export async function getSavedPlans(): Promise<SavedLessonPlanItem[]> {
-  try {
-    const list = await get<SavedLessonPlanItem[]>(PLANS_KEY);
-    return Array.isArray(list) ? list : [];
-  } catch (err) {
-    console.error('Failed to load saved plans from IndexedDB:', err);
-    return [];
+let cachedPlans: SavedLessonPlanItem[] | null = null;
+let cachedPapers: SavedExamPaperItem[] | null = null;
+let cachedSubstitutions: {
+  dateKey: string;
+  absentTeacherIds: string[];
+  assignments: SubstitutionAssignment[];
+} | null = null;
+let inFlightPlansPromise: Promise<SavedLessonPlanItem[]> | null = null;
+let inFlightPapersPromise: Promise<SavedExamPaperItem[]> | null = null;
+
+export function peekSavedPlans(): SavedLessonPlanItem[] | null {
+  return cachedPlans;
+}
+
+export function peekSavedPapers(): SavedExamPaperItem[] | null {
+  return cachedPapers;
+}
+
+export function peekStoredSubstitutions(dateKey: string): {
+  absentTeacherIds: string[];
+  assignments: SubstitutionAssignment[];
+} | null {
+  if (cachedSubstitutions && cachedSubstitutions.dateKey === dateKey) {
+    return {
+      absentTeacherIds: cachedSubstitutions.absentTeacherIds,
+      assignments: cachedSubstitutions.assignments,
+    };
   }
+  return null;
+}
+
+export async function getSavedPlans(): Promise<SavedLessonPlanItem[]> {
+  if (cachedPlans) return cachedPlans;
+  if (inFlightPlansPromise) return inFlightPlansPromise;
+  inFlightPlansPromise = get<SavedLessonPlanItem[]>(PLANS_KEY)
+    .then((list) => {
+      const normalized = Array.isArray(list) ? list : [];
+      cachedPlans = normalized;
+      return normalized;
+    })
+    .catch((err) => {
+      console.error('Failed to load saved plans from IndexedDB:', err);
+      return [];
+    })
+    .finally(() => {
+      inFlightPlansPromise = null;
+    });
+  return inFlightPlansPromise;
 }
 
 export async function saveLessonPlanToDb(
@@ -104,23 +144,36 @@ export async function saveLessonPlanToDb(
   const filtered = current.filter(
     existing => !(existing.plan.title === plan.title && Math.abs(existing.createdAt - item.createdAt) < 60000)
   );
-  await set(PLANS_KEY, [item, ...filtered]);
+  const next = [item, ...filtered];
+  cachedPlans = next;
+  await set(PLANS_KEY, next);
   return item;
 }
 
 export async function deleteSavedPlan(id: string): Promise<void> {
   const current = await getSavedPlans();
-  await set(PLANS_KEY, current.filter(p => p.id !== id));
+  const next = current.filter(p => p.id !== id);
+  cachedPlans = next;
+  await set(PLANS_KEY, next);
 }
 
 export async function getSavedPapers(): Promise<SavedExamPaperItem[]> {
-  try {
-    const list = await get<SavedExamPaperItem[]>(PAPERS_KEY);
-    return Array.isArray(list) ? list : [];
-  } catch (err) {
-    console.error('Failed to load saved papers from IndexedDB:', err);
-    return [];
-  }
+  if (cachedPapers) return cachedPapers;
+  if (inFlightPapersPromise) return inFlightPapersPromise;
+  inFlightPapersPromise = get<SavedExamPaperItem[]>(PAPERS_KEY)
+    .then((list) => {
+      const normalized = Array.isArray(list) ? list : [];
+      cachedPapers = normalized;
+      return normalized;
+    })
+    .catch((err) => {
+      console.error('Failed to load saved papers from IndexedDB:', err);
+      return [];
+    })
+    .finally(() => {
+      inFlightPapersPromise = null;
+    });
+  return inFlightPapersPromise;
 }
 
 export async function saveExamPaperToDb(
@@ -135,8 +188,9 @@ export async function saveExamPaperToDb(
     paper,
     teacherInfo,
   };
-  // Prepend new item
-  await set(PAPERS_KEY, [item, ...current]);
+  const next = [item, ...current];
+  cachedPapers = next;
+  await set(PAPERS_KEY, next);
   return item;
 }
 
@@ -156,11 +210,13 @@ export async function updateSavedPaperInDb(
   const current = await getSavedPapers();
   const index = current.findIndex(p => p.id === id);
   if (index !== -1) {
-    current[index] = {
-      ...current[index],
+    const next = [...current];
+    next[index] = {
+      ...next[index],
       paper: { ...updatedPaper, savedPaperId: id },
     };
-    await set(PAPERS_KEY, [...current]);
+    cachedPapers = next;
+    await set(PAPERS_KEY, next);
     return true;
   }
 
@@ -171,7 +227,9 @@ export async function updateSavedPaperInDb(
 
 export async function deleteSavedPaper(id: string): Promise<void> {
   const current = await getSavedPapers();
-  await set(PAPERS_KEY, current.filter(p => p.id !== id));
+  const next = current.filter(p => p.id !== id);
+  cachedPapers = next;
+  await set(PAPERS_KEY, next);
 }
 
 export interface TeacherAbsenceRecord {
@@ -197,6 +255,12 @@ export async function getStoredSubstitutions(dateKey: string): Promise<{
   absentTeacherIds: string[];
   assignments: SubstitutionAssignment[];
 }> {
+  if (cachedSubstitutions && cachedSubstitutions.dateKey === dateKey) {
+    return {
+      absentTeacherIds: cachedSubstitutions.absentTeacherIds,
+      assignments: cachedSubstitutions.assignments,
+    };
+  }
   try {
     const stored = await get<{
       absentTeacherIds: string[];
@@ -204,10 +268,12 @@ export async function getStoredSubstitutions(dateKey: string): Promise<{
       dateKey: string;
     }>(SUBSTITUTIONS_KEY);
     if (stored && stored.dateKey === dateKey) {
-      return {
+      const resolved = {
         absentTeacherIds: stored.absentTeacherIds || [],
         assignments: stored.assignments || [],
       };
+      cachedSubstitutions = { dateKey, ...resolved };
+      return resolved;
     }
   } catch (err) {
     console.error('Failed to load substitutions from IndexedDB:', err);
@@ -220,6 +286,7 @@ export async function saveStoredSubstitutions(
   absentTeacherIds: string[],
   assignments: SubstitutionAssignment[]
 ): Promise<void> {
+  cachedSubstitutions = { dateKey, absentTeacherIds, assignments };
   try {
     await set(SUBSTITUTIONS_KEY, {
       dateKey,

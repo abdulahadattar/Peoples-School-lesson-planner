@@ -7,6 +7,40 @@ import {
 import { formatApiErrorMessage } from './clientUpload.js';
 import { getFirebaseIdToken } from '../googleAuth.js';
 
+const DOC_CACHE_TTL_MS = 5 * 60 * 1000;
+
+let cachedDossiers: { data: StudentDossier[]; fetchedAt: number } | null = null;
+let inFlightDossiers: Promise<StudentDossier[]> | null = null;
+
+let cachedDocsSnapshot: {
+  data: { documents: StudentDocumentRecord[]; aiConfigured: boolean };
+  fetchedAt: number;
+} | null = null;
+let inFlightDocsSnapshot: Promise<{
+  documents: StudentDocumentRecord[];
+  aiConfigured: boolean;
+}> | null = null;
+
+export function peekCachedDossiers(maxAgeMs: number = DOC_CACHE_TTL_MS): StudentDossier[] | null {
+  if (!cachedDossiers) return null;
+  if (Date.now() - cachedDossiers.fetchedAt >= maxAgeMs) return null;
+  return cachedDossiers.data;
+}
+
+export function peekCachedDocumentsSnapshot(maxAgeMs: number = DOC_CACHE_TTL_MS): {
+  documents: StudentDocumentRecord[];
+  aiConfigured: boolean;
+} | null {
+  if (!cachedDocsSnapshot) return null;
+  if (Date.now() - cachedDocsSnapshot.fetchedAt >= maxAgeMs) return null;
+  return cachedDocsSnapshot.data;
+}
+
+export function invalidateDocumentClientCache(): void {
+  cachedDossiers = null;
+  cachedDocsSnapshot = null;
+}
+
 export async function fetchStudentDossier(grNo: string): Promise<StudentDossier | null> {
   const res = await fetch(`/api/documents/dossiers/${encodeURIComponent(grNo)}`);
   if (res.status === 404) return null;
@@ -15,28 +49,70 @@ export async function fetchStudentDossier(grNo: string): Promise<StudentDossier 
   return data.dossier;
 }
 
-export async function fetchAllDossiers(): Promise<StudentDossier[]> {
-  const res = await fetch('/api/documents/dossiers');
-  if (!res.ok) throw new Error(formatApiErrorMessage(res.status, await res.text()));
-  const data = await res.json();
-  return data.dossiers || [];
+export async function fetchAllDossiers(forceRefresh: boolean = false): Promise<StudentDossier[]> {
+  if (!forceRefresh) {
+    const cached = peekCachedDossiers();
+    if (cached) return cached;
+  }
+  if (!forceRefresh && inFlightDossiers) {
+    return inFlightDossiers;
+  }
+
+  const requestPromise = (async () => {
+    const res = await fetch('/api/documents/dossiers');
+    if (!res.ok) throw new Error(formatApiErrorMessage(res.status, await res.text()));
+    const data = await res.json();
+    const dossiers: StudentDossier[] = data.dossiers || [];
+    cachedDossiers = { data: dossiers, fetchedAt: Date.now() };
+    return dossiers;
+  })().finally(() => {
+    if (inFlightDossiers === requestPromise) {
+      inFlightDossiers = null;
+    }
+  });
+
+  if (!forceRefresh) {
+    inFlightDossiers = requestPromise;
+  }
+  return requestPromise;
 }
 
-export async function fetchDocumentsSnapshot(): Promise<{
+export async function fetchDocumentsSnapshot(forceRefresh: boolean = false): Promise<{
   documents: StudentDocumentRecord[];
   aiConfigured: boolean;
 }> {
-  const res = await fetch('/api/documents/all-docs');
-  if (!res.ok) throw new Error(formatApiErrorMessage(res.status, await res.text()));
-  const data = await res.json();
-  return {
-    documents: data.documents || [],
-    aiConfigured: data.aiConfigured !== false,
-  };
+  if (!forceRefresh) {
+    const cached = peekCachedDocumentsSnapshot();
+    if (cached) return cached;
+  }
+  if (!forceRefresh && inFlightDocsSnapshot) {
+    return inFlightDocsSnapshot;
+  }
+
+  const requestPromise = (async () => {
+    const res = await fetch('/api/documents/all-docs');
+    if (!res.ok) throw new Error(formatApiErrorMessage(res.status, await res.text()));
+    const data = await res.json();
+    const snapshot = {
+      documents: data.documents || [],
+      aiConfigured: data.aiConfigured !== false,
+    };
+    cachedDocsSnapshot = { data: snapshot, fetchedAt: Date.now() };
+    return snapshot;
+  })().finally(() => {
+    if (inFlightDocsSnapshot === requestPromise) {
+      inFlightDocsSnapshot = null;
+    }
+  });
+
+  if (!forceRefresh) {
+    inFlightDocsSnapshot = requestPromise;
+  }
+  return requestPromise;
 }
 
-export async function fetchAllDocuments(): Promise<StudentDocumentRecord[]> {
-  const snap = await fetchDocumentsSnapshot();
+export async function fetchAllDocuments(forceRefresh: boolean = false): Promise<StudentDocumentRecord[]> {
+  const snap = await fetchDocumentsSnapshot(forceRefresh);
   return snap.documents;
 }
 
@@ -80,6 +156,7 @@ export async function retryFailedDocuments(jobId: string): Promise<BatchProcessi
   const res = await fetch(`/api/documents/jobs/${encodeURIComponent(jobId)}/retry`, { method: 'POST' });
   if (!res.ok) return null;
   const data = await res.json();
+  invalidateDocumentClientCache();
   return normalizeJobId(data.job);
 }
 
@@ -95,6 +172,7 @@ export async function updateDocumentMetadata(
   });
   if (!res.ok) throw new Error(formatApiErrorMessage(res.status, await res.text()));
   const data = await res.json();
+  invalidateDocumentClientCache();
   return data.document;
 }
 
@@ -104,6 +182,7 @@ export async function deleteDocumentScan(docId: string): Promise<boolean> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ docId }),
   });
+  if (res.ok) invalidateDocumentClientCache();
   return res.ok;
 }
 
@@ -115,6 +194,7 @@ export async function deleteMultipleDocumentScans(docIds: string[]): Promise<num
   });
   if (!res.ok) throw new Error(formatApiErrorMessage(res.status, await res.text()));
   const data = await res.json();
+  invalidateDocumentClientCache();
   return data.deletedCount || 0;
 }
 
@@ -126,12 +206,14 @@ export async function rescanDocumentScan(docId: string): Promise<StudentDocument
   });
   if (!res.ok) throw new Error(formatApiErrorMessage(res.status, await res.text()));
   const data = await res.json();
+  invalidateDocumentClientCache();
   return data.document;
 }
 
 export async function rescanAllDocuments(): Promise<{ total: number; rescanned: number; errors: number }> {
   const res = await fetch('/api/documents/rescan-all', { method: 'POST' });
   if (!res.ok) throw new Error(formatApiErrorMessage(res.status, await res.text()));
+  invalidateDocumentClientCache();
   return res.json();
 }
 
@@ -143,6 +225,7 @@ export async function reprocessDocumentWithAi(docId: string): Promise<StudentDoc
   });
   if (!res.ok) throw new Error(formatApiErrorMessage(res.status, await res.text()));
   const data = await res.json();
+  invalidateDocumentClientCache();
   return data.document;
 }
 
@@ -154,6 +237,7 @@ export async function reprocessDossierWithAi(grNo: string): Promise<StudentDossi
   });
   if (!res.ok) throw new Error(formatApiErrorMessage(res.status, await res.text()));
   const data = await res.json();
+  invalidateDocumentClientCache();
   return data.dossier;
 }
 
@@ -174,5 +258,6 @@ export async function resetDocumentArchiveForTesting(): Promise<{
     },
   });
   if (!res.ok) throw new Error(formatApiErrorMessage(res.status, await res.text()));
+  invalidateDocumentClientCache();
   return res.json();
 }

@@ -5,9 +5,14 @@ import {
   DAY_KEYS,
   DAY_LABELS,
   loadTimetable,
+  peekCachedTimetable,
   computeStaff,
 } from '../services/timetable';
-import { SubstitutionAssignment, getStoredSubstitutions } from '../services/storageService';
+import {
+  SubstitutionAssignment,
+  getStoredSubstitutions,
+  peekStoredSubstitutions,
+} from '../services/storageService';
 import { ClassTier, getClassTier } from '../services/tierHelpers';
 import { useSchoolConfig } from '../hooks/useSchoolConfig';
 import { SubstitutionManager } from './SubstitutionManager';
@@ -20,15 +25,22 @@ import { useLiveScheduleClock } from './live/useLiveScheduleClock';
 import { toUserErrorMessage } from '../utils/userMessage';
 
 export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers = [] }) => {
-  const [timetable, setTimetable] = useState<TimetableData | null>(null);
+  const todayKey = new Date().toISOString().split('T')[0];
+  const cachedSubstitutions = peekStoredSubstitutions(todayKey);
+
+  const [timetable, setTimetable] = useState<TimetableData | null>(() => peekCachedTimetable());
   const [loadError, setLoadError] = useState<string | null>(null);
   const [monitorMode, setMonitorMode] = useState<'classes' | 'duties' | 'substitutions'>('classes');
-  const [substitutions, setSubstitutions] = useState<SubstitutionAssignment[]>([]);
-  const [absentTeacherIds, setAbsentTeacherIds] = useState<string[]>([]);
+  const [substitutions, setSubstitutions] = useState<SubstitutionAssignment[]>(
+    () => cachedSubstitutions?.assignments || []
+  );
+  const [absentTeacherIds, setAbsentTeacherIds] = useState<string[]>(
+    () => cachedSubstitutions?.absentTeacherIds || []
+  );
   const [classFilter, setClassFilter] = useState<'all' | ClassTier>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Load timetable data
+  // Ensure timetable stays synchronized
   useEffect(() => {
     loadTimetable()
       .then(setTimetable)
@@ -37,14 +49,13 @@ export const LiveMonitor: React.FC<{ teachers: Teacher[] }> = ({ teachers = [] }
 
   // Load substitutions for today
   useEffect(() => {
-    const todayKey = new Date().toISOString().split('T')[0];
     getStoredSubstitutions(todayKey)
       .then(stored => {
         setAbsentTeacherIds(stored.absentTeacherIds || []);
         setSubstitutions(stored.assignments || []);
       })
       .catch(console.error);
-  }, []);
+  }, [todayKey]);
 
   // Retrieve School Admin settings
   const { config: schoolConfig } = useSchoolConfig();

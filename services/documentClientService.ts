@@ -21,6 +21,7 @@ import {
   rescanDocumentScan,
   reprocessDocumentWithAi,
   reprocessDossierWithAi,
+  invalidateDocumentClientCache,
 } from './documentClient/clientQueries.js';
 
 // Backward compatibility aliases
@@ -45,6 +46,7 @@ export const retryFailedJob = async (jobId: string) => {
   const res = await fetch(`/api/documents/jobs/${encodeURIComponent(jobId)}/retry`, { method: 'POST' });
   if (!res.ok) return null;
   const data = await res.json();
+  invalidateDocumentClientCache();
   return data.job;
 };
 export const assignDocumentToStudent = async (docId: string, grNo: string, studentRecord?: any) => {
@@ -55,6 +57,7 @@ export const assignDocumentToStudent = async (docId: string, grNo: string, stude
   });
   if (!res.ok) return null;
   const data = await res.json();
+  invalidateDocumentClientCache();
   return data.document;
 };
 export const queryCandidateMatches = async (_profile: any) => {

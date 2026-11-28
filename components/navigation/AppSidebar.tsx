@@ -72,6 +72,7 @@ export interface AppSidebarProps {
   onNavigatePaper: () => void;
   onBackToHome: () => void;
   onNavigatePath?: (path: string) => void;
+  onPrefetchView?: (view: View) => void;
 }
 
 export const AppSidebar: React.FC<AppSidebarProps> = ({
@@ -84,6 +85,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   onNavigatePaper,
   onBackToHome,
   onNavigatePath,
+  onPrefetchView,
 }) => {
   return (
     <>
@@ -94,7 +96,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         />
       )}
 
-      <aside className={`fixed md:relative z-50 md:z-10 top-0 left-0 h-[100dvh] md:h-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl flex flex-col transition-transform duration-300 md:transition-none w-[270px] ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} border-r border-black/[0.06] dark:border-white/[0.08] print:hidden`}>
+      <aside className={`fixed md:relative z-50 md:z-10 top-0 left-0 h-[100dvh] md:h-full bg-white dark:bg-slate-900 flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] md:transition-none w-[270px] shrink-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} border-r border-black/[0.06] dark:border-white/[0.08] print:hidden`}>
         <div className="p-5 flex-grow flex flex-col h-full overflow-hidden">
           <div className="flex items-center justify-between mb-6 md:hidden">
             <span className="font-semibold text-sm text-slate-900 dark:text-white">Navigation</span>
@@ -134,6 +136,8 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                         key={item.view}
                         id={`nav-${item.view}`}
                         type="button"
+                        onMouseEnter={() => onPrefetchView?.(item.view)}
+                        onFocus={() => onPrefetchView?.(item.view)}
                         onClick={() => {
                           if (item.view === 'home') onBackToHome();
                           else if (item.view === 'lesson') onNavigateLesson();

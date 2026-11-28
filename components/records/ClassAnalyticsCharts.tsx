@@ -16,6 +16,7 @@ export interface ClassAnalyticsChartsProps {
   records: StudentRecord[];
   selectedClass: string;
   onSelectClass: (className: string) => void;
+  isPanelActive?: boolean;
 }
 
 export type ChartTab = 'students' | 'gender' | 'status';
@@ -24,6 +25,7 @@ export const ClassAnalyticsCharts: React.FC<ClassAnalyticsChartsProps> = ({
   records,
   selectedClass,
   onSelectClass,
+  isPanelActive = true,
 }) => {
   const [activeTab, setActiveTab] = useState<ChartTab>('students');
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
@@ -182,17 +184,19 @@ export const ClassAnalyticsCharts: React.FC<ClassAnalyticsChartsProps> = ({
           />
 
           <div className="h-72 w-full pt-2">
-            {activeTab === 'status' ? (
-              <EnrollmentStatusPieChart statusData={statusData} totalStudents={totalStudents} />
-            ) : (
-              <ClassBarChart
-                data={classData}
-                selectedClass={selectedClass}
-                mode={activeTab}
-                totalStudents={totalStudents}
-                onSelectClass={onSelectClass}
-              />
-            )}
+            {isPanelActive ? (
+              activeTab === 'status' ? (
+                <EnrollmentStatusPieChart statusData={statusData} totalStudents={totalStudents} />
+              ) : (
+                <ClassBarChart
+                  data={classData}
+                  selectedClass={selectedClass}
+                  mode={activeTab}
+                  totalStudents={totalStudents}
+                  onSelectClass={onSelectClass}
+                />
+              )
+            ) : null}
           </div>
 
           <div className="flex items-center justify-between text-[11px] text-brand-text-secondary pt-2 border-t border-brand-border/60">

@@ -8,9 +8,34 @@ import {
   EnrollmentSummaryResult,
 } from './types';
 import { parseCSV, rowToStudentRecord } from './rowMapping';
+import { markSheetPulled } from '../sheetPullSchedule';
 
 let inMemorySheetCache: Record<string, { timestamp: number; etag?: string; data: FetchSheetResult }> = {};
+const inFlightSheetRequests = new Map<string, Promise<FetchSheetResult>>();
 const CLIENT_CACHE_TTL_MS = 10 * 60 * 1000;
+
+export function peekCachedSheetData(
+  spreadsheetId: string = DEFAULT_SPREADSHEET_ID,
+  gid: string = DEFAULT_GID,
+  accessToken?: string | null,
+  cacheMaxAgeMs: number = CLIENT_CACHE_TTL_MS
+): FetchSheetResult | null {
+  const now = Date.now();
+  const preferredKey = `${spreadsheetId}-${gid}-${accessToken ? 'auth' : 'public'}`;
+  const fallbackKey = `${spreadsheetId}-${gid}-${accessToken ? 'public' : 'auth'}`;
+
+  const preferred = inMemorySheetCache[preferredKey];
+  if (preferred && now - preferred.timestamp < cacheMaxAgeMs && preferred.data.records.length > 0) {
+    return { ...preferred.data, fromCache: true };
+  }
+
+  const fallback = inMemorySheetCache[fallbackKey];
+  if (fallback && now - fallback.timestamp < cacheMaxAgeMs && fallback.data.records.length > 0) {
+    return { ...fallback.data, fromCache: true };
+  }
+
+  return null;
+}
 
 export async function clearClientSheetCache(
   spreadsheetId: string = DEFAULT_SPREADSHEET_ID,
@@ -18,6 +43,7 @@ export async function clearClientSheetCache(
 ): Promise<void> {
   const cacheKeySuffix = `${spreadsheetId}_${gid}`;
   inMemorySheetCache = {};
+  inFlightSheetRequests.clear();
   await clearCachedStudentRecords(cacheKeySuffix);
 }
 
@@ -31,132 +57,193 @@ export async function fetchSheetData(
   const cacheKeySuffix = `${spreadsheetId}_${gid}`;
   const memoryKey = `${spreadsheetId}-${gid}-${accessToken ? 'auth' : 'public'}`;
 
-  if (!forceRefresh && inMemorySheetCache[memoryKey] && Date.now() - inMemorySheetCache[memoryKey].timestamp < cacheMaxAgeMs) {
-    return { ...inMemorySheetCache[memoryKey].data, fromCache: true };
+  if (!forceRefresh) {
+    const cached = peekCachedSheetData(spreadsheetId, gid, accessToken, cacheMaxAgeMs);
+    if (cached) {
+      return cached;
+    }
   }
 
-  const idbCached = await getCachedStudentRecords(cacheKeySuffix);
-  if (!forceRefresh && idbCached && Date.now() - idbCached.timestamp < cacheMaxAgeMs && idbCached.records.length > 0) {
-    const cachedResult: FetchSheetResult = {
-      records: idbCached.records,
-      spreadsheetId: idbCached.spreadsheetId || spreadsheetId,
-      gid: idbCached.gid || gid,
-      sheetTitle: idbCached.sheetTitle || DEFAULT_SHEET_TITLE,
-      lastSynced: new Date(idbCached.timestamp),
-      isLive: true,
-      fromCache: true,
-    };
-    inMemorySheetCache[memoryKey] = { timestamp: idbCached.timestamp, etag: idbCached.etag, data: cachedResult };
-    return cachedResult;
+  const inFlightKey = `${spreadsheetId}-${gid}-${forceRefresh ? 'force' : 'normal'}`;
+  const existingRequest = inFlightSheetRequests.get(inFlightKey);
+  if (existingRequest) {
+    return existingRequest;
   }
 
-  try {
-    const headers: Record<string, string> = {};
-    if (accessToken) {
-      headers['Authorization'] = `Bearer ${accessToken}`;
-    }
-    const existingEtag = idbCached?.etag || inMemorySheetCache[memoryKey]?.etag;
-    if (existingEtag && !forceRefresh) {
-      headers['If-None-Match'] = existingEtag;
-    }
-    if (forceRefresh) {
-      headers['Cache-Control'] = 'no-cache';
-      headers['Pragma'] = 'no-cache';
-    }
-
-    const refreshQuery = forceRefresh ? '&refresh=true' : '';
-    const res = await fetch(
-      `/api/sheets/data?spreadsheetId=${encodeURIComponent(spreadsheetId)}&gid=${encodeURIComponent(gid)}&compact=true${refreshQuery}`,
-      { headers }
-    );
-
-    if (res.status === 304 && idbCached && idbCached.records.length > 0) {
-      await setCachedStudentRecords(
-        {
-          records: idbCached.records,
-          etag: existingEtag,
-          sheetTitle: idbCached.sheetTitle,
-          spreadsheetId,
-          gid,
-        },
-        cacheKeySuffix
-      );
+  const requestPromise = (async (): Promise<FetchSheetResult> => {
+    const idbCached = await getCachedStudentRecords(cacheKeySuffix);
+    if (!forceRefresh && idbCached && Date.now() - idbCached.timestamp < cacheMaxAgeMs && idbCached.records.length > 0) {
       const cachedResult: FetchSheetResult = {
         records: idbCached.records,
-        spreadsheetId,
-        gid,
+        spreadsheetId: idbCached.spreadsheetId || spreadsheetId,
+        gid: idbCached.gid || gid,
         sheetTitle: idbCached.sheetTitle || DEFAULT_SHEET_TITLE,
-        lastSynced: new Date(),
+        lastSynced: new Date(idbCached.timestamp),
         isLive: true,
         fromCache: true,
       };
-      inMemorySheetCache[memoryKey] = { timestamp: Date.now(), etag: existingEtag, data: cachedResult };
+      inMemorySheetCache[memoryKey] = { timestamp: idbCached.timestamp, etag: idbCached.etag, data: cachedResult };
       return cachedResult;
     }
 
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data.records)) {
-        const responseEtag = res.headers.get('ETag') || data.etag;
-        const schoolMetadata = data.schoolMetadata || [];
+    try {
+      const headers: Record<string, string> = {};
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+      const existingEtag = idbCached?.etag || inMemorySheetCache[memoryKey]?.etag;
+      if (existingEtag && !forceRefresh) {
+        headers['If-None-Match'] = existingEtag;
+      }
+      if (forceRefresh) {
+        headers['Cache-Control'] = 'no-cache';
+        headers['Pragma'] = 'no-cache';
+      }
 
-        const normalizedRecords: StudentRecord[] = data.records.map((r: any) => ({
-          ...r,
-          rawMetadata: r.rawMetadata || schoolMetadata,
-        }));
+      const refreshQuery = forceRefresh ? '&refresh=true' : '';
+      const res = await fetch(
+        `/api/sheets/data?spreadsheetId=${encodeURIComponent(spreadsheetId)}&gid=${encodeURIComponent(gid)}&compact=true${refreshQuery}`,
+        { headers }
+      );
 
-        const result: FetchSheetResult = {
-          records: normalizedRecords,
-          spreadsheetId,
-          gid,
-          sheetTitle: data.sheetTitle || DEFAULT_SHEET_TITLE,
-          lastSynced: new Date(),
-          isLive: true,
-          schoolMetadata,
-        };
-
+      if (res.status === 304 && idbCached && idbCached.records.length > 0) {
         await setCachedStudentRecords(
           {
-            records: normalizedRecords,
-            etag: responseEtag,
-            sheetTitle: data.sheetTitle || DEFAULT_SHEET_TITLE,
+            records: idbCached.records,
+            etag: existingEtag,
+            sheetTitle: idbCached.sheetTitle,
             spreadsheetId,
             gid,
           },
           cacheKeySuffix
         );
-
-        inMemorySheetCache[memoryKey] = { timestamp: Date.now(), etag: responseEtag, data: result };
-        return result;
+        const cachedResult: FetchSheetResult = {
+          records: idbCached.records,
+          spreadsheetId,
+          gid,
+          sheetTitle: idbCached.sheetTitle || DEFAULT_SHEET_TITLE,
+          lastSynced: new Date(),
+          isLive: true,
+          fromCache: true,
+        };
+        inMemorySheetCache[memoryKey] = { timestamp: Date.now(), etag: existingEtag, data: cachedResult };
+        if (spreadsheetId === DEFAULT_SPREADSHEET_ID && gid === DEFAULT_GID) {
+          markSheetPulled();
+        }
+        return cachedResult;
       }
+
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.records)) {
+          const responseEtag = res.headers.get('ETag') || data.etag;
+          const schoolMetadata = data.schoolMetadata || [];
+
+          const normalizedRecords: StudentRecord[] = data.records.map((r: any) => ({
+            ...r,
+            rawMetadata: r.rawMetadata || schoolMetadata,
+          }));
+
+          const result: FetchSheetResult = {
+            records: normalizedRecords,
+            spreadsheetId,
+            gid,
+            sheetTitle: data.sheetTitle || DEFAULT_SHEET_TITLE,
+            lastSynced: new Date(),
+            isLive: true,
+            schoolMetadata,
+          };
+
+          await setCachedStudentRecords(
+            {
+              records: normalizedRecords,
+              etag: responseEtag,
+              sheetTitle: data.sheetTitle || DEFAULT_SHEET_TITLE,
+              spreadsheetId,
+              gid,
+            },
+            cacheKeySuffix
+          );
+
+          inMemorySheetCache[memoryKey] = { timestamp: Date.now(), etag: responseEtag, data: result };
+          if (spreadsheetId === DEFAULT_SPREADSHEET_ID && gid === DEFAULT_GID) {
+            markSheetPulled();
+          }
+          return result;
+        }
+      }
+    } catch (err) {
+      console.warn('Server proxy fetch failed, falling back to local cache or direct export:', err);
     }
-  } catch (err) {
-    console.warn('Server proxy fetch failed, falling back to local cache or direct export:', err);
-  }
 
-  if (idbCached && idbCached.records.length > 0) {
-    const fallbackResult: FetchSheetResult = {
-      records: idbCached.records,
-      spreadsheetId,
-      gid,
-      sheetTitle: idbCached.sheetTitle || DEFAULT_SHEET_TITLE,
-      lastSynced: new Date(idbCached.timestamp),
-      isLive: false,
-      fromCache: true,
-    };
-    return fallbackResult;
-  }
-
-  try {
-    const csvUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
-    const csvRes = await fetch(csvUrl);
-    if (!csvRes.ok) {
-      throw new Error(`Failed to fetch spreadsheet CSV: HTTP ${csvRes.status}`);
+    if (idbCached && idbCached.records.length > 0) {
+      const fallbackResult: FetchSheetResult = {
+        records: idbCached.records,
+        spreadsheetId,
+        gid,
+        sheetTitle: idbCached.sheetTitle || DEFAULT_SHEET_TITLE,
+        lastSynced: new Date(idbCached.timestamp),
+        isLive: false,
+        fromCache: true,
+      };
+      inMemorySheetCache[memoryKey] = { timestamp: idbCached.timestamp, etag: idbCached.etag, data: fallbackResult };
+      return fallbackResult;
     }
-    const csvText = await csvRes.text();
-    const rows = parseCSV(csvText);
 
-    if (rows.length <= 1) {
+    try {
+      const csvUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
+      const csvRes = await fetch(csvUrl);
+      if (!csvRes.ok) {
+        throw new Error(`Failed to fetch spreadsheet CSV: HTTP ${csvRes.status}`);
+      }
+      const csvText = await csvRes.text();
+      const rows = parseCSV(csvText);
+
+      if (rows.length <= 1) {
+        return {
+          records: [],
+          spreadsheetId,
+          gid,
+          sheetTitle: DEFAULT_SHEET_TITLE,
+          lastSynced: new Date(),
+          isLive: true,
+        };
+      }
+
+      const records: StudentRecord[] = [];
+      for (let i = 1; i < rows.length; i++) {
+        const student = rowToStudentRecord(rows[i], i + 1);
+        if (student.grNo || student.studentName) {
+          records.push(student);
+        }
+      }
+
+      const result: FetchSheetResult = {
+        records,
+        spreadsheetId,
+        gid,
+        sheetTitle: DEFAULT_SHEET_TITLE,
+        lastSynced: new Date(),
+        isLive: true,
+      };
+
+      await setCachedStudentRecords(
+        {
+          records,
+          sheetTitle: DEFAULT_SHEET_TITLE,
+          spreadsheetId,
+          gid,
+        },
+        cacheKeySuffix
+      );
+
+      inMemorySheetCache[memoryKey] = { timestamp: Date.now(), data: result };
+      if (spreadsheetId === DEFAULT_SPREADSHEET_ID && gid === DEFAULT_GID) {
+        markSheetPulled();
+      }
+      return result;
+    } catch (fallbackErr) {
+      console.warn('All sheet fetch methods failed, returning empty records:', fallbackErr);
       return {
         records: [],
         spreadsheetId,
@@ -166,47 +253,12 @@ export async function fetchSheetData(
         isLive: true,
       };
     }
+  })().finally(() => {
+    inFlightSheetRequests.delete(inFlightKey);
+  });
 
-    const records: StudentRecord[] = [];
-    for (let i = 1; i < rows.length; i++) {
-      const student = rowToStudentRecord(rows[i], i + 1);
-      if (student.grNo || student.studentName) {
-        records.push(student);
-      }
-    }
-
-    const result: FetchSheetResult = {
-      records,
-      spreadsheetId,
-      gid,
-      sheetTitle: DEFAULT_SHEET_TITLE,
-      lastSynced: new Date(),
-      isLive: true,
-    };
-
-    await setCachedStudentRecords(
-      {
-        records,
-        sheetTitle: DEFAULT_SHEET_TITLE,
-        spreadsheetId,
-        gid,
-      },
-      cacheKeySuffix
-    );
-
-    inMemorySheetCache[memoryKey] = { timestamp: Date.now(), data: result };
-    return result;
-  } catch (fallbackErr) {
-    console.warn('All sheet fetch methods failed, returning empty records:', fallbackErr);
-    return {
-      records: [],
-      spreadsheetId,
-      gid,
-      sheetTitle: DEFAULT_SHEET_TITLE,
-      lastSynced: new Date(),
-      isLive: true,
-    };
-  }
+  inFlightSheetRequests.set(inFlightKey, requestPromise);
+  return requestPromise;
 }
 
 export async function fetchEnrollmentSummary(

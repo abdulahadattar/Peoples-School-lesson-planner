@@ -70,7 +70,7 @@ export const DailyAttendanceView: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 py-6 space-y-6 animate-fadeInUp">
+    <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 py-6 space-y-6">
       {ToastComponent}
 
       <AttendanceHeader

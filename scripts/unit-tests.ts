@@ -687,6 +687,9 @@ runPortalNavigationTests({ describe, it, eq });
 const { runPerformanceAndAccessibilityTests } = await import('./unit/performanceAndAccessibility.test');
 await runPerformanceAndAccessibilityTests({ describe, it, itAsync, eq });
 
+const { runPortalWarmupTests } = await import('./unit/portalWarmup.test');
+await runPortalWarmupTests({ describe, it, itAsync, eq });
+
 /* ── summary ─────────────────────────────────────────────────── */
 
 log(`\n${c.b(c.cy('══════════════════════════════════'))}`);

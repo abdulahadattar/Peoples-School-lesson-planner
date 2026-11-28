@@ -10,6 +10,7 @@ import {
   calculateSchoolSummary,
   loadAttendanceRecord,
   loadClassEnrollments,
+  peekCachedClassEnrollments,
   readLocalAttendanceRecord,
   isOfflineError,
   isPermissionError,
@@ -42,7 +43,13 @@ export function useDailyAttendance(
   showToast: (message: string, type?: 'success' | 'info' | 'error') => void
 ) {
   const [selectedDate, setSelectedDateState] = useState<string>(getTodayDateString());
-  const [enrollments, setEnrollments] = useState<ClassEnrollment[]>(DEFAULT_GRADE_ENROLLMENTS);
+  const [enrollments, setEnrollments] = useState<ClassEnrollment[]>(() => {
+    const cached = peekCachedClassEnrollments();
+    const base = cached && cached.length > 0 ? cached : DEFAULT_GRADE_ENROLLMENTS;
+    return schoolConfig?.enrollmentMode !== 'google_sheet'
+      ? enrollmentsFromSchoolConfig(schoolConfig?.classes || [], base)
+      : base;
+  });
   const [currentUser, setCurrentUser] = useState<User | null>(getCurrentUser());
   const [showEnrollmentModal, setShowEnrollmentModal] = useState<boolean>(false);
   const [inputs, setInputs] = useState<

@@ -16,6 +16,7 @@ import { View } from '../types';
 
 interface HomeViewProps {
   onNavigate?: (view: View) => void;
+  onPrefetchView?: (view: View) => void;
 }
 
 interface FeatureItem {
@@ -116,7 +117,7 @@ const FEATURE_SECTIONS: FeatureSection[] = [
   },
 ];
 
-const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
+const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onPrefetchView }) => {
   return (
     <div className="relative min-h-full w-full flex flex-col justify-between py-6 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
       <div className="relative z-10 w-full">
@@ -138,8 +139,12 @@ const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
 
         {/* Feature Grid by Categories */}
         <div className="space-y-6">
-          {FEATURE_SECTIONS.map((section) => (
-            <div key={section.title} className="space-y-2.5">
+          {FEATURE_SECTIONS.map((section, sIdx) => (
+            <div
+              key={section.title}
+              className="space-y-2.5 animate-softSettle"
+              style={{ animationDelay: `${sIdx * 45}ms` }}
+            >
               <div className="px-1">
                 <h2 className="text-[11px] font-semibold tracking-wider uppercase text-slate-600 dark:text-slate-300">
                   {section.title}
@@ -151,6 +156,8 @@ const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
                   <button
                     key={feature.view}
                     type="button"
+                    onMouseEnter={() => onPrefetchView?.(feature.view)}
+                    onFocus={() => onPrefetchView?.(feature.view)}
                     onClick={() => onNavigate?.(feature.view)}
                     className="group relative flex flex-col justify-between p-4 sm:p-5 rounded-2xl bg-white dark:bg-brand-surface border border-brand-border/80 dark:border-white/[0.08] shadow-soft hover:shadow-card-hover hover:-translate-y-0.5 active:scale-[0.985] transition-[box-shadow,transform] duration-200 text-left cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
                   >

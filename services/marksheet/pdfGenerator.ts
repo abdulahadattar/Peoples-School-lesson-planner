@@ -2,12 +2,13 @@ import { PDFDocument, PDFImage, PDFPage, StandardFonts, rgb } from 'pdf-lib';
 import { getCombinedMarksheetTitle } from './calculations';
 import { CLASSIC_GRADING_SCALE, ZUEB_GRADING_SCALE } from './config';
 import { ComputedStudentMarksheet, MarksheetConfig } from './types';
+import type { MarksheetLogoAssets } from './logoAssets';
 
-export interface MarksheetLogoAssets {
-  phssjPngBytes?: Uint8Array;
-  zuebPngBytes?: Uint8Array;
-  principalSigPngBytes?: Uint8Array;
-}
+export {
+  type MarksheetLogoAssets,
+  fetchMarksheetLogoAssets,
+  peekMarksheetLogoAssets,
+} from './logoAssets';
 
 const A4_WIDTH = 595.28;
 const A4_HEIGHT = 841.89;
@@ -23,27 +24,6 @@ function sanitizePdfText(value: unknown): string {
     .replace(/[\u201C\u201D]/g, '"')
     .replace(/[^\x20-\x7E]/g, ' ')
     .trim();
-}
-
-export async function fetchMarksheetLogoAssets(): Promise<MarksheetLogoAssets> {
-  if (typeof fetch === 'undefined' || typeof window === 'undefined') {
-    return {};
-  }
-  const loadPng = async (url: string): Promise<Uint8Array | undefined> => {
-    try {
-      const res = await fetch(url);
-      if (!res.ok) return undefined;
-      return new Uint8Array(await res.arrayBuffer());
-    } catch {
-      return undefined;
-    }
-  };
-  const [phssjPngBytes, zuebPngBytes, principalSigPngBytes] = await Promise.all([
-    loadPng('/logos/phssj.png'),
-    loadPng('/logos/ziauddin-university.png'),
-    loadPng('/logos/principal-signature.png'),
-  ]);
-  return { phssjPngBytes, zuebPngBytes, principalSigPngBytes };
 }
 
 function drawCellText(

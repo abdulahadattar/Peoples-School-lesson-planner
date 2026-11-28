@@ -8,6 +8,8 @@ import {
 import {
   fetchAllDossiers,
   fetchDocumentsSnapshot,
+  peekCachedDossiers,
+  peekCachedDocumentsSnapshot,
   fetchLatestJob,
   fetchJobStatus,
   autoLinkDocumentsWithSheet,
@@ -24,19 +26,23 @@ import {
 } from '../services/documentClientService';
 import { isUserAdmin } from '../services/adminService';
 import { getCurrentUser } from '../services/googleAuth';
-import { StudentRecord, fetchSheetData } from '../services/googleSheetsService';
+import { StudentRecord, fetchSheetData, peekCachedSheetData } from '../services/googleSheetsService';
 import { DiscrepancyAuditItem } from '../components/documents/DiscrepancyAuditTable';
 import { adoptLatestJob, adoptPollResponse } from './useDocumentArchive/selectors';
 import { toUserErrorMessage } from '../utils/userMessage';
 
 export function useDocumentArchive(showToast: (msg: string, type?: 'success' | 'error' | 'info') => void) {
-  const [dossiers, setDossiers] = useState<StudentDossier[]>([]);
-  const [documents, setDocuments] = useState<StudentDocumentRecord[]>([]);
-  const [aiConfigured, setAiConfigured] = useState<boolean>(true);
-  const [loading, setLoading] = useState(true);
+  const initialDocs = peekCachedDocumentsSnapshot();
+  const initialDossiers = peekCachedDossiers();
+  const initialSheet = peekCachedSheetData();
+
+  const [dossiers, setDossiers] = useState<StudentDossier[]>(() => initialDossiers || []);
+  const [documents, setDocuments] = useState<StudentDocumentRecord[]>(() => initialDocs?.documents || []);
+  const [aiConfigured, setAiConfigured] = useState<boolean>(() => initialDocs?.aiConfigured ?? true);
+  const [loading, setLoading] = useState(() => !(initialDocs && initialDossiers && initialSheet));
   const [activeJob, setActiveJob] = useState<BatchProcessingJob | null>(null);
   const activeJobRef = useRef<BatchProcessingJob | null>(null);
-  const [sheetRecords, setSheetRecords] = useState<StudentRecord[]>([]);
+  const [sheetRecords, setSheetRecords] = useState<StudentRecord[]>(() => initialSheet?.records || []);
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
   const [isOperatingDoc, setIsOperatingDoc] = useState(false);
   const [isAutoLinking, setIsAutoLinking] = useState(false);
@@ -51,11 +57,16 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
     setActiveJob(job);
   };
 
-  const refreshData = async () => {
+  const refreshData = async (forceRefresh: boolean = false) => {
+    const hasWarmState = Boolean(
+      peekCachedDocumentsSnapshot() && peekCachedDossiers() && peekCachedSheetData()
+    );
     try {
-      setLoading(true);
+      if (!hasWarmState || forceRefresh) {
+        setLoading((prev) => (hasWarmState ? prev : true));
+      }
       const [docsSnapshot, latestJob, sheetData] = await Promise.all([
-        fetchDocumentsSnapshot().catch(() => ({ documents: [], aiConfigured: true })),
+        fetchDocumentsSnapshot(forceRefresh).catch(() => ({ documents: [], aiConfigured: true })),
         fetchLatestJob().catch(() => null),
         fetchSheetData().catch(() => ({ records: [] })),
       ]);
@@ -66,10 +77,10 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
       if (adopted !== activeJobRef.current) applyActiveJob(adopted);
       setSheetRecords(records);
 
-      let dossiersList = await fetchAllDossiers().catch(() => []);
-      if (records.length > 0) {
+      let dossiersList = await fetchAllDossiers(forceRefresh).catch(() => []);
+      if (records.length > 0 && (forceRefresh || !hasWarmState)) {
         await fetchDiscrepancyFlags(records).catch(() => null);
-        dossiersList = await fetchAllDossiers().catch(() => dossiersList);
+        dossiersList = await fetchAllDossiers(forceRefresh).catch(() => dossiersList);
       }
       setDossiers(dossiersList);
     } finally {
@@ -78,7 +89,7 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
   };
 
   useEffect(() => {
-    refreshData();
+    void refreshData(false);
   }, []);
 
   useEffect(() => {
@@ -142,7 +153,7 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
       } else {
         showToast('No documents were deleted', 'error');
       }
-      await refreshData();
+      await refreshData(true);
     } catch (err: any) {
       showToast(toUserErrorMessage(err, 'Could not delete selected documents'), 'error');
     } finally {
@@ -159,7 +170,7 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
       } else {
         showToast('Could not delete document', 'error');
       }
-      await refreshData();
+      await refreshData(true);
     } catch (err: any) {
       showToast(toUserErrorMessage(err, 'Delete failed'), 'error');
     } finally {
@@ -172,7 +183,7 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
       setIsOperatingDoc(true);
       await rescanDocument(docId);
       showToast('Document re-checked', 'success');
-      await refreshData();
+      await refreshData(true);
     } catch (err: any) {
       showToast(toUserErrorMessage(err, 'Re-check failed'), 'error');
     } finally {
@@ -185,7 +196,7 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
       setIsRescanningAll(true);
       await rescanAllDocuments();
       showToast('All documents re-checked', 'success');
-      await refreshData();
+      await refreshData(true);
     } catch (err: any) {
       showToast(toUserErrorMessage(err, 'Re-check failed'), 'error');
     } finally {
@@ -198,7 +209,7 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
       setIsAutoLinking(true);
       const res = await autoLinkDocumentsWithSheet(sheetRecords);
       showToast(`Matched ${res.totalMatched} document(s) to student records`, 'success');
-      await refreshData();
+      await refreshData(true);
     } catch (err: any) {
       showToast(toUserErrorMessage(err, 'Could not match documents'), 'error');
     } finally {
@@ -212,7 +223,7 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
       const matchedStudent = sheetRecords.find((r) => String(r.grNo || r['G.R.NO'] || '').trim() === grNo.trim());
       await assignDocumentToStudent(docId, grNo.trim(), matchedStudent);
       showToast(`Document assigned to GR #${grNo}`, 'success');
-      await refreshData();
+      await refreshData(true);
     } catch (err: any) {
       showToast(toUserErrorMessage(err, `Could not assign to GR #${grNo}`), 'error');
     } finally {
@@ -226,7 +237,7 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
       setApplyingFlagId(flag.id);
       await applyCorrectionToRecord(grNo, flag.id, flag.suggestedCorrection);
       showToast(`Updated record for GR #${grNo}`, 'success');
-      await refreshData();
+      await refreshData(true);
     } catch (err: any) {
       showToast(toUserErrorMessage(err, 'Could not apply update'), 'error');
     } finally {
@@ -242,7 +253,7 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
       setIsBatchApplying(true);
       await batchApplyCorrections(list);
       showToast(`Updated ${list.length} student record(s)`, 'success');
-      await refreshData();
+      await refreshData(true);
     } catch (err: any) {
       showToast(toUserErrorMessage(err, 'Could not apply updates'), 'error');
     } finally {
@@ -260,7 +271,7 @@ export function useDocumentArchive(showToast: (msg: string, type?: 'success' | '
       setDossiers([]);
       setSelectedDocIds([]);
       showToast('Student documents cleared.', 'success');
-      await refreshData();
+      await refreshData(true);
     } catch (err: any) {
       showToast(toUserErrorMessage(err, 'Failed to reset student documents'), 'error');
     } finally {

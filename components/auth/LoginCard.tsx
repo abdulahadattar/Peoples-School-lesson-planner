@@ -23,7 +23,7 @@ export const LoginCard: React.FC<LoginCardProps> = ({
   onContinueAsGuest,
 }) => {
   return (
-    <div className="w-full lg:w-[420px] max-w-md">
+    <div className="w-full lg:w-[420px] max-w-md animate-softSettle">
       <div className="relative rounded-[32px] p-6 sm:p-8 bg-slate-900/90 border border-white/15 backdrop-blur-2xl shadow-2xl overflow-hidden ring-1 ring-white/10">
         {/* Top Subtle Specular Light Highlight */}
         <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-blue-400/50 to-transparent" />

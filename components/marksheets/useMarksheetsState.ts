@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { fetchSheetData } from '../../services/googleSheetsService';
+import { fetchSheetData, peekCachedSheetData } from '../../services/googleSheetsService';
 import type { StudentRecord } from '../../services/sheets/types';
 import { normalizeGrKey } from '../../services/identityNormalization';
 import {
@@ -9,8 +9,9 @@ import {
 } from '../../services/marksheet/calculations';
 import {
   fetchMarksheetLogoAssets,
+  peekMarksheetLogoAssets,
   MarksheetLogoAssets,
-} from '../../services/marksheet/pdfGenerator';
+} from '../../services/marksheet/logoAssets';
 import {
   loadMarksheetConfig,
   loadMarksheetEntries,
@@ -45,8 +46,10 @@ export function useMarksheetsState(
   initialTarget?: MarksheetInitialTarget | null
 ) {
   const [activeTab, setActiveTab] = useState<MarksheetViewTab>('marksheet');
-  const [sheetRecords, setSheetRecords] = useState<StudentRecord[]>([]);
-  const [isLoadingRoster, setIsLoadingRoster] = useState(true);
+  const [sheetRecords, setSheetRecords] = useState<StudentRecord[]>(
+    () => peekCachedSheetData()?.records || []
+  );
+  const [isLoadingRoster, setIsLoadingRoster] = useState(() => !peekCachedSheetData());
   const [config, setConfig] = useState<MarksheetConfig>(() => loadMarksheetConfig());
   const [entriesMap, setEntriesMap] = useState<Record<string, StudentMarkEntry>>(() =>
     loadMarksheetEntries()
@@ -69,7 +72,7 @@ export function useMarksheetsState(
   const [searchQuery, setSearchQuery] = useState('');
   const [grInput, setGrInput] = useState(() => initialTarget?.grNo || '');
   const [selectedGrNo, setSelectedGrNo] = useState<string>(() => initialTarget?.grNo || '');
-  const [logos, setLogos] = useState<MarksheetLogoAssets>({});
+  const [logos, setLogos] = useState<MarksheetLogoAssets>(() => peekMarksheetLogoAssets() || {});
 
   const liveSync = useMarksheetLiveSync({
     setConfig,

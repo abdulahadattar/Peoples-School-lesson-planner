@@ -100,4 +100,25 @@ export async function runPerformanceAndAccessibilityTests({
     eq((marksheet.match(/width=\{/g) || []).length, 3);
     eq((marksheet.match(/height=\{/g) || []).length, 3);
   });
+
+  describe('smooth page transitions & flicker prevention');
+  it('defines compositor-only pageEnter/softSettle/orbFloat keyframes with reduced-motion fallback', () => {
+    const css = fs.readFileSync(path.join(root, 'index.css'), 'utf8');
+    eq(css.includes('@keyframes pageEnter'), true);
+    eq(css.includes('@keyframes softSettle'), true);
+    eq(css.includes('@keyframes orbFloatA'), true);
+    eq(css.includes('@keyframes orbFloatB'), true);
+    eq(css.includes('prefers-reduced-motion: reduce'), true);
+  });
+
+  it('App.tsx avoids mode="wait" unmount gap and stabilizes scroll gutter + sidebar', () => {
+    const app = fs.readFileSync(path.join(root, 'App.tsx'), 'utf8');
+    const sidebar = fs.readFileSync(path.join(root, 'components/navigation/AppSidebar.tsx'), 'utf8');
+    const router = fs.readFileSync(path.join(root, 'components/navigation/AppViewRouter.tsx'), 'utf8');
+    eq(app.includes('mode="wait"'), false);
+    eq(app.includes('[scrollbar-gutter:stable]'), true);
+    eq(sidebar.includes('backdrop-blur-2xl'), false);
+    eq(router.includes('export function prefetchViewChunk'), true);
+    eq(router.includes('animate-pageEnter'), true);
+  });
 }

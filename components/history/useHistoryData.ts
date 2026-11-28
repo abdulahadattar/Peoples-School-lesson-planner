@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
   getSavedPlans,
   getSavedPapers,
+  peekSavedPlans,
+  peekSavedPapers,
   deleteSavedPlan,
   deleteSavedPaper,
   SavedLessonPlanItem,
@@ -21,16 +23,21 @@ export function useHistoryData(
   filterType: 'all' | 'papers' | 'plans' = 'all',
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void
 ) {
-  const [plans, setPlans] = useState<SavedLessonPlanItem[]>([]);
-  const [papers, setPapers] = useState<SavedExamPaperItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const initialPlans = peekSavedPlans();
+  const initialPapers = peekSavedPapers();
+
+  const [plans, setPlans] = useState<SavedLessonPlanItem[]>(() => initialPlans || []);
+  const [papers, setPapers] = useState<SavedExamPaperItem[]>(() => initialPapers || []);
+  const [loading, setLoading] = useState(() => initialPlans === null || initialPapers === null);
   const [activeTab, setActiveTab] = useState<'all' | 'papers' | 'plans'>(filterType);
   const [searchQuery, setSearchQuery] = useState('');
   const [exportingId, setExportingId] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null);
 
   const loadData = async () => {
-    setLoading(true);
+    if (peekSavedPlans() === null || peekSavedPapers() === null) {
+      setLoading(true);
+    }
     try {
       const [loadedPlans, loadedPapers] = await Promise.all([
         getSavedPlans(),
@@ -46,7 +53,7 @@ export function useHistoryData(
   };
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, []);
 
   const handleDeletePlan = (id: string, e: React.MouseEvent) => {

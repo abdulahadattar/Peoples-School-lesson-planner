@@ -27,7 +27,13 @@ import { normalizeGrKey } from '../../services/identityNormalization';
 
 export { type SortField, type SortDirection };
 
-export const StudentRecordsView: React.FC = () => {
+export interface StudentRecordsViewProps {
+  isPanelActive?: boolean;
+}
+
+export const StudentRecordsView: React.FC<StudentRecordsViewProps> = ({
+  isPanelActive = true,
+}) => {
   const { config: schoolConfig, isAdmin, saveConfig } = useSchoolConfig();
 
   // Notification state
@@ -181,6 +187,7 @@ export const StudentRecordsView: React.FC = () => {
           records={records}
           selectedClass={selectedClass}
           onSelectClass={setSelectedClass}
+          isPanelActive={isPanelActive}
         />
       </Suspense>
 

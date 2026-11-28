@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { PaperConfig, Teacher, View } from './types';
 import Header from './components/Header';
 import { PendingSyncBanner } from './components/ui/PendingSyncBanner';
@@ -10,9 +10,13 @@ import { useSelection } from './hooks/useSelection';
 import { loadSloChapter } from './services/sloData';
 import teachersData from './data/teachers.json';
 import { useSchoolConfig } from './hooks/useSchoolConfig';
-import { motion, AnimatePresence } from 'motion/react';
+import { MotionConfig } from 'motion/react';
 import { AppSidebar } from './components/navigation/AppSidebar';
-import { AppViewRouter } from './components/navigation/AppViewRouter';
+import {
+  AppViewRouter,
+  prefetchViewChunk,
+  schedulePortalViewPrefetch,
+} from './components/navigation/AppViewRouter';
 import { useAppThemeAndAuth } from './hooks/useAppThemeAndAuth';
 import { buildFallbackCurriculumSlos } from './services/paper/curriculumFallback';
 import { isUserAdmin } from './services/adminService';
@@ -269,6 +273,24 @@ const MainPortalApp: React.FC<MainPortalAppProps> = ({
   const showLoginOverlay = showLoginGate && !currentUser;
   const canRenderPortalContent = authResolved || isGuestMode || Boolean(currentUser);
 
+  const mainScrollRef = useRef<HTMLDivElement | null>(null);
+  const panelScrollPositionsRef = useRef<Record<string, number>>({});
+  const scrollViewKey = view === 'omr-scanner' ? 'exams' : view === 'paper' ? 'exams' : view;
+  const activeScrollKeyRef = useRef<string>(scrollViewKey);
+
+  useEffect(() => {
+    if (showLoginOverlay || !canRenderPortalContent) return;
+    return schedulePortalViewPrefetch(view);
+  }, [showLoginOverlay, canRenderPortalContent]);
+
+  useLayoutEffect(() => {
+    activeScrollKeyRef.current = scrollViewKey;
+    const container = mainScrollRef.current;
+    if (!container) return;
+    const savedTop = panelScrollPositionsRef.current[scrollViewKey] ?? 0;
+    container.scrollTop = savedTop;
+  }, [scrollViewKey]);
+
   if (showLoginOverlay) {
     return (
       <>
@@ -291,53 +313,55 @@ const MainPortalApp: React.FC<MainPortalAppProps> = ({
   }
 
   return (
-    <div className="flex h-[100dvh] bg-brand-bg text-brand-text-primary font-sans selection:bg-brand-primary selection:text-white antialiased overflow-hidden print:h-auto print:overflow-visible print:bg-white">
-      <AppSidebar
-        currentView={view}
-        isSidebarOpen={isSidebarOpen}
-        schoolConfig={schoolConfig}
-        onCloseSidebar={() => setIsSidebarOpen(false)}
-        onNavigate={navigate}
-        onNavigateLesson={() => handleNavigate('lesson')}
-        onNavigatePaper={() => handleNavigate('paper')}
-        onBackToHome={handleBackToHome}
-        onNavigatePath={navigateToPath}
-      />
-
-      <main className="flex-1 flex flex-col h-full overflow-hidden relative print:h-auto print:overflow-visible">
-        <Header
-          theme={theme}
-          activeView={view}
-          currentUser={currentUser}
-          schoolName={schoolConfig.schoolName}
-          onToggleTheme={toggleTheme}
-          onOpenSidebar={() => setIsSidebarOpen(true)}
-          onOpenLoginGate={() => {
-            setShowLoginGate(true);
-            sessionStorage.removeItem('phssj_guest_mode');
-          }}
+    <MotionConfig reducedMotion="user">
+      <div className="flex h-[100dvh] bg-brand-bg text-brand-text-primary font-sans selection:bg-brand-primary selection:text-white antialiased overflow-hidden print:h-auto print:overflow-visible print:bg-white">
+        <AppSidebar
+          currentView={view}
+          isSidebarOpen={isSidebarOpen}
+          schoolConfig={schoolConfig}
+          onCloseSidebar={() => setIsSidebarOpen(false)}
+          onNavigate={navigate}
+          onNavigateLesson={() => handleNavigate('lesson')}
+          onNavigatePaper={() => handleNavigate('paper')}
+          onBackToHome={handleBackToHome}
+          onNavigatePath={navigateToPath}
+          onPrefetchView={prefetchViewChunk}
         />
 
-        {isUserAdmin(currentUser?.email) && (
-          <PendingSyncBanner className="shrink-0 mx-3.5 mt-2 sm:mx-6 print:hidden" />
-        )}
+        <main className="flex-1 flex flex-col h-full overflow-hidden relative print:h-auto print:overflow-visible">
+          <Header
+            theme={theme}
+            activeView={view}
+            currentUser={currentUser}
+            schoolName={schoolConfig.schoolName}
+            isAuthResolving={!authResolved && !isGuestMode && !currentUser}
+            onToggleTheme={toggleTheme}
+            onOpenSidebar={() => setIsSidebarOpen(true)}
+            onOpenLoginGate={() => {
+              setShowLoginGate(true);
+              sessionStorage.removeItem('phssj_guest_mode');
+            }}
+          />
 
-        {!canRenderPortalContent ? (
-          <div className="flex-1 flex items-center justify-center p-6">
-            <div className="flex flex-col items-center gap-3 text-brand-text-secondary">
-              <Spinner className="w-6 h-6 text-brand-primary" label="Loading portal" />
-              <span className="text-xs font-medium">Loading...</span>
+          {isUserAdmin(currentUser?.email) && (
+            <PendingSyncBanner className="shrink-0 mx-3.5 mt-2 sm:mx-6 print:hidden" />
+          )}
+
+          {!canRenderPortalContent ? (
+            <div className="flex-1 flex items-center justify-center p-6 animate-fadeIn">
+              <div className="flex flex-col items-center gap-3 text-brand-text-secondary">
+                <Spinner className="w-6 h-6 text-brand-primary" label="Loading portal" />
+                <span className="text-xs font-medium">Loading...</span>
+              </div>
             </div>
-          </div>
-        ) : (
-          <AnimatePresence initial={false} mode="wait">
-            <motion.div
-              key={view}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className={`flex-1 min-h-0 relative pb-6 print:pb-0 print:overflow-visible ${
+          ) : (
+            <div
+              ref={mainScrollRef}
+              onScroll={(e) => {
+                panelScrollPositionsRef.current[activeScrollKeyRef.current] =
+                  e.currentTarget.scrollTop;
+              }}
+              className={`flex-1 min-h-0 relative pb-6 print:pb-0 print:overflow-visible [scrollbar-gutter:stable] ${
                 view === 'results' ? 'overflow-hidden flex flex-col' : 'overflow-y-auto overflow-x-hidden custom-scrollbar'
               }`}
             >
@@ -383,9 +407,8 @@ const MainPortalApp: React.FC<MainPortalAppProps> = ({
                   setShowLoginGate(true);
                 }}
               />
-            </motion.div>
-          </AnimatePresence>
-        )}
+            </div>
+          )}
 
         {showStatusPanel && (
           <GenerationStatusPanel
@@ -408,7 +431,8 @@ const MainPortalApp: React.FC<MainPortalAppProps> = ({
       </main>
 
       {ToastComponent}
-    </div>
+      </div>
+    </MotionConfig>
   );
 };
 

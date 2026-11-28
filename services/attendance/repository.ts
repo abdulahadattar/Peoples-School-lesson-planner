@@ -117,6 +117,27 @@ export function readLocalAttendanceRecord(date: string): {
   }
 }
 
+let cachedEnrollments: ClassEnrollment[] | null = null;
+let inFlightEnrollmentsPromise: Promise<ClassEnrollment[]> | null = null;
+
+export function peekCachedClassEnrollments(): ClassEnrollment[] | null {
+  if (cachedEnrollments && cachedEnrollments.length > 0) {
+    return cachedEnrollments;
+  }
+  if (typeof localStorage === 'undefined') return null;
+  const local = localStorage.getItem('school_class_enrollments');
+  if (local) {
+    try {
+      const parsed = JSON.parse(local);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        cachedEnrollments = parsed as ClassEnrollment[];
+        return cachedEnrollments;
+      }
+    } catch {}
+  }
+  return null;
+}
+
 export async function saveClassEnrollments(
   enrollments: ClassEnrollment[],
   updatedBy: string = 'Admin'
@@ -126,6 +147,7 @@ export async function saveClassEnrollments(
     updatedAt: Date.now(),
     updatedBy,
   };
+  cachedEnrollments = enrollments;
   safeWriteLocalStorage('school_class_enrollments', enrollments);
   try {
     const docRef = doc(db, 'settings', 'classEnrollments');
@@ -138,32 +160,35 @@ export async function saveClassEnrollments(
 }
 
 export async function loadClassEnrollments(): Promise<ClassEnrollment[]> {
-  try {
-    const docRef = doc(db, 'settings', 'classEnrollments');
-    const snap = await withReadTimeout(getDoc(docRef), 'Load enrollments');
-    if (snap.exists()) {
-      const data = snap.data();
-      if (data && Array.isArray(data.enrollments) && data.enrollments.length > 0) {
-        return data.enrollments as ClassEnrollment[];
-      }
-    }
-  } catch (error) {
-    if (!isOfflineError(error)) {
-      console.warn('Failed to load enrollments from Firestore, checking localStorage', error);
-    }
-  }
+  if (inFlightEnrollmentsPromise) return inFlightEnrollmentsPromise;
 
-  const local = localStorage.getItem('school_class_enrollments');
-  if (local) {
+  inFlightEnrollmentsPromise = (async () => {
     try {
-      const parsed = JSON.parse(local);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+      const docRef = doc(db, 'settings', 'classEnrollments');
+      const snap = await withReadTimeout(getDoc(docRef), 'Load enrollments');
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data && Array.isArray(data.enrollments) && data.enrollments.length > 0) {
+          cachedEnrollments = data.enrollments as ClassEnrollment[];
+          safeWriteLocalStorage('school_class_enrollments', cachedEnrollments);
+          return cachedEnrollments;
+        }
       }
-    } catch {}
-  }
+    } catch (error) {
+      if (!isOfflineError(error)) {
+        console.warn('Failed to load enrollments from Firestore, checking localStorage', error);
+      }
+    }
 
-  return DEFAULT_GRADE_ENROLLMENTS;
+    const local = peekCachedClassEnrollments();
+    if (local) return local;
+
+    return DEFAULT_GRADE_ENROLLMENTS;
+  })().finally(() => {
+    inFlightEnrollmentsPromise = null;
+  });
+
+  return inFlightEnrollmentsPromise;
 }
 
 const pendingKey = (date: string) => `attendance_pending_${date}`;
